@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Mail, Phone, MapPin, Linkedin, Twitter, Globe, Calendar } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { Calendar } from "lucide-react";
 
 const ContactSection = () => {
   return (

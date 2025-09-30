@@ -1,5 +1,5 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { BookOpen, ExternalLink, Star, Headphones, Play } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { ExternalLink, Star } from "lucide-react";
 
 const ResourcesSection = () => {
   const resources = [
@@ -143,7 +143,7 @@ const ResourcesSection = () => {
                   <Card key={itemIndex} className="mb-6 overflow-hidden flex flex-col">
                     <div className="p-6 flex flex-col flex-grow">
                       {/* Image Section - Above Title */}
-                      {item.image && (
+                      {'image' in item && item.image && (
                         <div className="w-full h-48 mb-4 flex justify-center">
                           <img 
                             src={item.image} 

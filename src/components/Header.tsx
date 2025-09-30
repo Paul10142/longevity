@@ -1,7 +1,6 @@
 import { useState } from "react";
-import { Menu, X as LucideX, Search, ChevronLeft, ChevronRight, Heart } from "lucide-react";
+import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navigation = [
@@ -23,7 +22,7 @@ interface HeaderProps {
   prevMatch: () => void;
 }
 
-export function Header({ searchQuery, setSearchQuery, matchCount, currentIndex, nextMatch, prevMatch }: HeaderProps) {
+export function Header({ }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
 
   const handleNavigation = (href: string) => {

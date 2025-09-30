@@ -1,5 +1,5 @@
 import { Card, CardContent } from "@/components/ui/card";
-import founderPhoto from "@/assets/founder-photo.jpg";
+// import founderPhoto from "@/assets/founder-photo.jpg";
 
 const About = () => {
   return (
@@ -42,12 +42,9 @@ const About = () => {
             {/* Image container with fixed, reasonable sizing */}
             <div className="flex-shrink-0">
               <div className="w-64 h-80 md:w-80 md:h-96 overflow-hidden rounded-lg shadow-lg">
-                <img
-                  src={founderPhoto}
-                  alt="Paul Clancy"
-                  className="w-full h-full object-cover"
-                  style={{ objectPosition: 'center 0%' }}
-                />
+                <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+                  <span className="text-gray-500">Paul Clancy Photo</span>
+                </div>
               </div>
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">

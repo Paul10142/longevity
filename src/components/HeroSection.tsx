@@ -1,7 +1,7 @@
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Download, Target, TrendingUp, Users } from "lucide-react";
+import { Play, Download } from "lucide-react";
 
 export function HeroSection() {
   return (
