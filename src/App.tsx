@@ -3,6 +3,7 @@ import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import ExecutiveTips from './components/ExecutiveTips';
 import ResourcesSection from './components/ResourcesSection';
+import About from './components/About';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 
@@ -38,6 +39,7 @@ function App() {
         <HeroSection />
         <ExecutiveTips />
         <ResourcesSection />
+        <About />
         <ContactSection />
       </div>
       <Footer />

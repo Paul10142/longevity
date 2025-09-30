@@ -6,8 +6,9 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
 
 const navigation = [
   { name: "Presentation", href: "#presentation" },
-  { name: "Executive Tips", href: "#tips" },
+  { name: "Health Toolkit", href: "#tips" },
   { name: "Resources", href: "#resources" },
+  { name: "About", href: "#about" },
   { name: "Contact", href: "#contact" },
 ];
 
@@ -55,7 +56,7 @@ export function Header({ searchQuery, setSearchQuery, matchCount, currentIndex, 
               <span className="text-white font-bold text-sm">L</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold text-[#60a5fa]">Longevity Leadership</span>
+              <span className="text-xl font-bold text-[#60a5fa]">Lifestyle Academy</span>
             </div>
           </button>
 
@@ -72,43 +73,6 @@ export function Header({ searchQuery, setSearchQuery, matchCount, currentIndex, 
             ))}
           </nav>
 
-          {/* Search (Desktop) */}
-          <div className="hidden md:flex items-center space-x-4">
-            <div className="relative">
-              <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search..."
-                className="pl-8 w-64 pr-8"
-                value={searchQuery}
-                onChange={e => setSearchQuery(e.target.value)}
-                aria-label="Search site content"
-              />
-              {searchQuery && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => setSearchQuery("")}
-                  className="absolute right-1 top-1/2 -translate-y-1/2"
-                  aria-label="Clear search"
-                  tabIndex={0}
-                >
-                  <LucideX className="h-4 w-4 text-muted-foreground" />
-                </Button>
-              )}
-              {searchQuery && (
-                <div className="absolute right-0 mt-1 flex items-center space-x-2 bg-background/95 rounded shadow px-2 py-1 border text-xs text-muted-foreground" style={{ top: 'calc(100% + 2px)' }}>
-                  <span>{matchCount} match{matchCount === 1 ? "" : "es"}</span>
-                  <Button variant="ghost" size="icon" onClick={prevMatch} disabled={matchCount === 0} aria-label="Previous match">
-                    <ChevronLeft className="h-4 w-4" />
-                  </Button>
-                  <Button variant="ghost" size="icon" onClick={nextMatch} disabled={matchCount === 0} aria-label="Next match">
-                    <ChevronRight className="h-4 w-4" />
-                  </Button>
-                  <span>{matchCount > 0 ? `${currentIndex + 1} of ${matchCount}` : null}</span>
-                </div>
-              )}
-            </div>
-          </div>
 
           {/* Mobile Navigation */}
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
@@ -129,46 +93,6 @@ export function Header({ searchQuery, setSearchQuery, matchCount, currentIndex, 
                   </button>
                 ))}
               </nav>
-              <div className="mt-6">
-                <div className="relative">
-                  <Input
-                    placeholder="Search..."
-                    className="w-full pr-10" // add right padding for icon
-                    style={{ fontSize: 16 }} // prevent iOS zoom
-                    value={searchQuery}
-                    onChange={e => setSearchQuery(e.target.value)}
-                    aria-label="Search site content"
-                    onFocus={e => e.target.scrollIntoView({ block: "nearest", behavior: "instant" })}
-                  />
-                  {!searchQuery && (
-                    <Search className="absolute right-2 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground pointer-events-none" />
-                  )}
-                  {searchQuery && (
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => setSearchQuery("")}
-                      className="absolute right-1 top-1/2 -translate-y-1/2"
-                      aria-label="Clear search"
-                      tabIndex={0}
-                    >
-                      <LucideX className="h-4 w-4 text-muted-foreground" />
-                    </Button>
-                  )}
-                </div>
-                {searchQuery && (
-                  <div className="flex items-center space-x-2 bg-background/95 rounded shadow px-2 py-1 border text-xs text-muted-foreground mt-2 w-full justify-center">
-                    <span>{matchCount} match{matchCount === 1 ? "" : "es"}</span>
-                    <Button variant="ghost" size="icon" onClick={prevMatch} disabled={matchCount === 0} aria-label="Previous match">
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <Button variant="ghost" size="icon" onClick={nextMatch} disabled={matchCount === 0} aria-label="Next match">
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                    <span>{matchCount > 0 ? `${currentIndex + 1} of ${matchCount}` : null}</span>
-                  </div>
-                )}
-              </div>
             </SheetContent>
           </Sheet>
         </div>

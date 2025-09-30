@@ -9,21 +9,50 @@ export function HeroSection() {
       <div className="container py-2 px-4 sm:px-8">
         <div className="mx-auto max-w-4xl text-center">
           <Badge variant="secondary" className="mb-4">
-            Executive Health & Longevity Resource
+            Health & Longevity Resource
           </Badge>
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
-            <span className="block text-balance text-wrap text-3xl sm:text-4xl md:text-5xl lg:text-6xl w-full max-w-full leading-tight">Welcome to</span>
-            <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">Longevity Leadership</span>
+            <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">Lifestyle Academy</span>
           </h1>
           <p className="text-xl text-foreground mb-8 leading-relaxed">
-            Evidence-based strategies for executives to optimize health, performance, and longevity through lifestyle medicine.
+            Sharing resources to help you lead a healthier, happier life with lifestyle medicine and longevity science.
           </p>
-          
-          <div className="flex flex-wrap justify-center gap-3 mb-12">
-            <Badge variant="outline" className="px-3 py-1">Executive Health</Badge>
-            <Badge variant="outline" className="px-3 py-1">Lifestyle Medicine</Badge>
-            <Badge variant="outline" className="px-3 py-1">Performance Optimization</Badge>
-          </div>
+
+              {/* Personalized Message */}
+              <div className="mb-8 p-6 bg-primary/5 rounded-lg border">
+                <h3 className="text-xl font-bold text-foreground mb-4">Thanks so much for coming, Blue Ridge Mountain Rotary Club!</h3>
+                <p className="text-lg text-foreground leading-relaxed mb-4">
+                  So great to meet y'all. Here's a recording of the video and the resources below. I would love to reach out and chat more about the topic.
+                </p>
+                <div className="flex flex-wrap gap-3 justify-center">
+                  <a 
+                    href="#tips" 
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                  >
+                    Health Toolkit
+                  </a>
+                  <a 
+                    href="#resources" 
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                  >
+                    Next Steps for Learning
+                  </a>
+                  <a 
+                    href="#about" 
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                  >
+                    About
+                  </a>
+                  <a 
+                    href="https://cal.com/admissionsacademy" 
+                    target="_blank" 
+                    rel="noopener noreferrer"
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                  >
+                    Reach Out to Chat
+                  </a>
+                </div>
+              </div>
 
           {/* Presentation Video Section */}
           <Card className="mb-12">
@@ -49,38 +78,6 @@ export function HeroSection() {
             </CardContent>
           </Card>
 
-          {/* Feature Cards */}
-          <div className="hidden md:grid md:grid-cols-3 gap-6 mt-16">
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Target className="h-12 w-12 text-[#60a5fa] mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Performance Metrics</h3>
-                <p className="text-foreground">
-                  Track key biomarkers and lifestyle factors that directly impact your cognitive and physical performance
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <TrendingUp className="h-12 w-12 text-[#60a5fa] mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Evidence-Based</h3>
-                <p className="text-foreground">
-                  Based on research from Peter Attia's "Outlive" and other longevity science leaders
-                </p>
-              </CardContent>
-            </Card>
-            
-            <Card className="text-center">
-              <CardContent className="pt-6">
-                <Users className="h-12 w-12 text-[#60a5fa] mx-auto mb-4" />
-                <h3 className="text-xl font-semibold mb-2">Executive Focus</h3>
-                <p className="text-foreground">
-                  Tailored strategies for busy executives who want to optimize health without sacrificing productivity
-                </p>
-              </CardContent>
-            </Card>
-          </div>
         </div>
       </div>
     </section>

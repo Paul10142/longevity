@@ -44,7 +44,7 @@ const ExecutiveTips = () => {
   return (
     <section id="tips" className="py-8 lg:py-12 bg-primary/5">
       <div className="container">
-        <h2 className="text-3xl font-bold tracking-tight mb-8">Executive Health Toolkit</h2>
+        <h2 className="text-3xl font-bold tracking-tight mb-8">Health Toolkit</h2>
         
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {tips.map((tip, index) => (
