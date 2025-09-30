@@ -1,6 +1,17 @@
 import { Card } from "@/components/ui/card";
 import { ExternalLink, Star } from "lucide-react";
 
+// Import local images
+import outliveImage from "@/assets/outlive.jpg";
+import atomicHabitsImage from "@/assets/atomic habits.jpg";
+import goodEnergyImage from "@/assets/good energy.jpg";
+import theDriveImage from "@/assets/thedrive podcast.jpg";
+import foundMyFitnessImage from "@/assets/foundmyfitness podcast.jpeg";
+import hubermanLabImage from "@/assets/hubmanlabpodcast.jpeg";
+import performImage from "@/assets/performandygalpin podcast.jpg";
+import modernWisdomImage from "@/assets/modern wisdom podcast.jpeg";
+import timFerrissImage from "@/assets/tim ferriss show podcast.jpeg";
+
 const ResourcesSection = () => {
   const resources = [
     {
@@ -13,7 +24,8 @@ const ResourcesSection = () => {
           type: "Book",
           rating: 5,
           link: "https://www.amazon.com/Outlive-Longevity-Peter-Attia-MD/dp/0593236599",
-          image: "https://images-na.ssl-images-amazon.com/images/I/71Q4+4K2YJL._AC_UL600_SR600,400_.jpg"
+          image: outliveImage,
+          featured: true
         },
         {
           title: "Atomic Habits: An Easy & Proven Way to Build Good Habits & Break Bad Ones",
@@ -22,7 +34,7 @@ const ResourcesSection = () => {
           type: "Book",
           rating: 5,
           link: "https://www.amazon.com/Atomic-Habits-Proven-Build-Break/dp/0735211299",
-          image: "https://images-na.ssl-images-amazon.com/images/I/51Tlm0L0-EL._AC_UL600_SR600,400_.jpg"
+          image: atomicHabitsImage
         },
         {
           title: "Good Energy: The Surprising Connection Between Metabolism and Limitless Health",
@@ -31,7 +43,7 @@ const ResourcesSection = () => {
           type: "Book",
           rating: 5,
           link: "https://www.amazon.com/Good-Energy-Surprising-Connection-Metabolism/dp/0593712641",
-          image: "https://images-na.ssl-images-amazon.com/images/I/71Q4+4K2YJL._AC_UL600_SR600,400_.jpg"
+          image: goodEnergyImage
         }
       ]
     },
@@ -45,7 +57,7 @@ const ResourcesSection = () => {
           type: "Podcast",
           rating: 5,
           link: "https://peterattiamd.com/podcast/",
-          image: null
+          image: theDriveImage
         },
         {
           title: "FoundMyFitness – Rhonda Patrick PhD",
@@ -54,7 +66,7 @@ const ResourcesSection = () => {
           type: "Podcast",
           rating: 5,
           link: "https://www.foundmyfitness.com/",
-          image: null
+          image: foundMyFitnessImage
         },
         {
           title: "Huberman Lab Podcast – Andrew Huberman PhD",
@@ -63,7 +75,7 @@ const ResourcesSection = () => {
           type: "Podcast",
           rating: 5,
           link: "https://www.hubermanlab.com/",
-          image: null
+          image: hubermanLabImage
         },
         {
           title: "Perform with Dr. Andy Galpin, PhD",
@@ -72,20 +84,57 @@ const ResourcesSection = () => {
           type: "Podcast",
           rating: 5,
           link: "https://performpodcast.com/",
-          image: null
+          image: performImage
         }
       ]
     },
     {
-      category: "Featured Podcast Episodes",
+      category: "Specific Interesting Episodes",
       items: [
+        {
+          title: "How Metabolic & Immune System Dysfunction Drive the Aging Process",
+          author: "The Drive – Episode #359",
+          description: "Comprehensive exploration of how metabolic dysfunction and immune system changes contribute to the aging process and what we can do about it.",
+          type: "Episode",
+          rating: 5,
+          link: "https://peterattiamd.com/podcast/",
+          image: theDriveImage
+        },
+        {
+          title: "The Science of Resistance Training, Building Muscle & Anabolic Use",
+          author: "The Drive – Episode #335",
+          description: "Deep dive into the science of resistance training, muscle building, and the role of anabolic compounds in performance and longevity.",
+          type: "Episode",
+          rating: 5,
+          link: "https://peterattiamd.com/podcast/",
+          image: theDriveImage
+        },
+        {
+          title: "Longevity 101: A Foundational Guide to Peter's Frameworks for Longevity",
+          author: "The Drive – Episode #311",
+          description: "Essential foundational episode covering Peter's core frameworks and approaches to longevity, perfect for newcomers to the field.",
+          type: "Episode",
+          rating: 5,
+          link: "https://peterattiamd.com/podcast/",
+          image: theDriveImage
+        },
+        {
+          title: "Injury Prevention, Recovery, and Performance Optimization for Every Decade",
+          author: "The Drive – Episode #350",
+          description: "Comprehensive guide to injury prevention, recovery strategies, and performance optimization tailored for different age groups and life stages.",
+          type: "Episode",
+          rating: 5,
+          link: "https://peterattiamd.com/podcast/",
+          image: theDriveImage
+        },
         {
           title: "Dr. Ben Bikman: How To Reverse Insulin Resistance Through Diet, Exercise, & Sleep",
           author: "FoundMyFitness – Episode #104",
           description: "Deep dive into insulin resistance and practical strategies for reversal through lifestyle interventions.",
           type: "Episode",
           rating: 5,
-          link: "https://www.foundmyfitness.com/episodes/ben-bikman"
+          link: "https://www.foundmyfitness.com/episodes/ben-bikman",
+          image: foundMyFitnessImage
         },
         {
           title: "Dr. Keith Baar: Simple Exercises That Can Repair Tendons, Collagen Fact vs. Fiction",
@@ -93,7 +142,8 @@ const ResourcesSection = () => {
           description: "Comprehensive look at tendon repair, collagen science, and the anti-RICE protocol for injury recovery.",
           type: "Episode",
           rating: 5,
-          link: "https://tim.blog/2025/02/26/dr-keith-baar/"
+          link: "https://tim.blog/2025/02/26/dr-keith-baar/",
+          image: timFerrissImage
         },
         {
           title: "Dr. Andy Galpin: The Optimal Diet, Supplement, & Recovery Protocol for Peak Performance",
@@ -101,7 +151,8 @@ const ResourcesSection = () => {
           description: "Evidence-based protocols for nutrition, supplementation, and recovery strategies for optimal performance.",
           type: "Episode",
           rating: 5,
-          link: "https://www.foundmyfitness.com/episodes/andy-galpin"
+          link: "https://www.foundmyfitness.com/episodes/andy-galpin",
+          image: foundMyFitnessImage
         },
         {
           title: "Max Lugavere – The Terrifying Link Between Diet & Mental Health",
@@ -109,8 +160,18 @@ const ResourcesSection = () => {
           description: "Explores the critical connection between nutrition and mental health, with actionable insights for cognitive optimization.",
           type: "Episode",
           rating: 5,
-          link: "https://podcasts.apple.com/za/podcast/709-max-lugavere-the-terrifying-link-between-diet/id1347973549?i=1000635388383"
-        }
+          link: "https://podcasts.apple.com/za/podcast/709-max-lugavere-the-terrifying-link-between-diet/id1347973549?i=1000635388383",
+          image: modernWisdomImage
+        },
+        {
+          title: "Nsima Inyang - True Athleticism at Any Age, Microdosing Movement, 'Rope Flow' as a Key Unlock, Why Sleds and Sandbags Matter, and Much More",
+          author: "The Tim Ferriss Show – Episode #816",
+          description: "Comprehensive discussion on athleticism, movement patterns, and unconventional training methods that can benefit people of all ages.",
+          type: "Episode",
+          rating: 5,
+          link: "https://tim.blog/2025/06/19/nsima-inyang/",
+          image: timFerrissImage
+        },
       ]
     }
   ];
@@ -140,7 +201,7 @@ const ResourcesSection = () => {
               <h3 className="text-2xl font-bold mb-6">{category.category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((item, itemIndex) => (
-                  <Card key={itemIndex} className="mb-6 overflow-hidden flex flex-col">
+                  <Card key={itemIndex} className={`mb-6 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-2 ring-yellow-400 ring-opacity-75 shadow-lg border-yellow-300' : ''}`}>
                     <div className="p-6 flex flex-col flex-grow">
                       {/* Image Section - Above Title */}
                       {'image' in item && item.image && (
@@ -154,7 +215,14 @@ const ResourcesSection = () => {
                       )}
                       
                       {/* Title */}
-                      <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
+                      <div className="flex items-center gap-2 mb-2">
+                        <h3 className="text-lg font-semibold">{item.title}</h3>
+                        {'featured' in item && item.featured && (
+                          <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full border border-yellow-300">
+                            ⭐ Featured
+                          </span>
+                        )}
+                      </div>
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm text-muted-foreground">by {item.author}</p>
                         <div className="flex items-center gap-1 pr-6">
