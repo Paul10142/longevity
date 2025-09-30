@@ -7,7 +7,7 @@ const Footer = () => {
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-center md:text-left">
               <p className="text-muted-foreground mb-2">
-                &copy; 2024 Lifestyle Academy | Brought to you by AdmissionsAcademy
+                &copy; 2024 Lifestyle Academy | Brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy</a>
               </p>
               <div className="flex items-center space-x-4 mt-4 justify-center md:justify-start">
                 <a href="mailto:paul@admissionsacademy.org" className="text-muted-foreground hover:text-primary transition-colors">

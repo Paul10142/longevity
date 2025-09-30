@@ -16,6 +16,15 @@ const ResourcesSection = () => {
           image: "https://images-na.ssl-images-amazon.com/images/I/71Q4+4K2YJL._AC_UL600_SR600,400_.jpg"
         },
         {
+          title: "Atomic Habits: An Easy & Proven Way to Build Good Habits & Break Bad Ones",
+          author: "James Clear",
+          description: "A comprehensive guide to building better habits and breaking bad ones. This book provides practical strategies for creating lasting behavior change through small, incremental improvements.",
+          type: "Book",
+          rating: 5,
+          link: "https://www.amazon.com/Atomic-Habits-Proven-Build-Break/dp/0735211299",
+          image: "https://images-na.ssl-images-amazon.com/images/I/51Tlm0L0-EL._AC_UL600_SR600,400_.jpg"
+        },
+        {
           title: "Good Energy: The Surprising Connection Between Metabolism and Limitless Health",
           author: "Dr. Casey Means and Calley Means",
           description: "Focuses specifically on the global impact of metabolic health on all of the body systems, as well as the role of environmental factors on lifestyle and overall health.",
@@ -131,8 +140,8 @@ const ResourcesSection = () => {
               <h3 className="text-2xl font-bold mb-6">{category.category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((item, itemIndex) => (
-                  <Card key={itemIndex} className="mb-6 overflow-hidden">
-                    <div className="p-6">
+                  <Card key={itemIndex} className="mb-6 overflow-hidden flex flex-col">
+                    <div className="p-6 flex flex-col flex-grow">
                       {/* Image Section - Above Title */}
                       {item.image && (
                         <div className="w-full h-48 mb-4 flex justify-center">
@@ -146,26 +155,28 @@ const ResourcesSection = () => {
                       
                       {/* Title */}
                       <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                      <div className="flex items-center gap-2 mb-4">
+                      <div className="flex items-center justify-between mb-4">
                         <p className="text-sm text-muted-foreground">by {item.author}</p>
-                        <div className="flex items-center gap-1">
+                        <div className="flex items-center gap-1 pr-6">
                           {renderStars(item.rating)}
                         </div>
                       </div>
                       
                       {/* Description */}
-                      <p className="text-muted-foreground mb-4 text-sm leading-relaxed">{item.description}</p>
+                      <p className="text-muted-foreground mb-4 text-sm leading-relaxed flex-grow">{item.description}</p>
                       
-                      {/* Action Button */}
-                      <a 
-                        href={item.link} 
-                        target="_blank" 
-                        rel="noopener noreferrer"
-                        className="text-primary font-semibold hover:text-primary/80 transition-colors flex items-center text-sm"
-                      >
-                        {item.type === "Book" ? "View on Amazon" : item.type === "Podcast" ? "Listen Now" : "Listen to Episode"}
-                        <ExternalLink className="h-4 w-4 ml-1" />
-                      </a>
+                      {/* Action Button - Fixed at bottom */}
+                      <div className="mt-auto pt-4">
+                        <a 
+                          href={item.link} 
+                          target="_blank" 
+                          rel="noopener noreferrer"
+                          className="text-primary font-semibold hover:text-primary/80 transition-colors flex items-center text-sm"
+                        >
+                          {item.type === "Book" ? "View on Amazon" : item.type === "Podcast" ? "Listen Now" : "Listen to Episode"}
+                          <ExternalLink className="h-4 w-4 ml-1" />
+                        </a>
+                      </div>
                     </div>
                   </Card>
                 ))}

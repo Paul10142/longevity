@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Menu, X as LucideX, Search, ChevronLeft, ChevronRight } from "lucide-react";
+import { Menu, X as LucideX, Search, ChevronLeft, ChevronRight, Heart } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -53,10 +53,10 @@ export function Header({ searchQuery, setSearchQuery, matchCount, currentIndex, 
             className="flex items-center space-x-4 hover:opacity-80 transition-opacity"
           >
             <div className="h-8 w-8 bg-[#60a5fa] rounded-full flex items-center justify-center">
-              <span className="text-white font-bold text-sm">L</span>
+              <span className="text-lg">❤️</span>
             </div>
             <div className="flex flex-col">
-              <span className="text-xl font-bold text-[#60a5fa]">Lifestyle Academy</span>
+              <span className="text-xl font-bold text-[#60a5fa]">LifestyleAcademy</span>
             </div>
           </button>
 

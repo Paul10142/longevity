@@ -67,21 +67,6 @@ const ExecutiveTips = () => {
           ))}
         </div>
 
-        {/* Featured Resource */}
-        <Card className="mt-8">
-          <CardHeader>
-            <CardTitle className="text-2xl">Executive Longevity Playbook</CardTitle>
-          </CardHeader>
-          <CardContent className="text-base space-y-4">
-            <p className="text-muted-foreground">
-              A comprehensive 30-page guide covering nutrition, exercise, sleep, stress management, 
-              and biomarker optimization specifically tailored for executive lifestyles.
-            </p>
-            <button className="bg-[#60a5fa] text-white px-8 py-3 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors">
-              Download Complete Playbook
-            </button>
-          </CardContent>
-        </Card>
       </div>
     </section>
   );

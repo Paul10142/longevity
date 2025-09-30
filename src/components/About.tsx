@@ -37,7 +37,7 @@ const About = () => {
 
         {/* Founder Section */}
         <section id="about" className="mb-4">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">Paul Clancy, Founder</h2>
+          <h2 className="text-3xl font-bold text-center text-foreground mb-12">Paul Clancy MD/MBA '26, Founder</h2>
           <div className="flex flex-col md:flex-row items-center gap-8 max-w-4xl mx-auto">
             {/* Image container with fixed, reasonable sizing */}
             <div className="flex-shrink-0">
@@ -52,8 +52,6 @@ const About = () => {
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">
               <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
-                <p>It was great to meet y'all! I made this website for you to easily access all the resources discussed, and how to share them with your friends. I'd love to chat more!</p>
-                
                 <p>I'm a fifth-year MD/MBA student at the University of Virginia. I founded Lifestyle Academy to help individuals take control of their health and optimize health through evidence-based lifestyle medicine strategies.</p>
                 
                 <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>

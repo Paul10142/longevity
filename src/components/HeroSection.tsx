@@ -22,7 +22,7 @@ export function HeroSection() {
               <div className="mb-8 p-6 bg-primary/5 rounded-lg border">
                 <h3 className="text-xl font-bold text-foreground mb-4">Thanks so much for coming, Blue Ridge Mountain Rotary Club!</h3>
                 <p className="text-lg text-foreground leading-relaxed mb-4">
-                  So great to meet y'all. Here's a recording of the video and the resources below. I would love to reach out and chat more about the topic.
+                  It was great to meet y'all! I made this website for you to easily access all the resources discussed, and how to share them with your friends. I'd love to chat more!
                 </p>
                 <div className="flex flex-wrap gap-3 justify-center">
                   <a 
