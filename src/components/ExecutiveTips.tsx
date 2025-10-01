@@ -87,15 +87,15 @@ const ExecutiveTips = () => {
   ];
 
   return (
-    <section id="tips" className="py-8 lg:py-12 bg-primary/5">
+    <section id="tips" className="py-6 sm:py-8 lg:py-12 bg-primary/5">
       <div className="container">
-        <h2 className="text-3xl font-bold tracking-tight mb-8">Longevity Toolkit</h2>
-        <p className="text-xl text-muted-foreground mb-8">
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 sm:mb-8">Longevity Toolkit</h2>
+        <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8">
           Evidence-informed, action-first strategies for building sustainable health habits. 
           Start with one habit per domain and track for 14 days.
         </p>
 
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {/* Big Takeaways - Moved to top */}
           <Card className="border-l-4 border-l-yellow-500">
             <CardContent className="p-6">
@@ -124,7 +124,7 @@ const ExecutiveTips = () => {
               <p className="text-muted-foreground mb-4">
                 The best plan is the one you'll do consistently. Use these tiny levers to make that happen:
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {habitTips.map((tip, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
@@ -151,7 +151,7 @@ const ExecutiveTips = () => {
               </div>
 
               <h4 className="font-semibold mb-3">Weekly "Minimum Viable" Template:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Zone 2</Badge>
@@ -176,7 +176,7 @@ const ExecutiveTips = () => {
 
               <div className="bg-gray-50 rounded-lg p-4">
                 <h4 className="font-semibold mb-2">Beginner-Friendly 2-Day Strength Split (Machine-Based):</h4>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div>
                     <h5 className="font-medium text-base mb-1">Day A:</h5>
                     <p className="text-base text-muted-foreground">Leg press • Seated row • Chest press machine • Leg curl • Plank (30-60 sec)</p>
@@ -199,7 +199,7 @@ const ExecutiveTips = () => {
                 <h3 className="text-2xl font-semibold">Follow-Along Videos & Channels</h3>
               </div>
               
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div>
                   <h4 className="font-semibold mb-3">Workout YouTube Channels</h4>
                   <div className="space-y-2">
@@ -245,7 +245,7 @@ const ExecutiveTips = () => {
                 <h3 className="text-2xl font-semibold">Quick "Start Here" for Busy Weeks</h3>
               </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 text-base">
                   <div>
                     <h4 className="font-semibold mb-2">Mon, Wed, Fri:</h4>
                     <p>30–45 min strength (split A/B), each with a 10–20 min Zone 2 warm-up/finish</p>
@@ -305,7 +305,7 @@ const ExecutiveTips = () => {
               </div>
 
               <h4 className="font-semibold mb-3">Huberman-Inspired Toolkit:</h4>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {sleepToolkit.map((tip, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
@@ -347,7 +347,7 @@ const ExecutiveTips = () => {
               <p className="text-muted-foreground mb-4">
                 Focus on sleep, exercise, nutrition first. Here are a few supplements with decent support:
               </p>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {supplements.map((supp, index) => (
                   <div key={index} className="border rounded-lg p-3">
                     <div className="mb-1">

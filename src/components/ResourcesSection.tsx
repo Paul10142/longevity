@@ -186,20 +186,20 @@ const ResourcesSection = () => {
   };
 
   return (
-    <section id="resources" className="py-8 lg:py-12">
+    <section id="resources" className="py-6 sm:py-8 lg:py-12">
       <div className="container">
-        <h2 className="text-3xl font-bold tracking-tight mb-8">Next Steps for Learning</h2>
-        <p className="text-xl text-muted-foreground mb-8">
-          Curated books, podcasts, and episodes to deepen your understanding 
-          of longevity and lifestyle medicine. These are the resources that have 
+        <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 sm:mb-8">Next Steps for Learning</h2>
+        <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8">
+          Curated books, podcasts, and episodes to deepen your understanding
+          of longevity and lifestyle medicine. These are the resources that have
           shaped my own journey in executive health optimization.
         </p>
 
-        <div className="space-y-8">
+        <div className="space-y-6 sm:space-y-8">
           {resources.map((category, categoryIndex) => (
             <div key={categoryIndex}>
-              <h3 className="text-2xl font-bold mb-6">{category.category}</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              <h3 className="text-xl sm:text-2xl font-bold mb-4 sm:mb-6">{category.category}</h3>
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {category.items.map((item, itemIndex) => (
                   <Card key={itemIndex} className={`mb-4 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-4 ring-yellow-300 shadow-2xl border-4 border-yellow-400' : ''}`}>
                     <div className="p-4 flex flex-col flex-grow">

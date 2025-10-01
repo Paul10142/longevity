@@ -4,15 +4,15 @@ import founderPhoto from "@/assets/founder-photo.jpg";
 const About = () => {
   return (
     <div className="min-h-screen bg-background">
-      <main className="container mx-auto px-4 py-12">
+      <main className="container mx-auto px-4 py-8 sm:py-12">
         {/* About Lifestyle Academy Section */}
-        <section className="mb-8">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">About LifestyleAcademy</h2>
+        <section className="mb-6 sm:mb-8">
+          <h2 className="text-2xl sm:text-3xl font-bold text-center text-foreground mb-8 sm:mb-12">About LifestyleAcademy</h2>
           
           <div className="max-w-4xl mx-auto">
-            <Card className="mb-8">
-              <CardContent className="p-8">
-                <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
+            <Card className="mb-6 sm:mb-8">
+              <CardContent className="p-4 sm:p-6 lg:p-8">
+                <div className="text-base sm:text-lg text-muted-foreground leading-relaxed space-y-4">
                   <p>
                     LifestyleAcademy is founded by Paul Clancy and brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, 
                     an organization committed to expanding access to educational resources for pre-medical and pre-health students nationwide.

@@ -9,35 +9,35 @@ export function HeroSection() {
           <Badge variant="secondary" className="mb-4">
             Health & Longevity Resource
           </Badge>
-          <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
-            <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">LifestyleAcademy</span>
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl mb-6">
+            <span className="block text-[#60a5fa] leading-tight text-balance">LifestyleAcademy</span>
           </h1>
-          <p className="text-xl text-foreground mb-8 leading-relaxed">
+          <p className="text-lg sm:text-xl text-foreground mb-8 leading-relaxed">
             Sharing resources to help you lead a healthier, happier life with evidence-based lifestyle medicine.
           </p>
 
               {/* Personalized Message */}
-              <div className="mb-8 p-6 bg-primary/5 rounded-lg border">
-                <h3 className="text-xl font-bold text-foreground mb-4">Thanks so much for coming, Blue Ridge Mountain Rotary Club!</h3>
-                <p className="text-lg text-foreground leading-relaxed mb-4">
+              <div className="mb-8 p-4 sm:p-6 bg-primary/5 rounded-lg border">
+                <h3 className="text-lg sm:text-xl font-bold text-foreground mb-4">Thanks so much for coming, Blue Ridge Mountain Rotary Club!</h3>
+                <p className="text-base sm:text-lg text-foreground leading-relaxed mb-4">
                   It was great to meet y'all! I made this website for you to easily access all the resources discussed, and how to share them with your friends. I'd love to chat more!
                 </p>
-                <div className="flex flex-wrap gap-3 justify-center">
+                <div className="flex flex-col sm:flex-row flex-wrap gap-3 justify-center">
                   <a 
                     href="#tips" 
-                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors text-center"
                   >
-                    Health Toolkit
+                    Longevity Toolkit
                   </a>
                   <a 
                     href="#resources" 
-                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors text-center"
                   >
                     Next Steps for Learning
                   </a>
                   <a 
                     href="#about" 
-                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors text-center"
                   >
                     About
                   </a>
@@ -45,7 +45,7 @@ export function HeroSection() {
                     href="https://cal.com/admissionsacademy" 
                     target="_blank" 
                     rel="noopener noreferrer"
-                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors"
+                    className="bg-[#60a5fa] text-white px-4 py-2 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors text-center"
                   >
                     Reach Out to Chat
                   </a>
@@ -53,9 +53,9 @@ export function HeroSection() {
               </div>
 
           {/* Presentation Video Section */}
-          <Card className="mb-12">
-            <CardContent className="pt-6">
-              <div className="aspect-video rounded-lg overflow-hidden mb-6">
+          <Card className="mb-8 sm:mb-12">
+            <CardContent className="pt-4 sm:pt-6">
+              <div className="rounded-lg overflow-hidden mb-4 sm:mb-6" style={{height: 'calc(56.25vw + 10px)', maxHeight: 'calc(630px + 10px)', width: '100%'}}>
                 <iframe
                   width="100%"
                   height="100%"
@@ -71,7 +71,7 @@ export function HeroSection() {
               <div className="text-center">
                 <a 
                   href="/transcript" 
-                  className="bg-[#60a5fa] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors inline-flex items-center justify-center"
+                  className="bg-[#60a5fa] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors inline-flex items-center justify-center w-full sm:w-auto"
                 >
                   Read the Video Transcript
                 </a>
