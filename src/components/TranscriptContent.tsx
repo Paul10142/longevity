@@ -203,8 +203,6 @@ const TranscriptContent = () => {
       <p>I've recorded this talk, made a website with resources, and included tip sheets for workouts, meal plans, and reading. If you want one place to start, I recommend Peter Attia's book <em>Outlive</em>. It lays out these ideas beautifully and was the spark that set me down this path.</p>
       
       <p>I'd love your feedback. Fill out the form I'll share, and let me know what questions you have or what you're struggling with. That helps me figure out where to focus next.</p>
-      
-      <p>And finally, thank you. Thanks to Matt Crane for inviting me. Thanks to all of you for giving me your attention. I'll take questions now, and I'll stick around afterward as long as anyone wants to chat.</p>
     </div>
   );
 };
