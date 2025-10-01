@@ -1,6 +1,5 @@
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play } from "lucide-react";
 
 export function HeroSection() {
   return (
@@ -56,12 +55,17 @@ export function HeroSection() {
           {/* Presentation Video Section */}
           <Card className="mb-12">
             <CardContent className="pt-6">
-              <div className="aspect-video bg-muted rounded-lg flex items-center justify-center mb-6">
-                <div className="text-center">
-                  <Play className="h-16 w-16 text-[#60a5fa] mx-auto mb-4" />
-                  <p className="text-muted-foreground">Presentation Video</p>
-                  <p className="text-sm text-muted-foreground">Click to play recorded presentation</p>
-                </div>
+              <div className="aspect-video rounded-lg overflow-hidden mb-6">
+                <iframe
+                  width="100%"
+                  height="100%"
+                  src="https://www.youtube.com/embed/FYgbOwHlk3M"
+                  title="Lifestyle Medicine: The Most Important Talk of Your Life"
+                  frameBorder="0"
+                  allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                  allowFullScreen
+                  className="rounded-lg"
+                ></iframe>
               </div>
               
               <div className="text-center">
