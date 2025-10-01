@@ -7,7 +7,7 @@ const About = () => {
       <main className="container mx-auto px-4 py-12">
         {/* About Lifestyle Academy Section */}
         <section className="mb-8">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">About Lifestyle Academy</h2>
+          <h2 className="text-3xl font-bold text-center text-foreground mb-12">About LifestyleAcademy</h2>
           
           <div className="max-w-4xl mx-auto">
             <Card className="mb-8">
@@ -26,7 +26,7 @@ const About = () => {
                   
                   <p>
                     Whether you're looking to optimize your cognitive performance, manage stress more effectively, or implement 
-                    sustainable health habits, Lifestyle Academy provides the evidence-based guidance you need to thrive both 
+                    sustainable health habits, LifestyleAcademy provides the evidence-based guidance you need to thrive both 
                     personally and professionally while building a foundation for long-term happiness and health.
                   </p>
                 </div>
@@ -52,7 +52,7 @@ const About = () => {
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">
               <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
-                <p>I'm a fifth-year MD/MBA student at the University of Virginia. I founded Lifestyle Academy to help individuals take control of their health and optimize health through evidence-based lifestyle medicine strategies.</p>
+                <p>I'm a fifth-year MD/MBA student at the University of Virginia. I founded LifestyleAcademy to help individuals take control of their health and optimize health through evidence-based lifestyle medicine strategies.</p>
                 
                 <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>
                 

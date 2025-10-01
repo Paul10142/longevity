@@ -50,7 +50,7 @@ const TermsOfUse = () => {
           
           <h2 className="text-2xl font-semibold mb-4">Limitations</h2>
           <p className="mb-4">
-            In no event shall Lifestyle Academy or its suppliers be liable for any damages 
+            In no event shall LifestyleAcademy or its suppliers be liable for any damages 
             (including, without limitation, damages for loss of data or profit, or due to business 
             interruption) arising out of the use or inability to use the materials on this website.
           </p>

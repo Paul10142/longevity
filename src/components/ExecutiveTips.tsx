@@ -1,6 +1,6 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { ExternalLink, CheckCircle, Target, Zap, Moon, Brain, Pill } from "lucide-react";
+import { ExternalLink, CheckCircle } from "lucide-react";
 
 const ExecutiveTips = () => {
   const habitTips = [

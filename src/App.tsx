@@ -1,4 +1,5 @@
 import { useState, useRef } from 'react';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
 import ExecutiveTips from './components/ExecutiveTips';
@@ -6,8 +7,9 @@ import ResourcesSection from './components/ResourcesSection';
 import About from './components/About';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
+import Transcript from './pages/Transcript';
 
-function App() {
+function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
   const [matchCount] = useState(0);
   const [currentIndex, setCurrentIndex] = useState(0);
@@ -44,6 +46,17 @@ function App() {
       </div>
       <Footer />
     </div>
+  );
+}
+
+function App() {
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<HomePage />} />
+        <Route path="/transcript" element={<Transcript />} />
+      </Routes>
+    </Router>
   );
 }
 

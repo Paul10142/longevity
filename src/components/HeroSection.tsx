@@ -1,7 +1,6 @@
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { Play, Download } from "lucide-react";
+import { Play } from "lucide-react";
 
 export function HeroSection() {
   return (
@@ -12,7 +11,7 @@ export function HeroSection() {
             Health & Longevity Resource
           </Badge>
           <h1 className="text-4xl font-bold tracking-tight sm:text-6xl mb-6">
-            <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">Lifestyle Academy</span>
+            <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">LifestyleAcademy</span>
           </h1>
           <p className="text-xl text-foreground mb-8 leading-relaxed">
             Sharing resources to help you lead a healthier, happier life with lifestyle medicine and longevity science.
@@ -65,15 +64,13 @@ export function HeroSection() {
                 </div>
               </div>
               
-              <div className="flex flex-col sm:flex-row gap-4 justify-center">
-                <Button className="bg-[#60a5fa] text-white hover:bg-[#3b82f6] transition-colors flex items-center justify-center">
-                  <Play className="h-5 w-5 mr-2" />
-                  Watch Presentation
-                </Button>
-                <Button variant="outline" className="border-[#60a5fa] text-[#60a5fa] hover:bg-[#60a5fa]/10 transition-colors flex items-center justify-center">
-                  <Download className="h-5 w-5 mr-2" />
-                  Download Slides
-                </Button>
+              <div className="text-center">
+                <a 
+                  href="/transcript" 
+                  className="bg-[#60a5fa] text-white px-6 py-3 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors inline-flex items-center justify-center"
+                >
+                  Read the Video Transcript
+                </a>
               </div>
             </CardContent>
           </Card>
