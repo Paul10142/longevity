@@ -1,4 +1,4 @@
-import { useState, useRef } from 'react';
+import { useState, useRef, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import Header from './components/Header';
 import HeroSection from './components/HeroSection';
@@ -26,6 +26,24 @@ function HomePage() {
       setCurrentIndex(currentIndex - 1);
     }
   };
+
+  // Handle hash navigation when page loads
+  useEffect(() => {
+    const handleHashNavigation = () => {
+      const hash = window.location.hash;
+      if (hash) {
+        setTimeout(() => {
+          const element = document.querySelector(hash);
+          if (element) {
+            const y = element.getBoundingClientRect().top + window.pageYOffset - 64; // 64px header height
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        }, 100); // Small delay to ensure page is loaded
+      }
+    };
+
+    handleHashNavigation();
+  }, []);
 
   return (
     <div className="min-h-screen bg-background">

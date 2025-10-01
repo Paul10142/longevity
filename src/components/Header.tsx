@@ -32,8 +32,10 @@ export function Header({ }: HeaderProps) {
     if (href.startsWith("#")) {
       // If we're on the transcript page, navigate to homepage first
       if (location.pathname === "/transcript") {
+        // Navigate to homepage with the hash
         window.location.href = `/${href}`;
       } else {
+        // We're already on homepage, just scroll to the section
         const scrollToElement = () => {
           const element = document.querySelector(href);
           if (element) {
@@ -44,7 +46,7 @@ export function Header({ }: HeaderProps) {
         scrollToElement();
       }
     } else {
-      // Handle regular navigation
+      // Handle regular navigation (like /transcript)
       window.location.href = href;
     }
     setIsOpen(false);

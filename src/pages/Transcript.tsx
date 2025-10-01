@@ -33,7 +33,7 @@ const Transcript = () => {
       />
       <div ref={mainRef} className="container mx-auto px-4 py-12">
         <div className="max-w-[850px] mx-auto">
-          <h1 className="text-4xl font-bold mb-8">Transcript</h1>
+          <h1 className="text-4xl font-bold mb-8">Cleaned Up Transcript - Blue Ridge Mountain Rotary Club Presentation, 10/1/25</h1>
           <div className="prose prose-lg max-w-none">
             <TranscriptContent />
           </div>
