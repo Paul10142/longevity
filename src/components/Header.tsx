@@ -13,7 +13,6 @@ const navigation = [
   { name: "Contact", href: "#contact" },
 ];
 
-const HEADER_HEIGHT = 80; // px - increased for mobile spacing
 
 interface HeaderProps {
   searchQuery: string;

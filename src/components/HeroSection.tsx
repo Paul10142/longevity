@@ -123,8 +123,8 @@ export function HeroSection() {
                 width="100%" 
                 height="552" 
                 frameBorder="0" 
-                marginHeight="0" 
-                marginWidth="0" 
+                marginHeight={0} 
+                marginWidth={0} 
                 title="LifestyleAcademy - F/U"
                 className="rounded-lg border-0 outline-none"
                 style={{ border: 'none', outline: 'none' }}
