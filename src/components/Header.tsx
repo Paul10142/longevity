@@ -40,7 +40,7 @@ export function Header({ }: HeaderProps) {
           if (element) {
             // Use responsive offset - ensure content is not hidden by header
             const isMobile = window.innerWidth < 768;
-            const offset = isMobile ? 120 : 80; // Extra spacing to prevent header overlap
+            const offset = isMobile ? 90 : 50; // Extra spacing to prevent header overlap
             const y = element.getBoundingClientRect().top + window.pageYOffset - offset;
             window.scrollTo({ top: y, behavior: "smooth" });
           }

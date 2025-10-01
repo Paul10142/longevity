@@ -36,7 +36,7 @@ const About = () => {
         </section>
 
         {/* Founder Section */}
-        <section id="about" className="mb-4">
+        <section id="about" className="mb-4 pt-8">
           <h2 className="text-3xl font-bold text-center text-foreground mb-12">Paul Clancy MD/MBA '26, Founder</h2>
           <div className="flex flex-col md:flex-row items-center gap-8 max-w-4xl mx-auto">
             {/* Image container with fixed, reasonable sizing */}

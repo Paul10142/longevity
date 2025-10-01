@@ -35,7 +35,10 @@ function HomePage() {
         setTimeout(() => {
           const element = document.querySelector(hash);
           if (element) {
-            const y = element.getBoundingClientRect().top + window.pageYOffset - 64; // 64px header height
+            // Use responsive offset - ensure content is not hidden by header
+            const isMobile = window.innerWidth < 768;
+            const offset = isMobile ? 90 : 50; // Extra spacing to prevent header overlap
+            const y = element.getBoundingClientRect().top + window.pageYOffset - offset;
             window.scrollTo({ top: y, behavior: "smooth" });
           }
         }, 100); // Small delay to ensure page is loaded
