@@ -48,7 +48,7 @@ const ResourcesSection = () => {
       ]
     },
     {
-      category: "Top Podcasts",
+      category: "Awesome Health-Focused Podcasts",
       items: [
         {
           title: "The Drive – Peter Attia MD",
@@ -215,14 +215,7 @@ const ResourcesSection = () => {
                       )}
                       
                       {/* Title */}
-                      <div className="flex items-center gap-2 mb-2">
-                        <h3 className="text-lg font-semibold">{item.title}</h3>
-                        {'featured' in item && item.featured && (
-                          <span className="bg-yellow-100 text-yellow-800 text-xs font-medium px-2 py-1 rounded-full border border-yellow-300">
-                            ⭐ Featured
-                          </span>
-                        )}
-                      </div>
+                      <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
                       <div className="flex items-center justify-between mb-4">
                         <p className="text-sm text-muted-foreground">by {item.author}</p>
                         <div className="flex items-center gap-1 pr-6">
