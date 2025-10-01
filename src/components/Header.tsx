@@ -13,7 +13,7 @@ const navigation = [
   { name: "Contact", href: "#contact" },
 ];
 
-const HEADER_HEIGHT = 64; // px
+const HEADER_HEIGHT = 80; // px - increased for mobile spacing
 
 interface HeaderProps {
   searchQuery: string;
@@ -39,7 +39,10 @@ export function Header({ }: HeaderProps) {
         const scrollToElement = () => {
           const element = document.querySelector(href);
           if (element) {
-            const y = element.getBoundingClientRect().top + window.pageYOffset - HEADER_HEIGHT;
+            // Use responsive offset - larger on mobile for better spacing
+            const isMobile = window.innerWidth < 768;
+            const offset = isMobile ? 100 : HEADER_HEIGHT;
+            const y = element.getBoundingClientRect().top + window.pageYOffset - offset;
             window.scrollTo({ top: y, behavior: "smooth" });
           }
         };

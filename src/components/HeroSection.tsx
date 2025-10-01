@@ -9,8 +9,11 @@ export function HeroSection() {
           <Badge variant="secondary" className="mb-4">
             Health & Longevity Resource
           </Badge>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl mb-6">
-            <span className="block text-[#60a5fa] leading-tight text-balance">LifestyleAcademy</span>
+          <h1 className="text-4xl font-bold tracking-tight sm:text-4xl md:text-5xl lg:text-6xl mb-6">
+            <span className="block text-[#60a5fa] leading-tight text-balance">
+              <span className="block sm:inline">Lifestyle</span>
+              <span className="block sm:inline">Academy</span>
+            </span>
           </h1>
           <p className="text-lg sm:text-xl text-foreground mb-8 leading-relaxed">
             Sharing resources to help you lead a healthier, happier life with evidence-based lifestyle medicine.
