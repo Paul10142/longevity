@@ -14,7 +14,7 @@ const About = () => {
               <CardContent className="p-8">
                 <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
                   <p>
-                    Lifestyle Academy is brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, 
+                    LifestyleAcademy is founded by Paul Clancy and brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, 
                     an organization committed to expanding access to educational resources for pre-medical and pre-health students nationwide.
                   </p>
                   

@@ -201,33 +201,35 @@ const ResourcesSection = () => {
               <h3 className="text-2xl font-bold mb-6">{category.category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((item, itemIndex) => (
-                  <Card key={itemIndex} className={`mb-6 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-2 ring-yellow-400 ring-opacity-75 shadow-lg border-yellow-300' : ''}`}>
-                    <div className="p-6 flex flex-col flex-grow">
-                      {/* Image Section - Above Title */}
+                  <Card key={itemIndex} className={`mb-4 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-2 ring-yellow-400 ring-opacity-75 shadow-lg border-yellow-300' : ''}`}>
+                    <div className="p-4 flex flex-col flex-grow">
+                      {/* Image and Title Section - Side by Side */}
                       {'image' in item && item.image && (
-                        <div className="w-full h-48 mb-4 flex justify-center">
-                          <img 
-                            src={item.image} 
-                            alt={item.title}
-                            className="h-full object-contain rounded-lg shadow-md"
-                          />
+                        <div className="flex gap-4 mb-3">
+                          <div className="flex-shrink-0" style={{width: '250px', height: '250px'}}>
+                            <img 
+                              src={item.image} 
+                              alt={item.title}
+                              className="w-full h-full object-contain rounded-lg shadow-sm"
+                            />
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <h3 className="text-base font-semibold mb-1 leading-tight">{item.title}</h3>
+                            <div className="mb-2">
+                              <p className="text-sm text-muted-foreground">by {item.author}</p>
+                              <div className="flex items-center gap-1 mt-1">
+                                {renderStars(item.rating)}
+                              </div>
+                            </div>
+                          </div>
                         </div>
                       )}
                       
-                      {/* Title */}
-                      <h3 className="text-lg font-semibold mb-2">{item.title}</h3>
-                      <div className="flex items-center justify-between mb-4">
-                        <p className="text-sm text-muted-foreground">by {item.author}</p>
-                        <div className="flex items-center gap-1 pr-6">
-                          {renderStars(item.rating)}
-                        </div>
-                      </div>
-                      
                       {/* Description */}
-                      <p className="text-muted-foreground mb-4 text-sm leading-relaxed flex-grow">{item.description}</p>
+                      <p className="text-muted-foreground mb-3 text-sm leading-relaxed flex-grow">{item.description}</p>
                       
-                      {/* Action Button - Fixed at bottom */}
-                      <div className="mt-auto pt-4">
+                      {/* Action Button */}
+                      <div className="mt-auto">
                         <a 
                           href={item.link} 
                           target="_blank" 

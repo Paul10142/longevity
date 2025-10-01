@@ -107,7 +107,7 @@ const ExecutiveTips = () => {
                 {bigTakeaways.map((takeaway, index) => (
                   <div key={index} className="flex items-start gap-3">
                     <Badge variant="outline" className="mt-0.5">{index + 1}</Badge>
-                    <span className="text-sm">{takeaway}</span>
+                    <span className="text-base">{takeaway}</span>
                   </div>
                 ))}
               </div>
@@ -128,7 +128,7 @@ const ExecutiveTips = () => {
                 {habitTips.map((tip, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">{tip}</span>
+                    <span className="text-base">{tip}</span>
                   </div>
                 ))}
               </div>
@@ -155,21 +155,21 @@ const ExecutiveTips = () => {
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Zone 2</Badge>
-                    <span className="text-sm">{weeklyTemplate.zone2}</span>
+                    <span className="text-base">{weeklyTemplate.zone2}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">VO₂max</Badge>
-                    <span className="text-sm">{weeklyTemplate.vo2max}</span>
+                    <span className="text-base">{weeklyTemplate.vo2max}</span>
                   </div>
                 </div>
                 <div className="space-y-2">
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Strength</Badge>
-                    <span className="text-sm">{weeklyTemplate.strength}</span>
+                    <span className="text-base">{weeklyTemplate.strength}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline">Stability</Badge>
-                    <span className="text-sm">{weeklyTemplate.stability}</span>
+                    <span className="text-base">{weeklyTemplate.stability}</span>
                   </div>
                 </div>
               </div>
@@ -178,15 +178,15 @@ const ExecutiveTips = () => {
                 <h4 className="font-semibold mb-2">Beginner-Friendly 2-Day Strength Split (Machine-Based):</h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div>
-                    <h5 className="font-medium text-sm mb-1">Day A:</h5>
-                    <p className="text-sm text-muted-foreground">Leg press • Seated row • Chest press machine • Leg curl • Plank (30-60 sec)</p>
+                    <h5 className="font-medium text-base mb-1">Day A:</h5>
+                    <p className="text-base text-muted-foreground">Leg press • Seated row • Chest press machine • Leg curl • Plank (30-60 sec)</p>
                   </div>
                   <div>
-                    <h5 className="font-medium text-sm mb-1">Day B:</h5>
-                    <p className="text-sm text-muted-foreground">Leg extension • Lat pulldown • Shoulder press machine • Hip abduction • Wall sit (30-60 sec)</p>
+                    <h5 className="font-medium text-base mb-1">Day B:</h5>
+                    <p className="text-base text-muted-foreground">Leg extension • Lat pulldown • Shoulder press machine • Hip abduction • Wall sit (30-60 sec)</p>
                   </div>
                 </div>
-                <p className="text-xs text-muted-foreground mt-2">Start with 2 sets of 8-12 reps, focus on form over weight</p>
+                <p className="text-sm text-muted-foreground mt-2">Start with 2 sets of 8-12 reps, focus on form over weight</p>
               </div>
             </CardContent>
           </Card>
@@ -207,7 +207,7 @@ const ExecutiveTips = () => {
                       <div key={index} className="flex items-center justify-between p-2 border rounded">
                         <div>
                           <span className="font-medium">{channel.name}</span>
-                          <span className="text-sm text-muted-foreground ml-2">({channel.type})</span>
+                          <span className="text-base text-muted-foreground ml-2">({channel.type})</span>
                         </div>
                         <a href={channel.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
                           <ExternalLink className="h-4 w-4" />
@@ -224,7 +224,7 @@ const ExecutiveTips = () => {
                       <div key={index} className="flex items-center justify-between p-2 border rounded">
                         <div>
                           <span className="font-medium">{workout.name}</span>
-                          <span className="text-sm text-muted-foreground ml-2">({workout.duration})</span>
+                          <span className="text-base text-muted-foreground ml-2">({workout.duration})</span>
                         </div>
                         <a href={workout.url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:text-blue-700">
                           <ExternalLink className="h-4 w-4" />
@@ -245,7 +245,7 @@ const ExecutiveTips = () => {
                 <h3 className="text-2xl font-semibold">Quick "Start Here" for Busy Weeks</h3>
               </div>
               <div className="bg-green-50 border border-green-200 rounded-lg p-4">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-base">
                   <div>
                     <h4 className="font-semibold mb-2">Mon, Wed, Fri:</h4>
                     <p>30–45 min strength (split A/B), each with a 10–20 min Zone 2 warm-up/finish</p>
@@ -283,7 +283,7 @@ const ExecutiveTips = () => {
                 {nutritionAnchors.map((anchor, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">{anchor}</span>
+                    <span className="text-base">{anchor}</span>
                   </div>
                 ))}
               </div>
@@ -309,7 +309,7 @@ const ExecutiveTips = () => {
                 {sleepToolkit.map((tip, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-sm">{tip}</span>
+                    <span className="text-base">{tip}</span>
                   </div>
                 ))}
               </div>
@@ -352,9 +352,9 @@ const ExecutiveTips = () => {
                   <div key={index} className="border rounded-lg p-3">
                     <div className="mb-1">
                       <span className="font-medium">{supp.name}</span>
-                      <span className="text-sm text-muted-foreground ml-1">({supp.dose})</span>
+                      <span className="text-base text-muted-foreground ml-1">({supp.dose})</span>
                     </div>
-                    <p className="text-sm text-muted-foreground">{supp.note}</p>
+                    <p className="text-base text-muted-foreground">{supp.note}</p>
                   </div>
                 ))}
               </div>
