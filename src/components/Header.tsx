@@ -39,9 +39,9 @@ export function Header({ }: HeaderProps) {
         const scrollToElement = () => {
           const element = document.querySelector(href);
           if (element) {
-            // Use responsive offset - larger on mobile for better spacing
+            // Use responsive offset - ensure content is not hidden by header
             const isMobile = window.innerWidth < 768;
-            const offset = isMobile ? 100 : HEADER_HEIGHT;
+            const offset = isMobile ? 120 : 80; // Extra spacing to prevent header overlap
             const y = element.getBoundingClientRect().top + window.pageYOffset - offset;
             window.scrollTo({ top: y, behavior: "smooth" });
           }
