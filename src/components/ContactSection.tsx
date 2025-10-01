@@ -3,14 +3,14 @@ import { Calendar } from "lucide-react";
 
 const ContactSection = () => {
   return (
-    <section id="contact" className="py-2 lg:py-3 bg-white mb-4">
+    <section id="contact" className="py-8 lg:py-12 bg-white mb-4">
       <div className="container">
         {/* Calendar Booking */}
-        <div className="mt-4 flex justify-center">
+        <div className="flex justify-center">
           <Card className="w-1/2 bg-blue-50 border-blue-200">
             <CardContent className="flex items-center justify-between p-6">
               <div className="flex-1 mr-6">
-                <h3 className="text-2xl font-bold mb-2">Let's Chat</h3>
+                <h3 className="text-2xl font-bold mb-2">I'd Love to Chat!</h3>
                 <p className="text-muted-foreground">
                   This topic is something I'm really passionate about. If you feel the same way, I'd love to talk more!
                 </p>

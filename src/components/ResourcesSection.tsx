@@ -201,12 +201,12 @@ const ResourcesSection = () => {
               <h3 className="text-2xl font-bold mb-6">{category.category}</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                 {category.items.map((item, itemIndex) => (
-                  <Card key={itemIndex} className={`mb-4 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-2 ring-yellow-400 ring-opacity-75 shadow-lg border-yellow-300' : ''}`}>
+                  <Card key={itemIndex} className={`mb-4 overflow-hidden flex flex-col ${'featured' in item && item.featured ? 'ring-4 ring-yellow-300 shadow-2xl border-4 border-yellow-400' : ''}`}>
                     <div className="p-4 flex flex-col flex-grow">
                       {/* Image and Title Section - Side by Side */}
                       {'image' in item && item.image && (
                         <div className="flex gap-4 mb-3">
-                          <div className="flex-shrink-0" style={{width: '250px', height: '250px'}}>
+                          <div className="flex-shrink-0" style={{width: '200px', height: '200px'}}>
                             <img 
                               src={item.image} 
                               alt={item.title}
