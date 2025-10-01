@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
 import { Menu } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
@@ -26,17 +26,23 @@ interface HeaderProps {
 
 export function Header({ }: HeaderProps) {
   const [isOpen, setIsOpen] = useState(false);
+  const location = useLocation();
 
   const handleNavigation = (href: string) => {
     if (href.startsWith("#")) {
-      const scrollToElement = () => {
-        const element = document.querySelector(href);
-        if (element) {
-          const y = element.getBoundingClientRect().top + window.pageYOffset - HEADER_HEIGHT;
-          window.scrollTo({ top: y, behavior: "smooth" });
-        }
-      };
-      scrollToElement();
+      // If we're on the transcript page, navigate to homepage first
+      if (location.pathname === "/transcript") {
+        window.location.href = `/${href}`;
+      } else {
+        const scrollToElement = () => {
+          const element = document.querySelector(href);
+          if (element) {
+            const y = element.getBoundingClientRect().top + window.pageYOffset - HEADER_HEIGHT;
+            window.scrollTo({ top: y, behavior: "smooth" });
+          }
+        };
+        scrollToElement();
+      }
     } else {
       // Handle regular navigation
       window.location.href = href;
