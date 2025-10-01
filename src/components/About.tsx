@@ -52,11 +52,9 @@ const About = () => {
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">
               <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
-                <p>I'm a fifth-year MD/MBA student at the University of Virginia. I founded LifestyleAcademy to help individuals take control of their health and optimize health through evidence-based lifestyle medicine strategies.</p>
+                <p>I'm a fifth-year MD/MBA student at the University of Virginia, pursuing a residency in anesthesiology. After watching my parents age and noticing why our system isn't able to address prevention, I started LifestyleAcademy to more easily share resources to help people take control of their health through evidence-based lifestyle medicine strategies.</p>
                 
                 <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>
-                
-                <p>Outside of my work in medical education, I'm active in disability advocacy and mentorship. In my free time I enjoy reading, playing piano, and working out.</p>
               </div>
             </div>
           </div>

@@ -17,7 +17,7 @@ const Footer = () => {
                   <Linkedin className="h-5 w-5" />
                 </a>
                 <p className="text-sm text-muted-foreground">
-                  Created by <a href="https://www.linkedin.com/in/paulclancy3/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Paul Clancy</a>
+                  Created by <a href="https://www.linkedin.com/in/paulclancy3/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Paul Clancy</a>. <a href="https://favsandframeworkspclancy.super.site" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Other cool stuff that's made an impact on me.</a>
                 </p>
               </div>
           </div>
