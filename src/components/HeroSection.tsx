@@ -14,7 +14,7 @@ export function HeroSection() {
             <span className="block text-[#60a5fa] text-4xl sm:text-5xl md:text-6xl lg:text-7xl w-full max-w-full leading-tight text-balance text-wrap">LifestyleAcademy</span>
           </h1>
           <p className="text-xl text-foreground mb-8 leading-relaxed">
-            Sharing resources to help you lead a healthier, happier life with lifestyle medicine and longevity science.
+            Sharing resources to help you lead a healthier, happier life with evidence-based lifestyle medicine.
           </p>
 
               {/* Personalized Message */}
