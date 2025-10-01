@@ -32,7 +32,7 @@ const Transcript = () => {
         prevMatch={prevMatch}
       />
       <div ref={mainRef} className="container mx-auto px-4 py-12">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-[850px] mx-auto">
           <h1 className="text-4xl font-bold mb-8">Transcript</h1>
           <div className="prose prose-lg max-w-none">
             <TranscriptContent />

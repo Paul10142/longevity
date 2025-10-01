@@ -14,7 +14,7 @@ const TranscriptContent = () => {
       
       <p>So how are we actually going to approach this topic?</p>
       
-      <ol>
+      <ol className="ml-6">
         <li>Break down the structure of our current healthcare system and why it's not designed to help with chronic disease.</li>
         <li>Explain the training of physicians so you can understand why you can't outsource all of this to your doctor.</li>
         <li>Share practical tips you can start using the moment you leave this room to live a healthier and happier life.</li>
@@ -46,7 +46,7 @@ const TranscriptContent = () => {
       
       <p>Back then most problems were a "fast death." If you got an infection, you either lived or died quickly. Today, the major causes of suffering and death look completely different. Peter Attia calls them the Four Horsemen:</p>
       
-      <ul>
+      <ul className="ml-6">
         <li>Atherosclerosis</li>
         <li>Cancer</li>
         <li>Neurodegenerative disease</li>
@@ -78,7 +78,7 @@ const TranscriptContent = () => {
       
       <p>The path to becoming a physician is long:</p>
       
-      <ul>
+      <ul className="ml-6">
         <li>Four years of college</li>
         <li>Four years of medical school</li>
         <li>3–7 years of residency (depending on specialty)</li>
@@ -94,7 +94,7 @@ const TranscriptContent = () => {
       <blockquote>
         <p><strong>Take-Home Point #2</strong><br />
         There are around five or six things that really impact your health, but in the medical education system, physicians are taught less than two of them:</p>
-        <ul>
+        <ul className="ml-6">
           <li>Nutrition</li>
           <li>Activity</li>
           <li>Sleep</li>
@@ -140,9 +140,9 @@ const TranscriptContent = () => {
       <p>That doesn't mean drugs and surgeries aren't incredible—they are. As a future anesthesiologist, much of my work will involve drugs. Surgeries save countless lives. But for the chronic diseases that kill most of us, lifestyle change is the only way forward.</p>
       
       <blockquote>
-        <p><em>"There is an old two-part rule that often works wonders in business, science, and elsewhere:<br />
+        <p><em>There is an old two-part rule that often works wonders in business, science, and elsewhere:<br />
         1. Take a simple, basic idea and<br />
-        2. Take it very seriously."</em><br />
+        2. Take it very seriously.</em><br />
         — Charlie Munger</p>
       </blockquote>
       
@@ -153,11 +153,11 @@ const TranscriptContent = () => {
       
       <hr />
       
-      <h3>The Six Big Levers</h3>
+      <h2>The Six Big Levers</h2>
       
       <h4>Sleep</h4>
       <p>Most people need more. It's the foundation of everything else.</p>
-      <ul>
+      <ul className="ml-6">
         <li>Make your room cool and dark.</li>
         <li>Buy blackout shades.</li>
         <li>Don't sleep with your phone—use an alarm clock.</li>
@@ -169,7 +169,7 @@ const TranscriptContent = () => {
       <h4>Activity</h4>
       <p>Think in three categories: strength, endurance, stability.</p>
       
-      <ul>
+      <ul className="ml-6">
         <li><strong>Strength:</strong> Essential as you age. Every year you lose 1–2% of muscle mass. If you want to lift a suitcase overhead at 80, lift 40 pounds now. Strength means independence.</li>
         <li><strong>Endurance:</strong> Cardiovascular fitness, your VO₂ max. From the bottom percentile to the top, your risk of death from any cause drops nearly 400%. For reference, smoking increases all-cause mortality by 200%. If exercise were a pill, it would be the most valuable drug ever created.</li>
         <li><strong>Stability:</strong> Mobility and balance—being able to squat, bend, reach, and move without injury. Stretch, practice a deep squat, work your balance. Anything is better than nothing.</li>
@@ -177,7 +177,7 @@ const TranscriptContent = () => {
       
       <h4>Nutrition</h4>
       <p>Nutrition is tricky because it's almost a religion. But the principle is simple: minimize ultra-processed, hyper-palatable foods.</p>
-      <ul>
+      <ul className="ml-6">
         <li>Avoid foods with long shelf lives, boxed items from middle aisles, and ingredient lists you can't pronounce.</li>
         <li>Cook at home. If you only ate home-cooked whole foods, it would be hard to gain weight.</li>
         <li>Meal prep if you're busy.</li>
@@ -211,7 +211,7 @@ const TranscriptContent = () => {
       
       <p>If you remember nothing else, remember these five points:</p>
       
-      <ol>
+      <ol className="ml-6">
         <li>The system is not designed to handle chronic diseases.</li>
         <li>There are six things that impact health, and most doctors aren't trained in them.</li>
         <li>You must take ownership of your health. Nobody will do it for you.</li>
