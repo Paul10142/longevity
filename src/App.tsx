@@ -8,6 +8,8 @@ import About from './components/About';
 import ContactSection from './components/ContactSection';
 import Footer from './components/Footer';
 import Transcript from './pages/Transcript';
+import PrivacyPolicy from './pages/PrivacyPolicy';
+import TermsOfUse from './pages/TermsOfUse';
 
 function HomePage() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -76,6 +78,8 @@ function App() {
       <Routes>
         <Route path="/" element={<HomePage />} />
         <Route path="/transcript" element={<Transcript />} />
+        <Route path="/privacy-policy" element={<PrivacyPolicy />} />
+        <Route path="/terms-of-use" element={<TermsOfUse />} />
       </Routes>
     </Router>
   );

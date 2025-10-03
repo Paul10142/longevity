@@ -14,20 +14,12 @@ const About = () => {
               <CardContent className="p-4 sm:p-6 lg:p-8">
                 <div className="text-base sm:text-lg text-muted-foreground leading-relaxed space-y-4">
                   <p>
-                    LifestyleAcademy is founded by Paul Clancy and brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, 
-                    an organization committed to expanding access to educational resources for pre-medical and pre-health students nationwide.
+                    LifestyleAcademy was founded by Paul Clancy and brought to you by <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, 
+                    an organization committed to expanding access to educational resources for pre-health students nationwide.
                   </p>
                   
                   <p>
-                    Our mission is to empower patients with evidence-based strategies for optimizing their health, wellness, performance, and longevity 
-                    to help them lead healthier, happier lives. Drawing from the latest research in lifestyle medicine and insights from longevity leaders 
-                    such as Peter Attia and Dr. John DePadrick, we provide tools and frameworks tailored for patients who want to learn more and are hoping to lead better lives.
-                  </p>
-                  
-                  <p>
-                    Whether you're looking to optimize your cognitive performance, manage stress more effectively, or implement 
-                    sustainable health habits, LifestyleAcademy provides the evidence-based guidance you need to thrive both 
-                    personally and professionally while building a foundation for long-term happiness and health.
+                    Our mission is to empower patients with evidence-based strategies for optimizing their health and wellness to help them lead healthier, happier lives. Drawing from the latest research in lifestyle medicine and insights from longevity leaders such as Peter Attia and Dr. Rhonda Patrick, we provide tools and frameworks for patients who want to become more involved in their health, learn more about the field, and live healthier lives!
                   </p>
                 </div>
               </CardContent>
@@ -52,7 +44,7 @@ const About = () => {
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">
               <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
-                <p>I'm a fifth-year MD/MBA student at the University of Virginia, pursuing a residency in anesthesiology. After watching my parents age and noticing why our system isn't able to address prevention, I started LifestyleAcademy to more easily share resources to help people take control of their health through evidence-based lifestyle medicine strategies.</p>
+                <p>I'm a fifth-year MD/MBA student at the University of Virginia, pursuing a residency in anesthesiology. After watching my parents age and noticing barriers in our system to address prevention and root-cause disease, I started LifestyleAcademy to more easily share resources to help patients and friends have a more interactive role in their healthcare through evidence-based strategies focused on lifestyle medicine.</p>
                 
                 <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>
               </div>

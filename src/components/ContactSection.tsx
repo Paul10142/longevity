@@ -1,38 +1,7 @@
 import { Card, CardContent } from "@/components/ui/card";
 import { Calendar } from "lucide-react";
-import { useEffect } from "react";
 
 const ContactSection = () => {
-  useEffect(() => {
-    // Load Tally form after component mounts
-    const loadTallyForm = () => {
-      const d = document;
-      const w = "https://tally.so/widgets/embed.js";
-      const v = function() {
-        if (typeof (window as any).Tally !== "undefined") {
-          (window as any).Tally.loadEmbeds();
-        } else {
-          d.querySelectorAll("iframe[data-tally-src]:not([src])").forEach((e: any) => {
-            e.src = e.dataset.tallySrc;
-          });
-        }
-      };
-      
-      if (typeof (window as any).Tally !== "undefined") {
-        v();
-      } else if (d.querySelector('script[src="' + w + '"]') === null) {
-        const s = d.createElement("script");
-        s.src = w;
-        s.onload = v;
-        s.onerror = v;
-        d.body.appendChild(s);
-      }
-    };
-
-    // Small delay to ensure DOM is ready
-    const timer = setTimeout(loadTallyForm, 100);
-    return () => clearTimeout(timer);
-  }, []);
 
   return (
     <section id="contact" className="py-6 sm:py-8 lg:py-12 bg-white mb-4">
@@ -63,25 +32,6 @@ const ContactSection = () => {
           </Card>
         </div>
 
-        {/* Tally Form */}
-        <div className="flex justify-center">
-          <div className="w-full max-w-4xl">
-            <div className="rounded-lg overflow-hidden">
-              <iframe 
-                data-tally-src="https://tally.so/embed/n9VLp5?alignLeft=1&hideTitle=1&transparentBackground=1" 
-                loading="lazy" 
-                width="100%" 
-                height="552" 
-                frameBorder="0" 
-                marginHeight={0} 
-                marginWidth={0} 
-                title="LifestyleAcademy - F/U"
-                className="rounded-lg border-0 outline-none"
-                style={{ border: 'none', outline: 'none' }}
-              ></iframe>
-            </div>
-          </div>
-        </div>
       </div>
     </section>
   );

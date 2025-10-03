@@ -17,8 +17,8 @@ const ExecutiveTips = () => {
 
   const exerciseStats = {
     title: "Why Exercise Matters",
-    stat: "80% lower mortality",
-    description: "Those with elite cardiorespiratory fitness had ~80% lower mortality than 'low' performers. No upper limit to benefit."
+    stat: "400% lower mortality",
+    description: "Those with elite cardiorespiratory fitness (measured by the top percentile of VO2 max) had a 400% lower all-cause mortality than the lowest percentile. There was no upper limit to this benefit!"
   };
 
   const weeklyTemplate = {
@@ -29,20 +29,23 @@ const ExecutiveTips = () => {
   };
 
   const nutritionAnchors = [
-    "Protein: ~1.2–1.6 g/kg/day (up to 2.2 g/kg if training hard)",
-    "Fiber: 25–38 g/day (increase gradually and hydrate)",
-    "Minimize ultra-processed 'hyper-palatables'",
+    "Aim for protein up to 1g/lb of bodyweight/day. This requires you to be very intentional, and will create diet that keeps you full throughout the day. Some people find they lose weight just from this alone.",
     "Plates: ½ veggies/fruit, ¼ protein, ¼ starch/whole grains",
-    "Fats: olive oil, nuts, seeds, avocado, fatty fish 2×/week"
+    "Fats: olive oil, nuts, seeds, avocado, fatty fish 2×/week",
+    "When possible, cook food at home. You know exactly what ingredients and what portions you're using. If you're busy, consider meal prepping (make one big batch of food) to eat throughout the week.",
+    "When you look at your plate/portions, reduce the amount of refined carbohydrates (like bread, pasta, rice) and substitue for more meats/fruits/veggies",
+    "Some people can be sensitive to dairy and gluten and have no idea. If you're able to, it could be useful to cut these food groups out for 2 weeks and see if you notice and change in the way you're feeling, your energy levels, and bloating/bowel habits.",
+    "Low-fat diets used to be the fad, but in hindsight that was likely due to marketing and lobbying by the food industry. Instead aim to minimize processed and refined sugar/carbohydrates, and don't be afraid to try out healthy types of fat such as olive oil, nuts, seeds, avocado, and fatty fish."
   ];
 
   const sleepToolkit = [
-    "AM light: 2–10 min outdoors soon after waking",
-    "PM light: dim lights 1–2 h pre-bed",
-    "Caffeine cutoff: 8–10 h before bed",
+    "Create a better circadian rhythm - try to get light exposure when you wake up, and as much as possible go to bed and wake up at similar times each day",
+    "3–2–1 rule: ~3h before bed stop eating, ~2h stop drinking, ~1h minimize phone/electronics",
+    "Reduce light in the evening 1-2 hr before bedtime, especially overhead lighting. Consider a light dimmer/red light to signal to your brain that it's time for bed.",
     "Wind-down: same sequence nightly",
-    "Cooler room; warm shower 1–2 h pre-bed",
-    "3–2–1 rule: ~3h no large meals, ~2h no intense work, ~1h screens down"
+    "Reduce caffeine intake 10-12 hours before bedtime",
+    "Make your bedroom cool and dark - aim for 65º F, and use blackout curtains/electrical tape/eye mask to minimize light",
+    "If you snore or breathe loudly, it might be indicative of an underlying issue. Talk to your doctor, consider a sleep study, and think about other tools (mouth tape, side sleeping instead of back sleeping, raising the head of the bed so you're partially upright)"
   ];
 
   const supplements = [
@@ -79,11 +82,11 @@ const ExecutiveTips = () => {
   ];
 
   const bigTakeaways = [
-    "The current system isn't designed to beat chronic disease—you must be the captain",
-    "Six big levers: sleep, exercise, nutrition, mental health, drugs/supps, surgery/medical care",
-    "Prioritize the majors; don't major in the minors",
-    "Use Atomic Habits tactics so the plan actually happens",
-    "It's hard—and that's normal. Design your environment so success is the default"
+    "Our current medical system wasn't designed to adequately treat chronic disease",
+    "The six big levers of health that our within our control are sleep, exercise, nutrition, mental health, drugs & supplements, and surgery/medical interventions",
+    "You MUST be involved in your own healthcare. This is going to take work - educating yourself about this topic, putting in effort to make changes, and staying on top of your medical appointments + developing an interactive relationship with your physician. Instead of being a passenger in your body, you need to be the captain - NOBODY can do this for you.",
+    "Focus on the low-hanging fruit in healthier sleep, exercise, and nutrition habits. It's easily to make this overcomplicated, but the basics will get you 90% of the way there!",
+    "Lifestyle change is HARD - and that's completely normal. Give yourself grace and don't be too hard on yourself, and consider behavioral habits that will make it easier to see change."
   ];
 
   return (
@@ -101,7 +104,7 @@ const ExecutiveTips = () => {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">🎯</span>
-                <h3 className="text-2xl font-semibold">Your 5 Big Takeaways</h3>
+                <h3 className="text-2xl font-semibold">The Big 5 Ideas You Need to Take Away from the Presentation</h3>
               </div>
               <div className="space-y-3">
                 {bigTakeaways.map((takeaway, index) => (
@@ -111,6 +114,15 @@ const ExecutiveTips = () => {
                   </div>
                 ))}
               </div>
+              
+              <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-4 mt-6">
+                <p className="text-yellow-700">
+                  <strong>Remember -</strong> your doctors, medical professionals, and healthcare system really do want the best for you and are doing the best they can with the system we have. Medical, pharmacologic, and surgical advancements have changed the face of civilization for the better.
+                </p>
+                <p className="text-yellow-700 mt-3">
+                  That doesn't mean we should ignore the importance of lifestyle changes, but also doesn't mean that drugs and traditional medical interventions are "bad" and that "unnatural" remedies aren't still extremely important!
+                </p>
+              </div>
             </CardContent>
           </Card>
 
@@ -119,15 +131,41 @@ const ExecutiveTips = () => {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">🎯</span>
-                <h3 className="text-2xl font-semibold">How to Actually Change (Atomic Habits, Fast Version)</h3>
+                <h3 className="text-2xl font-semibold">First Steps to Changing Your Behavior and Creating Healthier Habits (Atomic Habits, Summarized)</h3>
               </div>
               <p className="text-muted-foreground mb-4">
-                The best plan is the one you'll do consistently. Use these tiny levers to make that happen:
+                The way to change behavior is to form a small habit that you'll do consistently. Use these tiny levers to make that happen:
               </p>
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 {habitTips.map((tip, index) => (
                   <div key={index} className="flex items-start gap-2">
                     <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-base">{tip}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Sleep */}
+          <Card className="border-l-4 border-l-purple-500">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">😴</span>
+                <h3 className="text-2xl font-semibold">Sleep (Foundation for Everything)</h3>
+              </div>
+              
+              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
+                <p className="text-purple-700 font-medium">
+                  Target: 7–9 hours for most adults; protect regularity and light exposure
+                </p>
+              </div>
+
+              <h4 className="font-semibold mb-3">General Toolkit:</h4>
+              <div className="columns-1 sm:columns-2 gap-6 space-y-3">
+                {sleepToolkit.map((tip, index) => (
+                  <div key={index} className="flex items-start gap-2 break-inside-avoid">
+                    <CheckCircle className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
                     <span className="text-base">{tip}</span>
                   </div>
                 ))}
@@ -146,7 +184,7 @@ const ExecutiveTips = () => {
               <div className="bg-orange-50 border border-orange-200 rounded-lg p-4 mb-6">
                 <h4 className="font-semibold text-orange-800 mb-2">{exerciseStats.title}</h4>
                 <p className="text-orange-700">
-                  <span className="font-bold text-2xl">{exerciseStats.stat}</span> - {exerciseStats.description} There is no upper limit to the benefit.
+                  <span className="font-bold text-2xl">{exerciseStats.stat}</span> - {exerciseStats.description}
                 </p>
               </div>
 
@@ -174,19 +212,32 @@ const ExecutiveTips = () => {
                 </div>
               </div>
 
-              <div className="bg-gray-50 rounded-lg p-4">
-                <h4 className="font-semibold mb-2">Beginner-Friendly 2-Day Strength Split (Machine-Based):</h4>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div>
-                    <h5 className="font-medium text-base mb-1">Day A:</h5>
-                    <p className="text-base text-muted-foreground">Leg press • Seated row • Chest press machine • Leg curl • Plank (30-60 sec)</p>
+            </CardContent>
+          </Card>
+
+          {/* Nutrition */}
+          <Card className="border-l-4 border-l-green-500">
+            <CardContent className="p-6">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="text-2xl">🥗</span>
+                <h3 className="text-2xl font-semibold">Nutrition (Simple, Filling, Sustainable)</h3>
+              </div>
+              
+              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
+                <h4 className="font-semibold text-green-800 mb-2">North Star</h4>
+                <p className="text-green-700">
+                  Try to minimize hyper-palatable (addictive) and hyper-processed foods, and switch to minimally processed foods you enjoy (and your tastebuds will change after a couple of months!). The goal isn't to create a new fad diet, but to create a pattern of eating you can stick to for the rest of your life.
+                </p>
+              </div>
+
+              <h4 className="font-semibold mb-3">Daily Anchors:</h4>
+              <div className="columns-1 sm:columns-2 gap-6 space-y-3">
+                {nutritionAnchors.map((anchor, index) => (
+                  <div key={index} className="flex items-start gap-2 break-inside-avoid">
+                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
+                    <span className="text-base">{anchor}</span>
                   </div>
-                  <div>
-                    <h5 className="font-medium text-base mb-1">Day B:</h5>
-                    <p className="text-base text-muted-foreground">Leg extension • Lat pulldown • Shoulder press machine • Hip abduction • Wall sit (30-60 sec)</p>
-                  </div>
-                </div>
-                <p className="text-sm text-muted-foreground mt-2">Start with 2 sets of 8-12 reps, focus on form over weight</p>
+                ))}
               </div>
             </CardContent>
           </Card>
@@ -196,7 +247,7 @@ const ExecutiveTips = () => {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">📺</span>
-                <h3 className="text-2xl font-semibold">Follow-Along Videos & Channels</h3>
+                <h3 className="text-2xl font-semibold">Exercise & Workout Resources</h3>
               </div>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -234,6 +285,21 @@ const ExecutiveTips = () => {
                   </div>
                 </div>
               </div>
+
+              <div className="bg-gray-50 rounded-lg p-4 mt-6">
+                <h4 className="font-semibold mb-2">Beginner-Friendly 2-Day Strength Split (Machine-Based):</h4>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <h5 className="font-medium text-base mb-1">Day A:</h5>
+                    <p className="text-base text-muted-foreground">Leg press • Seated row • Chest press machine • Leg curl • Plank (30-60 sec)</p>
+                  </div>
+                  <div>
+                    <h5 className="font-medium text-base mb-1">Day B:</h5>
+                    <p className="text-base text-muted-foreground">Leg extension • Lat pulldown • Shoulder press machine • Hip abduction • Wall sit (30-60 sec)</p>
+                  </div>
+                </div>
+                <p className="text-sm text-muted-foreground mt-2">Start with 2 sets of 8-12 reps, focus on form over weight</p>
+              </div>
             </CardContent>
           </Card>
 
@@ -263,76 +329,23 @@ const ExecutiveTips = () => {
             </CardContent>
           </Card>
 
-          {/* Nutrition */}
-          <Card className="border-l-4 border-l-green-500">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">🥗</span>
-                <h3 className="text-2xl font-semibold">Nutrition (Simple, Filling, Sustainable)</h3>
-              </div>
-              
-              <div className="bg-green-50 border border-green-200 rounded-lg p-4 mb-6">
-                <h4 className="font-semibold text-green-800 mb-2">North Star</h4>
-                <p className="text-green-700">
-                  Eat mostly minimally processed foods you enjoy, high in protein + fiber, and aligned with your life.
-                </p>
-              </div>
-
-              <h4 className="font-semibold mb-3">Daily Anchors:</h4>
-              <div className="space-y-2">
-                {nutritionAnchors.map((anchor, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-green-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-base">{anchor}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Sleep */}
-          <Card className="border-l-4 border-l-purple-500">
-            <CardContent className="p-6">
-              <div className="flex items-center gap-2 mb-4">
-                <span className="text-2xl">😴</span>
-                <h3 className="text-2xl font-semibold">Sleep (Foundation for Everything)</h3>
-              </div>
-              
-              <div className="bg-purple-50 border border-purple-200 rounded-lg p-4 mb-6">
-                <p className="text-purple-700 font-medium">
-                  Target: 7–9 hours for most adults; protect regularity and light exposure
-                </p>
-              </div>
-
-              <h4 className="font-semibold mb-3">Huberman-Inspired Toolkit:</h4>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                {sleepToolkit.map((tip, index) => (
-                  <div key={index} className="flex items-start gap-2">
-                    <CheckCircle className="h-4 w-4 text-purple-500 mt-0.5 flex-shrink-0" />
-                    <span className="text-base">{tip}</span>
-                  </div>
-                ))}
-              </div>
-            </CardContent>
-          </Card>
-
           {/* Mental Health */}
           <Card className="border-l-4 border-l-pink-500">
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">🧠</span>
-                <h3 className="text-2xl font-semibold">Mental Health (Performance Multiplier)</h3>
+                <h3 className="text-2xl font-semibold">Mental Health (Arguably the Most Important)</h3>
               </div>
               <div className="space-y-3">
-                <p>• Protect the basics first (sleep, movement, sunlight, real food, social contact)</p>
-                <p>• Spend time in nature regularly</p>
-                <p>• Spend time with friends, family, and loved ones</p>
-                <p>• Try to reduce stress as much as realistically possible</p>
-                <p>• Have some sort of thing that you enjoy doing that you regularly engage in</p>
+                <p>• Focus on the basics first (sleep, movement, and nutrition)</p>
+                <p>• Spend time in nature regularly and try to get sunlight exposure (especially early in the day)</p>
+                <p>• Spend time with friends, family, and loved ones. Focus energy on developing meaningful relationships</p>
+                <p>• Try to reduce stressors in your life (as much as realistically possible)</p>
+                <p>• Try to make time for hobbies or activities that bring you joy regularly engage in</p>
                 <p>• Minimize time on electronics, especially social media</p>
-                <p>• Sleep is a very big impact</p>
-                <p>• Try a 5–10 minute daily check-in: write "What went well? What's tough? One next step."</p>
-                <p>• If symptoms persist, consider therapy/meds—getting help is strength</p>
+                <p>• The importance of sleep cannot be understated.</p>
+                <p>• Try a 5–10 minute daily check-in/reflection/meditation</p>
+                <p>• Do not write off professional help, therapy, and medications - it takes courage to seek help and sometimes this can be the only way to get better, especially when underlying conditions are present.</p>
               </div>
               </CardContent>
             </Card>
@@ -342,10 +355,10 @@ const ExecutiveTips = () => {
             <CardContent className="p-6">
               <div className="flex items-center gap-2 mb-4">
                 <span className="text-2xl">💊</span>
-                <h3 className="text-2xl font-semibold">Drugs & Supplements (Don't Major in the Minors)</h3>
+                <h3 className="text-2xl font-semibold">Supplements - After You've Focused on Everything Else</h3>
               </div>
               <p className="text-muted-foreground mb-4">
-                Focus on sleep, exercise, nutrition first. Here are a few supplements with decent support:
+                Focus on the low hanging fruit with sleep, exercise, nutrition first - supplements are not always necessarily to be "healthy." That said, here are a few with decent support in current literature.
               </p>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {supplements.map((supp, index) => (

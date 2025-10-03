@@ -190,9 +190,7 @@ const ResourcesSection = () => {
       <div className="container">
         <h2 className="text-2xl sm:text-3xl font-bold tracking-tight mb-6 sm:mb-8">Next Steps for Learning</h2>
         <p className="text-lg sm:text-xl text-muted-foreground mb-6 sm:mb-8">
-          Curated books, podcasts, and episodes to deepen your understanding
-          of longevity and lifestyle medicine. These are the resources that have
-          shaped my own journey in executive health optimization.
+          Curated books, podcasts, and episodes to deepen your understanding of longevity and lifestyle medicine. These are the resources that have shaped my own journey into lifestyle medicine, and offer a great starting point to learning more about the subject!
         </p>
 
         <div className="space-y-6 sm:space-y-8">
