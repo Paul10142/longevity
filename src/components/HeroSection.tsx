@@ -66,7 +66,7 @@ export function HeroSection() {
                 ></iframe>
               </div>
               
-              <div className="text-center">
+              <div className="text-center pb-4 sm:pb-6">
                 <a 
                   href="/transcript" 
                   className="bg-[#60a5fa] text-white px-4 sm:px-6 py-2 sm:py-3 rounded-lg font-semibold hover:bg-[#3b82f6] transition-colors inline-flex items-center justify-center w-full sm:w-auto"
