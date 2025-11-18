@@ -3,7 +3,7 @@ import { Mail, Linkedin } from "lucide-react";
 const Footer = () => {
   return (
     <footer className="bg-muted/50 border-t">
-      <div className="container">
+      <div className="container py-4">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-center md:text-left">
               <p className="text-muted-foreground mb-2">
