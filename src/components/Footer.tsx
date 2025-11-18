@@ -3,7 +3,7 @@ import { Mail, Linkedin } from "lucide-react";
 const Footer = () => {
   return (
     <footer className="bg-muted/50 border-t">
-      <div className="container py-12">
+      <div className="container">
         <div className="flex flex-col md:flex-row justify-between items-center space-y-4 md:space-y-0">
             <div className="text-center md:text-left">
               <p className="text-muted-foreground mb-2">
@@ -17,7 +17,7 @@ const Footer = () => {
                   <Linkedin className="h-5 w-5" />
                 </a>
                 <p className="text-sm text-muted-foreground">
-                  Created by <a href="https://www.linkedin.com/in/paulclancy3/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Paul Clancy</a>. <a href="https://favsandframeworkspclancy.super.site" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Other cool stuff that's made an impact on me.</a>
+                  Created by <a href="https://www.linkedin.com/in/paulclancy3/" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Paul Clancy</a>. <a href="https://favsandframeworks.super.site" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">Other cool stuff that's made an impact on me.</a>
                 </p>
               </div>
           </div>
