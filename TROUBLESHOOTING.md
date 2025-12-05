@@ -71,13 +71,13 @@ If you're using the wrong key, update `.env.local`:
 
 ```env
 # Wrong (publishable key - this is for client-side only!)
-SUPABASE_SECRET_KEY=sb_publishable_eLOBxrHiGQhuO7j7X2-_ow_ulLWDKw0
+SUPABASE_SECRET_KEY=sb_publishable_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Correct - New format (recommended, future-proof)
 SUPABASE_SECRET_KEY=sb_secret_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 
 # Also correct - Legacy JWT (still works but deprecated in late 2026)
-SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZnemNyaWhkeGNvb3pnY3FhZGJ0Iiwicm9sZSI6InNlcnZpY2Vfcm9sZSIsImlhdCI6MTc1ODkxMjk4MywiZXhwIjoyMDc0NDg4OTgzfQ.xxxxx
+SUPABASE_SECRET_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InlvdXJfcHJvamVjdF9yZWYiLCJyb2xlIjoic2VydmljZV9yb2xlIiwiaWF0IjoxNjAwMDAwMDAwLCJleHAiOjIwMDAwMDAwMDB9.xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
 ```
 
 **Note:** Supabase has updated their API key system (2025). The new `sb_secret_...` format is recommended for future compatibility. Legacy JWT keys (`eyJ...`) still work but will be deprecated in late 2026.
