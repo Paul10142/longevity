@@ -219,7 +219,7 @@ export default async function SourcePage({
           <TranscriptEditorClient sourceId={source.id} transcript={source.transcript} />
           
           {/* Processing Runs - Show if we have runs or transcript exists */}
-          {((processingRuns && processingRuns.length > 0 && chunks) || source.transcript) && (
+          {((processingRuns && processingRuns.length > 0) || source.transcript) && (
             <ProcessingRunsCard
               sourceId={source.id}
               processingRuns={processingRuns || []}
