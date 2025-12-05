@@ -37,7 +37,7 @@ The Lifestyle Academy Medical Library is a knowledge extraction and organization
 - **Supabase JS SDK** - Database client library
 
 ### AI/ML
-- **OpenAI API** - GPT-4o-mini for insight extraction
+- **OpenAI API** - GPT-5-mini for insight extraction
 - **OpenAI API** - GPT-5-mini for narrative article generation
 
 ### Infrastructure
@@ -67,7 +67,7 @@ The Lifestyle Academy Medical Library is a knowledge extraction and organization
             │                  │                  │
     ┌───────▼──────┐  ┌────────▼────────┐  ┌────▼──────┐
     │   Supabase   │  │   OpenAI API    │  │  File     │
-    │  PostgreSQL  │  │   (GPT-4o-mini) │  │  System   │
+    │  PostgreSQL  │  │   (GPT-5-mini) │  │  System   │
     └──────────────┘  └──────────────────┘  └───────────┘
 ```
 
@@ -298,7 +298,7 @@ lib/pipeline.ts::processSourceFromPlainText()
     ↓
 ┌─────────────────────────────────────────┐
 │ 2. OpenAI Extraction (per chunk)        │
-│    - Send chunk to GPT-4o-mini           │
+│    - Send chunk to GPT-5-mini           │
 │    - Extract structured insights        │
 │    - Filter low-value insights           │
 └─────────────────────────────────────────┘

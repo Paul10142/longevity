@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Alert, AlertDescription } from '@/components/ui/alert'
-import { CheckCircle2, XCircle } from 'lucide-react'
+import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion'
 import { ReprocessButton } from '@/components/ReprocessButton'
 
@@ -19,7 +19,7 @@ interface ProcessingRun {
   chunks_without_insights: number
   total_insights_created: number
   processing_duration_seconds: number
-  status: 'success' | 'failed'
+  status: 'processing' | 'success' | 'failed'
   error_message: string | null
 }
 
@@ -133,17 +133,33 @@ export function ProcessingRunsCard({
                 {processingRuns.map((run) => (
                   <TabsContent key={run.id} value={run.id} className="mt-4">
                     {/* Status Header */}
-                    <Alert className={run.status === 'success' ? 'border-green-500 bg-green-50 dark:bg-green-950/20' : 'border-red-500 bg-red-50 dark:bg-red-950/20'}>
+                    <Alert className={
+                      run.status === 'success' 
+                        ? 'border-green-500 bg-green-50 dark:bg-green-950/20' 
+                        : run.status === 'processing'
+                        ? 'border-blue-500 bg-blue-50 dark:bg-blue-950/20'
+                        : 'border-red-500 bg-red-50 dark:bg-red-950/20'
+                    }>
                       <div className="flex items-center gap-2">
                         {run.status === 'success' ? (
                           <CheckCircle2 className="h-4 w-4 text-green-500" />
+                        ) : run.status === 'processing' ? (
+                          <Loader2 className="h-4 w-4 text-blue-500 animate-spin" />
                         ) : (
                           <XCircle className="h-4 w-4 text-red-500" />
                         )}
-                        <AlertDescription className={run.status === 'success' ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}>
+                        <AlertDescription className={
+                          run.status === 'success' 
+                            ? 'text-green-700 dark:text-green-400' 
+                            : run.status === 'processing'
+                            ? 'text-blue-700 dark:text-blue-400'
+                            : 'text-red-700 dark:text-red-400'
+                        }>
                           <strong>
                             {run.status === 'success' 
                               ? `Success: All ${run.chunks_created} chunks processed`
+                              : run.status === 'processing'
+                              ? `Processing: ${run.chunks_processed} of ${run.chunks_created} chunks processed`
                               : `Failed: Only ${run.chunks_processed} of ${run.chunks_created} chunks processed`
                             }
                           </strong>
