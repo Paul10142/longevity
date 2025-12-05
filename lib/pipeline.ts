@@ -629,6 +629,8 @@ export async function processSourceFromPlainText(
   let chunksWithoutInsights = 0
   let insightsCreated = 0
   let processingError: Error | null = null
+  const runId = randomUUID()
+  let runCreated = false
 
   try {
     // 1. Split text into chunks
@@ -658,6 +660,27 @@ export async function processSourceFromPlainText(
 
     if (chunksError) {
       throw new Error(`Failed to insert chunks: ${chunksError.message}`)
+    }
+
+    // Create run record at start so it exists even if process crashes
+    const { error: runCreateError } = await supabaseAdmin
+      .from('source_processing_runs')
+      .insert({
+        id: runId,
+        source_id: sourceId,
+        processed_at: new Date(startTime).toISOString(),
+        chunks_created: chunksCreated,
+        chunks_processed: 0,
+        chunks_with_insights: 0,
+        chunks_without_insights: 0,
+        total_insights_created: 0,
+        processing_duration_seconds: 0,
+        status: 'processing',
+        error_message: null
+      })
+    if (!runCreateError) {
+      runCreated = true
+      console.log(`Created processing run record: ${runId}`)
     }
 
     console.log(`Inserted ${chunkInserts.length} chunks`)
@@ -840,31 +863,51 @@ export async function processSourceFromPlainText(
     processingError = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
-    // Always save processing run record, even if processing failed
+    // Update run record with final results
     const endTime = Date.now()
     const processingDurationSeconds = (endTime - startTime) / 1000
     const status = processingError || chunksProcessed < chunksCreated ? 'failed' : 'success'
     
-    const { error: runError } = await supabaseAdmin
-      .from('source_processing_runs')
-      .insert({
-        source_id: sourceId,
-        processed_at: new Date(startTime).toISOString(),
-        chunks_created: chunksCreated,
-        chunks_processed: chunksProcessed,
-        chunks_with_insights: chunksWithInsights,
-        chunks_without_insights: chunksWithoutInsights,
-        total_insights_created: insightsCreated,
-        processing_duration_seconds: processingDurationSeconds,
-        status,
-        error_message: processingError ? processingError.message : null
-      })
-
-    if (runError) {
-      console.error('Failed to save processing run record:', runError)
-      // Don't throw - we don't want to mask the original error
+    if (runCreated) {
+      // Update the record we created at start
+      const { error: runError } = await supabaseAdmin
+        .from('source_processing_runs')
+        .update({
+          chunks_processed: chunksProcessed,
+          chunks_with_insights: chunksWithInsights,
+          chunks_without_insights: chunksWithoutInsights,
+          total_insights_created: insightsCreated,
+          processing_duration_seconds: processingDurationSeconds,
+          status,
+          error_message: processingError ? processingError.message : null
+        })
+        .eq('id', runId)
+      if (runError) {
+        console.error('Failed to update processing run record:', runError)
+      } else {
+        console.log(`Updated processing run record: ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
+      }
     } else {
-      console.log(`Saved processing run record: ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
+      // Fallback: create if start creation failed
+      const { error: runError } = await supabaseAdmin
+        .from('source_processing_runs')
+        .insert({
+          source_id: sourceId,
+          processed_at: new Date(startTime).toISOString(),
+          chunks_created: chunksCreated,
+          chunks_processed: chunksProcessed,
+          chunks_with_insights: chunksWithInsights,
+          chunks_without_insights: chunksWithoutInsights,
+          total_insights_created: insightsCreated,
+          processing_duration_seconds: processingDurationSeconds,
+          status,
+          error_message: processingError ? processingError.message : null
+        })
+      if (runError) {
+        console.error('Failed to save processing run record:', runError)
+      } else {
+        console.log(`Saved processing run record (fallback): ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
+      }
     }
   }
 }
