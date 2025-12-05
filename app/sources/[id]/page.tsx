@@ -1,0 +1,216 @@
+import { notFound } from "next/navigation"
+import Link from "next/link"
+import { SourceEditorClient } from "@/components/SourceEditorClient"
+import { TranscriptEditorClient } from "@/components/TranscriptEditorClient"
+import { ReprocessButton } from "@/components/ReprocessButton"
+import { SourceInsightsClient } from "@/components/SourceInsightsClient"
+import { supabaseAdmin } from "@/lib/supabaseServer"
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Badge } from "@/components/ui/badge"
+
+export default async function SourcePage({
+  params,
+}: {
+  params: Promise<{ id: string }>
+}) {
+  // Await params in Next.js 15+
+  const { id } = await params
+  
+  // Check if Supabase is configured
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.SUPABASE_SECRET_KEY) {
+    return (
+      <div className="min-h-screen bg-background">
+        <main>
+        <div className="flex items-center justify-center min-h-[calc(100vh-4rem)]">
+          <div className="text-center">
+            <h1 className="text-2xl font-bold mb-4">Configuration Required</h1>
+            <p className="text-muted-foreground">
+              Please set up your Supabase environment variables in .env.local
+            </p>
+          </div>
+        </div>
+        </main>
+      </div>
+    )
+  }
+
+  // Fetch source (including transcript)
+  const { data: source, error: sourceError } = await supabaseAdmin
+    .from("sources")
+    .select("*, transcript")
+    .eq("id", id)
+    .single()
+
+  if (sourceError || !source) {
+    notFound()
+  }
+
+  // Fetch chunks to calculate timestamps
+  const { data: chunks, error: chunksError } = await supabaseAdmin
+    .from("chunks")
+    .select("id, locator, content")
+    .eq("source_id", id)
+    .order("locator", { ascending: true })
+
+  // Fetch insights linked to this source, including which other sources they're linked to
+  // Also fetch topics/concepts each insight is connected to
+  const { data: insights, error: insightsError } = await supabaseAdmin
+    .from("insight_sources")
+    .select(
+      `
+      locator,
+      insights (
+        id,
+        statement,
+        context_note,
+        evidence_type,
+        qualifiers,
+        confidence,
+        importance,
+        actionability,
+        primary_audience,
+        insight_type,
+        has_direct_quote,
+        direct_quote,
+        tone,
+        insight_sources (
+          source_id,
+          sources (
+            id,
+            title
+          )
+        ),
+        insight_concepts (
+          concept_id,
+          concepts (
+            id,
+            name,
+            slug
+          )
+        )
+      )
+    `
+    )
+    .eq("source_id", id)
+
+  if (insightsError) {
+    console.error("Error fetching insights:", insightsError)
+  }
+
+  // Calculate estimated timestamps based on chunk positions
+  // Assuming average speaking rate of ~150 words per minute
+  const calculateTimestamp = (locator: string, chunks: any[]): string => {
+    const segmentNum = parseInt(locator.replace('seg-', ''))
+    if (!chunks || chunks.length === 0) return ''
+    
+    // Find position of this segment
+    const segmentIndex = chunks.findIndex((c: any) => c.locator === locator)
+    if (segmentIndex === -1) return ''
+    
+    // Calculate cumulative character count up to this segment
+    let cumulativeChars = 0
+    for (let i = 0; i <= segmentIndex; i++) {
+      cumulativeChars += chunks[i]?.content?.length || 0
+    }
+    
+    // Estimate: ~5 characters per word, ~150 words per minute = ~750 chars per minute
+    // Use average of all chunks to get total estimated duration
+    const totalChars = chunks.reduce((sum, c) => sum + (c.content?.length || 0), 0)
+    const estimatedTotalMinutes = totalChars / 750 // ~750 chars per minute
+    const segmentPosition = cumulativeChars / totalChars
+    const estimatedMinutes = estimatedTotalMinutes * segmentPosition
+    
+    const minutes = Math.floor(estimatedMinutes)
+    const seconds = Math.floor((estimatedMinutes - minutes) * 60)
+    return `${minutes}:${String(seconds).padStart(2, '0')}`
+  }
+
+  const insightsList =
+    insights
+      ?.map((item: any) => {
+        const insight = item.insights
+        if (!insight?.id) return null
+        
+        // Get all sources this insight is linked to
+        const linkedSources = insight.insight_sources || []
+        const otherSources = linkedSources
+          .filter((ls: any) => ls.source_id !== id)
+          .map((ls: any) => ls.sources?.title)
+          .filter(Boolean)
+        
+        // Get all topics/concepts this insight is connected to
+        const conceptLinks = insight.insight_concepts || []
+        const topics = conceptLinks
+          .map((ic: any) => ic.concepts)
+          .filter(Boolean)
+        
+        return {
+          ...insight,
+          locator: item.locator,
+          timestamp: calculateTimestamp(item.locator, chunks || []),
+          sharedWithSources: otherSources,
+          isShared: otherSources.length > 0,
+          topics: topics,
+          importance: insight.importance ?? 2,
+          actionability: insight.actionability ?? 'Medium',
+          primary_audience: insight.primary_audience ?? 'Both',
+          insight_type: insight.insight_type ?? 'Explanation',
+          has_direct_quote: insight.has_direct_quote ?? false,
+          direct_quote: insight.direct_quote ?? null,
+          tone: insight.tone ?? 'Neutral',
+        }
+      })
+      .filter((i: any) => i !== null)
+      // Sort by importance (3 = highest, 1 = lowest)
+      .sort((a: any, b: any) => (b.importance ?? 2) - (a.importance ?? 2)) || []
+
+  return (
+    <div className="min-h-screen bg-background">
+      <main>
+      <div className="container mx-auto px-4 py-12">
+        <div className="max-w-4xl mx-auto">
+          {/* Back Button */}
+          <div className="mb-6">
+            <Link 
+              href="/admin/sources" 
+              className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1"
+            >
+              ← Back to Manage Sources
+            </Link>
+          </div>
+          
+          <SourceEditorClient source={source} />
+          
+          {/* Transcript Section - Now with editing and collapsible */}
+          <TranscriptEditorClient sourceId={source.id} transcript={source.transcript} />
+          
+          {/* Reprocess Button - Only show if transcript exists */}
+          {source.transcript && (
+            <Card className="mt-6">
+              <CardHeader>
+                <CardTitle>Reprocess Transcript</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <p className="text-sm text-muted-foreground mb-4">
+                  Delete existing chunks and insights, then regenerate them from the current transcript.
+                </p>
+                <ReprocessButton sourceId={source.id} />
+              </CardContent>
+            </Card>
+          )}
+          
+          <div className="mb-6 text-sm mt-6">
+            <Link href="/admin/concepts" className="text-primary hover:underline">
+              Tag insights to topics →
+            </Link>
+          </div>
+
+          <SourceInsightsClient 
+            insights={insightsList}
+          />
+        </div>
+      </div>
+      </main>
+    </div>
+  )
+}
