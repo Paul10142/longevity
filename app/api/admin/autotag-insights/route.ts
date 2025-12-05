@@ -47,36 +47,6 @@ export async function POST(request: NextRequest) {
     
     const insightsToTag = allInsights?.filter((i: any) => !linkedIds.has(i.id)).slice(0, limit) || []
 
-      if (dryRun) {
-        return NextResponse.json({
-          success: true,
-          dryRun: true,
-          count: insightsToTag.length,
-          insights: insightsToTag.map((i: any) => ({ id: i.id, statement: i.statement }))
-        })
-      }
-
-      let tagged = 0
-      let errors = 0
-
-      for (const insight of insightsToTag) {
-        try {
-          await autoTagAndLinkInsight(insight.id, insight as Insight)
-          tagged++
-        } catch (error) {
-          console.error(`Error tagging insight ${insight.id}:`, error)
-          errors++
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        tagged,
-        errors,
-        total: insightsToTag.length
-      })
-    }
-
     if (dryRun) {
       return NextResponse.json({
         success: true,
