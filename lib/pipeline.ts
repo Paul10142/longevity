@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
-import { createHash, randomUUID } from 'crypto'
+import { createHash } from 'crypto'
 
 // Lazy initialization of OpenAI client to avoid errors during build when API key is not available
 let openaiInstance: OpenAI | null = null
@@ -629,10 +629,36 @@ export async function processSourceFromPlainText(
   let chunksWithoutInsights = 0
   let insightsCreated = 0
   let processingError: Error | null = null
-  const runId = randomUUID()
-  let runCreated = false
+  let runId: string | null = null
 
   try {
+    // Create run record at START with status 'processing'
+    // This ensures we have a record even if processing is interrupted
+    const { data: newRun, error: createRunError } = await supabaseAdmin
+      .from('source_processing_runs')
+      .insert({
+        source_id: sourceId,
+        processed_at: new Date(startTime).toISOString(),
+        chunks_created: 0, // Will be updated after chunking
+        chunks_processed: 0,
+        chunks_with_insights: 0,
+        chunks_without_insights: 0,
+        total_insights_created: 0,
+        processing_duration_seconds: 0,
+        status: 'processing',
+        error_message: null
+      })
+      .select('id')
+      .single()
+
+    if (createRunError || !newRun) {
+      console.error('Failed to create processing run record at start:', createRunError)
+      // Continue processing even if run record creation fails
+    } else {
+      runId = newRun.id
+      console.log(`Created processing run record: ${runId}`)
+    }
+
     // 1. Split text into chunks
     const chunks = splitIntoChunks(text)
     chunksCreated = chunks.length
@@ -660,27 +686,6 @@ export async function processSourceFromPlainText(
 
     if (chunksError) {
       throw new Error(`Failed to insert chunks: ${chunksError.message}`)
-    }
-
-    // Create run record at start so it exists even if process crashes
-    const { error: runCreateError } = await supabaseAdmin
-      .from('source_processing_runs')
-      .insert({
-        id: runId,
-        source_id: sourceId,
-        processed_at: new Date(startTime).toISOString(),
-        chunks_created: chunksCreated,
-        chunks_processed: 0,
-        chunks_with_insights: 0,
-        chunks_without_insights: 0,
-        total_insights_created: 0,
-        processing_duration_seconds: 0,
-        status: 'processing',
-        error_message: null
-      })
-    if (!runCreateError) {
-      runCreated = true
-      console.log(`Created processing run record: ${runId}`)
     }
 
     console.log(`Inserted ${chunkInserts.length} chunks`)
@@ -835,6 +840,26 @@ export async function processSourceFromPlainText(
           console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... to source`)
         }
       }
+
+      // Update run record after each chunk is processed
+      // This provides real-time progress and ensures we have accurate state if interrupted
+      if (runId) {
+        const currentDuration = (Date.now() - startTime) / 1000
+        const { error: updateError } = await supabaseAdmin
+          .from('source_processing_runs')
+          .update({
+            chunks_processed: chunksProcessed,
+            chunks_with_insights: chunksWithInsights,
+            chunks_without_insights: chunksWithoutInsights,
+            total_insights_created: insightsCreated,
+            processing_duration_seconds: currentDuration
+          })
+          .eq('id', runId)
+        
+        if (updateError) {
+          console.error(`[${chunk.locator}] Failed to update run record during processing:`, updateError)
+        }
+      }
     }
 
     console.log(`\n✅ Processing complete! Created ${insightsCreated} insights from ${chunkInserts.length} chunks.`)
@@ -863,16 +888,17 @@ export async function processSourceFromPlainText(
     processingError = error instanceof Error ? error : new Error(String(error))
     throw error
   } finally {
-    // Update run record with final results
+    // Always update processing run record, even if processing failed
     const endTime = Date.now()
     const processingDurationSeconds = (endTime - startTime) / 1000
     const status = processingError || chunksProcessed < chunksCreated ? 'failed' : 'success'
     
-    if (runCreated) {
-      // Update the record we created at start
-      const { error: runError } = await supabaseAdmin
+    if (runId) {
+      // Update existing run record
+      const { error: updateError } = await supabaseAdmin
         .from('source_processing_runs')
         .update({
+          chunks_created: chunksCreated,
           chunks_processed: chunksProcessed,
           chunks_with_insights: chunksWithInsights,
           chunks_without_insights: chunksWithoutInsights,
@@ -882,14 +908,15 @@ export async function processSourceFromPlainText(
           error_message: processingError ? processingError.message : null
         })
         .eq('id', runId)
-      if (runError) {
-        console.error('Failed to update processing run record:', runError)
+
+      if (updateError) {
+        console.error('Failed to update processing run record:', updateError)
       } else {
         console.log(`Updated processing run record: ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
       }
     } else {
-      // Fallback: create if start creation failed
-      const { error: runError } = await supabaseAdmin
+      // Fallback: insert new record if creation at start failed
+      const { error: insertError } = await supabaseAdmin
         .from('source_processing_runs')
         .insert({
           source_id: sourceId,
@@ -903,8 +930,9 @@ export async function processSourceFromPlainText(
           status,
           error_message: processingError ? processingError.message : null
         })
-      if (runError) {
-        console.error('Failed to save processing run record:', runError)
+
+      if (insertError) {
+        console.error('Failed to save processing run record (fallback):', insertError)
       } else {
         console.log(`Saved processing run record (fallback): ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
       }
