@@ -17,7 +17,7 @@ interface Insight {
 
 interface InsightFiltersProps {
   insights: Insight[]
-  onFilteredInsightsChange: (filtered: Insight[]) => void
+  onFilteredInsightsChange: (filtered: any[]) => void
 }
 
 export function InsightFilters({ insights, onFilteredInsightsChange }: InsightFiltersProps) {

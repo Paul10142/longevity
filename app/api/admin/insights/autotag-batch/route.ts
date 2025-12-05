@@ -67,7 +67,7 @@ export async function POST(request: NextRequest) {
     let errors = 0
 
     // Build insight objects for batch processing
-    const insightsWithIds = insights.map(insightRow => ({
+    const insightsWithIds = insights.map((insightRow: any) => ({
       id: insightRow.id,
       insight: {
         statement: insightRow.statement,

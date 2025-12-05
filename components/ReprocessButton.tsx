@@ -249,10 +249,10 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
                 )}
               </div>
             )}
-            {status.details && (
+            {status.type === 'error' && status.details && (
               <details className="mt-2 text-xs" open={status.type === 'error'}>
                 <summary className="cursor-pointer font-semibold">
-                  {status.type === 'error' ? 'Error Details (Click to collapse)' : 'Details'}
+                  Error Details (Click to collapse)
                 </summary>
                 <pre className="mt-2 p-3 bg-destructive/10 dark:bg-destructive/20 rounded overflow-auto max-h-64 text-xs">
                   {status.details}

@@ -13,7 +13,7 @@ const DEFAULT_CHUNK_OVERLAP = 200
 // Feature flag: Use optimized prompt (set to false to use original detailed prompt)
 const USE_OPTIMIZED_PROMPT = true
 
-interface Insight {
+export interface Insight {
   statement: string
   context_note?: string | null
   evidence_type: 'RCT' | 'Cohort' | 'MetaAnalysis' | 'CaseSeries' | 'Mechanistic' | 'Animal' | 'ExpertOpinion' | 'Other'

@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { retrySupabaseQuery } from "@/lib/retry"
+import type { Concept } from "@/lib/types"
 
 // Helper to capitalize first letter of each word
 function capitalizeWords(str: string): string {
@@ -58,7 +59,7 @@ export default async function TopicPage({
       .eq("slug", slug)
       .single(),
     { maxRetries: 3 }
-  )
+  ) as { data: Concept | null; error: any }
 
   if (conceptError || !concept) {
     // If it's a network error after retries, throw to show error boundary
@@ -79,7 +80,7 @@ export default async function TopicPage({
       .eq("concept_id", concept.id)
       .order("version", { ascending: false }),
     { maxRetries: 2 } // Fewer retries since articles are optional
-  )
+  ) as { data: any[] | null; error: any }
 
   if (articlesError) {
     console.warn("Error fetching topic articles (non-fatal):", articlesError)
@@ -98,7 +99,7 @@ export default async function TopicPage({
       .order("version", { ascending: false })
       .limit(1),
     { maxRetries: 2 } // Fewer retries since protocols are optional
-  )
+  ) as { data: any[] | null; error: any }
 
   if (protocolsError) {
     console.warn("Error fetching topic protocol (non-fatal):", protocolsError)
@@ -208,7 +209,7 @@ export default async function TopicPage({
         )
         .eq("concept_id", concept.id),
       { maxRetries: 3 }
-    )
+    ) as { data: any[] | null; error: any }
 
     if (adminInsightsError) {
       console.warn("Error fetching admin insights (non-fatal):", adminInsightsError)
@@ -252,7 +253,7 @@ export default async function TopicPage({
   }
 
   // Group insights by source
-  const insightsBySource: Record<string, any[]> = {}
+  const insightsBySource: Record<string, { source: any; insights: any[] }> = {}
   
   insightsData?.forEach((item: any) => {
     const insight = item.insights
