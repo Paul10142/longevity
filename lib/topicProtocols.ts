@@ -2,9 +2,21 @@ import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import type { Concept, TopicProtocol } from './types'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization of OpenAI client to avoid errors during build when API key is not available
+let openaiInstance: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.')
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 const PROTOCOL_SYSTEM_PROMPT = `
 You are assisting a physician building a lifestyle medicine reference.
@@ -227,7 +239,7 @@ IMPORTANT - List Formatting Rules:
 - Do NOT include a large title heading (H1 with #) - start directly with section content`
 
   try {
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-5-mini',
       messages: [
         { role: 'system', content: PROTOCOL_SYSTEM_PROMPT },

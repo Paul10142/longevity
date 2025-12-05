@@ -2,9 +2,21 @@ import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import { createHash } from 'crypto'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization of OpenAI client to avoid errors during build when API key is not available
+let openaiInstance: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.')
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 // Chunking configuration constants
 const DEFAULT_CHUNK_SIZE = 2400
@@ -387,7 +399,7 @@ ${chunkContent}`
     
     // Use retry helper for OpenAI API call
     const completion = await callOpenAIWithRetry(
-      () => openai.chat.completions.create({
+      () => getOpenAI().chat.completions.create({
         model: 'gpt-5-mini', // GPT-5 Mini: Better performance with cost efficiency, 400K context window
         messages: [
           { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },

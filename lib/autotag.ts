@@ -3,9 +3,21 @@ import OpenAI from 'openai'
 import type { Insight } from './pipeline'
 import type { Concept } from './types'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization of OpenAI client to avoid errors during build when API key is not available
+let openaiInstance: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.')
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 // Module-level cache for concepts (lasts for the lifetime of the process)
 let cachedConcepts: Concept[] | null = null
@@ -146,7 +158,7 @@ export async function autoTagInsightToConcepts(
 
     // Use retry helper for OpenAI API call
     const completion = await callOpenAIWithRetry(
-      () => openai.chat.completions.create({
+      () => getOpenAI().chat.completions.create({
         model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: AUTOTAG_SYSTEM_PROMPT },
@@ -220,7 +232,7 @@ export async function autoTagInsightsBatch(
       const userPrompt = `Classify these insights:\n\n${insightsList}\n\nAvailable concepts:\n${conceptList}\n\nReturn JSON: {"results": [{"index": 1, "concept_slugs": ["slug1"]}, {"index": 2, "concept_slugs": []}]}`
 
       const completion = await callOpenAIWithRetry(
-        () => openai.chat.completions.create({
+        () => getOpenAI().chat.completions.create({
           model: 'gpt-5-mini',
           messages: [
             { role: 'system', content: AUTOTAG_SYSTEM_PROMPT + ' For batch processing, return {"results": [{"index": 1, "concept_slugs": [...]}, ...]} matching input order.' },

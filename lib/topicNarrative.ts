@@ -2,9 +2,21 @@ import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import type { Concept, TopicArticle } from './types'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization of OpenAI client to avoid errors during build when API key is not available
+let openaiInstance: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.')
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 const CLINICIAN_SYSTEM_PROMPT = `
 You are assisting a physician building an up-to-date lifestyle medicine reference.
@@ -196,7 +208,7 @@ ${insightsJson}
 Generate a ${audience} article for this topic.`
 
     try {
-      const completion = await openai.chat.completions.create({
+      const completion = await getOpenAI().chat.completions.create({
         model: 'gpt-5-mini',
         messages: [
           { role: 'system', content: systemPrompt },

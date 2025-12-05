@@ -1,9 +1,21 @@
 import { NextResponse } from "next/server"
 import OpenAI from 'openai'
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
+// Lazy initialization of OpenAI client to avoid errors during build when API key is not available
+let openaiInstance: OpenAI | null = null
+
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) {
+      throw new Error('Missing credentials. Please pass an `apiKey`, or set the `OPENAI_API_KEY` environment variable.')
+    }
+    openaiInstance = new OpenAI({
+      apiKey,
+    })
+  }
+  return openaiInstance
+}
 
 export async function GET() {
   try {
@@ -15,7 +27,7 @@ export async function GET() {
     
     console.log('Calling OpenAI with model: gpt-5-mini')
     
-    const completion = await openai.chat.completions.create({
+    const completion = await getOpenAI().chat.completions.create({
       model: 'gpt-5-mini',
       messages: [
         { 
