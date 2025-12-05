@@ -1,6 +1,6 @@
 import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
-import { createHash } from 'crypto'
+import { createHash, randomUUID } from 'crypto'
 
 // Lazy initialization of OpenAI client to avoid errors during build when API key is not available
 let openaiInstance: OpenAI | null = null
@@ -629,11 +629,6 @@ export async function processSourceFromPlainText(
   let chunksWithoutInsights = 0
   let insightsCreated = 0
   let processingError: Error | null = null
-  
-  // Create processing run record at START (before processing begins)
-  // This ensures the run exists even if the process crashes
-  const runId = randomUUID()
-  let runCreated = false
 
   try {
     // 1. Split text into chunks
@@ -648,31 +643,6 @@ export async function processSourceFromPlainText(
       insightsCreated: 0,
       message: `Split transcript into ${chunks.length} chunks`
     })
-
-    // Create processing run record immediately after we know chunk count
-    const { error: runCreateError } = await supabaseAdmin
-      .from('source_processing_runs')
-      .insert({
-        id: runId,
-        source_id: sourceId,
-        processed_at: new Date(startTime).toISOString(),
-        chunks_created: chunksCreated,
-        chunks_processed: 0,
-        chunks_with_insights: 0,
-        chunks_without_insights: 0,
-        total_insights_created: 0,
-        processing_duration_seconds: 0,
-        status: 'processing',
-        error_message: null
-      })
-    
-    if (runCreateError) {
-      console.error('Failed to create processing run record:', runCreateError)
-      // Continue processing even if run record creation fails
-    } else {
-      runCreated = true
-      console.log(`Created processing run record: ${runId}`)
-    }
 
     // 2. Insert chunks into database
     const chunkInserts = chunks.map((content, index) => ({
