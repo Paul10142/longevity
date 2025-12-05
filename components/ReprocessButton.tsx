@@ -13,13 +13,27 @@ type ProcessingStatus =
   | { type: 'idle' }
   | { type: 'creating'; message: string }
   | { type: 'chunking'; message: string; progress?: number; total?: number }
-  | { type: 'extracting'; message: string; progress?: number; total?: number; insightsCreated?: number }
+  | { type: 'extracting'; message: string; progress?: number; total?: number; insightsCreated?: number; estimatedTimeRemaining?: string }
   | { type: 'success'; message: string }
   | { type: 'error'; message: string; details?: string }
+
+function formatDuration(seconds: number): string {
+  const hours = Math.floor(seconds / 3600)
+  const minutes = Math.floor((seconds % 3600) / 60)
+  const secs = Math.floor(seconds % 60)
+  
+  const parts: string[] = []
+  if (hours > 0) parts.push(`${hours}h`)
+  if (minutes > 0) parts.push(`${minutes}m`)
+  if (secs > 0 || parts.length === 0) parts.push(`${secs}s`)
+  
+  return parts.join(' ')
+}
 
 export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
   const [status, setStatus] = useState<ProcessingStatus>({ type: 'idle' })
   const [isProcessing, setIsProcessing] = useState(false)
+  const [startTime, setStartTime] = useState<number | null>(null)
 
   const handleReprocess = async () => {
     if (!confirm('This will delete all existing chunks and insights for this source and regenerate them from the transcript. Continue?')) {
@@ -78,6 +92,7 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
                   }
 
                   if (data.done) {
+                    setStartTime(null)
                     if (data.status?.type === 'error') {
                       // Error occurred - don't reload, keep error visible
                       setStatus(data.status)
@@ -98,9 +113,39 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
                   
                   // Handle error status updates during processing
                   if (data.status?.type === 'error') {
+                    setStartTime(null)
                     setStatus(data.status)
                     setIsProcessing(false)
                     return
+                  }
+                  
+                  // Set start time when extraction begins (if not already set)
+                  if (data.status?.type === 'extracting' && !startTime) {
+                    setStartTime(Date.now())
+                  }
+                  
+                  // Calculate estimated time remaining for extracting stage
+                  if (data.status?.type === 'extracting' && data.status.progress !== undefined && data.status.total !== undefined && startTime) {
+                    const elapsed = (Date.now() - startTime) / 1000 // seconds
+                    const chunksProcessed = data.status.progress
+                    const totalChunks = data.status.total
+                    
+                    // Only show estimate after processing at least 2 chunks (for better accuracy)
+                    if (chunksProcessed >= 2 && chunksProcessed < totalChunks && elapsed > 0) {
+                      const rate = chunksProcessed / elapsed // chunks per second
+                      const remainingChunks = totalChunks - chunksProcessed
+                      const estimatedSeconds = remainingChunks / rate
+                      const estimatedTime = formatDuration(estimatedSeconds)
+                      // Update status with estimated time
+                      setStatus({
+                        ...data.status,
+                        estimatedTimeRemaining: estimatedTime
+                      })
+                    } else {
+                      setStatus(data.status)
+                    }
+                  } else {
+                    setStatus(data.status)
                   }
                 } catch (e) {
                   console.error('Error parsing SSE data:', e)
@@ -126,6 +171,7 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
       })
     } finally {
       setIsProcessing(false)
+      setStartTime(null)
     }
   }
 
@@ -194,6 +240,11 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
                 {status.insightsCreated !== undefined && (
                   <p className="text-sm text-muted-foreground">
                     Insights created: <span className="font-medium">{status.insightsCreated}</span>
+                  </p>
+                )}
+                {status.estimatedTimeRemaining && (
+                  <p className="text-sm font-medium text-primary">
+                    Estimated time remaining: {status.estimatedTimeRemaining}
                   </p>
                 )}
               </div>

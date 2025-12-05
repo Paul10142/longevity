@@ -9,7 +9,7 @@ import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
 
   const navigation = [
     { name: "Topics", href: "/topics" },
-    { name: "Sources", href: "/medical-library" },
+    { name: "Sources", href: "/admin/sources" },
     { name: "Longevity Toolkit", href: "#tips" },
     { name: "Resources", href: "#resources" },
     { name: "About", href: "#about" },

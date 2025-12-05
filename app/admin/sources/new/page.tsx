@@ -1,14 +1,22 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect, useRef } from "react"
 import { useRouter } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
 import { Label } from "@/components/ui/label"
+import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, AlertCircle, CheckCircle2 } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, Plus, X as XIcon } from "lucide-react"
+
+const COMMON_AUTHORS = [
+  "Dr. Peter Attia",
+  "Dr. Andrew Huberman",
+  "Dr. Andy Galpin",
+  "Dr. Rhonda Patrick"
+]
 
 type ProcessingStatus = 
   | { type: 'idle' }
@@ -25,11 +33,29 @@ export default function NewSourcePage() {
   const [formData, setFormData] = useState({
     type: "podcast",
     title: "",
-    authors: "",
+    authors: [] as string[],
     date: "",
     url: "",
     transcript: "",
   })
+  const [newAuthor, setNewAuthor] = useState("")
+
+  const addAuthor = (author: string) => {
+    if (author && !formData.authors.includes(author)) {
+      setFormData({
+        ...formData,
+        authors: [...formData.authors, author],
+      })
+    }
+    setNewAuthor("")
+  }
+
+  const removeAuthor = (authorToRemove: string) => {
+    setFormData({
+      ...formData,
+      authors: formData.authors.filter((a) => a !== authorToRemove),
+    })
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -47,9 +73,7 @@ export default function NewSourcePage() {
         },
         body: JSON.stringify({
           ...formData,
-          authors: formData.authors
-            ? formData.authors.split(",").map((a) => a.trim())
-            : [],
+          authors: formData.authors || [],
         }),
       })
 
@@ -76,11 +100,24 @@ export default function NewSourcePage() {
       if (response.body) {
         const reader = response.body.getReader()
         const decoder = new TextDecoder()
+        let readerClosed = false
+        
+        const cleanup = () => {
+          if (!readerClosed) {
+            readerClosed = true
+            reader.cancel().catch(() => {
+              // Ignore errors when canceling
+            })
+          }
+        }
         
         try {
           while (true) {
             const { done, value } = await reader.read()
-            if (done) break
+            if (done) {
+              cleanup()
+              break
+            }
             
             const chunk = decoder.decode(value, { stream: true })
             const lines = chunk.split('\n')
@@ -95,6 +132,7 @@ export default function NewSourcePage() {
                   }
                   
                   if (data.done) {
+                    cleanup()
                     setStatus({ 
                       type: 'success', 
                       message: 'Processing complete! Redirecting...' 
@@ -109,6 +147,7 @@ export default function NewSourcePage() {
             }
           }
         } catch (streamError) {
+          cleanup()
           console.error('Error reading stream:', streamError)
           setStatus({ 
             type: 'error', 
@@ -123,7 +162,6 @@ export default function NewSourcePage() {
         setTimeout(() => router.push(`/admin/sources`), 1500)
       }
     } catch (error) {
-      cleanup()
       console.error("Error creating source:", error)
       setStatus({ 
         type: 'error', 
@@ -180,15 +218,79 @@ export default function NewSourcePage() {
                 </div>
 
                 <div>
-                  <Label htmlFor="authors">Authors (comma-separated)</Label>
-                  <Input
-                    id="authors"
-                    value={formData.authors}
-                    onChange={(e) =>
-                      setFormData({ ...formData, authors: e.target.value })
-                    }
-                    placeholder="Dr. Peter Attia, Dr. Rhonda Patrick"
-                  />
+                  <Label>Authors</Label>
+                  <div className="mt-2 space-y-3">
+                    {/* Quick-add buttons for common authors */}
+                    <div>
+                      <p className="text-sm text-muted-foreground mb-2">Quick Add:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {COMMON_AUTHORS.map((author) => (
+                          <Button
+                            key={author}
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => addAuthor(author)}
+                            disabled={formData.authors.includes(author)}
+                            className="text-xs"
+                          >
+                            <Plus className="h-3 w-3 mr-1" />
+                            {author}
+                          </Button>
+                        ))}
+                      </div>
+                    </div>
+
+                    {/* Current authors */}
+                    {formData.authors.length > 0 && (
+                      <div className="flex flex-wrap gap-2">
+                        {formData.authors.map((author) => (
+                          <Badge
+                            key={author}
+                            variant="secondary"
+                            className="flex items-center gap-1 pr-1"
+                          >
+                            {author}
+                            <button
+                              onClick={() => removeAuthor(author)}
+                              className="ml-1 hover:bg-destructive/20 rounded-full p-0.5"
+                              type="button"
+                            >
+                              <XIcon className="h-3 w-3" />
+                            </button>
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Add custom author */}
+                    <div className="flex gap-2">
+                      <Input
+                        placeholder="Add author name..."
+                        value={newAuthor}
+                        onChange={(e) => setNewAuthor(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") {
+                            e.preventDefault()
+                            if (newAuthor.trim()) {
+                              addAuthor(newAuthor.trim())
+                            }
+                          }
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => {
+                          if (newAuthor.trim()) {
+                            addAuthor(newAuthor.trim())
+                          }
+                        }}
+                      >
+                        <Plus className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
 
                 <div>

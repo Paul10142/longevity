@@ -24,6 +24,29 @@ export type TopicArticle = {
   updated_at: string
 }
 
+export type TopicProtocolSection = {
+  id: string
+  title: string
+  paragraphs: {
+    id: string
+    text: string
+    insight_ids: string[]
+  }[]
+}
+
+export type TopicProtocol = {
+  id: string
+  concept_id: string
+  version: number
+  title: string
+  outline: {
+    sections: TopicProtocolSection[]
+  }
+  body_markdown: string
+  created_at: string
+  updated_at: string
+}
+
 export type Concept = {
   id: string
   name: string
@@ -36,6 +59,7 @@ export type Concept = {
 export type SourceType = 'book' | 'podcast' | 'video' | 'article'
 export type MediaType = 'audio' | 'video' | 'text' | 'book'
 export type TranscriptOrigin = 'manual' | 'fireflies' | 'whisper' | 'other'
+export type ProcessingStatus = 'pending' | 'processing' | 'succeeded' | 'failed'
 
 export type Source = {
   id: string
@@ -46,11 +70,14 @@ export type Source = {
   url: string | null
   transcript_quality: 'high' | 'medium' | 'low'
   external_id: string | null
-  media_type: MediaType | null
+  media_type: MediaType
   media_url: string | null
   media_duration_sec: number | null
-  transcript_origin: TranscriptOrigin | null
+  transcript_origin: TranscriptOrigin
   transcript: string | null
+  processing_status: ProcessingStatus
+  last_processed_at: string | null
+  processing_error: string | null
   created_at: string
 }
 

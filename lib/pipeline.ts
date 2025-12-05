@@ -6,6 +6,13 @@ const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
+// Chunking configuration constants
+const DEFAULT_CHUNK_SIZE = 2400
+const DEFAULT_CHUNK_OVERLAP = 200
+
+// Feature flag: Use optimized prompt (set to false to use original detailed prompt)
+const USE_OPTIMIZED_PROMPT = true
+
 interface Insight {
   statement: string
   context_note?: string | null
@@ -52,6 +59,18 @@ function computeInsightHash(statement: string): string {
 
 /**
  * Filter out low-value insights based on patterns
+ * 
+ * TO ADD NEW FILTER PATTERNS:
+ * 1. Add regex patterns to the excludePatterns array below
+ * 2. Patterns are case-insensitive and match against the insight statement
+ * 3. Use regex syntax: /pattern/i (the 'i' flag makes it case-insensitive)
+ * 4. Test patterns at: https://regex101.com/
+ * 
+ * EXAMPLES:
+ * - /specific phrase/i - matches exact phrase
+ * - /^(starts with)/i - matches if statement starts with phrase
+ * - /(option1|option2)/i - matches either option
+ * - Pattern with .*word.* - matches if statement contains word
  */
 function filterLowValueInsights(insights: Insight[]): Insight[] {
   const excludePatterns = [
@@ -75,6 +94,13 @@ function filterLowValueInsights(insights: Insight[]): Insight[] {
     
     // Vague meta-statements
     /^(protein|nutrition|science) (has|have) become (a|an) (contentious|controversial|debated)/i,
+    
+    // ============================================
+    // USER FEEDBACK PATTERNS - Add your patterns here
+    // ============================================
+    // Add patterns below based on insights you want to filter out
+    // Example: /pattern to exclude/i,
+    
   ]
   
   return insights.filter(insight => {
@@ -101,7 +127,8 @@ function filterLowValueInsights(insights: Insight[]): Insight[] {
   })
 }
 
-const EXTRACTION_SYSTEM_PROMPT = `
+// Original detailed prompt (preserved for comparison/rollback)
+const EXTRACTION_SYSTEM_PROMPT_ORIGINAL = `
 You are assisting a physician building a high-end lifestyle medicine knowledge base for patients and clinicians.
 
 Your job is to extract ONLY the clinically or behaviorally meaningful insights from a transcript chunk and represent them as detailed, structured data.
@@ -113,6 +140,10 @@ These insights will be used to:
 - Help other clinicians update their practice based on high-quality discussions.
 
 GENERAL RULES
+
+- Extract ALL meaningful insights from the chunk. Do not limit yourself to a small number - be thorough and comprehensive.
+
+- Larger chunks contain more content and should yield proportionally more insights. Extract every insight that meets the criteria below.
 
 - Be HYPER-SPECIFIC. Do NOT oversimplify.
 
@@ -301,7 +332,50 @@ If there are no meaningful insights in this chunk, return:
 { "insights": [] }
 `
 
-async function extractInsightsFromChunk(chunkContent: string, chunkIndex?: number, totalChunks?: number): Promise<Insight[]> {
+// Optimized prompt (balanced: preserves critical reasoning guidance, ~60% token reduction)
+// 
+// TO MODIFY WHAT GETS EXTRACTED:
+// 1. Update the "IGNORE" section below to add categories of insights to skip
+// 2. Update the "INSIGHT TYPES" section to clarify what counts as an insight
+// 3. For more detailed changes, see EXTRACTION_SYSTEM_PROMPT_ORIGINAL (lines 112-314)
+// 4. After changing the prompt, reprocess sources to see the effect
+//
+const EXTRACTION_SYSTEM_PROMPT_OPTIMIZED = `
+Extract clinically meaningful insights from transcript chunks for a lifestyle medicine knowledge base. Be thorough, hyper-specific, and preserve all numeric details (doses, thresholds, frequencies, durations) and qualifiers (population, context).
+
+INSIGHT TYPES: Protocol (concrete recommendations), Explanation/Mechanism (how/why), Warning (risks/contraindications), Anecdote (clinical observations), Controversy (mixed/uncertain data).
+
+IGNORE: Jokes, small talk, generic statements, meta-commentary, introductions, disclosures, unrelated anecdotes.
+
+EVIDENCE: RCT|Cohort|MetaAnalysis|CaseSeries|Mechanistic|Animal|ExpertOpinion|Other
+CONFIDENCE: high (strong support), medium (mixed), low (speculative/uncertain)
+
+IMPORTANCE (1-3): Think "If building the world's best notes for this topic, how central is this?"
+- 3 = Core, high-value, changes behavior/understanding for most patients/clinicians
+- 2 = Useful, but not central
+- 1 = Niche, background, or edge-case
+
+ACTIONABILITY: Distinguish direct protocols from indirect guidance
+- High = Directly tells someone what to do differently (protocols, thresholds)
+- Medium = Indirectly guides behavior (e.g., mechanism influencing decisions)
+- Low/Background = Mostly knowledge, doesn't change behavior
+
+AUDIENCE: Patient|Clinician|Both
+INSIGHT_TYPE: Protocol|Explanation|Mechanism|Anecdote|Warning|Controversy|Other
+TONE: Neutral|Surprised|Skeptical|Cautious|Enthusiastic|Concerned|Other
+
+Include direct quotes (max 40 words) when phrasing is memorable/surprising. Each insight: 1-3 sentences with full detail.
+
+Return JSON: {"insights": [{"statement": "...", "context_note": "...", "evidence_type": "...", "qualifiers": {"population": "...", "dose": "...", "duration": "...", "outcome": "...", "effect_size": "...", "caveats": "..."}, "confidence": "...", "importance": 1|2|3, "actionability": "...", "primary_audience": "...", "insight_type": "...", "has_direct_quote": true|false, "direct_quote": "...", "tone": "..."}]}
+If no insights: {"insights": []}
+`
+
+// Use optimized prompt by default, but can be switched via feature flag
+const EXTRACTION_SYSTEM_PROMPT = USE_OPTIMIZED_PROMPT 
+  ? EXTRACTION_SYSTEM_PROMPT_OPTIMIZED 
+  : EXTRACTION_SYSTEM_PROMPT_ORIGINAL
+
+async function extractInsightsFromChunk(chunkContent: string, chunkIndex?: number, totalChunks?: number): Promise<{ insights: Insight[], tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
   const userPrompt = `Text to analyze:
 ${chunkContent}`
 
@@ -311,15 +385,20 @@ ${chunkContent}`
     console.log(`[${chunkLabel}] Calling OpenAI API with model: gpt-5-mini`)
     console.log(`[${chunkLabel}] Chunk content length: ${chunkContent.length} chars`)
     
-    const completion = await openai.chat.completions.create({
-      model: 'gpt-5-mini', // GPT-5 Mini: Better performance with cost efficiency, 400K context window
-      messages: [
-        { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
-        { role: 'user', content: userPrompt }
-      ],
-      // Note: gpt-5-mini only supports default temperature (1), custom values are not supported
-      response_format: { type: 'json_object' }
-    })
+    // Use retry helper for OpenAI API call
+    const completion = await callOpenAIWithRetry(
+      () => openai.chat.completions.create({
+        model: 'gpt-5-mini', // GPT-5 Mini: Better performance with cost efficiency, 400K context window
+        messages: [
+          { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
+          { role: 'user', content: userPrompt }
+        ],
+        // Note: gpt-5-mini only supports default temperature (1), custom values are not supported
+        response_format: { type: 'json_object' }
+      }),
+      2, // maxRetries = 2 (3 total attempts)
+      chunkLabel
+    )
 
     console.log(`[${chunkLabel}] OpenAI API call completed`)
     
@@ -397,6 +476,7 @@ ${chunkContent}`
       }
       
       // Re-throw fatal errors that should stop processing
+      // (These should have been caught by retry helper, but handle them here as fallback)
       const errorStatus = (error as any).status
       const errorCode = (error as any).code
       
@@ -405,14 +485,12 @@ ${chunkContent}`
         throw new Error(`Fatal API error at ${chunkLabel}: ${error.message}`)
       }
       
-      // Rate limiting - we might want to retry, but for now throw to surface the issue
-      if (errorStatus === 429 || errorCode === 'rate_limit_exceeded') {
-        throw new Error(`Rate limit exceeded at ${chunkLabel}. Please wait a moment and try again.`)
-      }
+      // If we get here after retries, it's a persistent transient error or unexpected error
+      // Log and return empty array to continue processing other chunks
+      console.warn(`[${chunkLabel}] Error after retries, returning empty insights array, continuing with next chunk`)
+      return { insights: [], tokenUsage: undefined }
     }
-    
-    // For other errors, return empty array and continue (might be transient)
-    console.warn(`[${chunkLabel}] Returning empty insights array due to error, continuing with next chunk`)
+    // If error is not an Error instance, return empty array
     return { insights: [], tokenUsage: undefined }
   }
 }
@@ -434,9 +512,62 @@ export type ProgressCallback = (progress: {
 }) => void
 
 /**
+ * Retry helper for OpenAI API calls with exponential backoff
+ * Retries on transient errors (429 rate limit, 5xx server errors)
+ * Fails immediately on fatal errors (401, 403, model_not_found, etc.)
+ */
+async function callOpenAIWithRetry<T>(
+  apiCall: () => Promise<T>,
+  maxRetries: number = 2,
+  label?: string
+): Promise<T> {
+  let lastError: any
+  
+  for (let attempt = 0; attempt <= maxRetries; attempt++) {
+    try {
+      return await apiCall()
+    } catch (error: any) {
+      lastError = error
+      const errorStatus = error?.status
+      const errorCode = error?.code
+      
+      // Fatal errors: don't retry
+      if (errorStatus === 401 || errorStatus === 403 || errorCode === 'invalid_api_key' || errorCode === 'model_not_found') {
+        throw error
+      }
+      
+      // Retry on transient errors (429 rate limit, 5xx server errors)
+      const isTransientError = errorStatus === 429 || 
+                               errorStatus === 500 || 
+                               errorStatus === 502 || 
+                               errorStatus === 503 || 
+                               errorStatus === 504 ||
+                               errorCode === 'rate_limit_exceeded'
+      
+      if (isTransientError && attempt < maxRetries) {
+        const backoffMs = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
+        const logLabel = label ? `[${label}] ` : ''
+        console.warn(`${logLabel}Transient error (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms...`, {
+          status: errorStatus,
+          code: errorCode,
+          message: error.message
+        })
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        continue
+      }
+      
+      // Not a transient error, or out of retries
+      throw error
+    }
+  }
+  
+  throw lastError
+}
+
+/**
  * Split text into overlapping chunks
  */
-function splitIntoChunks(text: string, chunkSize: number = 1500, overlapSize: number = 300): string[] {
+function splitIntoChunks(text: string, chunkSize: number = DEFAULT_CHUNK_SIZE, overlapSize: number = DEFAULT_CHUNK_OVERLAP): string[] {
   // First split by double newlines (paragraphs)
   const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0)
   
@@ -479,115 +610,123 @@ export async function processSourceFromPlainText(
   text: string,
   onProgress?: ProgressCallback
 ): Promise<void> {
-  // 1. Split text into chunks
-  const chunks = splitIntoChunks(text)
-  console.log(`Split transcript into ${chunks.length} chunks`)
-  
-  onProgress?.({
-    stage: 'chunking',
-    totalChunks: chunks.length,
-    chunksProcessed: 0,
-    insightsCreated: 0,
-    message: `Split transcript into ${chunks.length} chunks`
-  })
-
-  // 2. Insert chunks into database
-  const chunkInserts = chunks.map((content, index) => ({
-    source_id: sourceId,
-    locator: `seg-${String(index + 1).padStart(3, '0')}`,
-    content,
-    embedding: null // We'll add embeddings later
-  }))
-
-  const { error: chunksError } = await supabaseAdmin
-    .from('chunks')
-    .insert(chunkInserts)
-
-  if (chunksError) {
-    throw new Error(`Failed to insert chunks: ${chunksError.message}`)
-  }
-
-  console.log(`Inserted ${chunkInserts.length} chunks`)
-
-  // 3. Process each chunk to extract insights
-  let insightsCreated = 0
+  const startTime = Date.now()
+  let chunksCreated = 0
   let chunksProcessed = 0
-  let totalPromptTokens = 0
-  let totalCompletionTokens = 0
-  let totalTokens = 0
-  
-  for (const chunk of chunkInserts) {
-    chunksProcessed++
-    console.log(`\n[${chunk.locator}] Processing chunk ${chunksProcessed}/${chunkInserts.length}`)
-    console.log(`[${chunk.locator}] Content length: ${chunk.content.length} characters`)
-    console.log(`[${chunk.locator}] Content preview: ${chunk.content.substring(0, 150)}...`)
+  let chunksWithInsights = 0
+  let chunksWithoutInsights = 0
+  let insightsCreated = 0
+  let processingError: Error | null = null
+
+  try {
+    // 1. Split text into chunks
+    const chunks = splitIntoChunks(text)
+    chunksCreated = chunks.length
+    console.log(`Split transcript into ${chunks.length} chunks`)
     
     onProgress?.({
-      stage: 'extracting',
-      chunksProcessed,
-      totalChunks: chunkInserts.length,
-      insightsCreated,
-      message: `Processing chunk ${chunk.locator} (${chunksProcessed}/${chunkInserts.length})...`,
-      tokenUsage: totalTokens > 0 ? {
-        promptTokens: totalPromptTokens,
-        completionTokens: totalCompletionTokens,
-        totalTokens: totalTokens
-      } : undefined
+      stage: 'chunking',
+      totalChunks: chunks.length,
+      chunksProcessed: 0,
+      insightsCreated: 0,
+      message: `Split transcript into ${chunks.length} chunks`
     })
-    
-    let insights: Insight[]
-    let chunkTokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
-    try {
-      const result = await extractInsightsFromChunk(chunk.content, chunksProcessed - 1, chunkInserts.length)
-      insights = result.insights
-      chunkTokenUsage = result.tokenUsage
+
+    // 2. Insert chunks into database
+    const chunkInserts = chunks.map((content, index) => ({
+      source_id: sourceId,
+      locator: `seg-${String(index + 1).padStart(3, '0')}`,
+      content,
+      embedding: null // We'll add embeddings later
+    }))
+
+    const { error: chunksError } = await supabaseAdmin
+      .from('chunks')
+      .insert(chunkInserts)
+
+    if (chunksError) {
+      throw new Error(`Failed to insert chunks: ${chunksError.message}`)
+    }
+
+    console.log(`Inserted ${chunkInserts.length} chunks`)
+
+    // 3. Process each chunk to extract insights
+    let totalPromptTokens = 0
+    let totalCompletionTokens = 0
+    let totalTokens = 0
+  
+    for (const chunk of chunkInserts) {
+      console.log(`\n[${chunk.locator}] Processing chunk ${chunksProcessed + 1}/${chunkInserts.length}`)
+      console.log(`[${chunk.locator}] Content length: ${chunk.content.length} characters`)
+      console.log(`[${chunk.locator}] Content preview: ${chunk.content.substring(0, 150)}...`)
       
-      if (chunkTokenUsage) {
-        totalPromptTokens += chunkTokenUsage.promptTokens
-        totalCompletionTokens += chunkTokenUsage.completionTokens
-        totalTokens += chunkTokenUsage.totalTokens
+      onProgress?.({
+        stage: 'extracting',
+        chunksProcessed,
+        totalChunks: chunkInserts.length,
+        insightsCreated,
+        message: `Processing chunk ${chunk.locator} (${chunksProcessed + 1}/${chunkInserts.length})...`,
+        tokenUsage: totalTokens > 0 ? {
+          promptTokens: totalPromptTokens,
+          completionTokens: totalCompletionTokens,
+          totalTokens: totalTokens
+        } : undefined
+      })
+      
+      let insights: Insight[]
+      let chunkTokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
+      try {
+        const result = await extractInsightsFromChunk(chunk.content, chunksProcessed, chunkInserts.length)
+        insights = result.insights
+        chunkTokenUsage = result.tokenUsage
+        
+        if (chunkTokenUsage) {
+          totalPromptTokens += chunkTokenUsage.promptTokens
+          totalCompletionTokens += chunkTokenUsage.completionTokens
+          totalTokens += chunkTokenUsage.totalTokens
+        }
+      } catch (chunkError) {
+        console.error(`[${chunk.locator}] ❌ Fatal error extracting insights from chunk:`, chunkError)
+        const errorMessage = chunkError instanceof Error ? chunkError.message : "Unknown error during extraction"
+        const errorStack = chunkError instanceof Error ? chunkError.stack : undefined
+        throw new Error(`Failed to process chunk ${chunk.locator} (${chunksProcessed + 1}/${chunkInserts.length}): ${errorMessage}${errorStack ? `\n\nStack: ${errorStack}` : ''}`)
       }
-    } catch (chunkError) {
-      console.error(`[${chunk.locator}] ❌ Fatal error extracting insights from chunk:`, chunkError)
-      const errorMessage = chunkError instanceof Error ? chunkError.message : "Unknown error during extraction"
-      const errorStack = chunkError instanceof Error ? chunkError.stack : undefined
-      throw new Error(`Failed to process chunk ${chunk.locator} (${chunksProcessed}/${chunkInserts.length}): ${errorMessage}${errorStack ? `\n\nStack: ${errorStack}` : ''}`)
-    }
-    
-    console.log(`[${chunk.locator}] Got ${insights.length} insights from extraction`)
-    
-    // Small delay between chunks to avoid rate limiting (especially important for gpt-5-mini)
-    if (chunksProcessed < chunkInserts.length) {
-      await new Promise(resolve => setTimeout(resolve, 200)) // 200ms delay between chunks
-    }
-    
-    if (insights.length === 0) {
-      console.warn(`[${chunk.locator}] ⚠️ No insights extracted - this might indicate an API error or all insights were filtered`)
-      // Don't fail the whole process if one chunk has no insights, but log it
-      continue
-    }
+      
+      // Track that we successfully completed extraction for this chunk
+      chunksProcessed++
+      console.log(`[${chunk.locator}] Got ${insights.length} insights from extraction`)
+      
+      if (insights.length === 0) {
+        chunksWithoutInsights++
+        console.warn(`[${chunk.locator}] ⚠️ No insights extracted - this might indicate an API error or all insights were filtered`)
+        // Don't fail the whole process if one chunk has no insights, but log it
+        continue
+      }
 
-    // 4. For each insight, check for duplicates and insert/link
-    for (const insight of insights) {
-      const insightHash = computeInsightHash(insight.statement)
+      chunksWithInsights++
 
-      // Check if insight with this hash already exists
-      const { data: existingInsight, error: lookupError } = await supabaseAdmin
-        .from('insights')
-        .select('id')
-        .eq('insight_hash', insightHash)
-        .single()
+      // 4. For each insight, check for duplicates and insert/link
+      for (const insight of insights) {
+        const insightHash = computeInsightHash(insight.statement)
 
-      let insightId: string
-
-      if (existingInsight && !lookupError) {
-        // Insight already exists, use its ID
-        insightId = existingInsight.id
-        console.log(`[${chunk.locator}] Found existing insight with hash ${insightHash.substring(0, 8)}...`)
-      } else {
-        // Insert new insight with all new fields
-        const { data: newInsight, error: insertError } = await supabaseAdmin
+        // Check if insight with this hash already exists
+        const { data: existingInsight, error: lookupError } = await supabaseAdmin
           .from('insights')
+          .select('id')
+          .eq('insight_hash', insightHash)
+          .single()
+
+        let insightId: string
+
+        if (existingInsight && !lookupError) {
+          // Insight already exists, use its ID
+          insightId = existingInsight.id
+          console.log(`[${chunk.locator}] Found existing insight with hash ${insightHash.substring(0, 8)}...`)
+        } else {
+          // Insert new insight with all new fields
+          // Mark needs_tagging = true so it can be processed by the async batch job
+          const { data: newInsight, error: insertError } = await supabaseAdmin
+            .from('insights')
           .insert({
             statement: insight.statement,
             context_note: insight.context_note || null,
@@ -601,91 +740,119 @@ export async function processSourceFromPlainText(
             insight_type: insight.insight_type ?? 'Explanation',
             has_direct_quote: insight.has_direct_quote ?? false,
             direct_quote: insight.direct_quote || null,
-            tone: insight.tone ?? 'Neutral'
+            tone: insight.tone ?? 'Neutral',
+            needs_tagging: true // Mark for async auto-tagging batch job
           })
           .select('id')
           .single()
 
-        if (insertError || !newInsight) {
-          console.error(`[${chunk.locator}] ❌ Failed to insert insight:`, insertError)
-          if (insertError) {
-            console.error(`[${chunk.locator}] Insert error details:`, JSON.stringify(insertError, null, 2))
+          if (insertError || !newInsight) {
+            console.error(`[${chunk.locator}] ❌ Failed to insert insight:`, insertError)
+            if (insertError) {
+              console.error(`[${chunk.locator}] Insert error details:`, JSON.stringify(insertError, null, 2))
+            }
+            console.error(`[${chunk.locator}] Insight data that failed:`, JSON.stringify({
+              statement: insight.statement.substring(0, 100),
+              evidence_type: insight.evidence_type,
+              confidence: insight.confidence,
+              importance: insight.importance,
+              actionability: insight.actionability,
+              primary_audience: insight.primary_audience,
+              insight_type: insight.insight_type,
+            }, null, 2))
+            continue
           }
-          console.error(`[${chunk.locator}] Insight data that failed:`, JSON.stringify({
-            statement: insight.statement.substring(0, 100),
-            evidence_type: insight.evidence_type,
-            confidence: insight.confidence,
-            importance: insight.importance,
-            actionability: insight.actionability,
-            primary_audience: insight.primary_audience,
-            insight_type: insight.insight_type,
-          }, null, 2))
-          continue
+
+          insightId = newInsight.id
+          insightsCreated++
+          console.log(`[${chunk.locator}] ✓ Created new insight ${insightId.substring(0, 8)}... with hash ${insightHash.substring(0, 8)}...`)
+          
+          // NOTE: Auto-tagging has been moved to the async batch job
+          // (/api/admin/insights/autotag-batch). This pipeline only extracts insights.
+          // New insights are marked with needs_tagging = true for later processing.
+          
+          onProgress?.({
+            stage: 'extracting',
+            chunksProcessed,
+            totalChunks: chunkInserts.length,
+            insightsCreated,
+            message: `Created ${insightsCreated} insights so far...`
+          })
         }
 
-        insightId = newInsight.id
-        insightsCreated++
-        console.log(`[${chunk.locator}] ✓ Created new insight ${insightId.substring(0, 8)}... with hash ${insightHash.substring(0, 8)}...`)
-        
-        // Auto-tag the new insight to concepts
-        try {
-          const { autoTagAndLinkInsight } = await import('./autotag')
-          await autoTagAndLinkInsight(insightId, insight)
-        } catch (autoTagError) {
-          console.error(`[${chunk.locator}] Error auto-tagging insight:`, autoTagError)
-          // Continue processing even if auto-tagging fails
-        }
-        
-        onProgress?.({
-          stage: 'extracting',
-          chunksProcessed,
-          totalChunks: chunkInserts.length,
-          insightsCreated,
-          message: `Created ${insightsCreated} insights so far...`
-        })
-      }
+        // 5. Link insight to source (insert into insight_sources)
+        const { error: linkError } = await supabaseAdmin
+          .from('insight_sources')
+          .insert({
+            insight_id: insightId,
+            source_id: sourceId,
+            locator: chunk.locator
+          })
 
-      // 5. Link insight to source (insert into insight_sources)
-      const { error: linkError } = await supabaseAdmin
-        .from('insight_sources')
-        .insert({
-          insight_id: insightId,
-          source_id: sourceId,
-          locator: chunk.locator
-        })
-
-      if (linkError) {
-        // Might be a duplicate link, which is okay
-        if (!linkError.message.includes('duplicate') && !linkError.message.includes('unique')) {
-          console.error(`[${chunk.locator}] ❌ Failed to link insight ${insightId.substring(0, 8)}... to source:`, linkError)
+        if (linkError) {
+          // Might be a duplicate link, which is okay
+          if (!linkError.message.includes('duplicate') && !linkError.message.includes('unique')) {
+            console.error(`[${chunk.locator}] ❌ Failed to link insight ${insightId.substring(0, 8)}... to source:`, linkError)
+          } else {
+            console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... (or already linked)`)
+          }
         } else {
-          console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... (or already linked)`)
+          console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... to source`)
         }
-      } else {
-        console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... to source`)
       }
     }
-  }
 
-  console.log(`\n✅ Processing complete! Created ${insightsCreated} insights from ${chunkInserts.length} chunks.`)
-  if (totalTokens > 0) {
-    console.log(`📊 Total API usage: ${totalPromptTokens.toLocaleString()} prompt tokens + ${totalCompletionTokens.toLocaleString()} completion tokens = ${totalTokens.toLocaleString()} total tokens`)
-    // Estimate cost (gpt-5-mini pricing - adjust if needed)
-    // Note: Actual pricing may vary, this is an estimate
-    const estimatedCost = (totalPromptTokens / 1_000_000) * 0.15 + (totalCompletionTokens / 1_000_000) * 0.60
-    console.log(`💰 Estimated cost: $${estimatedCost.toFixed(4)}`)
+    console.log(`\n✅ Processing complete! Created ${insightsCreated} insights from ${chunkInserts.length} chunks.`)
+    if (totalTokens > 0) {
+      console.log(`📊 Total API usage: ${totalPromptTokens.toLocaleString()} prompt tokens + ${totalCompletionTokens.toLocaleString()} completion tokens = ${totalTokens.toLocaleString()} total tokens`)
+      // Estimate cost (gpt-5-mini pricing - adjust if needed)
+      // Note: Actual pricing may vary, this is an estimate
+      const estimatedCost = (totalPromptTokens / 1_000_000) * 0.15 + (totalCompletionTokens / 1_000_000) * 0.60
+      console.log(`💰 Estimated cost: $${estimatedCost.toFixed(4)}`)
+    }
+    
+    onProgress?.({
+      stage: 'extracting',
+      chunksProcessed: chunkInserts.length,
+      totalChunks: chunkInserts.length,
+      insightsCreated,
+      message: `Processing complete! Created ${insightsCreated} insights from ${chunkInserts.length} chunks.`,
+      tokenUsage: totalTokens > 0 ? {
+        promptTokens: totalPromptTokens,
+        completionTokens: totalCompletionTokens,
+        totalTokens: totalTokens
+      } : undefined
+    })
+  } catch (error) {
+    // Capture error for saving to processing run record
+    processingError = error instanceof Error ? error : new Error(String(error))
+    throw error
+  } finally {
+    // Always save processing run record, even if processing failed
+    const endTime = Date.now()
+    const processingDurationSeconds = (endTime - startTime) / 1000
+    const status = processingError || chunksProcessed < chunksCreated ? 'failed' : 'success'
+    
+    const { error: runError } = await supabaseAdmin
+      .from('source_processing_runs')
+      .insert({
+        source_id: sourceId,
+        processed_at: new Date(startTime).toISOString(),
+        chunks_created: chunksCreated,
+        chunks_processed: chunksProcessed,
+        chunks_with_insights: chunksWithInsights,
+        chunks_without_insights: chunksWithoutInsights,
+        total_insights_created: insightsCreated,
+        processing_duration_seconds: processingDurationSeconds,
+        status,
+        error_message: processingError ? processingError.message : null
+      })
+
+    if (runError) {
+      console.error('Failed to save processing run record:', runError)
+      // Don't throw - we don't want to mask the original error
+    } else {
+      console.log(`Saved processing run record: ${status}, ${chunksProcessed}/${chunksCreated} chunks processed`)
+    }
   }
-  
-  onProgress?.({
-    stage: 'extracting',
-    chunksProcessed: chunkInserts.length,
-    totalChunks: chunkInserts.length,
-    insightsCreated,
-    message: `Processing complete! Created ${insightsCreated} insights from ${chunkInserts.length} chunks.`,
-    tokenUsage: totalTokens > 0 ? {
-      promptTokens: totalPromptTokens,
-      completionTokens: totalCompletionTokens,
-      totalTokens: totalTokens
-    } : undefined
-  })
 }

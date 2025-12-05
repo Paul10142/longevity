@@ -2,11 +2,9 @@ import { notFound } from "next/navigation"
 import Link from "next/link"
 import { SourceEditorClient } from "@/components/SourceEditorClient"
 import { TranscriptEditorClient } from "@/components/TranscriptEditorClient"
-import { ReprocessButton } from "@/components/ReprocessButton"
 import { SourceInsightsClient } from "@/components/SourceInsightsClient"
+import { ProcessingRunsCard } from "@/components/ProcessingRunsCard"
 import { supabaseAdmin } from "@/lib/supabaseServer"
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
-import { Badge } from "@/components/ui/badge"
 
 export default async function SourcePage({
   params,
@@ -51,6 +49,17 @@ export default async function SourcePage({
     .select("id, locator, content")
     .eq("source_id", id)
     .order("locator", { ascending: true })
+
+  // Fetch processing runs for this source
+  const { data: processingRuns, error: processingRunsError } = await supabaseAdmin
+    .from("source_processing_runs")
+    .select("*")
+    .eq("source_id", id)
+    .order("processed_at", { ascending: false })
+
+  if (processingRunsError) {
+    console.error("Error fetching processing runs:", processingRunsError)
+  }
 
   // Fetch insights linked to this source, including which other sources they're linked to
   // Also fetch topics/concepts each insight is connected to
@@ -161,8 +170,33 @@ export default async function SourcePage({
         }
       })
       .filter((i: any) => i !== null)
-      // Sort by importance (3 = highest, 1 = lowest)
-      .sort((a: any, b: any) => (b.importance ?? 2) - (a.importance ?? 2)) || []
+      // Sort by locator to show insights in the order they appear in the source
+      // This makes it easier to see how insights build up and relate to the conversation flow
+      .sort((a: any, b: any) => {
+        // Extract numeric segment number from "seg-001" format for proper sorting
+        const aNum = parseInt(a.locator.replace('seg-', '')) || 0
+        const bNum = parseInt(b.locator.replace('seg-', '')) || 0
+        return aNum - bNum
+      })
+      // Assign sequential reference numbers (#1, #2, #3...) based on source order
+      .map((insight: any, index: number) => ({
+        ...insight,
+        referenceNumber: index + 1
+      })) || []
+
+  // Organize insights by locator for ProcessingRunsCard
+  const insightsByLocator: Record<string, Array<{ id: string; statement: string; importance?: number; insight_type?: string }>> = {}
+  insightsList.forEach((insight: any) => {
+    if (!insightsByLocator[insight.locator]) {
+      insightsByLocator[insight.locator] = []
+    }
+    insightsByLocator[insight.locator].push({
+      id: insight.id,
+      statement: insight.statement,
+      importance: insight.importance,
+      insight_type: insight.insight_type
+    })
+  })
 
   return (
     <div className="min-h-screen bg-background">
@@ -184,19 +218,15 @@ export default async function SourcePage({
           {/* Transcript Section - Now with editing and collapsible */}
           <TranscriptEditorClient sourceId={source.id} transcript={source.transcript} />
           
-          {/* Reprocess Button - Only show if transcript exists */}
-          {source.transcript && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle>Reprocess Transcript</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground mb-4">
-                  Delete existing chunks and insights, then regenerate them from the current transcript.
-                </p>
-                <ReprocessButton sourceId={source.id} />
-              </CardContent>
-            </Card>
+          {/* Processing Runs - Show if we have runs or transcript exists */}
+          {((processingRuns && processingRuns.length > 0 && chunks) || source.transcript) && (
+            <ProcessingRunsCard
+              sourceId={source.id}
+              processingRuns={processingRuns || []}
+              chunks={chunks || []}
+              insightsByLocator={insightsByLocator}
+              hasTranscript={!!source.transcript}
+            />
           )}
           
           <div className="mb-6 text-sm mt-6">

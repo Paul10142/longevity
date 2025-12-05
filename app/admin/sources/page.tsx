@@ -43,6 +43,44 @@ export default async function AdminSourcesPage() {
       console.error('Error message:', error.message)
       console.error('Error details:', error.details)
       console.error('Error hint:', error.hint)
+    } else if (sources) {
+      // Fetch insights count for each source (count distinct insights)
+      const sourceIds = sources.map((s: any) => s.id)
+      const { data: insightCounts } = await supabaseAdmin
+        .from('insight_sources')
+        .select('source_id, insight_id')
+        .in('source_id', sourceIds)
+      
+      // Count distinct insights per source
+      const insightsCountMap = new Map<string, Set<string>>()
+      if (insightCounts) {
+        insightCounts.forEach((item: any) => {
+          if (!insightsCountMap.has(item.source_id)) {
+            insightsCountMap.set(item.source_id, new Set())
+          }
+          insightsCountMap.get(item.source_id)!.add(item.insight_id)
+        })
+      }
+      
+      // Convert Sets to counts
+      const insightsCountMapFinal = new Map<string, number>()
+      insightsCountMap.forEach((insightSet, sourceId) => {
+        insightsCountMapFinal.set(sourceId, insightSet.size)
+      })
+
+      // Add insights count and word count to each source
+      sources = sources.map((source: any) => {
+        const wordCount = source.transcript 
+          ? source.transcript.trim().split(/\s+/).filter((w: string) => w.length > 0).length 
+          : 0
+        const insightsCount = insightsCountMapFinal.get(source.id) || 0
+        
+        return {
+          ...source,
+          wordCount,
+          insightsCount
+        }
+      })
     }
   } catch (err) {
     console.error('Exception fetching sources:', err)
@@ -110,8 +148,9 @@ export default async function AdminSourcesPage() {
                       <TableHead>Title</TableHead>
                       <TableHead>Type</TableHead>
                       <TableHead>Authors</TableHead>
-                      <TableHead>Date</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead>Word Count</TableHead>
+                      <TableHead>Insights</TableHead>
                       <TableHead>Actions</TableHead>
                     </TableRow>
                   </TableHeader>
@@ -126,16 +165,17 @@ export default async function AdminSourcesPage() {
                             : "-"}
                         </TableCell>
                         <TableCell>
-                          {source.date 
-                            ? new Date(source.date).toLocaleDateString('en-US', { 
-                                month: '2-digit', 
-                                day: '2-digit', 
-                                year: 'numeric' 
-                              })
-                            : "-"}
+                          {new Date(source.created_at).toLocaleDateString('en-US', {
+                            month: '2-digit',
+                            day: '2-digit',
+                            year: '2-digit'
+                          })}
                         </TableCell>
                         <TableCell>
-                          {new Date(source.created_at).toLocaleDateString()}
+                          {source.wordCount > 0 ? source.wordCount.toLocaleString() : "-"}
+                        </TableCell>
+                        <TableCell>
+                          {source.insightsCount > 0 ? source.insightsCount : "-"}
                         </TableCell>
                         <TableCell>
                           <Link href={`/sources/${source.id}`}>

@@ -149,14 +149,16 @@ ul, ol {
   padding-left: 1.5em !important;
 }
 
-/* Ensure bullet points are visible in rich text editor content */
+/* Ensure bullet points are visible in rich text editor content with proper indentation */
 .prose ul,
 [class*="prose"] ul,
 div[class*="[&>ul]"] ul {
   list-style-type: disc !important;
   list-style-position: outside !important;
-  padding-left: 0 !important;
-  margin-bottom: 0.125rem !important;
+  padding-left: 2em !important;
+  margin-left: 0 !important;
+  margin-bottom: 0.5em !important;
+  color: black !important;
 }
 
 .prose ol,
@@ -164,8 +166,10 @@ div[class*="[&>ul]"] ul {
 div[class*="[&>ol]"] ol {
   list-style-type: decimal !important;
   list-style-position: outside !important;
-  padding-left: 0 !important;
-  margin-bottom: 0.125rem !important;
+  padding-left: 2em !important;
+  margin-left: 0 !important;
+  margin-bottom: 0.5em !important;
+  color: black !important;
 }
 
 .prose ul li,
@@ -173,7 +177,15 @@ div[class*="[&>ol]"] ol {
 div[class*="[&>ul]"] ul li {
   display: list-item !important;
   list-style-type: disc !important;
-  margin-bottom: 0.125rem !important;
+  margin-bottom: 0.25em !important;
+  padding-left: 0.5em !important;
+  color: black !important;
+}
+
+.prose ul li::marker,
+[class*="prose"] ul li::marker,
+div[class*="[&>ul]"] ul li::marker {
+  color: black !important;
 }
 
 .prose ol li,
@@ -181,7 +193,15 @@ div[class*="[&>ul]"] ul li {
 div[class*="[&>ol]"] ol li {
   display: list-item !important;
   list-style-type: decimal !important;
-  margin-bottom: 0.125rem !important;
+  margin-bottom: 0.25em !important;
+  padding-left: 0.5em !important;
+  color: black !important;
+}
+
+.prose ol li::marker,
+[class*="prose"] ol li::marker,
+div[class*="[&>ol]"] ol li::marker {
+  color: black !important;
 }
 
 /* Force bullet points to show in any HTML content */
@@ -198,6 +218,26 @@ ul li, ol li {
   text-indent: 0 !important;
   margin-left: 0 !important;
   padding-left: 0 !important;
+}
+
+/* Hide H1 headings in patient/clinician/protocol article views */
+.markdown-content h1 {
+  display: none !important;
+}
+
+/* Ensure prose-sm lists render correctly */
+.prose-sm ul,
+.prose-sm ol {
+  list-style-position: outside !important;
+  padding-left: 1.5em !important;
+  margin-bottom: 0.5em !important;
+}
+
+.prose-sm ul li,
+.prose-sm ol li {
+  display: list-item !important;
+  margin-bottom: 0.25em !important;
+  padding-left: 0.5em !important;
 }
 
 @media (max-width: 768px) {

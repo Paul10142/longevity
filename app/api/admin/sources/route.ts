@@ -2,10 +2,16 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { processSourceFromPlainText } from "@/lib/pipeline"
 
-// Helper to send SSE data
+// Helper to send SSE data (silently fails if client disconnected)
 function sendSSE(controller: ReadableStreamDefaultController, data: any) {
-  const message = `data: ${JSON.stringify(data)}\n\n`
-  controller.enqueue(new TextEncoder().encode(message))
+  try {
+    const message = `data: ${JSON.stringify(data)}\n\n`
+    controller.enqueue(new TextEncoder().encode(message))
+  } catch (error) {
+    // Client disconnected - processing continues but we can't send updates
+    // This is fine, the actual work will complete server-side
+    console.log('Client disconnected, continuing processing in background')
+  }
 }
 
 export async function POST(request: NextRequest) {
@@ -28,7 +34,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Insert source (including transcript)
+    // Insert source (including transcript) with processing_status = 'pending'
     const { data: source, error: insertError } = await supabaseAdmin
       .from("sources")
       .insert({
@@ -39,8 +45,11 @@ export async function POST(request: NextRequest) {
         url: url || null,
         transcript_quality: "high",
         transcript: transcript, // Save the raw transcript
+        processing_status: 'pending', // Explicit initial state
+        processing_error: null,
+        last_processed_at: null,
       })
-      .select("id")
+      .select("id, processing_status")
       .single()
 
     if (insertError || !source) {
@@ -58,6 +67,16 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Idempotency check: if source already succeeded, short-circuit
+    if (source.processing_status === 'succeeded') {
+      return NextResponse.json({
+        success: true,
+        sourceId: source.id,
+        message: "Source already processed successfully",
+        alreadyProcessed: true,
+      })
+    }
+
     // Check if client wants streaming progress updates
     const acceptHeader = request.headers.get("accept") || ""
     const wantsStreaming = acceptHeader.includes("text/event-stream")
@@ -67,6 +86,15 @@ export async function POST(request: NextRequest) {
       const stream = new ReadableStream({
         async start(controller) {
           try {
+            // Update status to 'processing' before starting
+            await supabaseAdmin
+              .from("sources")
+              .update({
+                processing_status: 'processing',
+                processing_error: null,
+              })
+              .eq("id", source.id)
+
             sendSSE(controller, {
               status: { type: 'creating', message: 'Source created, starting processing...' }
             })
@@ -85,24 +113,57 @@ export async function POST(request: NextRequest) {
               })
             })
             
+            // Update status to 'succeeded' on success
+            await supabaseAdmin
+              .from("sources")
+              .update({
+                processing_status: 'succeeded',
+                last_processed_at: new Date().toISOString(),
+                processing_error: null,
+              })
+              .eq("id", source.id)
+
+            // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
+            // so topic pages pick up new narratives/evidence without manual deploys.
+            
             sendSSE(controller, {
               status: { type: 'success', message: 'Processing complete!' },
               done: true,
               sourceId: source.id
             })
             
-            controller.close()
+            try {
+              controller.close()
+            } catch (error) {
+              // Client already disconnected, that's fine
+            }
           } catch (processingError) {
             console.error("Error processing transcript:", processingError)
+            const errorMessage = processingError instanceof Error ? processingError.message : "Unknown error"
+            
+            // Update status to 'failed' on error
+            await supabaseAdmin
+              .from("sources")
+              .update({
+                processing_status: 'failed',
+                last_processed_at: new Date().toISOString(),
+                processing_error: errorMessage.substring(0, 1000), // Truncate if needed
+              })
+              .eq("id", source.id)
+            
             sendSSE(controller, {
               status: {
                 type: 'error',
                 message: 'Processing failed',
-                details: processingError instanceof Error ? processingError.message : "Unknown error"
+                details: errorMessage
               },
               done: true
             })
-            controller.close()
+            try {
+              controller.close()
+            } catch (error) {
+              // Client already disconnected, that's fine
+            }
           }
         }
       })
@@ -118,28 +179,60 @@ export async function POST(request: NextRequest) {
     
     // Process the transcript (non-streaming, for backwards compatibility)
     try {
+      // Update status to 'processing' before starting
+      await supabaseAdmin
+        .from("sources")
+        .update({
+          processing_status: 'processing',
+          processing_error: null,
+        })
+        .eq("id", source.id)
+
       console.log(`Starting processing for source ${source.id}`)
       await processSourceFromPlainText(source.id, transcript)
       console.log(`Finished processing for source ${source.id}`)
+
+      // Update status to 'succeeded' on success
+      await supabaseAdmin
+        .from("sources")
+        .update({
+          processing_status: 'succeeded',
+          last_processed_at: new Date().toISOString(),
+          processing_error: null,
+        })
+        .eq("id", source.id)
+
+      // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
+      // so topic pages pick up new narratives/evidence without manual deploys.
+
+      return NextResponse.json({
+        success: true,
+        sourceId: source.id,
+        message: "Source created and processed successfully",
+      })
     } catch (processingError) {
       console.error("Error processing transcript:", processingError)
-      // Note: Source is already created, but processing failed
-      // In production, you might want to mark it as "processing_failed"
+      const errorMessage = processingError instanceof Error ? processingError.message : "Unknown error"
+      
+      // Update status to 'failed' on error
+      await supabaseAdmin
+        .from("sources")
+        .update({
+          processing_status: 'failed',
+          last_processed_at: new Date().toISOString(),
+          processing_error: errorMessage.substring(0, 1000), // Truncate if needed
+        })
+        .eq("id", source.id)
+
       return NextResponse.json(
         {
           error: "Source created but processing failed",
           sourceId: source.id,
-          details: processingError instanceof Error ? processingError.message : "Unknown error",
+          details: errorMessage,
         },
         { status: 500 }
       )
     }
-
-    return NextResponse.json({
-      success: true,
-      sourceId: source.id,
-      message: "Source created and processed successfully",
-    })
   } catch (error) {
     console.error("Error in POST /api/admin/sources:", error)
     return NextResponse.json(

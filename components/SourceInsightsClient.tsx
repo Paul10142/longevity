@@ -25,6 +25,7 @@ interface Insight {
   sharedWithSources?: string[]
   isShared?: boolean
   topics?: Array<{ id: string; name: string; slug: string }>
+  referenceNumber?: number
   [key: string]: any
 }
 
@@ -78,6 +79,12 @@ export function SourceInsightsClient({
               <div className="flex items-start justify-between mb-3">
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-2">
+                    {/* Reference Number - Prominently displayed */}
+                    {insight.referenceNumber && (
+                      <Badge variant="default" className="text-xs font-mono font-bold bg-primary">
+                        #{insight.referenceNumber}
+                      </Badge>
+                    )}
                     {/* Importance indicator (1-3 stars) */}
                     <div className="flex gap-0.5">
                       {[1, 2, 3].map((level) => (

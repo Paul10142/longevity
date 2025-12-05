@@ -1,7 +1,10 @@
 import { NextRequest, NextResponse } from "next/server"
 import { revalidatePath } from "next/cache"
 import { supabaseAdmin } from "@/lib/supabaseServer"
-import { generateTopicArticlesForConcept } from "@/lib/topicNarrative"
+import { generateProtocolForConcept } from "@/lib/topicProtocols"
+
+// TODO: Protect this route with authentication in production
+// For now, it's open in dev and non-production environments
 
 export async function POST(
   request: NextRequest,
@@ -31,22 +34,19 @@ export async function POST(
       )
     }
 
-    // Generate articles
-    await generateTopicArticlesForConcept(concept.id)
+    // Generate protocol
+    await generateProtocolForConcept(concept.id)
 
     // Revalidate the topic page so it updates quickly
     revalidatePath(`/topics/${slug}`)
-    
-    // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
-    // so topic pages pick up new narratives/evidence without manual deploys.
 
     return NextResponse.json({
       success: true,
-      message: `Generated clinician and patient articles for "${concept.name}"`,
+      message: `Generated protocol for "${concept.name}"`,
       conceptId: concept.id,
     })
   } catch (error) {
-    console.error("Error in POST /api/admin/topics/[slug]/generate-articles:", error)
+    console.error("Error in POST /api/admin/topics/[slug]/generate-protocol:", error)
     return NextResponse.json(
       { 
         error: error instanceof Error ? error.message : "Unknown error",

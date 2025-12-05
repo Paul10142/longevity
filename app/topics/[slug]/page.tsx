@@ -89,6 +89,27 @@ export default async function TopicPage({
   const clinicianArticle = articles?.find((a: any) => a.audience === 'clinician') || null
   const patientArticle = articles?.find((a: any) => a.audience === 'patient') || null
 
+  // Fetch protocol (latest version) - graceful degradation if this fails
+  const { data: protocols, error: protocolsError } = await retrySupabaseQuery(
+    () => supabaseAdmin
+      .from("topic_protocols")
+      .select("*")
+      .eq("concept_id", concept.id)
+      .order("version", { ascending: false })
+      .limit(1),
+    { maxRetries: 2 } // Fewer retries since protocols are optional
+  )
+
+  if (protocolsError) {
+    console.warn("Error fetching topic protocol (non-fatal):", protocolsError)
+    // Continue without protocol - it's optional
+  }
+
+  let protocol = protocols && protocols.length > 0 ? protocols[0] : null
+
+  // Protocol generation is now handled via admin API route only
+  // No LLM helpers should be called from page renders
+
   // Check if admin tools should be shown
   const showAdminTools = process.env.NODE_ENV === 'development' || process.env.SHOW_ADMIN_TOOLS === 'true'
 
@@ -437,6 +458,7 @@ export default async function TopicPage({
               <TopicViewTabs
                 patientArticle={patientArticle}
                 clinicianArticle={clinicianArticle}
+                protocol={protocol}
                 evidenceView={evidenceViewContent}
                 conceptSlug={slug}
                 showAdminTools={showAdminTools}
