@@ -211,3 +211,4 @@
 3. **Responsive**: Mobile-first approach, generous spacing on all devices
 4. **Performance**: Optimize fonts (subset, display: swap)
 5. **Branding**: Logo should incorporate primary color + gold accent
+

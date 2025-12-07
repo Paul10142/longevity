@@ -124,6 +124,16 @@
   background: hsl(var(--muted-foreground) / 0.5);
 }
 
+/* Hide scrollbar utility */
+.scrollbar-hide {
+  -ms-overflow-style: none;  /* IE and Edge */
+  scrollbar-width: none;  /* Firefox */
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;  /* Chrome, Safari and Opera */
+}
+
 /* Fix bullet alignment for all unordered lists so wrapped lines align with the first line's text */
 ul {
   list-style-position: outside;

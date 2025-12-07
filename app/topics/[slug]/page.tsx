@@ -7,22 +7,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 import { retrySupabaseQuery } from "@/lib/retry"
 import type { Concept } from "@/lib/types"
 
-// Helper to capitalize first letter of each word
-function capitalizeWords(str: string): string {
-  return str.split(' ').map(word => 
-    word.charAt(0).toUpperCase() + word.slice(1).toLowerCase()
-  ).join(' ')
-}
-
-// Helper to format evidence type (handles camelCase like "ExpertOpinion" → "Expert Opinion")
-function formatEvidenceType(type: string): string {
-  if (type === 'RCT') return 'RCT'
-  if (type === 'MetaAnalysis') return 'Meta-Analysis'
-  
-  // Handle camelCase: insert space before capital letters, then capitalize
-  const spaced = type.replace(/([a-z])([A-Z])/g, '$1 $2')
-  return capitalizeWords(spaced)
-}
+import { formatEvidenceType, capitalizeWords } from "@/lib/utils"
 
 // Cache this page for 60 seconds, revalidate on demand
 export const revalidate = 60
@@ -252,8 +237,13 @@ export default async function TopicPage({
     // The error boundary will catch if this is a fatal error
   }
 
-  // Group insights by source
-  const insightsBySource: Record<string, { source: any; insights: any[] }> = {}
+  // Calculate 30 days ago for "new insights" detection
+  const thirtyDaysAgo = new Date()
+  thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30)
+  const thirtyDaysAgoISO = thirtyDaysAgo.toISOString()
+
+  // Flatten insights with metadata for client-side sorting/grouping
+  const flattenedInsights: any[] = []
   
   insightsData?.forEach((item: any) => {
     const insight = item.insights
@@ -264,22 +254,39 @@ export default async function TopicPage({
       const source = link.sources
       if (!source) return
 
-      const sourceId = source.id
-      if (!insightsBySource[sourceId]) {
-        insightsBySource[sourceId] = {
-          source: source,
-          insights: []
-        }
-      }
+      // Determine if insight is "new" (created in last 30 days)
+      const insightCreatedAt = insight.created_at ? new Date(insight.created_at) : null
+      const isNew = insightCreatedAt && insightCreatedAt >= thirtyDaysAgo
 
-      insightsBySource[sourceId].insights.push({
+      flattenedInsights.push({
         ...insight,
         locator: link.locator,
+        source: {
+          id: source.id,
+          title: source.title,
+          type: source.type,
+          created_at: source.created_at || null,
+        },
+        isNew: !!isNew,
       })
     })
   })
 
-  // Sort insights within each source by importance
+  // Group insights by source (for backward compatibility with existing evidence view)
+  const insightsBySource: Record<string, { source: any; insights: any[] }> = {}
+  
+  flattenedInsights.forEach((insight) => {
+    const sourceId = insight.source.id
+    if (!insightsBySource[sourceId]) {
+      insightsBySource[sourceId] = {
+        source: insight.source,
+        insights: []
+      }
+    }
+    insightsBySource[sourceId].insights.push(insight)
+  })
+
+  // Sort insights within each source by importance (default sort)
   Object.keys(insightsBySource).forEach(sourceId => {
     insightsBySource[sourceId].insights.sort((a: any, b: any) => {
       const importanceA = a.importance ?? 2
@@ -465,6 +472,7 @@ export default async function TopicPage({
                 showAdminTools={showAdminTools}
                 conceptId={concept.id}
                 allInsightsForAdmin={showAdminTools ? insightsData : []}
+                flattenedInsights={flattenedInsights}
               />
             )
           })()}

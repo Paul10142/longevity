@@ -47,12 +47,20 @@ export type TopicProtocol = {
   updated_at: string
 }
 
+export type LeverMetadata = {
+  tagline: string
+  primaryBenefits: string[]
+}
+
 export type Concept = {
   id: string
   name: string
   slug: string
   description: string | null
   created_at: string
+  is_lever?: boolean | null
+  lever_order?: number | null
+  lever_metadata?: LeverMetadata | null
 }
 
 // Source types
@@ -99,4 +107,49 @@ export type InsightSource = {
   locator: string | null
   start_ms: number | null
   end_ms: number | null
+}
+
+// Membership types
+export type MembershipTier = "free" | "annual" | "lifetime"
+
+export type MembershipStatus = {
+  tier: MembershipTier
+  expiresAt: string | null // ISO date string, null for lifetime
+  isActive: boolean
+}
+
+export type UserMembership = {
+  userId: string
+  membership: MembershipStatus
+}
+
+// Evidence view organization types
+export type InsightSortOption = 'importance' | 'recency' | 'evidence_strength' | 'actionability'
+export type InsightGroupOption = 'source' | 'evidence_type' | 'date' | 'none'
+
+// Insight with metadata for display
+export type InsightWithMetadata = {
+  id: string
+  statement: string
+  context_note: string | null
+  evidence_type: string
+  qualifiers: any
+  confidence: string
+  importance: number | null
+  actionability: string | null
+  primary_audience: string | null
+  insight_type: string | null
+  has_direct_quote: boolean | null
+  direct_quote: string | null
+  tone: string | null
+  created_at: string
+  deleted_at: string | null
+  locator: string
+  source: {
+    id: string
+    title: string
+    type: string
+    created_at: string
+  }
+  isNew?: boolean // True if insight created in last 30 days
 }

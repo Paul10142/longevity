@@ -23,19 +23,57 @@ export async function POST(request: NextRequest) {
 
     console.log('[autotag-batch] Starting batch', { limit: requestedLimit })
 
-    // Fetch insights that need tagging
-    const { data: insights, error: fetchError } = await supabaseAdmin
+    // First, try to fetch insights with needs_tagging = true (newly created)
+    const { data: needsTaggingInsights, error: fetchError1 } = await supabaseAdmin
       .from('insights')
       .select('id, statement, context_note, evidence_type, confidence, qualifiers, insight_type, importance, actionability, primary_audience')
       .eq('needs_tagging', true)
+      .is('deleted_at', null)
       .limit(requestedLimit)
 
-    if (fetchError) {
-      console.error('[autotag-batch] Error fetching insights:', fetchError)
+    if (fetchError1) {
+      console.error('[autotag-batch] Error fetching insights:', fetchError1)
       return NextResponse.json(
-        { error: `Failed to fetch insights: ${fetchError.message}` },
+        { error: `Failed to fetch insights: ${fetchError1.message}` },
         { status: 500 }
       )
+    }
+
+    let insights = needsTaggingInsights || []
+
+    // If we don't have enough insights with needs_tagging, also fetch untagged insights
+    // (for retroactive tagging of existing sources)
+    if (insights.length < requestedLimit) {
+      // Get all insight IDs that already have tags
+      const { data: taggedInsights, error: taggedError } = await supabaseAdmin
+        .from('insight_concepts')
+        .select('insight_id')
+      
+      if (taggedError) {
+        console.warn('[autotag-batch] Error fetching tagged insights (non-fatal):', taggedError)
+      }
+
+      const taggedInsightIds = new Set(taggedInsights?.map((ti: any) => ti.insight_id) || [])
+      const existingIds = new Set(insights.map((i: any) => i.id))
+      
+      // Fetch additional insights that don't have tags yet
+      const { data: allInsights, error: fetchError2 } = await supabaseAdmin
+        .from('insights')
+        .select('id, statement, context_note, evidence_type, confidence, qualifiers, insight_type, importance, actionability, primary_audience')
+        .is('deleted_at', null)
+        .limit(requestedLimit * 3) // Fetch more to account for filtering
+      
+      if (!fetchError2 && allInsights) {
+        // Filter to only untagged insights that we haven't already included
+        const untaggedInsights = allInsights.filter((i: any) => 
+          !taggedInsightIds.has(i.id) && !existingIds.has(i.id)
+        ).slice(0, requestedLimit - insights.length)
+        
+        if (untaggedInsights.length > 0) {
+          insights = [...insights, ...untaggedInsights]
+          console.log(`[autotag-batch] Added ${untaggedInsights.length} untagged insights for retroactive tagging`)
+        }
+      }
     }
 
     if (!insights || insights.length === 0) {

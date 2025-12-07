@@ -38,9 +38,17 @@ export default async function AdminConceptsPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-4xl font-bold">Concepts</h1>
-            <Link href="/topics">
-              <Button variant="outline">View Public Topics</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/admin/sources">
+                <Button variant="outline">Sources</Button>
+              </Link>
+              <Link href="/admin/insights/review">
+                <Button variant="outline">Review Insights</Button>
+              </Link>
+              <Link href="/topics">
+                <Button variant="outline">View Public Topics</Button>
+              </Link>
+            </div>
           </div>
 
           {concepts && concepts.length > 0 ? (

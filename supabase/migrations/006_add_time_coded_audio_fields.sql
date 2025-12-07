@@ -23,3 +23,4 @@ CREATE INDEX IF NOT EXISTS chunks_start_ms_idx ON chunks (start_ms) WHERE start_
 CREATE INDEX IF NOT EXISTS chunks_end_ms_idx ON chunks (end_ms) WHERE end_ms IS NOT NULL;
 CREATE INDEX IF NOT EXISTS insight_sources_start_ms_idx ON insight_sources (start_ms) WHERE start_ms IS NOT NULL;
 CREATE INDEX IF NOT EXISTS insight_sources_end_ms_idx ON insight_sources (end_ms) WHERE end_ms IS NOT NULL;
+

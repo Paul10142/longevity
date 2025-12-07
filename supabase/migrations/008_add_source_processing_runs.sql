@@ -21,3 +21,4 @@ CREATE INDEX IF NOT EXISTS source_processing_runs_source_idx ON source_processin
 
 -- Index for status queries
 CREATE INDEX IF NOT EXISTS source_processing_runs_status_idx ON source_processing_runs (status);
+

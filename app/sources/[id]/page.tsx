@@ -237,6 +237,7 @@ export default async function SourcePage({
 
           <SourceInsightsClient 
             insights={insightsList}
+            sourceId={id}
           />
         </div>
       </div>

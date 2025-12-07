@@ -6,6 +6,7 @@ import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { SearchBar } from "@/components/SearchBar"
 
   const navigation = [
     { name: "Topics", href: "/topics" },
@@ -82,6 +83,14 @@ export function Header() {
               </Link>
             )
           )}
+          <div className="flex items-center gap-3 ml-4">
+            <SearchBar className="w-64" />
+            <Link href="/start">
+              <Button size="sm">
+                Start Here
+              </Button>
+            </Link>
+          </div>
         </nav>
 
         {/* Mobile Navigation */}
@@ -93,6 +102,10 @@ export function Header() {
           </SheetTrigger>
           <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background/95 backdrop-blur-md">
             <nav className="flex flex-col space-y-6 mt-8">
+              {/* Search bar for mobile */}
+              <div className="pb-4 border-b border-border/40">
+                <SearchBar />
+              </div>
               {navigation.map((item) =>
                 item.href.startsWith("#") ? (
                   <button
@@ -113,6 +126,15 @@ export function Header() {
                   </Link>
                 )
               )}
+              <Link
+                href="/start"
+                onClick={() => setIsOpen(false)}
+                className="mt-4"
+              >
+                <Button className="w-full">
+                  Start Here
+                </Button>
+              </Link>
             </nav>
           </SheetContent>
         </Sheet>

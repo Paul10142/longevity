@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import type { Concept, TopicProtocol } from './types'
+import { prioritizeInsightsForGeneration, getInsightsForGeneration } from './insightPrioritization'
 
 // Lazy initialization of OpenAI client to avoid errors during build when API key is not available
 let openaiInstance: OpenAI | null = null
@@ -23,15 +24,21 @@ You are assisting a physician building a lifestyle medicine reference.
 
 You will receive:
 - A specific topic (concept name + description)
-- A list of detailed, structured "insights" that summarize evidence and expert discussion.
+- A list of detailed, structured "insights" extracted from verified source transcripts (podcasts, books, videos, articles). Each insight summarizes evidence and expert discussion from these verified sources.
 
-Your task is to create clinical protocols for this topic. There may be multiple separate protocols if the insights support different approaches or contexts.
+Your task is to create comprehensive clinical protocols for this topic. There may be multiple separate protocols if the insights support different approaches or contexts.
 
 These protocols are meant for motivated patients and clinicians who want clear, safe, actionable steps, not general education.
 
+CRITICAL RULES:
+- Use ONLY the provided insights as your factual source. Do NOT introduce new factual claims, data, or information from your training data or external knowledge.
+- You MUST incorporate ALL insights into the protocol. The protocol should be as long as necessary to comprehensively cover all insights - there is NO word limit.
+- You may use AI reasoning to: (1) connect related insights together into coherent protocols, (2) organize information in the most logical and useful way, (3) create smooth transitions between steps, (4) present the same information in clearer or more structured formats.
+- You may NOT use AI to: (1) add facts, data, or claims not present in the insights, (2) fill in gaps with general medical knowledge, (3) supplement with information from your training data.
+
 It should:
 1. Be grounded only in the provided insights. Do NOT invent numerical values, effects, or new claims not supported by the insights.
-2. Preserve important numeric details, dose ranges, frequencies, lab cutoffs, and qualifiers when they are available.
+2. Preserve ALL important numeric details, dose ranges, frequencies, lab cutoffs, and qualifiers when they are available.
 3. Use numbered lists (1., 2., 3.) for sequential steps, phases, or ordered actions.
 4. Use bullet points (- or *) for non-ordered lists, options, or parallel items.
 5. Focus on purely actionable information - what to do, when, how often, for how long.
@@ -132,6 +139,7 @@ Your output should be a JSON object with this exact shape:
 Rules:
 - It is OK if some sections are shorter for certain topics (e.g., if no strong data on algorithms, keep that section minimal).
 - Every paragraph MUST include an insight_ids array listing the IDs of the insights most relevant to that paragraph.
+- Every insight should be incorporated into the protocol. If you have many insights, the protocol should be correspondingly longer and more comprehensive.
 - You may choose to emphasize phases, habit stacks, algorithms, or a mix, depending on what the insights support.
 - CRITICAL - List formatting: Lists MUST start on a new line with a blank line before them. Each list item must be on its own line.
   CORRECT: "Phase 1 steps:\n\n1. First action\n2. Second action\n3. Third action"
@@ -144,6 +152,7 @@ Rules:
 - Multiple separate protocols are acceptable if insights support different approaches.
 - Do not give individual-patient medical advice; keep recommendations general and suggest discussion with a clinician where appropriate.
 - Do NOT include a large title heading (H1 with #) - start directly with section content.
+- There is NO word limit - write as much as needed to fully cover all insights with high fidelity.
 `
 
 interface InsightForProtocol {
@@ -193,10 +202,12 @@ export async function generateProtocolForConcept(conceptId: string): Promise<voi
         confidence,
         importance,
         actionability,
+        primary_audience,
         insight_type,
         has_direct_quote,
         direct_quote,
-        tone
+        tone,
+        created_at
       )
     `
     )
@@ -207,23 +218,35 @@ export async function generateProtocolForConcept(conceptId: string): Promise<voi
     throw new Error(`Error fetching insights: ${insightsError.message}`)
   }
 
-  const insights: InsightForProtocol[] = (insightsData || [])
+  const allInsights: InsightForProtocol[] = (insightsData || [])
     .map((item: any) => item.insights)
     .filter((i: any) => i?.id)
 
-  if (insights.length === 0) {
+  if (allInsights.length === 0) {
     throw new Error('No insights found for this concept. Tag some insights first.')
   }
 
-  // 3. Call OpenAI
-  const insightsJson = JSON.stringify(insights, null, 2)
+  // 3. Prioritize insights (Tier 1 + Tier 2, max 350)
+  const prioritized = prioritizeInsightsForGeneration(allInsights as any, 350)
+  const insightsForGeneration = getInsightsForGeneration(prioritized)
+
+  console.log(`[Protocol Generation] Total insights: ${prioritized.totalCount}, Using: ${insightsForGeneration.length} (Tier 1: ${prioritized.tier1Count}, Tier 2: ${prioritized.tier2Count}, Tier 3: ${prioritized.tier3Count} excluded)`)
+
+  if (insightsForGeneration.length === 0) {
+    throw new Error('No insights selected for generation after prioritization.')
+  }
+
+  // 4. Call OpenAI
+  const insightsJson = JSON.stringify(insightsForGeneration, null, 2)
   const userPrompt = `Topic: ${concept.name}
 Description: ${concept.description || 'No description'}
 
-Insights (${insights.length} total):
+Insights (${insightsForGeneration.length} of ${prioritized.totalCount} total - prioritized by importance, actionability, evidence strength, and recency):
 ${insightsJson}
 
-Generate clinical protocol(s) for this topic. 
+Note: This represents the most important and recent insights. ${prioritized.tier3Count > 0 ? `An additional ${prioritized.tier3Count} insights are available but not included here to stay within token limits.` : ''}
+
+Generate comprehensive clinical protocol(s) for this topic. Remember: incorporate ALL insights, use AI to connect and organize them, but do NOT add external knowledge.
 
 IMPORTANT - List Formatting Rules:
 - CRITICAL: Lists MUST have a blank line before them and each item on its own line.
@@ -240,12 +263,12 @@ IMPORTANT - List Formatting Rules:
 
   try {
     const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-5-mini',
+      model: 'gpt-5.1',
       messages: [
         { role: 'system', content: PROTOCOL_SYSTEM_PROMPT },
         { role: 'user', content: userPrompt }
       ],
-      // Note: gpt-5-mini only supports default temperature (1), custom values are not supported
+      temperature: 0.3,
       response_format: { type: 'json_object' }
     })
 
@@ -326,6 +349,7 @@ IMPORTANT - List Formatting Rules:
     const newVersion = existingProtocol?.version ? existingProtocol.version + 1 : 1
 
     // Insert new protocol
+    const now = new Date().toISOString()
     const { error: insertError } = await supabaseAdmin
       .from('topic_protocols')
       .insert({
@@ -334,6 +358,7 @@ IMPORTANT - List Formatting Rules:
         title: parsed.title,
         outline,
         body_markdown: bodyMarkdown,
+        last_regenerated_at: now,
       })
 
     if (insertError) {

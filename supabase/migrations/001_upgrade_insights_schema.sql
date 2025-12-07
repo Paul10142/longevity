@@ -19,3 +19,4 @@ CREATE INDEX IF NOT EXISTS insights_actionability_idx ON insights (actionability
 
 -- Add index on insight_type for filtering
 CREATE INDEX IF NOT EXISTS insights_type_idx ON insights (insight_type);
+

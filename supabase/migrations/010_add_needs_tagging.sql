@@ -8,3 +8,4 @@ ALTER TABLE insights
 CREATE INDEX IF NOT EXISTS insights_needs_tagging_idx
   ON insights(needs_tagging)
   WHERE needs_tagging = true;
+

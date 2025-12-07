@@ -3,6 +3,7 @@ import Link from "next/link"
 import { ConceptInsightTagger } from "@/components/ConceptInsightTagger"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { Button } from "@/components/ui/button"
 
 export default async function AdminConceptPage({
   params,
@@ -87,9 +88,19 @@ export default async function AdminConceptPage({
       <div className="container mx-auto px-4 py-12">
         <div className="max-w-6xl mx-auto">
           <div className="mb-8">
-            <Link href="/admin/concepts" className="text-sm text-muted-foreground hover:text-primary mb-4 inline-block">
-              ← Back to Concepts
-            </Link>
+            <div className="flex items-center gap-4 mb-4">
+              <Link href="/admin/concepts" className="text-sm text-muted-foreground hover:text-primary">
+                ← Back to Concepts
+              </Link>
+              <div className="flex gap-2">
+                <Link href="/admin/sources">
+                  <Button variant="ghost" size="sm">Sources</Button>
+                </Link>
+                <Link href="/admin/insights/review">
+                  <Button variant="ghost" size="sm">Review Insights</Button>
+                </Link>
+              </div>
+            </div>
             <Card>
               <CardHeader>
                 <CardTitle className="text-3xl">{concept.name}</CardTitle>

@@ -6,3 +6,4 @@ ALTER TABLE sources
 
 -- Add index for full-text search if needed (optional)
 -- CREATE INDEX IF NOT EXISTS sources_transcript_idx ON sources USING gin(to_tsvector('english', transcript));
+

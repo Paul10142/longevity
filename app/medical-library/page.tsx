@@ -19,12 +19,18 @@ export default function MedicalLibraryPage() {
                 <CardTitle>Admin</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="flex gap-4">
+                <div className="flex flex-wrap gap-4">
                   <Link href="/admin/sources">
                     <Button>Manage Sources</Button>
                   </Link>
                   <Link href="/admin/sources/new">
                     <Button variant="outline">Add New Source</Button>
+                  </Link>
+                  <Link href="/admin/insights/review">
+                    <Button variant="outline">Review Insights</Button>
+                  </Link>
+                  <Link href="/admin/concepts">
+                    <Button variant="outline">Manage Concepts</Button>
                   </Link>
                 </div>
               </CardContent>

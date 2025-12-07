@@ -49,6 +49,29 @@ export async function POST(
       )
     }
 
+    // Check if source is currently being processed
+    // Check both the source status AND if there are any active processing runs
+    const { data: currentSource } = await supabaseAdmin
+      .from("sources")
+      .select("processing_status")
+      .eq("id", id)
+      .single()
+
+    // Also check if there are any runs with status 'processing' for this source
+    const { data: activeRuns } = await supabaseAdmin
+      .from("source_processing_runs")
+      .select("id")
+      .eq("source_id", id)
+      .eq("status", "processing")
+      .limit(1)
+
+    if (currentSource?.processing_status === 'processing' || (activeRuns && activeRuns.length > 0)) {
+      return NextResponse.json(
+        { error: "Source is already being processed. Please wait for the current processing to complete." },
+        { status: 409 } // 409 Conflict
+      )
+    }
+
     // Check if client wants streaming progress updates
     const acceptHeader = request.headers.get("accept") || ""
     const wantsStreaming = acceptHeader.includes("text/event-stream")
@@ -73,6 +96,12 @@ export async function POST(
 
             // Delete existing data for this source
             // Order matters: delete insight_sources first (foreign key constraint)
+            // First, get the insight IDs that were linked to this source before deletion
+            const { data: linkedInsightsBeforeDelete } = await supabaseAdmin
+              .from("insight_sources")
+              .select("insight_id")
+              .eq("source_id", id)
+
             const { error: deleteInsightSourcesError } = await supabaseAdmin
               .from("insight_sources")
               .delete()
@@ -80,6 +109,38 @@ export async function POST(
 
             if (deleteInsightSourcesError) {
               console.warn("Warning: Failed to delete some insight_sources:", deleteInsightSourcesError)
+            }
+
+            // Delete orphaned insights (insights that had no other source links)
+            // Only check insights that were linked to the source we just deleted
+            if (linkedInsightsBeforeDelete && linkedInsightsBeforeDelete.length > 0) {
+              const potentiallyOrphanedInsightIds = Array.from(new Set<string>(linkedInsightsBeforeDelete.map((li: any) => li.insight_id as string)))
+              
+              // Check which of these insights still have other source links
+              const { data: remainingLinks } = await supabaseAdmin
+                .from("insight_sources")
+                .select("insight_id")
+                .in("insight_id", potentiallyOrphanedInsightIds)
+
+              if (remainingLinks) {
+                const stillLinkedIds = new Set<string>(remainingLinks.map((li: any) => li.insight_id as string))
+                const orphanedInsightIds: string[] = potentiallyOrphanedInsightIds.filter(
+                  (insightId: string) => !stillLinkedIds.has(insightId)
+                )
+
+                if (orphanedInsightIds.length > 0) {
+                  const { error: deleteOrphansError } = await supabaseAdmin
+                    .from("insights")
+                    .delete()
+                    .in("id", orphanedInsightIds)
+
+                  if (deleteOrphansError) {
+                    console.warn("Warning: Failed to delete some orphaned insights:", deleteOrphansError)
+                  } else {
+                    console.log(`Deleted ${orphanedInsightIds.length} orphaned insights`)
+                  }
+                }
+              }
             }
 
             // Delete chunks (this will cascade delete any remaining links)
@@ -191,6 +252,12 @@ export async function POST(
         .eq("id", id)
 
       // Delete existing data for this source (order matters for foreign keys)
+      // First, get the insight IDs that were linked to this source before deletion
+      const { data: linkedInsightsBeforeDelete } = await supabaseAdmin
+        .from("insight_sources")
+        .select("insight_id")
+        .eq("source_id", id)
+
       const { error: deleteInsightSourcesError } = await supabaseAdmin
         .from("insight_sources")
         .delete()
@@ -198,6 +265,38 @@ export async function POST(
 
       if (deleteInsightSourcesError) {
         console.warn("Warning: Failed to delete some insight_sources:", deleteInsightSourcesError)
+      }
+
+      // Delete orphaned insights (insights that had no other source links)
+      // Only check insights that were linked to the source we just deleted
+      if (linkedInsightsBeforeDelete && linkedInsightsBeforeDelete.length > 0) {
+        const potentiallyOrphanedInsightIds = Array.from(new Set<string>(linkedInsightsBeforeDelete.map((li: any) => li.insight_id as string)))
+        
+        // Check which of these insights still have other source links
+        const { data: remainingLinks } = await supabaseAdmin
+          .from("insight_sources")
+          .select("insight_id")
+          .in("insight_id", potentiallyOrphanedInsightIds)
+
+        if (remainingLinks) {
+          const stillLinkedIds = new Set<string>(remainingLinks.map((li: any) => li.insight_id as string))
+          const orphanedInsightIds: string[] = potentiallyOrphanedInsightIds.filter(
+            (insightId: string) => !stillLinkedIds.has(insightId)
+          )
+
+          if (orphanedInsightIds.length > 0) {
+            const { error: deleteOrphansError } = await supabaseAdmin
+              .from("insights")
+              .delete()
+              .in("id", orphanedInsightIds)
+
+            if (deleteOrphansError) {
+              console.warn("Warning: Failed to delete some orphaned insights:", deleteOrphansError)
+            } else {
+              console.log(`Deleted ${orphanedInsightIds.length} orphaned insights`)
+            }
+          }
+        }
       }
 
       const { error: deleteChunksError } = await supabaseAdmin

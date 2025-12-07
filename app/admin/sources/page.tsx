@@ -95,9 +95,14 @@ export default async function AdminSourcesPage() {
           <div className="max-w-6xl mx-auto">
             <div className="flex justify-between items-center mb-8">
               <h1 className="text-4xl font-bold">Sources</h1>
-              <Link href="/admin/sources/new">
-                <Button>New Source</Button>
-              </Link>
+              <div className="flex gap-2">
+                <Link href="/admin/insights/review">
+                  <Button variant="outline">Review Insights</Button>
+                </Link>
+                <Link href="/admin/sources/new">
+                  <Button>New Source</Button>
+                </Link>
+              </div>
             </div>
             <Card>
               <CardContent className="py-12 text-center">
@@ -134,9 +139,14 @@ export default async function AdminSourcesPage() {
         <div className="max-w-6xl mx-auto">
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-4xl font-bold">Sources</h1>
-            <Link href="/admin/sources/new">
-              <Button>New Source</Button>
-            </Link>
+            <div className="flex gap-2">
+              <Link href="/admin/insights/review">
+                <Button variant="outline">Review Insights</Button>
+              </Link>
+              <Link href="/admin/sources/new">
+                <Button>New Source</Button>
+              </Link>
+            </div>
           </div>
 
           {sources && sources.length > 0 ? (

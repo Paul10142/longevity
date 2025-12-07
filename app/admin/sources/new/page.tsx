@@ -39,6 +39,8 @@ export default function NewSourcePage() {
     transcript: "",
   })
   const [newAuthor, setNewAuthor] = useState("")
+  const [selectedFile, setSelectedFile] = useState<File | null>(null)
+  const [transcriptSource, setTranscriptSource] = useState<"paste" | "file">("paste")
 
   const addAuthor = (author: string) => {
     if (author && !formData.authors.includes(author)) {
@@ -65,16 +67,40 @@ export default function NewSourcePage() {
     try {
       setStatus({ type: 'creating', message: 'Creating source in database...' })
       
-      const response = await fetch("/api/admin/sources", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
+      // Use FormData if file is selected, otherwise use JSON
+      let body: FormData | string
+      let headers: HeadersInit
+
+      if (selectedFile && transcriptSource === "file") {
+        // File upload mode
+        const uploadFormData = new FormData()
+        uploadFormData.append("type", formData.type)
+        uploadFormData.append("title", formData.title)
+        uploadFormData.append("authors", JSON.stringify(formData.authors || []))
+        if (formData.date) uploadFormData.append("date", formData.date)
+        if (formData.url) uploadFormData.append("url", formData.url)
+        uploadFormData.append("file", selectedFile)
+        
+        body = uploadFormData
+        headers = {
           "Accept": "text/event-stream", // Request streaming updates
-        },
-        body: JSON.stringify({
+        }
+      } else {
+        // JSON mode (existing behavior)
+        body = JSON.stringify({
           ...formData,
           authors: formData.authors || [],
-        }),
+        })
+        headers = {
+          "Content-Type": "application/json",
+          "Accept": "text/event-stream", // Request streaming updates
+        }
+      }
+      
+      const response = await fetch("/api/admin/sources", {
+        method: "POST",
+        headers,
+        body,
       })
 
       if (!response.ok) {
@@ -322,22 +348,75 @@ export default function NewSourcePage() {
             <Card>
               <CardHeader>
                 <CardTitle>Transcript</CardTitle>
-                <CardDescription>Paste the full transcript text</CardDescription>
+                <CardDescription>
+                  Upload a file (EPUB, TXT, HTML) or paste the transcript text
+                </CardDescription>
               </CardHeader>
-              <CardContent>
-                <div>
-                  <Label htmlFor="transcript">Transcript *</Label>
-                  <Textarea
-                    id="transcript"
-                    value={formData.transcript}
-                    onChange={(e) =>
-                      setFormData({ ...formData, transcript: e.target.value })
-                    }
-                    rows={20}
-                    className="font-mono text-sm"
-                    required
-                  />
+              <CardContent className="space-y-4">
+                {/* Source selection */}
+                <div className="flex gap-4">
+                  <Button
+                    type="button"
+                    variant={transcriptSource === "paste" ? "default" : "outline"}
+                    onClick={() => {
+                      setTranscriptSource("paste")
+                      setSelectedFile(null)
+                    }}
+                  >
+                    Paste Text
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={transcriptSource === "file" ? "default" : "outline"}
+                    onClick={() => {
+                      setTranscriptSource("file")
+                      setFormData({ ...formData, transcript: "" })
+                    }}
+                  >
+                    Upload File
+                  </Button>
                 </div>
+
+                {transcriptSource === "file" ? (
+                  <div>
+                    <Label htmlFor="file">Upload File *</Label>
+                    <Input
+                      id="file"
+                      type="file"
+                      accept=".epub,.txt,.html,.htm"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0]
+                        if (file) {
+                          setSelectedFile(file)
+                        }
+                      }}
+                      className="mt-2"
+                      required={transcriptSource === "file"}
+                    />
+                    {selectedFile && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                      </p>
+                    )}
+                    <p className="text-xs text-muted-foreground mt-2">
+                      Supported formats: EPUB, TXT, HTML
+                    </p>
+                  </div>
+                ) : (
+                  <div>
+                    <Label htmlFor="transcript">Transcript *</Label>
+                    <Textarea
+                      id="transcript"
+                      value={formData.transcript}
+                      onChange={(e) =>
+                        setFormData({ ...formData, transcript: e.target.value })
+                      }
+                      rows={20}
+                      className="font-mono text-sm"
+                      required={transcriptSource === "paste"}
+                    />
+                  </div>
+                )}
               </CardContent>
             </Card>
 

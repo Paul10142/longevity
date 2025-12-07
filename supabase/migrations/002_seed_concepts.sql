@@ -12,5 +12,7 @@ INSERT INTO concepts (name, slug, description) VALUES
   ('Neurocognitive Health', 'neurocognitive-health', 'Brain health, cognitive function, neurodegenerative disease prevention, and neuroplasticity'),
   ('Emotional & Mental Health', 'emotional-mental-health', 'Mental wellness, stress management, mood regulation, and psychological health'),
   ('Supplements & Adjuncts', 'supplements-adjuncts', 'Dietary supplements, nutraceuticals, and adjunctive interventions'),
-  ('Saunas, Heat & Cold Exposure', 'thermal-exposure', 'Heat therapy, cold therapy, sauna protocols, and thermal stress adaptation')
+  ('Saunas, Heat & Cold Exposure', 'thermal-exposure', 'Heat therapy, cold therapy, sauna protocols, and thermal stress adaptation'),
+  ('Hormones and Sexual Health', 'hormones-sexual-health', 'Sexual function, libido, hormonal influences on sexuality, and sexual wellness optimization')
 ON CONFLICT (slug) DO NOTHING;
+

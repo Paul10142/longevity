@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { useRouter } from "next/navigation"
+import { useRouter, useSearchParams } from "next/navigation"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion"
@@ -13,6 +13,8 @@ import ReactMarkdown from "react-markdown"
 import Link from "next/link"
 import { cn } from "@/lib/utils"
 import { TableOfContents } from "@/components/TableOfContents"
+import { EvidenceView } from "@/components/EvidenceView"
+import { SearchBar } from "@/components/SearchBar"
 
 interface TopicViewTabsProps {
   patientArticle: any | null
@@ -23,6 +25,7 @@ interface TopicViewTabsProps {
   showAdminTools: boolean
   conceptId: string
   allInsightsForAdmin: any[]
+  flattenedInsights?: any[] // Flattened insights for client-side sorting/grouping
 }
 
 export function TopicViewTabs({ 
@@ -33,7 +36,8 @@ export function TopicViewTabs({
   conceptSlug,
   showAdminTools,
   conceptId,
-  allInsightsForAdmin
+  allInsightsForAdmin,
+  flattenedInsights = []
 }: TopicViewTabsProps) {
   // Default tab selection: protocol (always first) > patient > clinician > evidence
   const getDefaultTab = (): 'protocol' | 'patient' | 'clinician' | 'evidence' | 'admin' => {
@@ -43,10 +47,23 @@ export function TopicViewTabs({
     return 'evidence'
   }
 
-  const [activeView, setActiveView] = useState<'protocol' | 'patient' | 'clinician' | 'evidence' | 'admin'>(
-    getDefaultTab()
-  )
   const router = useRouter()
+  const searchParams = useSearchParams()
+  
+  // Check for tab query parameter on mount
+  const getInitialTab = (): 'protocol' | 'patient' | 'clinician' | 'evidence' | 'admin' => {
+    const tabParam = searchParams.get('tab')
+    if (tabParam === 'protocol' && protocol) return 'protocol'
+    if (tabParam === 'patient' && patientArticle) return 'patient'
+    if (tabParam === 'clinician' && clinicianArticle) return 'clinician'
+    if (tabParam === 'evidence') return 'evidence'
+    if (tabParam === 'admin' && showAdminTools) return 'admin'
+    return getDefaultTab()
+  }
+
+  const [activeView, setActiveView] = useState<'protocol' | 'patient' | 'clinician' | 'evidence' | 'admin'>(
+    getInitialTab()
+  )
   const [deleteMessage, setDeleteMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [deletingInsightId, setDeletingInsightId] = useState<string | null>(null)
   const [isTransitioning, setIsTransitioning] = useState(false)
@@ -59,6 +76,8 @@ export function TopicViewTabs({
   const [isEditingClinicianArticle, setIsEditingClinicianArticle] = useState(false)
   const [clinicianArticleEditText, setClinicianArticleEditText] = useState('')
   const [isSavingClinicianArticle, setIsSavingClinicianArticle] = useState(false)
+  const [isGeneratingProtocol, setIsGeneratingProtocol] = useState(false)
+  const [isGeneratingArticles, setIsGeneratingArticles] = useState(false)
 
   // Sync edit text with articles when they change
   useEffect(() => {
@@ -92,6 +111,7 @@ export function TopicViewTabs({
       return
     }
 
+    setIsGeneratingArticles(true)
     try {
       const response = await fetch(`/api/admin/topics/${conceptSlug}/generate-articles`, {
         method: 'POST',
@@ -108,6 +128,7 @@ export function TopicViewTabs({
     } catch (error) {
       console.error('Error generating articles:', error)
       alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsGeneratingArticles(false)
     }
   }
 
@@ -116,6 +137,7 @@ export function TopicViewTabs({
       return
     }
 
+    setIsGeneratingProtocol(true)
     try {
       const response = await fetch(`/api/admin/topics/${conceptSlug}/generate-protocol`, {
         method: 'POST',
@@ -132,6 +154,7 @@ export function TopicViewTabs({
     } catch (error) {
       console.error('Error generating protocol:', error)
       alert(`Error: ${error instanceof Error ? error.message : 'Unknown error'}`)
+      setIsGeneratingProtocol(false)
     }
   }
 
@@ -581,8 +604,19 @@ export function TopicViewTabs({
                       : "Protocol not available yet."}
                   </p>
                   {showAdminTools && (
-                    <Button onClick={handleGenerateProtocol} variant="default">
-                      Generate Protocol
+                    <Button 
+                      onClick={handleGenerateProtocol} 
+                      variant="default"
+                      disabled={isGeneratingProtocol}
+                    >
+                      {isGeneratingProtocol ? (
+                        <>
+                          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                          Generating...
+                        </>
+                      ) : (
+                        'Generate Protocol'
+                      )}
                     </Button>
                   )}
                 </CardContent>
@@ -591,7 +625,21 @@ export function TopicViewTabs({
 
             {activeView === 'evidence' && (
               <div className="p-6">
-                {evidenceView}
+                {/* Search bar for topic-specific search */}
+                {flattenedInsights && flattenedInsights.length > 0 && (
+                  <div className="mb-6">
+                    <SearchBar 
+                      conceptId={conceptId} 
+                      conceptSlug={conceptSlug}
+                      placeholder="Search insights in this topic..."
+                    />
+                  </div>
+                )}
+                {flattenedInsights && flattenedInsights.length > 0 ? (
+                  <EvidenceView insights={flattenedInsights} />
+                ) : (
+                  evidenceView
+                )}
               </div>
             )}
 
@@ -668,8 +716,16 @@ export function TopicViewTabs({
                                 variant="outline"
                                 size="sm"
                                 onClick={handleGenerateProtocol}
+                                disabled={isGeneratingProtocol}
                               >
-                                Generate Protocol
+                                {isGeneratingProtocol ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  'Generate Protocol'
+                                )}
                               </Button>
                             )}
                           </div>
@@ -783,8 +839,16 @@ export function TopicViewTabs({
                                 variant="outline"
                                 size="sm"
                                 onClick={handleGenerateArticles}
+                                disabled={isGeneratingArticles}
                               >
-                                Generate Articles
+                                {isGeneratingArticles ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  'Generate Articles'
+                                )}
                               </Button>
                             )}
                           </div>
@@ -898,8 +962,16 @@ export function TopicViewTabs({
                                 variant="outline"
                                 size="sm"
                                 onClick={handleGenerateArticles}
+                                disabled={isGeneratingArticles}
                               >
-                                Generate Articles
+                                {isGeneratingArticles ? (
+                                  <>
+                                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                                    Generating...
+                                  </>
+                                ) : (
+                                  'Generate Articles'
+                                )}
                               </Button>
                             )}
                           </div>

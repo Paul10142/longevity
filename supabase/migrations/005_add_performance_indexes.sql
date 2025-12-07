@@ -19,3 +19,4 @@ CREATE INDEX IF NOT EXISTS topic_articles_concept_audience_idx ON topic_articles
 
 -- Index for sorting insights by importance (used when displaying evidence view)
 CREATE INDEX IF NOT EXISTS insights_importance_idx ON insights (importance DESC NULLS LAST);
+

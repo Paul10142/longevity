@@ -194,3 +194,4 @@ export function ConceptInsightTagger({ conceptId, insights }: ConceptInsightTagg
     </div>
   )
 }
+

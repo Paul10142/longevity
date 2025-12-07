@@ -1,6 +1,7 @@
 import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import { createHash } from 'crypto'
+import { generateInsightEmbedding } from './embeddings'
 
 // Lazy initialization of OpenAI client to avoid errors during build when API key is not available
 let openaiInstance: OpenAI | null = null
@@ -675,6 +676,7 @@ export async function processSourceFromPlainText(
     // 2. Insert chunks into database
     const chunkInserts = chunks.map((content, index) => ({
       source_id: sourceId,
+      run_id: runId, // Link chunks to the processing run
       locator: `seg-${String(index + 1).padStart(3, '0')}`,
       content,
       embedding: null // We'll add embeddings later
@@ -690,15 +692,33 @@ export async function processSourceFromPlainText(
 
     console.log(`Inserted ${chunkInserts.length} chunks`)
 
+    // Update run record with chunks_created now that chunking is complete
+    if (runId) {
+      const { error: updateError } = await supabaseAdmin
+        .from('source_processing_runs')
+        .update({
+          chunks_created: chunksCreated
+        })
+        .eq('id', runId)
+      
+      if (updateError) {
+        console.error('Failed to update run record with chunks_created:', updateError)
+      } else {
+        console.log(`Updated run record: chunks_created = ${chunksCreated}`)
+      }
+    }
+
     // 3. Process each chunk to extract insights
     let totalPromptTokens = 0
     let totalCompletionTokens = 0
     let totalTokens = 0
   
     for (const chunk of chunkInserts) {
-      console.log(`\n[${chunk.locator}] Processing chunk ${chunksProcessed + 1}/${chunkInserts.length}`)
+      const chunkIndex = chunkInserts.indexOf(chunk) + 1
+      console.log(`\n[${chunk.locator}] Processing chunk ${chunkIndex}/${chunkInserts.length} (sequential order: ${chunkIndex})`)
       console.log(`[${chunk.locator}] Content length: ${chunk.content.length} characters`)
       console.log(`[${chunk.locator}] Content preview: ${chunk.content.substring(0, 150)}...`)
+      console.log(`[${chunk.locator}] Run ID: ${runId || 'none'}`)
       
       onProgress?.({
         stage: 'extracting',
@@ -807,6 +827,21 @@ export async function processSourceFromPlainText(
           insightsCreated++
           console.log(`[${chunk.locator}] ✓ Created new insight ${insightId.substring(0, 8)}... with hash ${insightHash.substring(0, 8)}...`)
           
+          // Generate embedding asynchronously (fire-and-forget to avoid blocking)
+          ;(async () => {
+            try {
+              const embedding = await generateInsightEmbedding(insight)
+              await supabaseAdmin
+                .from('insights')
+                .update({ embedding })
+                .eq('id', insightId)
+              console.log(`[${chunk.locator}] ✓ Generated embedding for insight ${insightId.substring(0, 8)}...`)
+            } catch (error) {
+              // Log but don't fail - embedding generation is non-critical
+              console.warn(`[${chunk.locator}] ⚠ Failed to generate embedding for insight ${insightId.substring(0, 8)}...:`, error)
+            }
+          })()
+          
           // NOTE: Auto-tagging has been moved to the async batch job
           // (/api/admin/insights/autotag-batch). This pipeline only extracts insights.
           // New insights are marked with needs_tagging = true for later processing.
@@ -826,6 +861,7 @@ export async function processSourceFromPlainText(
           .insert({
             insight_id: insightId,
             source_id: sourceId,
+            run_id: runId, // Link insight_sources to the processing run
             locator: chunk.locator
           })
 
@@ -848,6 +884,7 @@ export async function processSourceFromPlainText(
         const { error: updateError } = await supabaseAdmin
           .from('source_processing_runs')
           .update({
+            chunks_created: chunksCreated, // Always include - fixes runs that started before this was set
             chunks_processed: chunksProcessed,
             chunks_with_insights: chunksWithInsights,
             chunks_without_insights: chunksWithoutInsights,
@@ -858,6 +895,11 @@ export async function processSourceFromPlainText(
         
         if (updateError) {
           console.error(`[${chunk.locator}] Failed to update run record during processing:`, updateError)
+        } else {
+          // Log if we're fixing a run that had chunks_created = 0
+          if (chunksCreated > 0 && chunksProcessed > 0) {
+            console.log(`[${chunk.locator}] Updated run record: ${chunksProcessed}/${chunksCreated} chunks processed`)
+          }
         }
       }
     }

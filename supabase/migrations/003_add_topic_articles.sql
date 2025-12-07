@@ -28,3 +28,4 @@ $$ language 'plpgsql';
 
 CREATE TRIGGER update_topic_articles_updated_at BEFORE UPDATE ON topic_articles
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
+

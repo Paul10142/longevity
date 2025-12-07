@@ -35,3 +35,4 @@ export function TranscriptEditorClient({ sourceId, transcript }: TranscriptEdito
 
   return <TranscriptEditor sourceId={sourceId} transcript={transcript} onUpdate={handleUpdate} />
 }
+
