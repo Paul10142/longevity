@@ -6,6 +6,7 @@ const nextConfig = {
   },
   // Exclude src directory from Next.js processing since we're using app directory
   pageExtensions: ['ts', 'tsx', 'js', 'jsx'],
+  serverExternalPackages: ['pdf-parse'],
 }
 
 export default nextConfig

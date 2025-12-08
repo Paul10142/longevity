@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { LayoutGrid, List } from 'lucide-react'
 import { TopicMap } from './TopicMap'
 import { TopicListView } from './TopicListView'
@@ -24,6 +24,15 @@ export function TopicsView({ initialConcepts, initialRelationships }: TopicsView
   const [concepts, setConcepts] = useState<Concept[]>(initialConcepts || [])
   const [relationships, setRelationships] = useState<Relationship[]>(initialRelationships || [])
   const [loading, setLoading] = useState(!initialConcepts)
+  const resetMapFnRef = useRef<(() => void) | null>(null)
+  const [resetMapFn, setResetMapFn] = useState<(() => void) | null>(null)
+  
+  // Use a stable callback to set the reset function
+  const handleResetRef = useCallback((resetFn: () => void) => {
+    resetMapFnRef.current = resetFn
+    // Update state in a way that doesn't cause render issues
+    setResetMapFn(() => resetFn)
+  }, [])
 
   // Fetch data if not provided
   useEffect(() => {
@@ -52,17 +61,17 @@ export function TopicsView({ initialConcepts, initialRelationships }: TopicsView
 
   return (
     <div className="w-full">
-      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-2xl font-bold">Topics</h2>
-          <p className="text-sm text-muted-foreground mt-1">
-            {viewMode === 'map' 
-              ? 'Click a topic to explore related topics and subtopics'
-              : 'Expand topics to see subtopics and related topics'
-            }
-          </p>
-        </div>
-        <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/50">
+      <div className="mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-end gap-4">
+        <div className="flex items-center gap-4">
+          {viewMode === 'map' && resetMapFn && (
+            <button
+              onClick={resetMapFn}
+              className="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-md transition-colors"
+            >
+              Reset View
+            </button>
+          )}
+          <div className="flex items-center gap-2 border rounded-lg p-1 bg-muted/50">
           <button
             onClick={() => setViewMode('map')}
             className={`
@@ -93,11 +102,16 @@ export function TopicsView({ initialConcepts, initialRelationships }: TopicsView
             <List className="w-4 h-4" />
             <span className="hidden sm:inline">List</span>
           </button>
+          </div>
         </div>
       </div>
 
       {viewMode === 'map' ? (
-        <TopicMap initialConcepts={concepts} initialRelationships={relationships} />
+        <TopicMap 
+          initialConcepts={concepts} 
+          initialRelationships={relationships}
+          onResetRef={handleResetRef}
+        />
       ) : (
         <TopicListView concepts={concepts} relationships={relationships} />
       )}

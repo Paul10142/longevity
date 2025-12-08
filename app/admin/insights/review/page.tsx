@@ -38,24 +38,30 @@ export default async function InsightsReviewPage({
     )
   }
 
-  // Get unique insights count (distinct insight records)
-  const { count: uniqueInsightsCount } = await supabaseAdmin
+  // Get raw insights count (all insight records - this is the raw layer)
+  const { count: rawInsightsCount } = await supabaseAdmin
     .from('insights')
     .select('*', { count: 'exact', head: true })
     .is('deleted_at', null)
 
-  // Get total insights count (all insight-source links for non-deleted insights)
-  // Count directly from insight_sources table joined with non-deleted insights
+  // Get unique insights count (from unique_insights table)
+  const { count: uniqueInsightsCount } = await supabaseAdmin
+    .from('unique_insights')
+    .select('*', { count: 'exact', head: true })
+
+  // Get total source links count (all insight-source links for non-deleted insights)
   // This counts all source links, so if an insight appears in 3 sources, it counts as 3
-  const { count: totalInsightsCount } = await supabaseAdmin
+  const { count: totalSourceLinksCount } = await supabaseAdmin
     .from('insight_sources')
     .select('insight_id, insights!inner(deleted_at)', { count: 'exact', head: true })
     .is('insights.deleted_at', null)
   
-  const totalInsights = totalInsightsCount || 0
+  const rawInsights = rawInsightsCount || 0
+  const uniqueInsights = uniqueInsightsCount || 0
+  const totalSourceLinks = totalSourceLinksCount || 0
 
 
-  // Get high actionability count (unique insights)
+  // Get high actionability count (raw insights)
   const { count: highActionabilityCount } = await supabaseAdmin
     .from('insights')
     .select('*', { count: 'exact', head: true })
@@ -110,9 +116,6 @@ export default async function InsightsReviewPage({
       actionability,
       primary_audience,
       insight_type,
-      has_direct_quote,
-      direct_quote,
-      tone,
       qualifiers,
       created_at,
       insight_sources (
@@ -136,7 +139,7 @@ export default async function InsightsReviewPage({
     .is('deleted_at', null)
 
   // Apply text search if provided
-  // Search across statement, context_note, and direct_quote fields
+  // Search across statement and context_note fields
   if (searchQuery && searchQuery.trim()) {
     const trimmedQuery = searchQuery.trim()
     const searchPattern = `%${trimmedQuery}%`
@@ -146,7 +149,7 @@ export default async function InsightsReviewPage({
     // The % signs should be included in the pattern string
     try {
       insightsQuery = insightsQuery.or(
-        `statement.ilike.${searchPattern},context_note.ilike.${searchPattern},direct_quote.ilike.${searchPattern}`
+        `statement.ilike.${searchPattern},context_note.ilike.${searchPattern}`
       )
     } catch (searchError) {
       // Fallback: if or() fails, just search statement field
@@ -196,9 +199,6 @@ export default async function InsightsReviewPage({
             actionability,
             primary_audience,
             insight_type,
-            has_direct_quote,
-            direct_quote,
-            tone,
             qualifiers,
             created_at,
             deleted_at,
@@ -296,7 +296,7 @@ export default async function InsightsReviewPage({
         if (searchQuery && searchQuery.trim()) {
           const trimmedQuery = searchQuery.trim()
           const searchPattern = `%${trimmedQuery}%`
-          query = query.or(`insights.statement.ilike.${searchPattern},insights.context_note.ilike.${searchPattern},insights.direct_quote.ilike.${searchPattern}`)
+          query = query.or(`insights.statement.ilike.${searchPattern},insights.context_note.ilike.${searchPattern}`)
         }
         
         // Apply topic filter if specified (use already-fetched conceptId)
@@ -401,9 +401,14 @@ export default async function InsightsReviewPage({
   
   // Count distinct insights per source (matching Manage Sources page logic)
   const accurateInsightCounts: Record<string, number> = {}
+  // Count distinct sources that have insights
+  const distinctSourcesWithInsights = new Set<string>()
   if (allInsightSources) {
     const insightsCountMap = new Map<string, Set<string>>()
     allInsightSources.forEach((item: any) => {
+      // Track distinct sources
+      distinctSourcesWithInsights.add(item.source_id)
+      // Count insights per source
       if (!insightsCountMap.has(item.source_id)) {
         insightsCountMap.set(item.source_id, new Set())
       }
@@ -413,6 +418,8 @@ export default async function InsightsReviewPage({
       accurateInsightCounts[sourceId] = insightSet.size
     })
   }
+  
+  const totalSourcesWithInsights = distinctSourcesWithInsights.size
 
   // Fetch all source titles for the filter dropdown
   const { data: sourcesData } = await supabaseAdmin
@@ -430,7 +437,6 @@ export default async function InsightsReviewPage({
   
   const allTopics = topicsData || []
 
-  const uniqueInsights = uniqueInsightsCount || 0
   const uniqueInsightsShown = insightsData?.length || 0
 
   // Group insights by source for easier review
@@ -474,8 +480,8 @@ export default async function InsightsReviewPage({
     })
   }
   
-  // Calculate total source links from grouped data
-  const totalSourceLinks = Object.values(insightsBySource).reduce((sum, insights) => sum + insights.length, 0)
+  // Calculate total source links from grouped data (for display in filtered results)
+  const totalSourceLinksFromGrouped = Object.values(insightsBySource).reduce((sum, insights) => sum + insights.length, 0)
 
   return (
     <div className="min-h-screen bg-background">
@@ -494,11 +500,17 @@ export default async function InsightsReviewPage({
                 <Link href="/admin/concepts">
                   <Button variant="ghost" size="sm">Concepts</Button>
                 </Link>
+                <Link href="/admin/insights/clusters">
+                  <Button variant="ghost" size="sm">Merge Clusters</Button>
+                </Link>
+                <Link href="/admin/insights/unique">
+                  <Button variant="ghost" size="sm">Unique Insights</Button>
+                </Link>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {uniqueInsights.toLocaleString()} unique insights across {totalInsights.toLocaleString()} total source links
+                {rawInsights.toLocaleString()} raw insights • {uniqueInsights.toLocaleString()} unique insights • {totalSourceLinks.toLocaleString()} source links
                 {hasSearchOrFilters && (
-                  <span> • Showing {uniqueInsightsShown.toLocaleString()} of {insightsCount || 0} matching insights ({totalSourceLinks.toLocaleString()} source links)</span>
+                  <span> • Showing {uniqueInsightsShown.toLocaleString()} of {insightsCount || 0} matching insights ({totalSourceLinksFromGrouped.toLocaleString()} source links)</span>
                 )}
                 {!hasSearchOrFilters && (
                   <span> • Use search or filters to view insights</span>
@@ -513,7 +525,7 @@ export default async function InsightsReviewPage({
                 </a>
               </Button>
               <Button asChild variant="outline">
-                <a href={`/api/admin/insights/export?format=csv&limit=${uniqueInsights || 10000}`} download>
+                <a href={`/api/admin/insights/export?format=csv&limit=${rawInsights || 10000}`} download>
                   <Download className="mr-2 h-4 w-4" />
                   Export CSV
                 </a>
@@ -523,16 +535,21 @@ export default async function InsightsReviewPage({
 
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-4 gap-4 text-center">
+              <div className="grid grid-cols-5 gap-4 text-center">
+                <div>
+                  <div className="text-2xl font-bold">{rawInsights.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Raw Insights</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(All extracted)</div>
+                </div>
                 <div>
                   <div className="text-2xl font-bold">{uniqueInsights.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Unique Insights</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Distinct records)</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(Merged)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{totalInsights.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Total Insights</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(All source links)</div>
+                  <div className="text-2xl font-bold">{totalSourceLinks.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Source Links</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(All connections)</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">
@@ -542,7 +559,7 @@ export default async function InsightsReviewPage({
                   <div className="text-xs text-muted-foreground/70 mt-1">(Unique)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{Object.keys(insightsBySource).length}</div>
+                  <div className="text-2xl font-bold">{totalSourcesWithInsights.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Sources</div>
                   <div className="text-xs text-muted-foreground/70 mt-1">(With insights)</div>
                 </div>
@@ -565,7 +582,7 @@ export default async function InsightsReviewPage({
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground mb-2">Enter a search query or apply filters to view insights</p>
-              <p className="text-sm text-muted-foreground/70">There are {uniqueInsights.toLocaleString()} unique insights available to search</p>
+              <p className="text-sm text-muted-foreground/70">There are {rawInsights.toLocaleString()} raw insights available to search</p>
             </CardContent>
           </Card>
         )}

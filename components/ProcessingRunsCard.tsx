@@ -27,8 +27,10 @@ interface ProcessingRun {
 }
 
 interface ChunkWithInsights {
+  id: string
   locator: string
   content: string
+  run_id?: string | null
   insights: Array<{
     id: string
     statement: string
@@ -40,7 +42,7 @@ interface ChunkWithInsights {
 interface ProcessingRunsCardProps {
   sourceId: string
   processingRuns: ProcessingRun[]
-  chunks: Array<{ locator: string; content: string }>
+  chunks: Array<{ id: string; locator: string; content: string; run_id?: string | null }>
   insightsByLocator: Record<string, Array<{ id: string; statement: string; importance?: number; insight_type?: string }>>
   hasTranscript?: boolean
 }
@@ -94,8 +96,17 @@ export function ProcessingRunsCard({
 
   const selectedRun = processingRuns.find(r => r.id === selectedRunId) || processingRuns[0]
 
-  // Get chunks for this run (all chunks, ordered by locator)
+  // Get chunks for this specific run only (filter by run_id to avoid duplicates from other runs)
   const runChunks = chunks
+    .filter(chunk => {
+      // If chunk has run_id, match it to selected run
+      // If chunk has no run_id (old data), only include if this is the first/only run
+      if (chunk.run_id) {
+        return chunk.run_id === selectedRun.id
+      }
+      // For backward compatibility: if no run_id, only show in first run
+      return processingRuns.length === 1 && processingRuns[0].id === selectedRun.id
+    })
     .map(chunk => ({
       ...chunk,
       insights: insightsByLocator[chunk.locator] || []
@@ -448,7 +459,7 @@ export function ProcessingRunsCard({
                                     const hasInsights = chunk.insights.length > 0
                                     
                                     return (
-                                      <AccordionItem key={chunk.locator} value={chunk.locator} className="border rounded-lg">
+                                      <AccordionItem key={`${chunk.locator}-${chunk.id}`} value={`${chunk.locator}-${chunk.id}`} className="border rounded-lg">
                                         <AccordionTrigger className="px-4 hover:no-underline">
                                           <div className="flex items-center gap-3 w-full">
                                             <Badge variant="outline">{chunk.locator}</Badge>

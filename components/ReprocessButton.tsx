@@ -36,7 +36,7 @@ export function ReprocessButton({ sourceId }: ReprocessButtonProps) {
   const [startTime, setStartTime] = useState<number | null>(null)
 
   const handleReprocess = async () => {
-    if (!confirm('This will delete all existing chunks and insights for this source and regenerate them from the transcript. Continue?')) {
+    if (!confirm('This will create a new processing run from the transcript. Previous runs and their insights will be preserved. Continue?')) {
       return
     }
 

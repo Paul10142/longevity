@@ -17,9 +17,6 @@ interface Insight {
   actionability?: string
   primary_audience?: 'Patient' | 'Clinician' | 'Both'
   insight_type?: string
-  has_direct_quote?: boolean
-  direct_quote?: string | null
-  tone?: string
   qualifiers?: Record<string, any>
   locator: string
   sourceTitle?: string
@@ -132,9 +129,24 @@ export function InsightReviewClient({
                       >
                         <div className="flex items-start justify-between mb-2">
                           <div className="flex-1">
-                            <div className="flex items-center gap-2 mb-2">
+                            <div className="flex items-center gap-2 mb-2 flex-wrap">
                               <Badge variant="outline" className="text-xs">
                                 {insight.locator}
+                              </Badge>
+                              <Badge variant="secondary" className="text-xs">
+                                {insight.evidence_type}
+                              </Badge>
+                              <Badge
+                                variant={
+                                  insight.confidence === 'high'
+                                    ? 'default'
+                                    : insight.confidence === 'medium'
+                                    ? 'secondary'
+                                    : 'outline'
+                                }
+                                className="text-xs"
+                              >
+                                {insight.confidence} confidence
                               </Badge>
                               <Badge variant="outline" className="text-xs">
                                 {insight.insight_type}
@@ -151,38 +163,14 @@ export function InsightReviewClient({
                                 {insight.context_note}
                               </p>
                             )}
-                            {insight.has_direct_quote && insight.direct_quote && (
-                              <blockquote className="border-l-2 border-muted pl-3 my-2 italic text-sm text-muted-foreground">
-                                "{insight.direct_quote}"
-                              </blockquote>
-                            )}
-                            <div className="flex flex-wrap gap-2 mt-2">
-                              <Badge variant="secondary" className="text-xs">
-                                {insight.evidence_type}
-                              </Badge>
-                              <Badge
-                                variant={
-                                  insight.confidence === 'high'
-                                    ? 'default'
-                                    : insight.confidence === 'medium'
-                                    ? 'secondary'
-                                    : 'outline'
-                                }
-                                className="text-xs"
-                              >
-                                {insight.confidence} confidence
-                              </Badge>
-                              {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                            {/* Primary audience - only show if not Both */}
+                            {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                              <div className="mt-2">
                                 <Badge variant="outline" className="text-xs">
                                   For {insight.primary_audience}s
                                 </Badge>
-                              )}
-                              {insight.tone && insight.tone !== 'Neutral' && (
-                                <span className="text-xs text-muted-foreground">
-                                  Tone: {insight.tone}
-                                </span>
-                              )}
-                            </div>
+                              </div>
+                            )}
                             {insight.qualifiers &&
                               Object.keys(insight.qualifiers).length > 0 && (
                                 <div className="mt-2 text-xs text-muted-foreground">

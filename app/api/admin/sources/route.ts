@@ -220,6 +220,34 @@ export async function POST(request: NextRequest) {
               }
             })()
 
+            // Trigger clustering job for newly processed insights
+            // This runs asynchronously and won't block the response
+            // Fire and forget - don't await to avoid blocking the response
+            ;(async () => {
+              try {
+                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                  'http://localhost:3000'
+                
+                // Call clustering endpoint for this source
+                const clusterResponse = await fetch(`${baseUrl}/api/admin/insights/cluster`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sourceId: source.id, limit: 500 }),
+                })
+                
+                if (!clusterResponse.ok) {
+                  console.warn(`Clustering job returned status ${clusterResponse.status}`)
+                } else {
+                  const clusterResult = await clusterResponse.json()
+                  console.log(`[clustering] Job completed: ${clusterResult.result?.clustersCreated || 0} clusters created`)
+                }
+              } catch (error) {
+                // Log but don't fail - clustering is non-critical
+                console.warn('[clustering] Failed to trigger clustering job:', error)
+              }
+            })()
+
             // Trigger concept discovery job for newly processed source
             // This runs asynchronously and won't block the response
             // Fire and forget - don't await to avoid blocking the response
@@ -326,6 +354,31 @@ export async function POST(request: NextRequest) {
           processing_error: null,
         })
         .eq("id", source.id)
+
+      // Trigger clustering job for newly processed insights
+      // This runs asynchronously and won't block the response
+      ;(async () => {
+        try {
+          const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+            (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+            'http://localhost:3000'
+          
+          const clusterResponse = await fetch(`${baseUrl}/api/admin/insights/cluster`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ sourceId: source.id, limit: 500 }),
+          })
+          
+          if (!clusterResponse.ok) {
+            console.warn(`Clustering job returned status ${clusterResponse.status}`)
+          } else {
+            const clusterResult = await clusterResponse.json()
+            console.log(`[clustering] Job completed: ${clusterResult.result?.clustersCreated || 0} clusters created`)
+          }
+        } catch (error) {
+          console.warn('[clustering] Failed to trigger clustering job:', error)
+        }
+      })()
 
       // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
       // so topic pages pick up new narratives/evidence without manual deploys.

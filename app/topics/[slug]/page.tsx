@@ -6,6 +6,7 @@ import { Badge } from "@/components/ui/badge"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { retrySupabaseQuery } from "@/lib/retry"
 import type { Concept } from "@/lib/types"
+import { getRelatedConcepts } from "@/lib/conceptConnections"
 
 import { formatEvidenceType, capitalizeWords } from "@/lib/utils"
 
@@ -119,9 +120,6 @@ export default async function TopicPage({
           actionability,
           primary_audience,
           insight_type,
-          has_direct_quote,
-          direct_quote,
-          tone,
           deleted_at,
           insight_sources (
             source_id,
@@ -169,9 +167,6 @@ export default async function TopicPage({
             actionability,
             primary_audience,
             insight_type,
-            has_direct_quote,
-            direct_quote,
-            tone,
             deleted_at,
             insight_sources (
               source_id,
@@ -297,6 +292,15 @@ export default async function TopicPage({
 
   const sourcesList = Object.values(insightsBySource)
 
+  // Fetch related concepts
+  let relatedConcepts: Array<{ id: string; name: string; slug: string; description: string | null; connection_strength: number; connection_type: string }> = []
+  try {
+    relatedConcepts = await getRelatedConcepts(concept.id, 5, 0.3)
+  } catch (error) {
+    // Don't fail if related concepts fail - just log and continue
+    console.warn(`[Topic Page] Error fetching related concepts for ${concept.name}:`, error)
+  }
+
   return (
     <div className="min-h-screen bg-background">
       <main>
@@ -313,6 +317,41 @@ export default async function TopicPage({
               {insightsData?.length || 0} insight{insightsData?.length !== 1 ? 's' : ''} across {sourcesList.length} source{sourcesList.length !== 1 ? 's' : ''}
             </p>
           </div>
+
+          {/* Related Topics Section */}
+          {relatedConcepts.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="text-lg">Related Topics</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="flex flex-wrap gap-2">
+                  {relatedConcepts.map((related) => (
+                    <Link
+                      key={related.id}
+                      href={`/topics/${related.slug}`}
+                      className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card hover:bg-accent hover:text-accent-foreground transition-colors"
+                    >
+                      <span className="text-sm font-medium">{related.name}</span>
+                      {related.connection_type === 'hierarchy' && (
+                        <Badge variant="outline" className="text-xs">Hierarchy</Badge>
+                      )}
+                      {related.connection_type === 'shared_insights' && (
+                        <Badge variant="secondary" className="text-xs">
+                          {related.connection_strength > 0.5 ? 'Strong' : 'Related'}
+                        </Badge>
+                      )}
+                    </Link>
+                  ))}
+                </div>
+                {relatedConcepts.some(c => c.description) && (
+                  <p className="text-xs text-muted-foreground mt-3">
+                    These topics are related based on shared insights, semantic similarity, or hierarchical relationships.
+                  </p>
+                )}
+              </CardContent>
+            </Card>
+          )}
 
           {/* Topic View Tabs */}
           {(() => {
@@ -338,7 +377,7 @@ export default async function TopicPage({
                             {/* Header with importance indicator */}
                             <div className="flex items-start justify-between mb-3">
                               <div className="flex-1">
-                                <div className="flex items-center gap-2 mb-2">
+                                <div className="flex items-center gap-2 mb-2 flex-wrap">
                                   {/* Importance indicator (1-3 stars) */}
                                   <div className="flex gap-0.5">
                                     {[1, 2, 3].map((level) => (
@@ -354,12 +393,29 @@ export default async function TopicPage({
                                       </span>
                                     ))}
                                   </div>
+                                  {/* Evidence Type */}
+                                  <Badge variant="secondary" className="text-xs">
+                                    {formatEvidenceType(insight.evidence_type)}
+                                  </Badge>
+                                  {/* Confidence */}
+                                  <Badge
+                                    variant={
+                                      insight.confidence === "high"
+                                        ? "default"
+                                        : insight.confidence === "medium"
+                                        ? "secondary"
+                                        : "outline"
+                                    }
+                                    className="text-xs"
+                                  >
+                                    {capitalizeWords(insight.confidence)} Confidence
+                                  </Badge>
                                   {/* Insight type badge */}
                                   <Badge variant="outline" className="text-xs">
                                     {insight.insight_type || 'Explanation'}
                                   </Badge>
                                   {/* Actionability */}
-                                  {insight.actionability && insight.actionability !== 'Background' && (
+                                  {insight.actionability && (
                                     <Badge 
                                       variant={insight.actionability === 'High' ? 'default' : 'secondary'}
                                       className="text-xs"
@@ -372,13 +428,6 @@ export default async function TopicPage({
                                 <p className="text-lg font-medium mb-2">
                                   {insight.statement}
                                 </p>
-                                
-                                {/* Direct quote if present */}
-                                {insight.has_direct_quote && insight.direct_quote && (
-                                  <blockquote className="border-l-4 border-primary/30 pl-4 my-3 italic text-muted-foreground">
-                                    "{insight.direct_quote}"
-                                  </blockquote>
-                                )}
                                 
                                 {insight.context_note && (
                                   <p className="text-sm text-muted-foreground mb-3">
@@ -393,34 +442,14 @@ export default async function TopicPage({
                               </div>
                             </div>
 
-                            <div className="flex flex-wrap gap-2 items-center">
-                              <Badge variant="secondary">
-                                {formatEvidenceType(insight.evidence_type)}
-                              </Badge>
-                              <Badge
-                                variant={
-                                  insight.confidence === "high"
-                                    ? "default"
-                                    : insight.confidence === "medium"
-                                    ? "secondary"
-                                    : "outline"
-                                }
-                              >
-                                {capitalizeWords(insight.confidence)} Confidence
-                              </Badge>
-                              {/* Primary audience */}
-                              {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                            {/* Primary audience - only show if not Both */}
+                            {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                              <div className="mt-3">
                                 <Badge variant="outline" className="text-xs">
                                   For {insight.primary_audience}s
                                 </Badge>
-                              )}
-                              {/* Tone */}
-                              {insight.tone && insight.tone !== 'Neutral' && (
-                                <span className="text-xs text-muted-foreground">
-                                  Tone: {insight.tone}
-                                </span>
-                              )}
-                            </div>
+                              </div>
+                            )}
 
                             {insight.qualifiers &&
                               Object.keys(insight.qualifiers).length > 0 && (

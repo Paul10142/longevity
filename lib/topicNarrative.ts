@@ -2,6 +2,7 @@ import { supabaseAdmin } from './supabaseServer'
 import OpenAI from 'openai'
 import type { Concept, TopicArticle } from './types'
 import { prioritizeInsightsForGeneration, getInsightsForGeneration } from './insightPrioritization'
+import { getRelatedConcepts, getRelatedConceptInsights } from './conceptConnections'
 
 // Lazy initialization of OpenAI client to avoid errors during build when API key is not available
 let openaiInstance: OpenAI | null = null
@@ -140,7 +141,6 @@ interface InsightForNarrative {
   importance?: number
   actionability?: string
   insight_type?: string
-  direct_quote?: string | null
   tone?: string
 }
 
@@ -179,8 +179,6 @@ export async function generateTopicArticlesForConcept(conceptId: string): Promis
         actionability,
         primary_audience,
         insight_type,
-        has_direct_quote,
-        direct_quote,
         tone,
         created_at
       )
@@ -211,6 +209,43 @@ export async function generateTopicArticlesForConcept(conceptId: string): Promis
     throw new Error('No insights selected for clinician article after prioritization.')
   }
 
+  // 3.5. Get related concepts and their insights for context
+  let relatedConceptsContext = ''
+  let relatedInsightsContext = ''
+  
+  try {
+    const relatedConcepts = await getRelatedConcepts(conceptId, 5, 0.5)
+    
+    if (relatedConcepts.length > 0) {
+      relatedConceptsContext = `\n\nRelated Topics (for context - you may reference these when relevant, but focus on the primary topic):\n${relatedConcepts.map(c => `- ${c.name}: ${c.description || 'No description'}`).join('\n')}`
+      
+      // Get top insights from related concepts (only importance 3, max 3 per concept)
+      const relatedInsights = await getRelatedConceptInsights(relatedConcepts, 3)
+      
+      if (relatedInsights.length > 0) {
+        // Filter to only importance 3 insights
+        const { data: importance3Insights } = await supabaseAdmin
+          .from('insights')
+          .select('id, statement, context_note')
+          .in('id', relatedInsights.map(i => i.id))
+          .eq('importance', 3)
+          .is('deleted_at', null)
+        
+        if (importance3Insights && importance3Insights.length > 0) {
+          relatedInsightsContext = `\n\nKey Insights from Related Topics (for context only - incorporate only if directly relevant to the primary topic):\n${importance3Insights.map((insight: any, idx: number) => {
+            const relatedConcept = relatedConcepts.find(c => 
+              relatedInsights.find(ri => ri.id === insight.id && ri.concept_id === c.id)
+            )
+            return `${idx + 1}. [${relatedConcept?.name || 'Related Topic'}]: ${insight.statement}${insight.context_note ? ` (${insight.context_note})` : ''}`
+          }).join('\n')}`
+        }
+      }
+    }
+  } catch (error) {
+    // Don't fail if related concepts fail - just log and continue
+    console.warn(`[Narrative Generation] Error fetching related concepts for ${concept.name}:`, error)
+  }
+
   // 4. Generate clinician article first
   console.log(`Generating clinician article for concept ${concept.name}...`)
   
@@ -218,12 +253,12 @@ export async function generateTopicArticlesForConcept(conceptId: string): Promis
   const clinicianUserPrompt = `Topic: ${concept.name}
 Description: ${concept.description || 'No description'}
 
-Insights (${clinicianInsights.length} of ${prioritizedClinician.totalCount} total - prioritized by importance, actionability, evidence strength, and recency, filtered for clinician audience):
-${clinicianInsightsJson}
+Primary Insights (${clinicianInsights.length} of ${prioritizedClinician.totalCount} total - prioritized by importance, actionability, evidence strength, and recency, filtered for clinician audience):
+${clinicianInsightsJson}${relatedConceptsContext}${relatedInsightsContext}
 
 Note: This represents the most important and recent insights relevant to clinicians. ${prioritizedClinician.tier3Count > 0 ? `An additional ${prioritizedClinician.tier3Count} insights are available but not included here to stay within token limits.` : ''}
 
-Generate a comprehensive clinician article for this topic. Remember: incorporate ALL insights, use AI to connect and organize them, but do NOT add external knowledge.`
+Generate a comprehensive clinician article for this topic. Remember: incorporate ALL primary insights, use AI to connect and organize them, but do NOT add external knowledge. You may reference related topics when relevant, but keep the focus on the primary topic.`
 
   let clinicianArticle: {
     title: string

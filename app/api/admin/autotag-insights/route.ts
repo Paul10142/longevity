@@ -28,9 +28,6 @@ export async function POST(request: NextRequest) {
         importance,
         actionability,
         insight_type,
-        has_direct_quote,
-        direct_quote,
-        tone
       `)
       .limit(limit * 2) // Fetch more to account for filtering
 

@@ -28,9 +28,10 @@ interface Relationship {
 interface TopicMapProps {
   initialConcepts?: Concept[]
   initialRelationships?: Relationship[]
+  onResetRef?: (resetFn: () => void) => void
 }
 
-export function TopicMap({ initialConcepts, initialRelationships }: TopicMapProps) {
+export function TopicMap({ initialConcepts, initialRelationships, onResetRef }: TopicMapProps) {
   const [concepts, setConcepts] = useState<Concept[]>(initialConcepts || [])
   const [relationships, setRelationships] = useState<Relationship[]>(initialRelationships || [])
   const [selectedNode, setSelectedNode] = useState<string | null>(null)
@@ -245,19 +246,48 @@ export function TopicMap({ initialConcepts, initialRelationships }: TopicMapProp
     }
   }, [graphData])
 
+  // Expose reset function to parent using ref to avoid infinite loops
+  const resetViewRef = useRef<(() => void) | null>(null)
+  
+  // Update ref when resetView changes
+  useEffect(() => {
+    resetViewRef.current = resetView
+  }, [resetView])
+  
+  // Expose reset function to parent - use a ref callback to avoid render issues
+  const onResetRefRef = useRef(onResetRef)
+  useEffect(() => {
+    onResetRefRef.current = onResetRef
+  }, [onResetRef])
+  
+  // Expose reset function to parent - defer to next tick to avoid render issues
+  useEffect(() => {
+    if (onResetRefRef.current) {
+      // Use setTimeout to defer the state update until after render completes
+      const timeoutId = setTimeout(() => {
+        if (onResetRefRef.current) {
+          onResetRefRef.current(() => {
+            if (resetViewRef.current) {
+              resetViewRef.current()
+            }
+          })
+        }
+      }, 0)
+      
+      return () => clearTimeout(timeoutId)
+    }
+  }, [onResetRef])
+
   // All nodes same standardized size
   const getNodeSize = useCallback(() => {
     return 80 // Fixed size for all nodes - increased to 80px
   }, [])
 
-  // Link color - gray out non-selected links
+  // Link color - gray out all links when a node is selected
   const getLinkColor = useCallback((link: any) => {
     if (selectedNode) {
-      const sourceId = typeof link.source === 'object' ? link.source.id : link.source
-      const targetId = typeof link.target === 'object' ? link.target.id : link.target
-      if (sourceId !== selectedNode && targetId !== selectedNode) {
-        return '#e5e7eb' // Very light gray for non-selected links
-      }
+      // When a node is selected, gray out all links (including those connected to it)
+      return '#e5e7eb' // Very light gray for all links when something is selected
     }
     return '#94a3b8' // gray for all links when nothing selected
   }, [selectedNode])
@@ -319,7 +349,7 @@ export function TopicMap({ initialConcepts, initialRelationships }: TopicMapProp
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-[600px]">
+      <div className="flex items-center justify-center h-[900px]">
         <div className="text-muted-foreground">Loading topic map...</div>
       </div>
     )
@@ -327,7 +357,7 @@ export function TopicMap({ initialConcepts, initialRelationships }: TopicMapProp
 
   if (!concepts || concepts.length === 0) {
     return (
-      <div className="flex items-center justify-center h-[600px]">
+      <div className="flex items-center justify-center h-[900px]">
         <div className="text-muted-foreground">No topics available</div>
       </div>
     )
@@ -335,26 +365,9 @@ export function TopicMap({ initialConcepts, initialRelationships }: TopicMapProp
 
   return (
     <div className="w-full">
-      <div className="mb-4 flex items-center justify-between">
-        <div>
-          <h2 className="text-2xl font-bold">Topic Map</h2>
-          <p className="text-sm text-muted-foreground">
-            Click a topic to explore related topics. Double-click to navigate to the topic page.
-          </p>
-        </div>
-        <div className="flex items-center gap-4">
-          <button
-            onClick={resetView}
-            className="px-3 py-1.5 text-sm bg-secondary hover:bg-secondary/80 rounded-md transition-colors"
-          >
-            Reset View
-          </button>
-        </div>
-      </div>
-      
       <div 
         className="border rounded-lg overflow-hidden bg-background" 
-        style={{ height: '600px' }}
+        style={{ height: '900px' }}
         onClick={(e) => {
           // If clicking on the container (not on a node), reset everything
           if (e.target === e.currentTarget || (e.target as HTMLElement).tagName === 'CANVAS') {

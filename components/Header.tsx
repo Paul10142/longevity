@@ -1,24 +1,30 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
 import { Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet"
+import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SearchBar } from "@/components/SearchBar"
 
   const navigation = [
     { name: "Topics", href: "/topics" },
+    { name: "Insights", href: "/admin/insights/review" },
     { name: "Sources", href: "/admin/sources" },
     { name: "Longevity Toolkit", href: "#tips" },
-    { name: "Resources", href: "#resources" },
     { name: "About", href: "#about" },
   ]
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
+  const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
+
+  // Only render Sheet on client to avoid hydration mismatch
+  useEffect(() => {
+    setIsMounted(true)
+  }, [])
 
   const handleNavigation = (href: string) => {
     if (href.startsWith("#")) {
@@ -94,50 +100,58 @@ export function Header() {
         </nav>
 
         {/* Mobile Navigation */}
-        <Sheet open={isOpen} onOpenChange={setIsOpen}>
-          <SheetTrigger asChild className="md:hidden">
-            <Button variant="ghost" size="icon" className="h-10 w-10">
-              <Menu className="h-6 w-6" />
-            </Button>
-          </SheetTrigger>
-          <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background/95 backdrop-blur-md">
-            <nav className="flex flex-col space-y-6 mt-8">
-              {/* Search bar for mobile */}
-              <div className="pb-4 border-b border-border/40">
-                <SearchBar />
-              </div>
-              {navigation.map((item) =>
-                item.href.startsWith("#") ? (
-                  <button
-                    key={item.name}
-                    onClick={() => handleNavigation(item.href)}
-                    className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
-                  >
-                    {item.name}
-                  </button>
-                ) : (
-                  <Link
-                    key={item.name}
-                    href={item.href}
-                    className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
-                    onClick={() => setIsOpen(false)}
-                  >
-                    {item.name}
-                  </Link>
-                )
-              )}
-              <Link
-                href="/start"
-                onClick={() => setIsOpen(false)}
-                className="mt-4"
-              >
-                <Button className="w-full">
-                  Start Here
-                </Button>
-              </Link>
-            </nav>
-          </SheetContent>
-        </Sheet>
+        {isMounted ? (
+          <Sheet open={isOpen} onOpenChange={setIsOpen}>
+            <SheetTrigger asChild className="md:hidden">
+              <Button variant="ghost" size="icon" className="h-10 w-10">
+                <Menu className="h-6 w-6" />
+              </Button>
+            </SheetTrigger>
+            <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background/95 backdrop-blur-md">
+              <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
+              <nav className="flex flex-col space-y-6 mt-8">
+                {/* Search bar for mobile */}
+                <div className="pb-4 border-b border-border/40">
+                  <SearchBar />
+                </div>
+                {navigation.map((item) =>
+                  item.href.startsWith("#") ? (
+                    <button
+                      key={item.name}
+                      onClick={() => handleNavigation(item.href)}
+                      className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
+                    >
+                      {item.name}
+                    </button>
+                  ) : (
+                    <Link
+                      key={item.name}
+                      href={item.href}
+                      className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
+                      onClick={() => setIsOpen(false)}
+                    >
+                      {item.name}
+                    </Link>
+                  )
+                )}
+                <Link
+                  href="/start"
+                  onClick={() => setIsOpen(false)}
+                  className="mt-4"
+                >
+                  <Button className="w-full">
+                    Start Here
+                  </Button>
+                </Link>
+              </nav>
+            </SheetContent>
+          </Sheet>
+        ) : (
+          // Fallback button during SSR to prevent layout shift
+          <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden" disabled>
+            <Menu className="h-6 w-6" />
+          </Button>
+        )}
       </div>
     </header>
   )

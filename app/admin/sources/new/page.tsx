@@ -9,7 +9,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { Loader2, AlertCircle, CheckCircle2, Plus, X as XIcon } from "lucide-react"
+import { Loader2, AlertCircle, CheckCircle2, Plus, X as XIcon, Youtube } from "lucide-react"
+import { extractYouTubeVideoId, isValidYouTubeUrl } from "@/lib/youtubeUtils"
 
 const COMMON_AUTHORS = [
   "Dr. Peter Attia",
@@ -40,7 +41,11 @@ export default function NewSourcePage() {
   })
   const [newAuthor, setNewAuthor] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
-  const [transcriptSource, setTranscriptSource] = useState<"paste" | "file">("paste")
+  const [transcriptSource, setTranscriptSource] = useState<"paste" | "file" | "youtube">("paste")
+  const [youtubeUrl, setYoutubeUrl] = useState("")
+  const [isFetchingTranscript, setIsFetchingTranscript] = useState(false)
+  const [isDragging, setIsDragging] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   const addAuthor = (author: string) => {
     if (author && !formData.authors.includes(author)) {
@@ -59,8 +64,206 @@ export default function NewSourcePage() {
     })
   }
 
+  const handleFileSelect = (file: File | null) => {
+    if (file) {
+      // Validate file type
+      const fileName = file.name.toLowerCase()
+      const validExtensions = ['.epub', '.txt', '.html', '.htm', '.pdf']
+      const isValid = validExtensions.some(ext => fileName.endsWith(ext))
+      
+      if (!isValid) {
+        setStatus({
+          type: 'error',
+          message: `Invalid file type. Supported formats: EPUB, TXT, HTML, PDF`
+        })
+        return
+      }
+      
+      setSelectedFile(file)
+      setStatus({ type: 'idle' })
+    }
+  }
+
+  const handleDragEnter = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(true)
+  }
+
+  const handleDragLeave = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+  }
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setIsDragging(false)
+
+    if (transcriptSource !== "file") {
+      setTranscriptSource("file")
+    }
+
+    const files = e.dataTransfer.files
+    if (files && files.length > 0) {
+      handleFileSelect(files[0])
+    }
+  }
+
+  const handleFetchYouTubeTranscript = async () => {
+    if (!youtubeUrl.trim()) {
+      setStatus({
+        type: 'error',
+        message: 'Please enter a YouTube URL'
+      })
+      return
+    }
+
+    const videoId = extractYouTubeVideoId(youtubeUrl)
+    if (!videoId) {
+      setStatus({
+        type: 'error',
+        message: 'Invalid YouTube URL. Please enter a valid YouTube video link.'
+      })
+      return
+    }
+
+    setIsFetchingTranscript(true)
+    setStatus({ type: 'idle' })
+
+    try {
+      const response = await fetch('/api/admin/youtube-transcript', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ videoId }),
+      })
+
+      if (!response.ok) {
+        const error = await response.json()
+        
+        if (response.status === 429) {
+          const retryAfter = error.retryAfter
+          setStatus({
+            type: 'error',
+            message: `Rate limit exceeded. Please wait ${retryAfter || 10} seconds before trying again.`
+          })
+        } else {
+          setStatus({
+            type: 'error',
+            message: error.error || 'Failed to fetch transcript from YouTube'
+          })
+        }
+        setIsFetchingTranscript(false)
+        return
+      }
+
+      const data = await response.json()
+
+      if (!data.success || !data.transcript) {
+        setStatus({
+          type: 'error',
+          message: 'No transcript found for this video. The video may not have captions available.'
+        })
+        setIsFetchingTranscript(false)
+        return
+      }
+
+      // Auto-populate form fields with metadata
+      const updates: Partial<typeof formData> = {
+        transcript: data.transcript,
+      }
+
+      // Update title if available and not already set
+      if (data.metadata?.title && !formData.title) {
+        updates.title = data.metadata.title
+      }
+
+      // Update date if available and not already set
+      if (data.metadata?.date && !formData.date) {
+        // Parse date - API might return various formats
+        try {
+          const dateValue = new Date(data.metadata.date)
+          if (!isNaN(dateValue.getTime())) {
+            updates.date = dateValue.toISOString().split('T')[0] // Format as YYYY-MM-DD
+          }
+        } catch {
+          // If date parsing fails, skip it
+        }
+      }
+
+      // Update URL if not already set
+      if (!formData.url) {
+        updates.url = youtubeUrl
+      }
+
+      // Update authors if channel name is available and not already in authors
+      if (data.metadata?.channel && !formData.authors.includes(data.metadata.channel)) {
+        updates.authors = [...formData.authors, data.metadata.channel]
+      }
+
+      // Set source type to "video" if not already set
+      if (formData.type !== "video") {
+        updates.type = "video"
+      }
+
+      setFormData({
+        ...formData,
+        ...updates,
+      })
+
+      setStatus({
+        type: 'success',
+        message: 'Transcript fetched successfully! Review and edit the fields below before submitting.'
+      })
+    } catch (error) {
+      console.error('Error fetching YouTube transcript:', error)
+      setStatus({
+        type: 'error',
+        message: error instanceof Error ? error.message : 'An unexpected error occurred'
+      })
+    } finally {
+      setIsFetchingTranscript(false)
+    }
+  }
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Manual validation for file upload
+    if (transcriptSource === "file" && !selectedFile) {
+      setStatus({
+        type: 'error',
+        message: 'Please select a file to upload or switch to another mode.'
+      })
+      return
+    }
+    
+    // Manual validation for pasted transcript
+    if (transcriptSource === "paste" && !formData.transcript.trim()) {
+      setStatus({
+        type: 'error',
+        message: 'Please enter transcript text or switch to another mode.'
+      })
+      return
+    }
+
+    // Manual validation for YouTube transcript
+    if (transcriptSource === "youtube" && !formData.transcript.trim()) {
+      setStatus({
+        type: 'error',
+        message: 'Please fetch the YouTube transcript first or switch to another mode.'
+      })
+      return
+    }
+    
     setIsSubmitting(true)
     setStatus({ type: 'creating', message: 'Creating source...' })
 
@@ -349,7 +552,7 @@ export default function NewSourcePage() {
               <CardHeader>
                 <CardTitle>Transcript</CardTitle>
                 <CardDescription>
-                  Upload a file (EPUB, TXT, HTML) or paste the transcript text
+                  Upload a file (EPUB, TXT, HTML), paste the transcript text, or fetch from YouTube
                 </CardDescription>
               </CardHeader>
               <CardContent className="space-y-4">
@@ -361,6 +564,7 @@ export default function NewSourcePage() {
                     onClick={() => {
                       setTranscriptSource("paste")
                       setSelectedFile(null)
+                      setYoutubeUrl("")
                     }}
                   >
                     Paste Text
@@ -371,36 +575,152 @@ export default function NewSourcePage() {
                     onClick={() => {
                       setTranscriptSource("file")
                       setFormData({ ...formData, transcript: "" })
+                      setYoutubeUrl("")
                     }}
                   >
                     Upload File
+                  </Button>
+                  <Button
+                    type="button"
+                    variant={transcriptSource === "youtube" ? "default" : "outline"}
+                    onClick={() => {
+                      setTranscriptSource("youtube")
+                      setSelectedFile(null)
+                      setFormData({ ...formData, transcript: "" })
+                    }}
+                  >
+                    <Youtube className="h-4 w-4 mr-2" />
+                    YouTube Link
                   </Button>
                 </div>
 
                 {transcriptSource === "file" ? (
                   <div>
                     <Label htmlFor="file">Upload File *</Label>
-                    <Input
-                      id="file"
-                      type="file"
-                      accept=".epub,.txt,.html,.htm"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0]
-                        if (file) {
-                          setSelectedFile(file)
+                    <div
+                      onDragEnter={handleDragEnter}
+                      onDragOver={handleDragOver}
+                      onDragLeave={handleDragLeave}
+                      onDrop={handleDrop}
+                      className={`
+                        mt-2 border-2 border-dashed rounded-lg p-8 text-center transition-colors
+                        ${isDragging 
+                          ? 'border-primary bg-primary/5' 
+                          : 'border-border hover:border-primary/50'
                         }
-                      }}
-                      className="mt-2"
-                      required={transcriptSource === "file"}
-                    />
-                    {selectedFile && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        Selected: {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
-                      </p>
-                    )}
+                        ${selectedFile ? 'border-primary/50' : ''}
+                      `}
+                    >
+                      <input
+                        ref={fileInputRef}
+                        id="file"
+                        type="file"
+                        accept=".epub,.txt,.html,.htm,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0]
+                          handleFileSelect(file ?? null)
+                        }}
+                        className="hidden"
+                      />
+                      {selectedFile ? (
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium text-primary">
+                            ✓ {selectedFile.name}
+                          </p>
+                          <p className="text-xs text-muted-foreground">
+                            {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => {
+                              setSelectedFile(null)
+                              if (fileInputRef.current) {
+                                fileInputRef.current.value = ''
+                              }
+                            }}
+                            className="mt-2"
+                          >
+                            Remove File
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <p className="text-sm text-muted-foreground">
+                            {isDragging ? 'Drop file here' : 'Drag and drop a file here, or click to browse'}
+                          </p>
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            onClick={() => fileInputRef.current?.click()}
+                          >
+                            Browse Files
+                          </Button>
+                        </div>
+                      )}
+                    </div>
                     <p className="text-xs text-muted-foreground mt-2">
-                      Supported formats: EPUB, TXT, HTML
+                      Supported formats: EPUB, TXT, HTML, PDF
                     </p>
+                  </div>
+                ) : transcriptSource === "youtube" ? (
+                  <div className="space-y-4">
+                    <div>
+                      <Label htmlFor="youtube-url">YouTube Video URL *</Label>
+                      <div className="flex gap-2 mt-2">
+                        <Input
+                          id="youtube-url"
+                          type="url"
+                          placeholder="https://www.youtube.com/watch?v=..."
+                          value={youtubeUrl}
+                          onChange={(e) => setYoutubeUrl(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              e.preventDefault()
+                              handleFetchYouTubeTranscript()
+                            }
+                          }}
+                          className="flex-1"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleFetchYouTubeTranscript}
+                          disabled={isFetchingTranscript || !youtubeUrl.trim()}
+                        >
+                          {isFetchingTranscript ? (
+                            <>
+                              <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                              Fetching...
+                            </>
+                          ) : (
+                            "Fetch Transcript"
+                          )}
+                        </Button>
+                      </div>
+                      <p className="text-xs text-muted-foreground mt-2">
+                        Enter a YouTube video URL to automatically fetch the transcript and video metadata
+                      </p>
+                    </div>
+                    {formData.transcript && (
+                      <div>
+                        <Label htmlFor="transcript">Transcript *</Label>
+                        <Textarea
+                          id="transcript"
+                          value={formData.transcript}
+                          onChange={(e) =>
+                            setFormData({ ...formData, transcript: e.target.value })
+                          }
+                          rows={20}
+                          className="font-mono text-sm"
+                          required
+                        />
+                        <p className="text-xs text-muted-foreground mt-2">
+                          Transcript fetched from YouTube. You can review and edit it before submitting.
+                        </p>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div>

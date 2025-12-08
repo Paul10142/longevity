@@ -139,9 +139,6 @@ export type InsightWithMetadata = {
   actionability: string | null
   primary_audience: string | null
   insight_type: string | null
-  has_direct_quote: boolean | null
-  direct_quote: string | null
-  tone: string | null
   created_at: string
   deleted_at: string | null
   locator: string

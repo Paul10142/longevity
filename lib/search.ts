@@ -19,8 +19,6 @@ export interface SearchResult {
   actionability: string | null
   primary_audience: string | null
   insight_type: string | null
-  has_direct_quote: boolean | null
-  direct_quote: string | null
   tone: string | null
   created_at: string
   similarity: number
@@ -140,13 +138,11 @@ export async function hybridSearch(
       actionability,
       primary_audience,
       insight_type,
-      has_direct_quote,
-      direct_quote,
       tone,
       created_at
     `)
     .is('deleted_at', null)
-    .or(`statement.ilike.%${query}%,context_note.ilike.%${query}%,direct_quote.ilike.%${query}%`)
+    .or(`statement.ilike.%${query}%,context_note.ilike.%${query}%`)
     .limit(limit)
 
   // Filter by concept if provided

@@ -43,10 +43,10 @@ export default async function SourcePage({
     notFound()
   }
 
-  // Fetch chunks to calculate timestamps
+  // Fetch chunks to calculate timestamps (will be filtered by run_id in ProcessingRunsCard)
   const { data: chunks, error: chunksError } = await supabaseAdmin
     .from("chunks")
-    .select("id, locator, content")
+    .select("id, locator, content, run_id")
     .eq("source_id", id)
     .order("locator", { ascending: true })
 
@@ -63,11 +63,13 @@ export default async function SourcePage({
 
   // Fetch insights linked to this source, including which other sources they're linked to
   // Also fetch topics/concepts each insight is connected to
+  // Include run_id to filter insights by processing run
   const { data: insights, error: insightsError } = await supabaseAdmin
     .from("insight_sources")
     .select(
       `
       locator,
+      run_id,
       insights (
         id,
         statement,
@@ -79,9 +81,6 @@ export default async function SourcePage({
         actionability,
         primary_audience,
         insight_type,
-        has_direct_quote,
-        direct_quote,
-        tone,
         insight_sources (
           source_id,
           sources (
@@ -156,6 +155,7 @@ export default async function SourcePage({
         return {
           ...insight,
           locator: item.locator,
+          runId: item.run_id || null,
           timestamp: calculateTimestamp(item.locator, chunks || []),
           sharedWithSources: otherSources,
           isShared: otherSources.length > 0,
@@ -164,9 +164,6 @@ export default async function SourcePage({
           actionability: insight.actionability ?? 'Medium',
           primary_audience: insight.primary_audience ?? 'Both',
           insight_type: insight.insight_type ?? 'Explanation',
-          has_direct_quote: insight.has_direct_quote ?? false,
-          direct_quote: insight.direct_quote ?? null,
-          tone: insight.tone ?? 'Neutral',
         }
       })
       .filter((i: any) => i !== null)
@@ -238,6 +235,7 @@ export default async function SourcePage({
           <SourceInsightsClient 
             insights={insightsList}
             sourceId={id}
+            processingRuns={processingRuns || []}
           />
         </div>
       </div>

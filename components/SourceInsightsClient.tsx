@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import Link from 'next/link'
 import { Card, CardContent } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Alert, AlertDescription } from '@/components/ui/alert'
+import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { InsightFilters } from './InsightFilters'
 import { Edit2, Trash2, Check, X, Loader2, CheckCircle2, AlertCircle, Download } from 'lucide-react'
 
@@ -21,21 +22,34 @@ interface Insight {
   actionability?: string
   primary_audience?: 'Patient' | 'Clinician' | 'Both'
   insight_type?: 'Protocol' | 'Explanation' | 'Mechanism' | 'Anecdote' | 'Warning' | 'Controversy' | 'Other'
-  has_direct_quote?: boolean
-  direct_quote?: string | null
-  tone?: string
   locator: string
   timestamp?: string
   sharedWithSources?: string[]
   isShared?: boolean
   topics?: Array<{ id: string; name: string; slug: string }>
   referenceNumber?: number
+  runId?: string | null
   [key: string]: any
+}
+
+interface ProcessingRun {
+  id: string
+  source_id: string
+  processed_at: string
+  chunks_created: number
+  chunks_processed: number
+  chunks_with_insights: number
+  chunks_without_insights: number
+  total_insights_created: number
+  processing_duration_seconds: number
+  status: 'processing' | 'success' | 'failed'
+  error_message: string | null
 }
 
 interface SourceInsightsClientProps {
   insights: Insight[]
   sourceId: string
+  processingRuns?: ProcessingRun[]
 }
 
 // Helper to capitalize first letter of each word
@@ -58,16 +72,274 @@ const formatEvidenceType = (type: string): string => {
   return capitalizeWords(spaced)
 }
 
+// Component to render insights list with filters for a specific run
+function InsightsListForRun({
+  insights,
+  onEditInsight,
+  onDeleteInsight,
+  editingInsightId,
+  editingStatement,
+  setEditingStatement,
+  handleSaveEdit,
+  handleCancelEdit,
+  deletingInsightId,
+  formatEvidenceType,
+  capitalizeWords
+}: {
+  insights: Insight[]
+  onEditInsight: (insight: Insight) => void
+  onDeleteInsight: (id: string) => void
+  editingInsightId: string | null
+  editingStatement: string
+  setEditingStatement: (value: string) => void
+  handleSaveEdit: (id: string) => void
+  handleCancelEdit: () => void
+  deletingInsightId: string | null
+  formatEvidenceType: (type: string) => string
+  capitalizeWords: (str: string) => string
+}) {
+  const [filteredInsights, setFilteredInsights] = useState<Insight[]>(insights)
+
+  useEffect(() => {
+    setFilteredInsights(insights)
+  }, [insights])
+
+  return (
+    <>
+      <InsightFilters 
+        insights={insights} 
+        onFilteredInsightsChange={setFilteredInsights}
+      />
+
+      {filteredInsights.length > 0 ? (
+        filteredInsights.map((insight: Insight) => (
+          <Card key={insight.id} className={insight.importance === 3 ? 'border-2 border-primary/30' : ''}>
+            <CardContent className="pt-6">
+              {/* Header with importance indicator */}
+              <div className="flex items-start justify-between mb-3">
+                <div className="flex-1">
+                  <div className="flex items-center gap-2 mb-2 flex-wrap">
+                    {/* Reference Number - Prominently displayed */}
+                    {insight.referenceNumber && (
+                      <Badge variant="default" className="text-xs font-mono font-bold bg-primary">
+                        #{insight.referenceNumber}
+                      </Badge>
+                    )}
+                    {/* Importance indicator (1-3 stars) */}
+                    <div className="flex gap-0.5">
+                      {[1, 2, 3].map((level) => (
+                        <span
+                          key={level}
+                          className={`text-sm ${
+                            level <= (insight.importance ?? 2)
+                              ? 'text-primary'
+                              : 'text-muted-foreground/30'
+                          }`}
+                        >
+                          ★
+                        </span>
+                      ))}
+                    </div>
+                    {/* Evidence Type */}
+                    <Badge variant="secondary" className="text-xs">
+                      {formatEvidenceType(insight.evidence_type)}
+                    </Badge>
+                    {/* Confidence */}
+                    <Badge
+                      variant={
+                        insight.confidence === "high"
+                          ? "default"
+                          : insight.confidence === "medium"
+                          ? "secondary"
+                          : "outline"
+                      }
+                      className="text-xs"
+                    >
+                      {capitalizeWords(insight.confidence || '')} Confidence
+                    </Badge>
+                    {/* Insight type badge */}
+                    <Badge variant="outline" className="text-xs">
+                      {insight.insight_type}
+                    </Badge>
+                    {/* Actionability */}
+                    {insight.actionability && (
+                      <Badge 
+                        variant={insight.actionability === 'High' ? 'default' : 'secondary'}
+                        className="text-xs"
+                      >
+                        {insight.actionability} Actionability
+                      </Badge>
+                    )}
+                  </div>
+                  
+                  {editingInsightId === insight.id ? (
+                    <div className="space-y-2 mb-2">
+                      <Textarea
+                        value={editingStatement}
+                        onChange={(e) => setEditingStatement(e.target.value)}
+                        className="min-h-[100px]"
+                      />
+                      <div className="flex gap-2">
+                        <Button
+                          size="sm"
+                          onClick={() => handleSaveEdit(insight.id)}
+                          disabled={!editingStatement.trim()}
+                        >
+                          <Check className="mr-2 h-4 w-4" />
+                          Save
+                        </Button>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={handleCancelEdit}
+                        >
+                          <X className="mr-2 h-4 w-4" />
+                          Cancel
+                        </Button>
+                      </div>
+                    </div>
+                  ) : (
+                    <p className="text-lg font-medium mb-2">
+                      {insight.statement}
+                    </p>
+                  )}
+                  
+                  {/* Direct quote if present */}
+                  
+                  {insight.context_note && (
+                    <p className="text-sm text-muted-foreground mb-3">
+                      {insight.context_note}
+                    </p>
+                  )}
+                  {insight.isShared && insight.sharedWithSources && insight.sharedWithSources.length > 0 && (
+                    <p className="text-xs text-muted-foreground mt-2 italic">
+                      Also found in: {insight.sharedWithSources.join(', ')}
+                    </p>
+                  )}
+                  
+                  {/* Topics/Concepts this insight is connected to */}
+                  {insight.topics && insight.topics.length > 0 && (
+                    <div className="mt-4 pt-4 border-t">
+                      <div className="flex flex-wrap gap-1">
+                        {insight.topics.map((topic: any) => (
+                          <Link key={topic.id} href={`/topics/${topic.slug}`}>
+                            <Badge variant="secondary" className="text-xs hover:bg-primary/20">
+                              {topic.name}
+                            </Badge>
+                          </Link>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <div className="ml-4 shrink-0 flex flex-col items-end gap-2">
+                  <Badge variant="outline">
+                    {insight.locator}
+                  </Badge>
+                  {insight.timestamp && (
+                    <span className="text-xs text-muted-foreground">
+                      ~{insight.timestamp}
+                    </span>
+                  )}
+                  {editingInsightId !== insight.id && (
+                    <div className="flex flex-col gap-1">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => onEditInsight(insight)}
+                        disabled={!!editingInsightId || !!deletingInsightId}
+                      >
+                        <Edit2 className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => onDeleteInsight(insight.id)}
+                        disabled={editingInsightId === insight.id || deletingInsightId === insight.id || !!editingInsightId}
+                      >
+                        {deletingInsightId === insight.id ? (
+                          <Loader2 className="h-3 w-3 animate-spin" />
+                        ) : (
+                          <Trash2 className="h-3 w-3" />
+                        )}
+                      </Button>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Primary audience - only show if not Both */}
+              {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                <div className="mt-3">
+                  <Badge variant="outline" className="text-xs">
+                    For {insight.primary_audience}s
+                  </Badge>
+                </div>
+              )}
+
+              {insight.qualifiers &&
+                Object.keys(insight.qualifiers).length > 0 && (
+                  <div className="mt-4 pt-4 border-t">
+                    <div className="grid grid-cols-2 gap-2 text-sm">
+                      {Object.entries(insight.qualifiers).map(
+                        ([key, value]: [string, any]) =>
+                          value && (
+                            <div key={key}>
+                              <strong className="capitalize">
+                                {key.replace(/_/g, " ")}:
+                              </strong>{" "}
+                              {String(value)}
+                            </div>
+                          )
+                      )}
+                    </div>
+                  </div>
+                )}
+            </CardContent>
+          </Card>
+        ))
+      ) : (
+        <Card>
+          <CardContent className="py-12 text-center">
+            <p className="text-muted-foreground">
+              No insights match the selected filters.
+            </p>
+          </CardContent>
+        </Card>
+      )}
+    </>
+  )
+}
+
 export function SourceInsightsClient({ 
   insights,
-  sourceId
+  sourceId,
+  processingRuns = []
 }: SourceInsightsClientProps) {
+  const [selectedRunId, setSelectedRunId] = useState<string | 'all'>('all')
   const [filteredInsights, setFilteredInsights] = useState<Insight[]>(insights)
   const [editingInsightId, setEditingInsightId] = useState<string | null>(null)
   const [editingStatement, setEditingStatement] = useState<string>('')
   const [deletingInsightId, setDeletingInsightId] = useState<string | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [exporting, setExporting] = useState<'json' | 'csv' | null>(null)
+
+  // Filter insights by selected run
+  const runFilteredInsights = selectedRunId === 'all' 
+    ? insights 
+    : insights.filter(insight => insight.runId === selectedRunId)
+  
+  // When run selection changes, reset filtered insights to the run-filtered set
+  useEffect(() => {
+    const filtered = selectedRunId === 'all' 
+      ? insights 
+      : insights.filter(insight => insight.runId === selectedRunId)
+    setFilteredInsights(filtered)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedRunId])
+  
+  // Use filteredInsights from InsightFilters as the final result
+  const finalFilteredInsights = filteredInsights
 
   const handleExport = async (format: 'json' | 'csv') => {
     setExporting(format)
@@ -235,11 +507,14 @@ export function SourceInsightsClient({
     }
   }
 
+  // Only show tabs if we have multiple processing runs
+  const showRunTabs = processingRuns.length > 1
+
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold">
-          Insights ({filteredInsights.length})
+          Insights ({finalFilteredInsights.length})
         </h2>
         <div className="flex gap-2">
           <Button 
@@ -282,214 +557,71 @@ export function SourceInsightsClient({
         </Alert>
       )}
 
-      <InsightFilters 
-        insights={insights} 
-        onFilteredInsightsChange={setFilteredInsights}
-      />
+      {/* Processing Run Tabs - Show if we have multiple runs */}
+      {showRunTabs ? (
+        <Tabs value={selectedRunId} onValueChange={(value) => setSelectedRunId(value as string | 'all')}>
+          <TabsList className="grid w-full" style={{ gridTemplateColumns: `repeat(${processingRuns.length + 1}, 1fr)` }}>
+            <TabsTrigger value="all">All Runs</TabsTrigger>
+            {processingRuns.map((run, index) => (
+              <TabsTrigger key={run.id} value={run.id}>
+                Run {processingRuns.length - index}
+              </TabsTrigger>
+            ))}
+          </TabsList>
 
-      {filteredInsights.length > 0 ? (
-        filteredInsights.map((insight: Insight) => (
-          <Card key={insight.id} className={insight.importance === 3 ? 'border-2 border-primary/30' : ''}>
-            <CardContent className="pt-6">
-              {/* Header with importance indicator */}
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    {/* Reference Number - Prominently displayed */}
-                    {insight.referenceNumber && (
-                      <Badge variant="default" className="text-xs font-mono font-bold bg-primary">
-                        #{insight.referenceNumber}
-                      </Badge>
-                    )}
-                    {/* Importance indicator (1-3 stars) */}
-                    <div className="flex gap-0.5">
-                      {[1, 2, 3].map((level) => (
-                        <span
-                          key={level}
-                          className={`text-sm ${
-                            level <= (insight.importance ?? 2)
-                              ? 'text-primary'
-                              : 'text-muted-foreground/30'
-                          }`}
-                        >
-                          ★
-                        </span>
-                      ))}
-                    </div>
-                    {/* Insight type badge */}
-                    <Badge variant="outline" className="text-xs">
-                      {insight.insight_type}
-                    </Badge>
-                    {/* Actionability */}
-                    {insight.actionability && insight.actionability !== 'Background' && (
-                      <Badge 
-                        variant={insight.actionability === 'High' ? 'default' : 'secondary'}
-                        className="text-xs"
-                      >
-                        {insight.actionability} Actionability
-                      </Badge>
-                    )}
-                  </div>
-                  
-                  {editingInsightId === insight.id ? (
-                    <div className="space-y-2 mb-2">
-                      <Textarea
-                        value={editingStatement}
-                        onChange={(e) => setEditingStatement(e.target.value)}
-                        className="min-h-[100px]"
-                      />
-                      <div className="flex gap-2">
-                        <Button
-                          size="sm"
-                          onClick={() => handleSaveEdit(insight.id)}
-                          disabled={!editingStatement.trim()}
-                        >
-                          <Check className="mr-2 h-4 w-4" />
-                          Save
-                        </Button>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={handleCancelEdit}
-                        >
-                          <X className="mr-2 h-4 w-4" />
-                          Cancel
-                        </Button>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="text-lg font-medium mb-2">
-                      {insight.statement}
-                    </p>
-                  )}
-                  
-                  {/* Direct quote if present */}
-                  {insight.has_direct_quote && insight.direct_quote && (
-                    <blockquote className="border-l-4 border-primary/30 pl-4 my-3 italic text-muted-foreground">
-                      "{insight.direct_quote}"
-                    </blockquote>
-                  )}
-                  
-                  {insight.context_note && (
-                    <p className="text-sm text-muted-foreground mb-3">
-                      {insight.context_note}
-                    </p>
-                  )}
-                  {insight.isShared && insight.sharedWithSources && insight.sharedWithSources.length > 0 && (
-                    <p className="text-xs text-muted-foreground mt-2 italic">
-                      Also found in: {insight.sharedWithSources.join(', ')}
-                    </p>
-                  )}
-                  
-                  {/* Topics/Concepts this insight is connected to */}
-                  {insight.topics && insight.topics.length > 0 && (
-                    <div className="mt-4 pt-4 border-t">
-                      <div className="flex flex-wrap gap-1">
-                        {insight.topics.map((topic: any) => (
-                          <Link key={topic.id} href={`/topics/${topic.slug}`}>
-                            <Badge variant="secondary" className="text-xs hover:bg-primary/20">
-                              {topic.name}
-                            </Badge>
-                          </Link>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <div className="ml-4 shrink-0 flex flex-col items-end gap-2">
-                  <Badge variant="outline">
-                    {insight.locator}
-                  </Badge>
-                  {insight.timestamp && (
-                    <span className="text-xs text-muted-foreground">
-                      ~{insight.timestamp}
-                    </span>
-                  )}
-                  {editingInsightId !== insight.id && (
-                    <div className="flex flex-col gap-1">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditInsight(insight)}
-                        disabled={!!editingInsightId || !!deletingInsightId}
-                      >
-                        <Edit2 className="h-3 w-3" />
-                      </Button>
-                      <Button
-                        variant="destructive"
-                        size="sm"
-                        onClick={() => handleDeleteInsight(insight.id)}
-                        disabled={editingInsightId === insight.id || deletingInsightId === insight.id || !!editingInsightId}
-                      >
-                        {deletingInsightId === insight.id ? (
-                          <Loader2 className="h-3 w-3 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-3 w-3" />
-                        )}
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              </div>
+          {/* All Runs Tab */}
+          <TabsContent value="all" className="space-y-4 mt-4">
+            <InsightsListForRun
+              insights={insights}
+              onEditInsight={handleEditInsight}
+              onDeleteInsight={handleDeleteInsight}
+              editingInsightId={editingInsightId}
+              editingStatement={editingStatement}
+              setEditingStatement={setEditingStatement}
+              handleSaveEdit={handleSaveEdit}
+              handleCancelEdit={handleCancelEdit}
+              deletingInsightId={deletingInsightId}
+              formatEvidenceType={formatEvidenceType}
+              capitalizeWords={capitalizeWords}
+            />
+          </TabsContent>
 
-              <div className="flex flex-wrap gap-2 items-center mt-4 pt-4 border-t">
-                <Badge variant="secondary">
-                  {formatEvidenceType(insight.evidence_type)}
-                </Badge>
-                <Badge
-                  variant={
-                    insight.confidence === "high"
-                      ? "default"
-                      : insight.confidence === "medium"
-                      ? "secondary"
-                      : "outline"
-                  }
-                >
-                  {capitalizeWords(insight.confidence || '')} Confidence
-                </Badge>
-                {/* Primary audience */}
-                {insight.primary_audience && insight.primary_audience !== 'Both' && (
-                  <Badge variant="outline" className="text-xs">
-                    For {insight.primary_audience}s
-                  </Badge>
-                )}
-                {/* Tone */}
-                {insight.tone && insight.tone !== 'Neutral' && (
-                  <span className="text-xs text-muted-foreground">
-                    Tone: {insight.tone}
-                  </span>
-                )}
-              </div>
-
-              {insight.qualifiers &&
-                Object.keys(insight.qualifiers).length > 0 && (
-                  <div className="mt-4 pt-4 pb-4 border-t border-b">
-                    <div className="grid grid-cols-2 gap-2 text-sm">
-                      {Object.entries(insight.qualifiers).map(
-                        ([key, value]: [string, any]) =>
-                          value && (
-                            <div key={key}>
-                              <strong className="capitalize">
-                                {key.replace(/_/g, " ")}:
-                              </strong>{" "}
-                              {String(value)}
-                            </div>
-                          )
-                      )}
-                    </div>
-                  </div>
-                )}
-            </CardContent>
-          </Card>
-        ))
+          {/* Individual Run Tabs */}
+          {processingRuns.map((run) => {
+            const runInsights = insights.filter(insight => insight.runId === run.id)
+            return (
+              <TabsContent key={run.id} value={run.id} className="space-y-4 mt-4">
+                <InsightsListForRun
+                  insights={runInsights}
+                  onEditInsight={handleEditInsight}
+                  onDeleteInsight={handleDeleteInsight}
+                  editingInsightId={editingInsightId}
+                  editingStatement={editingStatement}
+                  setEditingStatement={setEditingStatement}
+                  handleSaveEdit={handleSaveEdit}
+                  handleCancelEdit={handleCancelEdit}
+                  deletingInsightId={deletingInsightId}
+                  formatEvidenceType={formatEvidenceType}
+                  capitalizeWords={capitalizeWords}
+                />
+              </TabsContent>
+            )
+          })}
+        </Tabs>
       ) : (
-        <Card>
-          <CardContent className="py-12 text-center">
-            <p className="text-muted-foreground">
-              No insights match the selected filters.
-            </p>
-          </CardContent>
-        </Card>
+        <InsightsListForRun
+          insights={insights}
+          onEditInsight={handleEditInsight}
+          onDeleteInsight={handleDeleteInsight}
+          editingInsightId={editingInsightId}
+          editingStatement={editingStatement}
+          setEditingStatement={setEditingStatement}
+          handleSaveEdit={handleSaveEdit}
+          handleCancelEdit={handleCancelEdit}
+          deletingInsightId={deletingInsightId}
+          formatEvidenceType={formatEvidenceType}
+          capitalizeWords={capitalizeWords}
+        />
       )}
     </div>
   )

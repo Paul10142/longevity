@@ -53,23 +53,62 @@ export async function POST(
     // Check both the source status AND if there are any active processing runs
     const { data: currentSource } = await supabaseAdmin
       .from("sources")
-      .select("processing_status")
+      .select("processing_status, last_processed_at")
       .eq("id", id)
       .single()
 
     // Also check if there are any runs with status 'processing' for this source
     const { data: activeRuns } = await supabaseAdmin
       .from("source_processing_runs")
-      .select("id")
+      .select("id, processed_at")
       .eq("source_id", id)
       .eq("status", "processing")
-      .limit(1)
 
-    if (currentSource?.processing_status === 'processing' || (activeRuns && activeRuns.length > 0)) {
-      return NextResponse.json(
-        { error: "Source is already being processed. Please wait for the current processing to complete." },
-        { status: 409 } // 409 Conflict
+    // Check for stuck processing (processing for more than 30 minutes)
+    const thirtyMinutesAgo = new Date(Date.now() - 30 * 60 * 1000).toISOString()
+    
+    if (currentSource?.processing_status === 'processing') {
+      // Check if it's been stuck for more than 30 minutes
+      if (currentSource.last_processed_at && currentSource.last_processed_at < thirtyMinutesAgo) {
+        console.log(`[Reprocess] Detected stuck processing status (last_processed_at: ${currentSource.last_processed_at}), clearing it`)
+        await supabaseAdmin
+          .from("sources")
+          .update({
+            processing_status: 'failed',
+            processing_error: 'Processing was stuck and has been cleared. You can retry now.'
+          })
+          .eq("id", id)
+      } else {
+        return NextResponse.json(
+          { error: "Source is already being processed. Please wait for the current processing to complete." },
+          { status: 409 } // 409 Conflict
+        )
+      }
+    }
+
+    // Check for stuck processing runs
+    if (activeRuns && activeRuns.length > 0) {
+      const stuckRuns = activeRuns.filter((run: any) => 
+        run.processed_at && run.processed_at < thirtyMinutesAgo
       )
+      
+      if (stuckRuns.length > 0) {
+        console.log(`[Reprocess] Detected ${stuckRuns.length} stuck processing run(s), clearing them`)
+        for (const run of stuckRuns) {
+          await supabaseAdmin
+            .from("source_processing_runs")
+            .update({
+              status: 'failed',
+              error_message: 'Processing was stuck and has been cleared.'
+            })
+            .eq("id", run.id)
+        }
+      } else {
+        return NextResponse.json(
+          { error: "Source is already being processed. Please wait for the current processing to complete." },
+          { status: 409 } // 409 Conflict
+        )
+      }
     }
 
     // Check if client wants streaming progress updates
@@ -91,71 +130,13 @@ export async function POST(
               .eq("id", id)
 
             sendSSE(controller, {
-              status: { type: 'creating', message: 'Starting reprocessing...' }
+              status: { type: 'creating', message: 'Starting new processing run (preserving previous runs)...' }
             })
 
-            // Delete existing data for this source
-            // Order matters: delete insight_sources first (foreign key constraint)
-            // First, get the insight IDs that were linked to this source before deletion
-            const { data: linkedInsightsBeforeDelete } = await supabaseAdmin
-              .from("insight_sources")
-              .select("insight_id")
-              .eq("source_id", id)
-
-            const { error: deleteInsightSourcesError } = await supabaseAdmin
-              .from("insight_sources")
-              .delete()
-              .eq("source_id", id)
-
-            if (deleteInsightSourcesError) {
-              console.warn("Warning: Failed to delete some insight_sources:", deleteInsightSourcesError)
-            }
-
-            // Delete orphaned insights (insights that had no other source links)
-            // Only check insights that were linked to the source we just deleted
-            if (linkedInsightsBeforeDelete && linkedInsightsBeforeDelete.length > 0) {
-              const potentiallyOrphanedInsightIds = Array.from(new Set<string>(linkedInsightsBeforeDelete.map((li: any) => li.insight_id as string)))
-              
-              // Check which of these insights still have other source links
-              const { data: remainingLinks } = await supabaseAdmin
-                .from("insight_sources")
-                .select("insight_id")
-                .in("insight_id", potentiallyOrphanedInsightIds)
-
-              if (remainingLinks) {
-                const stillLinkedIds = new Set<string>(remainingLinks.map((li: any) => li.insight_id as string))
-                const orphanedInsightIds: string[] = potentiallyOrphanedInsightIds.filter(
-                  (insightId: string) => !stillLinkedIds.has(insightId)
-                )
-
-                if (orphanedInsightIds.length > 0) {
-                  const { error: deleteOrphansError } = await supabaseAdmin
-                    .from("insights")
-                    .delete()
-                    .in("id", orphanedInsightIds)
-
-                  if (deleteOrphansError) {
-                    console.warn("Warning: Failed to delete some orphaned insights:", deleteOrphansError)
-                  } else {
-                    console.log(`Deleted ${orphanedInsightIds.length} orphaned insights`)
-                  }
-                }
-              }
-            }
-
-            // Delete chunks (this will cascade delete any remaining links)
-            const { error: deleteChunksError } = await supabaseAdmin
-              .from("chunks")
-              .delete()
-              .eq("source_id", id)
-
-            if (deleteChunksError) {
-              throw new Error(`Failed to delete existing chunks: ${deleteChunksError.message}`)
-            }
-
-            sendSSE(controller, {
-              status: { type: 'chunking', message: 'Cleared existing data, reprocessing transcript...' }
-            })
+            // Note: We do NOT delete existing data from previous runs.
+            // The system is designed to support multiple runs per source.
+            // Each new run creates its own chunks and insight_sources linked via run_id.
+            // Old runs' data is preserved and can be viewed in the UI via run tabs.
 
             // Reprocess the transcript
             await processSourceFromPlainText(id, source.transcript, (progress) => {
@@ -182,11 +163,36 @@ export async function POST(
               })
               .eq("id", id)
 
+            // Trigger clustering job for newly processed insights
+            // This runs asynchronously and won't block the response
+            ;(async () => {
+              try {
+                const baseUrl = process.env.NEXT_PUBLIC_BASE_URL || 
+                  (process.env.VERCEL_URL ? `https://${process.env.VERCEL_URL}` : null) ||
+                  'http://localhost:3000'
+                
+                const clusterResponse = await fetch(`${baseUrl}/api/admin/insights/cluster`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ sourceId: id, limit: 500 }),
+                })
+                
+                if (!clusterResponse.ok) {
+                  console.warn(`Clustering job returned status ${clusterResponse.status}`)
+                } else {
+                  const clusterResult = await clusterResponse.json()
+                  console.log(`[clustering] Job completed: ${clusterResult.result?.clustersCreated || 0} clusters created`)
+                }
+              } catch (error) {
+                console.warn('[clustering] Failed to trigger clustering job:', error)
+              }
+            })()
+
             // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
             // so topic pages pick up new narratives/evidence without manual deploys.
 
             sendSSE(controller, {
-              status: { type: 'success', message: 'Reprocessing complete!' },
+              status: { type: 'success', message: 'New processing run complete! Previous runs preserved.' },
               done: true,
               sourceId: id
             })
@@ -251,62 +257,10 @@ export async function POST(
         })
         .eq("id", id)
 
-      // Delete existing data for this source (order matters for foreign keys)
-      // First, get the insight IDs that were linked to this source before deletion
-      const { data: linkedInsightsBeforeDelete } = await supabaseAdmin
-        .from("insight_sources")
-        .select("insight_id")
-        .eq("source_id", id)
-
-      const { error: deleteInsightSourcesError } = await supabaseAdmin
-        .from("insight_sources")
-        .delete()
-        .eq("source_id", id)
-
-      if (deleteInsightSourcesError) {
-        console.warn("Warning: Failed to delete some insight_sources:", deleteInsightSourcesError)
-      }
-
-      // Delete orphaned insights (insights that had no other source links)
-      // Only check insights that were linked to the source we just deleted
-      if (linkedInsightsBeforeDelete && linkedInsightsBeforeDelete.length > 0) {
-        const potentiallyOrphanedInsightIds = Array.from(new Set<string>(linkedInsightsBeforeDelete.map((li: any) => li.insight_id as string)))
-        
-        // Check which of these insights still have other source links
-        const { data: remainingLinks } = await supabaseAdmin
-          .from("insight_sources")
-          .select("insight_id")
-          .in("insight_id", potentiallyOrphanedInsightIds)
-
-        if (remainingLinks) {
-          const stillLinkedIds = new Set<string>(remainingLinks.map((li: any) => li.insight_id as string))
-          const orphanedInsightIds: string[] = potentiallyOrphanedInsightIds.filter(
-            (insightId: string) => !stillLinkedIds.has(insightId)
-          )
-
-          if (orphanedInsightIds.length > 0) {
-            const { error: deleteOrphansError } = await supabaseAdmin
-              .from("insights")
-              .delete()
-              .in("id", orphanedInsightIds)
-
-            if (deleteOrphansError) {
-              console.warn("Warning: Failed to delete some orphaned insights:", deleteOrphansError)
-            } else {
-              console.log(`Deleted ${orphanedInsightIds.length} orphaned insights`)
-            }
-          }
-        }
-      }
-
-      const { error: deleteChunksError } = await supabaseAdmin
-        .from("chunks")
-        .delete()
-        .eq("source_id", id)
-
-      if (deleteChunksError) {
-        throw new Error(`Failed to delete existing chunks: ${deleteChunksError.message}`)
-      }
+      // Note: We do NOT delete existing data from previous runs.
+      // The system is designed to support multiple runs per source.
+      // Each new run creates its own chunks and insight_sources linked via run_id.
+      // Old runs' data is preserved and can be viewed in the UI via run tabs.
 
       // Reprocess
       await processSourceFromPlainText(id, source.transcript)
@@ -327,7 +281,7 @@ export async function POST(
       return NextResponse.json({
         success: true,
         sourceId: id,
-        message: "Source reprocessed successfully",
+        message: "New processing run created successfully. Previous runs preserved.",
       })
     } catch (processingError) {
       console.error("Error reprocessing transcript:", processingError)

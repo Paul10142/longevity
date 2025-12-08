@@ -205,10 +205,10 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
               {groupInsights.map((insight: any) => (
                 <Card key={insight.id} className={insight.importance === 3 ? 'border-2 border-primary/30' : ''}>
                   <CardContent className="pt-6">
-                    {/* Header with importance indicator */}
+                    {/* Header with importance indicator and metadata */}
                     <div className="flex items-start justify-between mb-3">
                       <div className="flex-1">
-                        <div className="flex items-center gap-2 mb-2">
+                        <div className="flex items-center gap-2 mb-2 flex-wrap">
                           {/* Importance indicator (1-3 stars) */}
                           <div className="flex gap-0.5">
                             {[1, 2, 3].map((level) => (
@@ -231,12 +231,29 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
                               New
                             </Badge>
                           )}
+                          {/* Evidence Type */}
+                          <Badge variant="secondary" className="text-xs">
+                            {formatEvidenceType(insight.evidence_type)}
+                          </Badge>
+                          {/* Confidence */}
+                          <Badge
+                            variant={
+                              insight.confidence === "high"
+                                ? "default"
+                                : insight.confidence === "medium"
+                                ? "secondary"
+                                : "outline"
+                            }
+                            className="text-xs"
+                          >
+                            {capitalizeWords(insight.confidence)} Confidence
+                          </Badge>
                           {/* Insight type badge */}
                           <Badge variant="outline" className="text-xs">
                             {insight.insight_type || 'Explanation'}
                           </Badge>
                           {/* Actionability */}
-                          {insight.actionability && insight.actionability !== 'Background' && (
+                          {insight.actionability && (
                             <Badge 
                               variant={insight.actionability === 'High' ? 'default' : 'secondary'}
                               className="text-xs"
@@ -250,12 +267,6 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
                           {insight.statement}
                         </p>
                         
-                        {/* Direct quote if present */}
-                        {insight.has_direct_quote && insight.direct_quote && (
-                          <blockquote className="border-l-4 border-primary/30 pl-4 my-3 italic text-muted-foreground">
-                            "{insight.direct_quote}"
-                          </blockquote>
-                        )}
                         
                         {insight.context_note && (
                           <p className="text-sm text-muted-foreground mb-3">
@@ -270,34 +281,14 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
                       </div>
                     </div>
 
-                    <div className="flex flex-wrap gap-2 items-center">
-                      <Badge variant="secondary">
-                        {formatEvidenceType(insight.evidence_type)}
-                      </Badge>
-                      <Badge
-                        variant={
-                          insight.confidence === "high"
-                            ? "default"
-                            : insight.confidence === "medium"
-                            ? "secondary"
-                            : "outline"
-                        }
-                      >
-                        {capitalizeWords(insight.confidence)} Confidence
-                      </Badge>
-                      {/* Primary audience */}
-                      {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                    {/* Primary audience - only show if not Both */}
+                    {insight.primary_audience && insight.primary_audience !== 'Both' && (
+                      <div className="mt-3">
                         <Badge variant="outline" className="text-xs">
                           For {insight.primary_audience}s
                         </Badge>
-                      )}
-                      {/* Tone */}
-                      {insight.tone && insight.tone !== 'Neutral' && (
-                        <span className="text-xs text-muted-foreground">
-                          Tone: {insight.tone}
-                        </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
 
                     {insight.qualifiers &&
                       Object.keys(insight.qualifiers).length > 0 && (

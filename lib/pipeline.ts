@@ -36,16 +36,12 @@ export interface Insight {
     duration?: string | null
     outcome?: string | null
     effect_size?: string | null
-    caveats?: string | null
   }
   confidence: 'high' | 'medium' | 'low'
   importance?: 1 | 2 | 3
-  actionability?: 'Background' | 'Low' | 'Medium' | 'High'
+  actionability?: 'Low' | 'Medium' | 'High' | 'Background'
   primary_audience?: 'Patient' | 'Clinician' | 'Both'
   insight_type?: 'Protocol' | 'Explanation' | 'Mechanism' | 'Anecdote' | 'Warning' | 'Controversy' | 'Other'
-  has_direct_quote?: boolean
-  direct_quote?: string | null
-  tone?: 'Neutral' | 'Surprised' | 'Skeptical' | 'Cautious' | 'Enthusiastic' | 'Concerned' | 'Other'
 }
 
 interface OpenAIResponse {
@@ -260,9 +256,7 @@ ACTIONABILITY
 
 - "Medium" – indirectly guides behavior (e.g., mechanism that clearly influences decisions).
 
-- "Low" – mostly background knowledge.
-
-- "Background" – interesting but not really changing behavior on its own.
+- "Low" – mostly background knowledge (conceptual background).
 
 PRIMARY AUDIENCE
 
@@ -288,28 +282,6 @@ INSIGHT TYPE
 
 - "Other" – if none of the above fits.
 
-DIRECT QUOTES AND TONE
-
-- If the speaker uses especially strong, memorable, or surprising phrasing, include a SHORT direct quote (at most ~40 words) that captures this, in the "direct_quote" field.
-
-- Set "has_direct_quote" to true when you include a quote, otherwise false.
-
-- TONE:
-
-  - "Surprised" – speaker is clearly surprised or emphasizes counterintuitive results.
-
-  - "Cautious" – emphasizes uncertainty, limitations, or "we're not sure yet".
-
-  - "Enthusiastic" – clearly excited, strongly endorsing.
-
-  - "Concerned" – emphasizing risk or harm.
-
-  - "Skeptical" – expresses doubt about a claim or hype.
-
-  - "Neutral" – default when no strong emotion is conveyed.
-
-  - "Other" – any tone that doesn't fit the above.
-
 OUTPUT FORMAT
 
 Return ONLY valid JSON with this shape:
@@ -325,17 +297,13 @@ Return ONLY valid JSON with this shape:
         "dose": "string or null",
         "duration": "string or null",
         "outcome": "string or null",
-        "effect_size": "string or null",
-        "caveats": "string or null"
+        "effect_size": "string or null"
       },
       "confidence": "high|medium|low",
       "importance": 1 | 2 | 3,
-      "actionability": "Background|Low|Medium|High",
+      "actionability": "Low|Medium|High",
       "primary_audience": "Patient|Clinician|Both",
-      "insight_type": "Protocol|Explanation|Mechanism|Anecdote|Warning|Controversy|Other",
-      "has_direct_quote": true | false,
-      "direct_quote": "string or null",
-      "tone": "Neutral|Surprised|Skeptical|Cautious|Enthusiastic|Concerned|Other"
+      "insight_type": "Protocol|Explanation|Mechanism|Anecdote|Warning|Controversy|Other"
     }
   ]
 }
@@ -345,42 +313,188 @@ If there are no meaningful insights in this chunk, return:
 { "insights": [] }
 `
 
-// Optimized prompt (balanced: preserves critical reasoning guidance, ~60% token reduction)
-// 
-// TO MODIFY WHAT GETS EXTRACTED:
-// 1. Update the "IGNORE" section below to add categories of insights to skip
-// 2. Update the "INSIGHT TYPES" section to clarify what counts as an insight
-// 3. For more detailed changes, see EXTRACTION_SYSTEM_PROMPT_ORIGINAL (lines 112-314)
-// 4. After changing the prompt, reprocess sources to see the effect
-//
+// New prompt focused on high-value, generalizable, standalone insights
 const EXTRACTION_SYSTEM_PROMPT_OPTIMIZED = `
-Extract clinically meaningful insights from transcript chunks for a lifestyle medicine knowledge base. Be thorough, hyper-specific, and preserve all numeric details (doses, thresholds, frequencies, durations) and qualifiers (population, context).
+Extract show-note–worthy insights from transcript chunks for a large, multi-source lifestyle and health knowledge base.
 
-INSIGHT TYPES: Protocol (concrete recommendations), Explanation/Mechanism (how/why), Warning (risks/contraindications), Anecdote (clinical observations), Controversy (mixed/uncertain data).
+Your job is NOT to capture everything that was said. Your job is to extract only the ideas that would appear in polished show notes or an educational article. Prefer FEWER, HIGHER-VALUE, GENERALIZABLE insights over many small, conversational, or anecdotal ones.
 
-IGNORE: Jokes, small talk, generic statements, meta-commentary, introductions, disclosures, unrelated anecdotes.
+====================================================================
+PURPOSE OF THESE INSIGHTS  (CRITICAL)
+====================================================================
 
-EVIDENCE: RCT|Cohort|MetaAnalysis|CaseSeries|Mechanistic|Animal|ExpertOpinion|Other
-CONFIDENCE: high (strong support), medium (mixed), low (speculative/uncertain)
+The insights you produce will be merged with insights from thousands of other chunks and sources to form a unified medical and behavioral knowledge base. Because they will be recombined across episodes, each insight must:
 
-IMPORTANCE (1-3): Think "If building the world's best notes for this topic, how central is this?"
-- 3 = Core, high-value, changes behavior/understanding for most patients/clinicians
-- 2 = Useful, but not central
-- 1 = Niche, background, or edge-case
+• Stand alone without relying on the surrounding conversation.  
+• Express generalizable, durable knowledge—NOT episode-specific details.  
+• Capture mechanisms, principles, evolutionary logic, or explanatory frameworks.  
+• Translate personal anecdotes into the *underlying principle* rather than retelling the story.  
+• Include specific, practical examples (foods, practices, protocols) that help readers connect with and apply the insight.  
+• Avoid any dependency on host interactions, podcast structure, or context.  
 
-ACTIONABILITY: Distinguish direct protocols from indirect guidance
-- High = Directly tells someone what to do differently (protocols, thresholds)
-- Medium = Indirectly guides behavior (e.g., mechanism influencing decisions)
-- Low/Background = Mostly knowledge, doesn't change behavior
+These insights must be written so a downstream system can automatically stitch them into high-quality show notes, clinician narratives, patient narratives, and protocols.
 
-AUDIENCE: Patient|Clinician|Both
-INSIGHT_TYPE: Protocol|Explanation|Mechanism|Anecdote|Warning|Controversy|Other
-TONE: Neutral|Surprised|Skeptical|Cautious|Enthusiastic|Concerned|Other
+====================================================================
+STITCHABILITY ACROSS CHUNKS  (CRITICAL)
+====================================================================
 
-Include direct quotes (max 40 words) when phrasing is memorable/surprising. Each insight: 1-3 sentences with full detail.
+Write each insight so it can combine cleanly with insights from:
 
-Return JSON: {"insights": [{"statement": "...", "context_note": "...", "evidence_type": "...", "qualifiers": {"population": "...", "dose": "...", "duration": "...", "outcome": "...", "effect_size": "...", "caveats": "..."}, "confidence": "...", "importance": 1|2|3, "actionability": "...", "primary_audience": "...", "insight_type": "...", "has_direct_quote": true|false, "direct_quote": "...", "tone": "..."}]}
-If no insights: {"insights": []}
+• Other chunks of this episode  
+• Other episodes  
+• Other sources entirely  
+
+This requires:
+
+• No references to "earlier we discussed…", "as you said…", or speaker names.  
+• No reliance on personal anecdotes or stories unless the insight explicitly states the *principle illustrated*.  
+• Include specific, practical examples (e.g., "breakfast with eggs, cheese, and Greek yogurt; lunch with salmon, venison, or chicken breast and quinoa; vegetables") when they illustrate how to apply a principle or protocol.  
+• Clear, standalone phrasing that conveys a durable meaning.  
+• Emphasis on mechanisms, frameworks, and conceptual distinctions, supported by concrete examples when helpful.  
+
+====================================================================
+WHAT COUNTS AS A HIGH-VALUE INSIGHT
+====================================================================
+
+Produce an insight ONLY if it satisfies ALL of the following:
+
+1. **Conceptually Important**  
+   The idea deepens understanding of biology, behavior, development, hormones, evolutionary logic, risk, or mechanism.
+
+2. **Generalizable Beyond the Transcript**  
+   The insight must hold outside this conversation. Do NOT extract commentary, personal stories, or contextual talk unless they demonstrate a principle. However, DO include specific examples (foods, exercises, practices) that illustrate how to apply the principle—these help readers translate insights into action.
+
+3. **Mechanistic or Explanatory**  
+   Prioritize explanations of *why* or *how* a phenomenon works (e.g., developmental windows, receptor sensitivity, evolutionary trade-offs).
+
+4. **Self-Contained and Clear**  
+   The insight must make sense even to someone who never heard the podcast.
+
+5. **Non-Obvious**  
+   Avoid generic statements ("testosterone affects behavior"). Extract the deeper educational takeaway (e.g., "prenatal and pubertal testosterone act as separate developmental windows with different behavioral consequences").
+
+====================================================================
+WHAT SHOULD **NOT** BECOME AN INSIGHT
+====================================================================
+
+NEVER extract:
+
+• Host anecdotes, parenting stories, personal reflections, or jokes.  
+• Biographical information about the guest.  
+• Podcast logistics ("on this show we talk about…", "let's switch gears…").  
+• Pure narrative transitions ("let's go back to development").  
+• One-off personal anecdotes that do not generalize.  
+• Observations without mechanisms or explanations.  
+• Statements whose meaning depends on conversational context.  
+• High-level platitudes ("biology is complex", "hormones matter").
+
+DO extract (when they illustrate principles or protocols):
+
+• Specific examples of foods, exercises, practices, or protocols (e.g., "eggs, cheese, and Greek yogurt for breakfast; salmon, venison, or chicken breast with quinoa for lunch").  
+• Concrete illustrations that help readers understand how to apply the insight in their own lives.  
+• Practical examples that make abstract principles tangible and actionable.  
+
+====================================================================
+NUMERIC DETAIL PRESERVATION
+====================================================================
+
+Preserve ALL important numeric details:
+• Lab value thresholds, ranges, percentages
+• Doses (mg, IU, etc.)
+• Frequencies (times per week, hours per night)
+• Durations (weeks, months, years)
+• Population qualifiers (e.g., postmenopausal women, people with T2DM, elite athletes)
+• Context qualifiers (e.g., fasting state, post-exercise, on medication)
+
+====================================================================
+INSIGHT TYPES
+====================================================================
+
+Protocol – concrete action or threshold  
+Explanation – how or why something works  
+Mechanism – biological / developmental / psychological / evolutionary process  
+Warning – risk, trade-off, contraindication  
+Anecdote – ONLY if it clearly illustrates a generalizable principle  
+Controversy – mixed or uncertain evidence  
+Other – rare
+
+====================================================================
+EVIDENCE TYPE
+====================================================================
+
+Choose one: RCT | Cohort | MetaAnalysis | CaseSeries | Mechanistic | Animal | ExpertOpinion | Other  
+If evidence is not described in the transcript, choose the most appropriate type (often ExpertOpinion).
+
+====================================================================
+CONFIDENCE
+====================================================================
+
+- "high" when claim is strongly supported (multiple RCTs, meta-analyses, or very strong consensus).
+- "medium" when supported but not definitive, or based on a mix of data and expert opinion.
+- "low" when speculative, early data, conflicting studies, or the speaker emphasizes uncertainty.
+
+====================================================================
+IMPORTANCE (1–3)
+====================================================================
+
+3 = Core idea that shapes understanding of the topic  
+2 = Helpful idea that would appear as a secondary bullet in high-quality show notes  
+1 = Background nuance; include only if still conceptually meaningful
+
+====================================================================
+ACTIONABILITY
+====================================================================
+
+High = Directly guides decisions  
+Medium = Influences interpretation or reasoning  
+Low = Mainly conceptual background
+
+====================================================================
+AUDIENCE
+====================================================================
+
+Patient | Clinician | Both
+
+====================================================================
+WRITING STYLE
+====================================================================
+
+• 1–3 sentences per insight.  
+• Write in clear, accessible language for smart laypeople.  
+• Briefly define jargon when necessary.  
+• Never include speaker names, podcast references, or conversational context.  
+• Include specific, practical examples when they help illustrate how to apply a principle or protocol (e.g., specific foods, exercises, timing, or practices).  
+• If an insight requires context from earlier in the conversation, include that context in the statement or context_note field.
+
+====================================================================
+OUTPUT FORMAT (STRICT JSON)
+====================================================================
+
+Return EXACTLY this structure:
+
+{"insights":[
+  {
+    "statement": "...",
+    "context_note": "...",
+    "evidence_type": "...",
+    "qualifiers": {
+      "population": "...",
+      "dose": "...",
+      "duration": "...",
+      "outcome": "...",
+      "effect_size": "..."
+    },
+    "confidence": "...",
+    "importance": 1 | 2 | 3,
+    "actionability": "...",
+    "primary_audience": "...",
+    "insight_type": "..."
+  }
+]}
+
+If no high-value insights are present in the chunk, return:
+
+{"insights":[]}
 `
 
 // Use optimized prompt by default, but can be switched via feature flag
@@ -388,9 +502,18 @@ const EXTRACTION_SYSTEM_PROMPT = USE_OPTIMIZED_PROMPT
   ? EXTRACTION_SYSTEM_PROMPT_OPTIMIZED 
   : EXTRACTION_SYSTEM_PROMPT_ORIGINAL
 
-async function extractInsightsFromChunk(chunkContent: string, chunkIndex?: number, totalChunks?: number): Promise<{ insights: Insight[], tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
-  const userPrompt = `Text to analyze:
+async function extractInsightsFromChunk(chunkContent: string, chunkIndex?: number, totalChunks?: number, previousChunkContext?: string): Promise<{ insights: Insight[], tokenUsage?: { promptTokens: number; completionTokens: number; totalTokens: number } }> {
+  let userPrompt: string
+  if (previousChunkContext) {
+    userPrompt = `Previous context (for reference only):
+${previousChunkContext}
+
+Current text to analyze:
 ${chunkContent}`
+  } else {
+    userPrompt = `Text to analyze:
+${chunkContent}`
+  }
 
   const chunkLabel = chunkIndex !== undefined ? `Chunk ${chunkIndex + 1}/${totalChunks || '?'}` : 'Chunk'
 
@@ -455,17 +578,22 @@ ${chunkContent}`
     console.log(`[${chunkLabel}] ✓ Extracted ${parsed.insights.length} insights before filtering`)
 
     // Validate and normalize insights with defaults
-    const normalizedInsights = parsed.insights.map(insight => ({
-      ...insight,
-      importance: insight.importance ?? 2,
-      actionability: insight.actionability ?? 'Medium',
-      primary_audience: insight.primary_audience ?? 'Both',
-      insight_type: insight.insight_type ?? 'Explanation',
-      has_direct_quote: insight.has_direct_quote ?? false,
-      direct_quote: insight.direct_quote || null,
-      tone: insight.tone ?? 'Neutral',
-      context_note: insight.context_note ?? null,
-    }))
+    const normalizedInsights = parsed.insights.map(insight => {
+      // Map 'Background' actionability to 'Low' for backward compatibility
+      let actionability = insight.actionability ?? 'Medium'
+      if (actionability === 'Background') {
+        actionability = 'Low'
+      }
+      
+      return {
+        ...insight,
+        importance: insight.importance ?? 2,
+        actionability: actionability as 'Low' | 'Medium' | 'High',
+        primary_audience: insight.primary_audience ?? 'Both',
+        insight_type: insight.insight_type ?? 'Explanation',
+        context_note: insight.context_note ?? null,
+      }
+    })
 
     // Filter out low-value insights
     const filteredInsights = filterLowValueInsights(normalizedInsights)
@@ -525,24 +653,50 @@ export type ProgressCallback = (progress: {
 }) => void
 
 /**
- * Retry helper for OpenAI API calls with exponential backoff
+ * Retry helper for OpenAI API calls with exponential backoff and timeout
  * Retries on transient errors (429 rate limit, 5xx server errors)
  * Fails immediately on fatal errors (401, 403, model_not_found, etc.)
+ * Times out after 60 seconds to prevent hanging
  */
 async function callOpenAIWithRetry<T>(
   apiCall: () => Promise<T>,
   maxRetries: number = 2,
-  label?: string
+  label?: string,
+  timeoutMs: number = 300000 // 5 minute timeout (300 seconds) - allows for longer processing of complex chunks
 ): Promise<T> {
   let lastError: any
   
+  // Helper to create a timeout promise
+  const createTimeout = (ms: number): Promise<never> => {
+    return new Promise((_, reject) => {
+      setTimeout(() => {
+        reject(new Error(`Request timeout after ${ms}ms`))
+      }, ms)
+    })
+  }
+  
   for (let attempt = 0; attempt <= maxRetries; attempt++) {
     try {
-      return await apiCall()
+      // Race between API call and timeout
+      const result = await Promise.race([
+        apiCall(),
+        createTimeout(timeoutMs)
+      ])
+      return result
     } catch (error: any) {
       lastError = error
       const errorStatus = error?.status
       const errorCode = error?.code
+      const isTimeout = error?.message?.includes('timeout') || error?.name === 'TimeoutError'
+      
+      // Timeout errors: retry if we have attempts left
+      if (isTimeout && attempt < maxRetries) {
+        const backoffMs = Math.pow(2, attempt) * 1000 // 1s, 2s, 4s
+        const logLabel = label ? `[${label}] ` : ''
+        console.warn(`${logLabel}Request timeout (attempt ${attempt + 1}/${maxRetries + 1}), retrying in ${backoffMs}ms...`)
+        await new Promise(resolve => setTimeout(resolve, backoffMs))
+        continue
+      }
       
       // Fatal errors: don't retry
       if (errorStatus === 401 || errorStatus === 403 || errorCode === 'invalid_api_key' || errorCode === 'model_not_found') {
@@ -581,17 +735,235 @@ async function callOpenAIWithRetry<T>(
  * Split text into overlapping chunks
  */
 function splitIntoChunks(text: string, chunkSize: number = DEFAULT_CHUNK_SIZE, overlapSize: number = DEFAULT_CHUNK_OVERLAP): string[] {
+  // Safety check: if entire text is longer than chunk size and has no structure, force split
+  if (text.length > chunkSize && !text.includes('\n\n')) {
+    console.log(`[Chunking] Text (${text.length} chars) has no paragraph breaks, forcing character-based split`)
+    const chunks: string[] = []
+    let start = 0
+    let iterations = 0
+    const maxIterations = Math.ceil(text.length / (chunkSize - overlapSize)) + 10 // Safety limit
+    
+    while (start < text.length && iterations < maxIterations) {
+      iterations++
+      let end = Math.min(start + chunkSize, text.length)
+      
+      // If not at the end, try to break at a word boundary
+      if (end < text.length) {
+        const searchStart = Math.max(start, end - 300)
+        const searchText = text.substring(searchStart, end)
+        const lastSpace = searchText.lastIndexOf(' ')
+        const lastPeriod = searchText.lastIndexOf('.')
+        const lastExclamation = searchText.lastIndexOf('!')
+        const lastQuestion = searchText.lastIndexOf('?')
+        const bestBreak = Math.max(lastSpace, lastPeriod, lastExclamation, lastQuestion)
+        
+        if (bestBreak > 50) {
+          end = searchStart + bestBreak + 1
+        }
+      }
+      
+      const chunk = text.substring(start, end).trim()
+      if (chunk.length > 0) {
+        chunks.push(chunk)
+      }
+      
+      // Calculate next start position with overlap
+      const nextStart = end - overlapSize
+      // Ensure we always advance (safety check)
+      if (nextStart <= start) {
+        start = end // Force advance if overlap calculation would keep us stuck
+      } else {
+        start = nextStart
+      }
+      
+      // Final safety: if we're at the end, break
+      if (end >= text.length) {
+        break
+      }
+    }
+    
+    if (iterations >= maxIterations) {
+      console.error(`[Chunking] WARNING: Hit max iterations (${maxIterations}), possible infinite loop detected`)
+    }
+    
+    const result = chunks.filter(chunk => chunk.length > 0)
+    console.log(`[Chunking] Character-based split created ${result.length} chunks from unstructured text`)
+    return result
+  }
+  
   // First split by double newlines (paragraphs)
   const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0)
+  console.log(`[Chunking] Found ${paragraphs.length} paragraphs`)
   
+  // If we only have one paragraph and it's very long, try to split it
+  if (paragraphs.length === 1 && paragraphs[0].length > chunkSize) {
+    const longParagraph = paragraphs[0]
+    
+    // Try splitting by sentences first
+    // Match: period/exclamation/question mark, followed by space and capital letter, or end of string
+    const sentencePattern = /([.!?])\s+(?=[A-Z])|([.!?])(?=\s*$)/g
+    const sentences = longParagraph.split(sentencePattern).filter(s => s && s.trim().length > 0)
+    
+    // If sentence splitting worked and we got multiple sentences, use that
+    if (sentences.length > 1) {
+      const chunks: string[] = []
+      let currentChunk = ''
+      
+      // Reconstruct sentences (split includes delimiters, so we need to merge them back)
+      let reconstructedSentences: string[] = []
+      for (let i = 0; i < sentences.length; i++) {
+        const part = sentences[i].trim()
+        if (!part) continue
+        
+        // If this looks like punctuation followed by space, merge with previous
+        if (/^[.!?]\s*$/.test(part) && reconstructedSentences.length > 0) {
+          reconstructedSentences[reconstructedSentences.length - 1] += part
+        } else {
+          reconstructedSentences.push(part)
+        }
+      }
+      
+      // Merge adjacent parts that are just punctuation
+      const finalSentences: string[] = []
+      for (let i = 0; i < reconstructedSentences.length; i++) {
+        if (i > 0 && /^[.!?]\s*$/.test(reconstructedSentences[i])) {
+          finalSentences[finalSentences.length - 1] += reconstructedSentences[i]
+        } else {
+          finalSentences.push(reconstructedSentences[i])
+        }
+      }
+      
+      for (const sentence of finalSentences) {
+        const trimmedSentence = sentence.trim()
+        if (!trimmedSentence) continue
+        
+        // If adding this sentence would exceed chunk size, save current chunk and start new one
+        if (currentChunk.length + trimmedSentence.length + 1 > chunkSize && currentChunk.length > 0) {
+          chunks.push(currentChunk.trim())
+          
+          // Start new chunk with overlap from end of previous chunk
+          const overlap = currentChunk.slice(-overlapSize)
+          currentChunk = overlap + ' ' + trimmedSentence
+        } else {
+          // Add sentence to current chunk
+          if (currentChunk) {
+            currentChunk += ' ' + trimmedSentence
+          } else {
+            currentChunk = trimmedSentence
+          }
+        }
+      }
+      
+      // Don't forget the last chunk
+      if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim())
+      }
+      
+      // If we successfully created multiple chunks, return them
+      if (chunks.length > 1) {
+        return chunks.filter(chunk => chunk.length > 0)
+      }
+    }
+    
+    // Fallback: If sentence splitting didn't work or only created one chunk, 
+    // force split by character count at word boundaries
+    console.log(`[Chunking] Long paragraph (${longParagraph.length} chars) couldn't be split by sentences, forcing character-based split`)
+    const chunks: string[] = []
+    let start = 0
+    let iterations = 0
+    const maxIterations = Math.ceil(longParagraph.length / (chunkSize - overlapSize)) + 10 // Safety limit
+    
+    while (start < longParagraph.length && iterations < maxIterations) {
+      iterations++
+      let end = Math.min(start + chunkSize, longParagraph.length)
+      
+      // If not at the end, try to break at a word boundary
+      if (end < longParagraph.length) {
+        // Look for the last space, period, exclamation, question mark, or newline within the last 300 chars
+        const searchStart = Math.max(start, end - 300)
+        const searchText = longParagraph.substring(searchStart, end)
+        const lastSpace = searchText.lastIndexOf(' ')
+        const lastPeriod = searchText.lastIndexOf('.')
+        const lastExclamation = searchText.lastIndexOf('!')
+        const lastQuestion = searchText.lastIndexOf('?')
+        const lastNewline = searchText.lastIndexOf('\n')
+        const bestBreak = Math.max(lastSpace, lastPeriod, lastExclamation, lastQuestion, lastNewline)
+        
+        if (bestBreak > 50) { // Only use if we found a break point that's not too close to the start
+          end = searchStart + bestBreak + 1
+        }
+      }
+      
+      const chunk = longParagraph.substring(start, end).trim()
+      if (chunk.length > 0) {
+        chunks.push(chunk)
+      }
+      
+      // Calculate next start position with overlap
+      const nextStart = end - overlapSize
+      // Ensure we always advance (safety check)
+      if (nextStart <= start) {
+        start = end // Force advance if overlap calculation would keep us stuck
+      } else {
+        start = nextStart
+      }
+      
+      // Final safety: if we're at the end, break
+      if (end >= longParagraph.length) {
+        break
+      }
+    }
+    
+    if (iterations >= maxIterations) {
+      console.error(`[Chunking] WARNING: Hit max iterations (${maxIterations}), possible infinite loop detected`)
+    }
+    
+    const result = chunks.filter(chunk => chunk.length > 0)
+    console.log(`[Chunking] Character-based split created ${result.length} chunks`)
+    return result
+  }
+  
+  // Original paragraph-based chunking for text with proper paragraph breaks
   const chunks: string[] = []
   let currentChunk = ''
   
   for (const paragraph of paragraphs) {
     const trimmedParagraph = paragraph.trim()
     
+    // If paragraph itself is larger than chunk size, split it by sentences
+    if (trimmedParagraph.length > chunkSize) {
+      // Save current chunk if it has content
+      if (currentChunk.trim().length > 0) {
+        chunks.push(currentChunk.trim())
+        currentChunk = ''
+      }
+      
+      // Split large paragraph by sentences
+      // Use positive lookahead to keep punctuation with the sentence
+      const sentences = trimmedParagraph.split(/(?<=[.!?])\s+(?=[A-Z])|(?<=[.!?])$/).filter(s => s.trim().length > 0)
+      let paragraphChunk = ''
+      
+      for (const sentence of sentences) {
+        const trimmedSentence = sentence.trim()
+        if (!trimmedSentence) continue
+        
+        if (paragraphChunk.length + trimmedSentence.length + 1 > chunkSize && paragraphChunk.length > 0) {
+          chunks.push(paragraphChunk.trim())
+          const overlap = paragraphChunk.slice(-overlapSize)
+          paragraphChunk = overlap + ' ' + trimmedSentence
+        } else {
+          paragraphChunk = paragraphChunk ? paragraphChunk + ' ' + trimmedSentence : trimmedSentence
+        }
+      }
+      
+      if (paragraphChunk.trim().length > 0) {
+        currentChunk = paragraphChunk.trim()
+      }
+      continue
+    }
+    
     // If adding this paragraph would exceed chunk size, save current chunk and start new one
-    if (currentChunk.length + trimmedParagraph.length > chunkSize && currentChunk.length > 0) {
+    if (currentChunk.length + trimmedParagraph.length + 2 > chunkSize && currentChunk.length > 0) {
       chunks.push(currentChunk.trim())
       
       // Start new chunk with overlap from end of previous chunk
@@ -612,7 +984,42 @@ function splitIntoChunks(text: string, chunkSize: number = DEFAULT_CHUNK_SIZE, o
     chunks.push(currentChunk.trim())
   }
   
-  return chunks.filter(chunk => chunk.length > 0)
+  const result = chunks.filter(chunk => chunk.length > 0)
+  
+  // Final safety check: if any chunk is way too large, force split it
+  const finalChunks: string[] = []
+  for (const chunk of result) {
+    if (chunk.length > chunkSize * 2) {
+      console.warn(`[Chunking] Found oversized chunk (${chunk.length} chars), force splitting by character count`)
+      // Force split this chunk
+      let start = 0
+      while (start < chunk.length) {
+        let end = Math.min(start + chunkSize, chunk.length)
+        // Try to break at word boundary
+        if (end < chunk.length) {
+          const searchStart = Math.max(start, end - 200)
+          const searchText = chunk.substring(searchStart, end)
+          const lastSpace = searchText.lastIndexOf(' ')
+          if (lastSpace > 20) {
+            end = searchStart + lastSpace + 1
+          }
+        }
+        const subChunk = chunk.substring(start, end).trim()
+        if (subChunk.length > 0) {
+          finalChunks.push(subChunk)
+        }
+        start = Math.max(0, end - overlapSize)
+        if (start >= end - overlapSize && end < chunk.length) {
+          start = end
+        }
+        if (end >= chunk.length) break
+      }
+    } else {
+      finalChunks.push(chunk)
+    }
+  }
+  
+  return finalChunks.filter(chunk => chunk.length > 0)
 }
 
 /**
@@ -661,9 +1068,28 @@ export async function processSourceFromPlainText(
     }
 
     // 1. Split text into chunks
-    const chunks = splitIntoChunks(text)
-    chunksCreated = chunks.length
-    console.log(`Split transcript into ${chunks.length} chunks`)
+    console.log(`[Chunking] Input text length: ${text.length} characters`)
+    let chunks: string[]
+    try {
+      chunks = splitIntoChunks(text)
+      chunksCreated = chunks.length
+      console.log(`[Chunking] Split transcript into ${chunks.length} chunks`)
+      if (chunks.length > 0) {
+        console.log(`[Chunking] Chunk sizes: ${chunks.map(c => c.length).join(', ')} characters`)
+        // Validate chunk sizes - warn if any chunk is way too large
+        const oversizedChunks = chunks.filter((c, i) => c.length > DEFAULT_CHUNK_SIZE * 2)
+        if (oversizedChunks.length > 0) {
+          console.error(`[Chunking] WARNING: Found ${oversizedChunks.length} chunks larger than 2x chunk size (${DEFAULT_CHUNK_SIZE * 2} chars)`)
+          oversizedChunks.forEach((c, i) => {
+            const chunkIndex = chunks.indexOf(c)
+            console.error(`[Chunking] Chunk ${chunkIndex + 1} is ${c.length} chars (expected ~${DEFAULT_CHUNK_SIZE})`)
+          })
+        }
+      }
+    } catch (chunkingError) {
+      console.error('[Chunking] Error during chunking:', chunkingError)
+      throw new Error(`Failed to split text into chunks: ${chunkingError instanceof Error ? chunkingError.message : 'Unknown error'}`)
+    }
     
     onProgress?.({
       stage: 'chunking',
@@ -712,6 +1138,7 @@ export async function processSourceFromPlainText(
     let totalPromptTokens = 0
     let totalCompletionTokens = 0
     let totalTokens = 0
+    let previousChunkContent: string | undefined = undefined
   
     for (const chunk of chunkInserts) {
       const chunkIndex = chunkInserts.indexOf(chunk) + 1
@@ -733,10 +1160,29 @@ export async function processSourceFromPlainText(
         } : undefined
       })
       
+      // Prepare previous chunk context (last 300 chars, or whole chunk if < 300 chars)
+      let previousChunkContext: string | undefined = undefined
+      if (previousChunkContent) {
+        if (previousChunkContent.length <= 300) {
+          previousChunkContext = previousChunkContent
+        } else {
+          previousChunkContext = previousChunkContent.slice(-300)
+        }
+      }
+      
+      // Validate chunk size before processing
+      if (chunk.content.length > DEFAULT_CHUNK_SIZE * 3) {
+        console.error(`[${chunk.locator}] ❌ Chunk is too large (${chunk.content.length} chars, max expected: ${DEFAULT_CHUNK_SIZE * 3})`)
+        console.error(`[${chunk.locator}] This chunk should have been split but wasn't. Skipping to prevent API errors.`)
+        chunksProcessed++
+        chunksWithoutInsights++
+        continue
+      }
+      
       let insights: Insight[]
       let chunkTokenUsage: { promptTokens: number; completionTokens: number; totalTokens: number } | undefined
       try {
-        const result = await extractInsightsFromChunk(chunk.content, chunksProcessed, chunkInserts.length)
+        const result = await extractInsightsFromChunk(chunk.content, chunksProcessed, chunkInserts.length, previousChunkContext)
         insights = result.insights
         chunkTokenUsage = result.tokenUsage
         
@@ -745,6 +1191,9 @@ export async function processSourceFromPlainText(
           totalCompletionTokens += chunkTokenUsage.completionTokens
           totalTokens += chunkTokenUsage.totalTokens
         }
+        
+        // Store current chunk content for next iteration
+        previousChunkContent = chunk.content
       } catch (chunkError) {
         console.error(`[${chunk.locator}] ❌ Fatal error extracting insights from chunk:`, chunkError)
         const errorMessage = chunkError instanceof Error ? chunkError.message : "Unknown error during extraction"
@@ -758,76 +1207,100 @@ export async function processSourceFromPlainText(
       
       if (insights.length === 0) {
         chunksWithoutInsights++
-        console.warn(`[${chunk.locator}] ⚠️ No insights extracted - this might indicate an API error or all insights were filtered`)
+        console.warn(`[${chunk.locator}] ⚠️ No insights extracted`)
+        console.warn(`[${chunk.locator}] Chunk size: ${chunk.content.length} chars`)
+        console.warn(`[${chunk.locator}] Chunk preview: ${chunk.content.substring(0, 200)}...`)
+        if (chunkTokenUsage) {
+          console.warn(`[${chunk.locator}] API call succeeded (tokens: ${chunkTokenUsage.totalTokens}), but no insights returned`)
+        } else {
+          console.warn(`[${chunk.locator}] No token usage info - API call may have failed silently`)
+        }
         // Don't fail the whole process if one chunk has no insights, but log it
         continue
       }
 
       chunksWithInsights++
 
-      // 4. For each insight, check for duplicates and insert/link
+      // 4. For each insight, always create a new raw insight row
+      // No hash-based deduplication - every extraction is a distinct raw insight
       for (const insight of insights) {
         const insightHash = computeInsightHash(insight.statement)
 
-        // Check if insight with this hash already exists
-        const { data: existingInsight, error: lookupError } = await supabaseAdmin
-          .from('insights')
-          .select('id')
-          .eq('insight_hash', insightHash)
-          .single()
+        // Map 'Background' to 'Low' before inserting
+        let actionability = insight.actionability ?? 'Medium'
+        if (actionability === 'Background') {
+          actionability = 'Low'
+        }
 
-        let insightId: string
-
-        if (existingInsight && !lookupError) {
-          // Insight already exists, use its ID
-          insightId = existingInsight.id
-          console.log(`[${chunk.locator}] Found existing insight with hash ${insightHash.substring(0, 8)}...`)
-        } else {
-          // Insert new insight with all new fields
-          // Mark needs_tagging = true so it can be processed by the async batch job
-          const { data: newInsight, error: insertError } = await supabaseAdmin
+        // Optional: Check if another insight with same hash has an embedding we can reuse
+        let embeddingToReuse: number[] | null = null
+        try {
+          const { data: existingWithEmbedding } = await supabaseAdmin
             .from('insights')
+            .select('embedding')
+            .eq('insight_hash', insightHash)
+            .not('embedding', 'is', null)
+            .limit(1)
+            .single()
+          
+          if (existingWithEmbedding?.embedding) {
+            embeddingToReuse = existingWithEmbedding.embedding as number[]
+            console.log(`[${chunk.locator}] Found existing embedding for hash ${insightHash.substring(0, 8)}..., will reuse`)
+          }
+        } catch (error) {
+          // No existing embedding found, will generate new one
+        }
+        
+        // Always insert a new raw insight row
+        const { data: newInsight, error: insertError } = await supabaseAdmin
+          .from('insights')
           .insert({
             statement: insight.statement,
             context_note: insight.context_note || null,
             evidence_type: insight.evidence_type,
             qualifiers: insight.qualifiers,
             confidence: insight.confidence,
-            insight_hash: insightHash,
+            insight_hash: insightHash, // Keep hash for potential embedding reuse / analysis
             importance: insight.importance ?? 2,
-            actionability: insight.actionability ?? 'Medium',
+            actionability: actionability as 'Low' | 'Medium' | 'High',
             primary_audience: insight.primary_audience ?? 'Both',
             insight_type: insight.insight_type ?? 'Explanation',
-            has_direct_quote: insight.has_direct_quote ?? false,
-            direct_quote: insight.direct_quote || null,
-            tone: insight.tone ?? 'Neutral',
-            needs_tagging: true // Mark for async auto-tagging batch job
+            needs_tagging: true, // Mark for async auto-tagging batch job
+            // New raw layer fields
+            source_id: sourceId,
+            locator: chunk.locator,
+            start_ms: null, // Chunks from text don't have timestamps
+            end_ms: null, // Chunks from text don't have timestamps
+            run_id: runId,
+            unique_insight_id: null, // Not yet merged into a unique insight
+            embedding: embeddingToReuse // Reuse if available, otherwise will be generated async
           })
           .select('id')
           .single()
 
-          if (insertError || !newInsight) {
-            console.error(`[${chunk.locator}] ❌ Failed to insert insight:`, insertError)
-            if (insertError) {
-              console.error(`[${chunk.locator}] Insert error details:`, JSON.stringify(insertError, null, 2))
-            }
-            console.error(`[${chunk.locator}] Insight data that failed:`, JSON.stringify({
-              statement: insight.statement.substring(0, 100),
-              evidence_type: insight.evidence_type,
-              confidence: insight.confidence,
-              importance: insight.importance,
-              actionability: insight.actionability,
-              primary_audience: insight.primary_audience,
-              insight_type: insight.insight_type,
-            }, null, 2))
-            continue
+        if (insertError || !newInsight) {
+          console.error(`[${chunk.locator}] ❌ Failed to insert insight:`, insertError)
+          if (insertError) {
+            console.error(`[${chunk.locator}] Insert error details:`, JSON.stringify(insertError, null, 2))
           }
+          console.error(`[${chunk.locator}] Insight data that failed:`, JSON.stringify({
+            statement: insight.statement.substring(0, 100),
+            evidence_type: insight.evidence_type,
+            confidence: insight.confidence,
+            importance: insight.importance,
+            actionability: insight.actionability,
+            primary_audience: insight.primary_audience,
+            insight_type: insight.insight_type,
+          }, null, 2))
+          continue
+        }
 
-          insightId = newInsight.id
-          insightsCreated++
-          console.log(`[${chunk.locator}] ✓ Created new insight ${insightId.substring(0, 8)}... with hash ${insightHash.substring(0, 8)}...`)
-          
-          // Generate embedding asynchronously (fire-and-forget to avoid blocking)
+        const insightId = newInsight.id
+        insightsCreated++
+        console.log(`[${chunk.locator}] ✓ Created new raw insight ${insightId.substring(0, 8)}... with hash ${insightHash.substring(0, 8)}...`)
+        
+        // Generate embedding asynchronously if we didn't reuse one (fire-and-forget to avoid blocking)
+        if (!embeddingToReuse) {
           ;(async () => {
             try {
               const embedding = await generateInsightEmbedding(insight)
@@ -841,36 +1314,54 @@ export async function processSourceFromPlainText(
               console.warn(`[${chunk.locator}] ⚠ Failed to generate embedding for insight ${insightId.substring(0, 8)}...:`, error)
             }
           })()
-          
-          // NOTE: Auto-tagging has been moved to the async batch job
-          // (/api/admin/insights/autotag-batch). This pipeline only extracts insights.
-          // New insights are marked with needs_tagging = true for later processing.
-          
-          onProgress?.({
-            stage: 'extracting',
-            chunksProcessed,
-            totalChunks: chunkInserts.length,
-            insightsCreated,
-            message: `Created ${insightsCreated} insights so far...`
-          })
         }
+        
+        // NOTE: Auto-tagging has been moved to the async batch job
+        // (/api/admin/insights/autotag-batch). This pipeline only extracts insights.
+        // New insights are marked with needs_tagging = true for later processing.
+        
+        onProgress?.({
+          stage: 'extracting',
+          chunksProcessed,
+          totalChunks: chunkInserts.length,
+          insightsCreated,
+          message: `Created ${insightsCreated} insights so far...`
+        })
 
-        // 5. Link insight to source (insert into insight_sources)
+        // 5. Link insight to source (insert into insight_sources for backward compatibility)
+        // Note: New code should use insights.source_id directly, but we keep this for legacy compatibility
+        // CRITICAL: This link must succeed - if it fails, we have an orphaned insight
         const { error: linkError } = await supabaseAdmin
           .from('insight_sources')
           .insert({
             insight_id: insightId,
             source_id: sourceId,
             run_id: runId, // Link insight_sources to the processing run
-            locator: chunk.locator
+            locator: chunk.locator,
+            start_ms: null, // Chunks from text don't have timestamps
+            end_ms: null // Chunks from text don't have timestamps
           })
 
         if (linkError) {
-          // Might be a duplicate link, which is okay
-          if (!linkError.message.includes('duplicate') && !linkError.message.includes('unique')) {
-            console.error(`[${chunk.locator}] ❌ Failed to link insight ${insightId.substring(0, 8)}... to source:`, linkError)
-          } else {
+          // Duplicate link is okay (might happen if reprocessing)
+          if (linkError.message.includes('duplicate') || linkError.message.includes('unique')) {
             console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... (or already linked)`)
+          } else {
+            // Non-duplicate error: this is a problem - we have an orphaned insight
+            // Delete the orphaned insight to maintain data integrity
+            console.error(`[${chunk.locator}] ❌ Failed to link insight ${insightId.substring(0, 8)}... to source:`, linkError)
+            console.error(`[${chunk.locator}] Deleting orphaned insight ${insightId.substring(0, 8)}... to maintain data integrity`)
+            const { error: deleteError } = await supabaseAdmin
+              .from('insights')
+              .delete()
+              .eq('id', insightId)
+            
+            if (deleteError) {
+              console.error(`[${chunk.locator}] ❌ Failed to delete orphaned insight ${insightId.substring(0, 8)}...:`, deleteError)
+            } else {
+              console.log(`[${chunk.locator}] ✓ Deleted orphaned insight ${insightId.substring(0, 8)}...`)
+              insightsCreated-- // Adjust count since we're removing this insight
+            }
           }
         } else {
           console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... to source`)
