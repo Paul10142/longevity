@@ -64,3 +64,6 @@ This ensures:
 - **Dimensions**: 1,536 numbers per embedding
 - **Cost**: ~$0.02 per 1M tokens (very cheap)
 - **Storage**: Stored in PostgreSQL as `vector(1536)` type using pgvector extension
+
+
+

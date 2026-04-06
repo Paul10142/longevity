@@ -297,7 +297,7 @@ Generate a comprehensive clinician article for this topic. Remember: incorporate
       return sectionMarkdown
     }).join('\n\n')
 
-    let clinicianBodyMarkdown = clinicianMarkdownSections
+    const clinicianBodyMarkdown = clinicianMarkdownSections
       .replace(/^#\s+.+$/gm, '')
       .replace(/\n+#\s+[^\n]+\n+/g, '\n')
       .replace(/\n{3,}/g, '\n\n')
@@ -391,7 +391,7 @@ Translate this clinician article into a patient-accessible version. Preserve all
       return sectionMarkdown
     }).join('\n\n')
 
-    let patientBodyMarkdown = patientMarkdownSections
+    const patientBodyMarkdown = patientMarkdownSections
       .replace(/^#\s+.+$/gm, '')
       .replace(/\n+#\s+[^\n]+\n+/g, '\n')
       .replace(/\n{3,}/g, '\n\n')

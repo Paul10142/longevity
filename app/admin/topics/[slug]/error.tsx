@@ -32,7 +32,7 @@ export default function TopicError({
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto">
             <div className="mb-8">
-              <Link href="/topics" className="text-sm text-muted-foreground hover:text-primary mb-4 inline-block">
+              <Link href="/admin/topics" className="text-sm text-muted-foreground hover:text-primary mb-4 inline-block">
                 ← Back to Topics
               </Link>
             </div>
@@ -75,7 +75,7 @@ export default function TopicError({
                     <RefreshCw className="mr-2 h-4 w-4" />
                     Try Again
                   </Button>
-                  <Link href="/topics">
+                  <Link href="/admin/topics">
                     <Button variant="outline">
                       Back to Topics
                     </Button>
@@ -89,4 +89,7 @@ export default function TopicError({
     </div>
   )
 }
+
+
+
 

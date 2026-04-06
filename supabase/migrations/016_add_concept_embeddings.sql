@@ -15,3 +15,6 @@ CREATE INDEX IF NOT EXISTS concepts_embedding_idx ON concepts
 -- Add comment for documentation
 COMMENT ON COLUMN concepts.embedding IS 'Vector embedding for semantic concept matching (OpenAI text-embedding-3-small, 1536 dimensions)';
 
+
+
+

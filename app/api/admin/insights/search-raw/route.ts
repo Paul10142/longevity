@@ -27,7 +27,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Search for raw insights that match the query and are not merged
-    let searchQuery = supabaseAdmin
+    const searchQuery = supabaseAdmin
       .from('insights')
       .select(`
         id,
@@ -73,3 +73,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+
+

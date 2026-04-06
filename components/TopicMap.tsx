@@ -203,7 +203,7 @@ export function TopicMap({ initialConcepts, initialRelationships, onResetRef }: 
 
   // Handle double click - navigate to topic page
   const handleNodeDoubleClick = useCallback((node: TopicNode) => {
-    window.location.href = `/topics/${node.slug}`
+    window.location.href = `/admin/topics/${node.slug}`
   }, [])
 
   // Node color - gray out non-selected nodes
@@ -320,7 +320,7 @@ export function TopicMap({ initialConcepts, initialRelationships, onResetRef }: 
     // Wrap text if needed (simple word wrap)
     const words = label.split(' ')
     const maxWidth = size * 1.8
-    let lines: string[] = []
+    const lines: string[] = []
     let line = ''
     
     for (let i = 0; i < words.length; i++) {
@@ -437,7 +437,7 @@ export function TopicMap({ initialConcepts, initialRelationships, onResetRef }: 
                 <div className="flex items-center justify-between mb-2">
                   <h3 className="text-lg font-semibold">{node.name}</h3>
                   <Link
-                    href={`/topics/${node.slug}`}
+                    href={`/admin/topics/${node.slug}`}
                     className="text-sm text-primary hover:underline"
                   >
                     View Topic →
@@ -453,7 +453,7 @@ export function TopicMap({ initialConcepts, initialRelationships, onResetRef }: 
                       {related.map(rel => (
                         <Link
                           key={rel.id}
-                          href={`/topics/${rel.slug}`}
+                          href={`/admin/topics/${rel.slug}`}
                           className="text-sm px-2 py-1 bg-secondary rounded hover:bg-secondary/80 transition-colors"
                         >
                           {rel.name}

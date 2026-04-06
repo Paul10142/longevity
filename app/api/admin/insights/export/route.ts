@@ -133,7 +133,7 @@ export async function GET(request: NextRequest) {
     }
 
     // If chunks are requested, fetch them
-    let chunksMap: Record<string, any> = {}
+    const chunksMap: Record<string, any> = {}
     if (includeChunks && insights) {
       const locators = new Set<string>()
       insights.forEach((insight: any) => {

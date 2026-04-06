@@ -134,7 +134,7 @@ export function TopicMapView({ concepts, relationships }: TopicMapViewProps) {
               )}
             </div>
             <Link
-              href={`/topics/${topic.slug}`}
+              href={`/admin/topics/${topic.slug}`}
               onClick={(e) => e.stopPropagation()}
               className="shrink-0 text-sm text-primary hover:underline whitespace-nowrap"
             >
@@ -198,4 +198,7 @@ export function TopicMapView({ concepts, relationships }: TopicMapViewProps) {
     </div>
   )
 }
+
+
+
 

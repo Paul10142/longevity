@@ -100,7 +100,7 @@ export function TopicListView({ concepts, relationships }: TopicListViewProps) {
           {!(hasChildren || hasRelated) && <div className="w-6" />}
           
           <Link
-            href={`/topics/${topic.slug}`}
+            href={`/admin/topics/${topic.slug}`}
             className="flex-1 group"
           >
             <div className="flex-1">

@@ -169,7 +169,7 @@ export function SearchBar({ conceptId, conceptSlug, placeholder = "Search insigh
                 {results.map((result, index) => (
                   <Link
                     key={result.id}
-                    href={conceptSlug ? `/topics/${conceptSlug}?insight=${result.id}` : `/topics?insight=${result.id}`}
+                    href={conceptSlug ? `/admin/topics/${conceptSlug}?insight=${result.id}` : `/admin/topics?insight=${result.id}`}
                     onClick={() => {
                       setIsOpen(false)
                       setQuery("")
@@ -226,4 +226,7 @@ export function SearchBar({ conceptId, conceptSlug, placeholder = "Search insigh
     </div>
   )
 }
+
+
+
 

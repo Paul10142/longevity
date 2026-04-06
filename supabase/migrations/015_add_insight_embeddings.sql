@@ -16,3 +16,6 @@ CREATE INDEX IF NOT EXISTS insights_embedding_idx ON insights
 -- Add comment for documentation
 COMMENT ON COLUMN insights.embedding IS 'Vector embedding for semantic search (OpenAI text-embedding-3-small, 1536 dimensions)';
 
+
+
+

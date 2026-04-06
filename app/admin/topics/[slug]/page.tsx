@@ -92,7 +92,7 @@ export default async function TopicPage({
     // Continue without protocol - it's optional
   }
 
-  let protocol = protocols && protocols.length > 0 ? protocols[0] : null
+  const protocol = protocols && protocols.length > 0 ? protocols[0] : null
 
   // Protocol generation is now handled via admin API route only
   // No LLM helpers should be called from page renders
@@ -308,7 +308,7 @@ export default async function TopicPage({
         <div className="max-w-6xl mx-auto">
           {/* Concept Header */}
           <div className="mb-8">
-            <Link href="/topics" className="text-sm text-muted-foreground hover:text-primary mb-4 inline-block">
+            <Link href="/admin/topics" className="text-sm text-muted-foreground hover:text-primary mb-4 inline-block">
               ← Back to Topics
             </Link>
             <h1 className="text-4xl font-bold mb-2">{concept.name}</h1>
@@ -329,7 +329,7 @@ export default async function TopicPage({
                   {relatedConcepts.map((related) => (
                     <Link
                       key={related.id}
-                      href={`/topics/${related.slug}`}
+                      href={`/admin/topics/${related.slug}`}
                       className="inline-flex items-center gap-2 px-3 py-1.5 rounded-md border border-border bg-card hover:bg-accent hover:text-accent-foreground transition-colors"
                     >
                       <span className="text-sm font-medium">{related.name}</span>

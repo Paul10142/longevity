@@ -20,3 +20,6 @@ CREATE INDEX IF NOT EXISTS topic_protocols_concept_version_idx ON topic_protocol
 CREATE TRIGGER update_topic_protocols_updated_at BEFORE UPDATE ON topic_protocols
 FOR EACH ROW EXECUTE FUNCTION update_updated_at_column();
 
+
+
+

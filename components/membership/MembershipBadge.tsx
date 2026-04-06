@@ -24,3 +24,6 @@ export function MembershipBadge({ tier, className }: MembershipBadgeProps) {
     </Badge>
   )
 }
+
+
+

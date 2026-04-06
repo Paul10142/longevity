@@ -35,7 +35,7 @@ export async function POST(
     await generateTopicArticlesForConcept(concept.id)
 
     // Revalidate the topic page so it updates quickly
-    revalidatePath(`/topics/${slug}`)
+    revalidatePath(`/admin/topics/${slug}`)
     
     // TODO: After automating ingestion, call revalidatePath('/topics/[slug]')
     // so topic pages pick up new narratives/evidence without manual deploys.

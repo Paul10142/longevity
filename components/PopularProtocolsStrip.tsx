@@ -140,7 +140,7 @@ export function PopularProtocolsStrip({
               return (
                 <Link
                   key={protocol.id}
-                  href={`/topics/${protocol.conceptSlug}`}
+                  href={`/admin/topics/${protocol.conceptSlug}`}
                   className="flex-shrink-0 w-[280px] md:w-auto"
                 >
                   <Card className="h-full hover:shadow-lg transition-shadow duration-200 border-2 hover:border-primary/50">

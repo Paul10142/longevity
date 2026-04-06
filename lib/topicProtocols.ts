@@ -357,7 +357,7 @@ IMPORTANT - List Formatting Rules:
     }).join('\n\n')
 
     // Post-process markdown to ensure proper formatting
-    let bodyMarkdown = markdownSections
+    const bodyMarkdown = markdownSections
       // Strip any H1 headings that might have been generated
       // Match H1 at start of line (with optional leading whitespace)
       .replace(/^#\s+.+$/gm, '') // H1 at start of line

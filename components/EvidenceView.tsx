@@ -47,7 +47,7 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
           return dateB - dateA
         })
         break
-      case 'evidence_strength':
+      case 'evidence_strength': {
         const evidenceStrength: Record<string, number> = {
           'MetaAnalysis': 5,
           'RCT': 4,
@@ -64,7 +64,8 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
           return strengthB - strengthA
         })
         break
-      case 'actionability':
+      }
+      case 'actionability': {
         const actionabilityStrength: Record<string, number> = {
           'High': 3,
           'Medium': 2,
@@ -77,6 +78,7 @@ export function EvidenceView({ insights }: EvidenceViewProps) {
           return strengthB - strengthA
         })
         break
+      }
     }
     
     return sorted

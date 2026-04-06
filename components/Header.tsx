@@ -3,36 +3,45 @@
 import { useState, useEffect } from "react"
 import Link from "next/link"
 import { usePathname } from "next/navigation"
-import { Menu } from "lucide-react"
+import { ChevronDown, Menu } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/sheet"
 import { SearchBar } from "@/components/SearchBar"
+import { cn } from "@/lib/utils"
 
-  const navigation = [
-    { name: "Topics", href: "/topics" },
-    { name: "Insights", href: "/admin/insights/review" },
-    { name: "Sources", href: "/admin/sources" },
-    { name: "Longevity Toolkit", href: "#tips" },
-    { name: "About", href: "#about" },
-  ]
+const publicNav = [
+  { name: "Longevity Toolkit", href: "#tips" },
+  { name: "Resources", href: "#resources" },
+  { name: "About", href: "#about" },
+] as const
+
+const adminNavLinks = [
+  { name: "Topics", href: "/admin/topics" },
+  { name: "Sources", href: "/admin/sources" },
+  { name: "Concepts", href: "/admin/concepts" },
+] as const
+
+const insightSubLinks = [
+  { name: "Review", href: "/admin/insights/review" },
+  { name: "Unique", href: "/admin/insights/unique" },
+  { name: "Clusters", href: "/admin/insights/clusters" },
+] as const
 
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const pathname = usePathname()
+  const isAdmin = pathname.startsWith("/admin")
 
-  // Only render Sheet on client to avoid hydration mismatch
   useEffect(() => {
     setIsMounted(true)
   }, [])
 
   const handleNavigation = (href: string) => {
     if (href.startsWith("#")) {
-      // If we're on a different page, navigate to homepage first
       if (pathname !== "/") {
         window.location.href = `/${href}`
       } else {
-        // We're already on homepage, just scroll to the section
         const scrollToElement = () => {
           const element = document.querySelector(href)
           if (element) {
@@ -52,54 +61,93 @@ export function Header() {
     window.location.href = "/"
   }
 
+  const navLinkClass =
+    "text-sm font-medium text-muted-foreground hover:text-primary transition-all duration-200 relative group inline-flex items-center"
+  const underlineClass =
+    "absolute bottom-0 left-0 w-0 h-0.5 bg-accent group-hover:w-full transition-all duration-300"
+
   return (
     <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
       <div className="container flex h-20 items-center justify-between">
-        <button 
+        <button
+          type="button"
           onClick={handleLogoClick}
           className="flex items-center space-x-3 hover:opacity-80 transition-all duration-300 group"
         >
           <span className="text-[2.1rem]">❤️</span>
-          <div className="flex flex-col">
+          <div className="flex flex-col text-left">
             <span className="text-xl font-sans font-semibold text-primary tracking-tight">LifestyleAcademy</span>
-            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">Live Healthier & Happier</span>
+            <span className="text-[10px] text-muted-foreground uppercase tracking-wider font-medium">
+              Live Healthier &amp; Happier
+            </span>
           </div>
         </button>
 
-        {/* Desktop Navigation */}
-        <nav className="hidden md:flex items-center space-x-8">
-          {navigation.map((item) =>
-            item.href.startsWith("#") ? (
-              <button
-                key={item.name}
-                onClick={() => handleNavigation(item.href)}
-                className="text-sm font-medium text-muted-foreground hover:text-primary transition-all duration-200 relative group"
-              >
-                {item.name}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent group-hover:w-full transition-all duration-300"></span>
-              </button>
-            ) : (
-              <Link
-                key={item.name}
-                href={item.href}
-                className="text-sm font-medium text-muted-foreground hover:text-primary transition-all duration-200 relative group"
-              >
-                {item.name}
-                <span className="absolute bottom-0 left-0 w-0 h-0.5 bg-accent group-hover:w-full transition-all duration-300"></span>
-              </Link>
-            )
-          )}
-          <div className="flex items-center gap-3 ml-4">
-            <SearchBar className="w-64" />
-            <Link href="/start">
-              <Button size="sm">
-                Start Here
-              </Button>
-            </Link>
-          </div>
-        </nav>
+        {/* Desktop */}
+        <div className="hidden md:flex items-center gap-8">
+          <nav className="flex items-center gap-8">
+            {!isAdmin &&
+              publicNav.map((item) =>
+                item.href.startsWith("#") ? (
+                  <button
+                    key={item.name}
+                    type="button"
+                    onClick={() => handleNavigation(item.href)}
+                    className={navLinkClass}
+                  >
+                    {item.name}
+                    <span className={underlineClass} />
+                  </button>
+                ) : (
+                  <Link key={item.name} href={item.href} className={navLinkClass}>
+                    {item.name}
+                    <span className={underlineClass} />
+                  </Link>
+                )
+              )}
 
-        {/* Mobile Navigation */}
+            {isAdmin && (
+              <>
+                {adminNavLinks.map((item) => (
+                  <Link key={item.href} href={item.href} className={navLinkClass}>
+                    {item.name}
+                    <span className={underlineClass} />
+                  </Link>
+                ))}
+                <div className="relative group">
+                  <Link
+                    href="/admin/insights/review"
+                    className={cn(navLinkClass, "gap-0.5 pr-0.5")}
+                  >
+                    Insights
+                    <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                    <span className={underlineClass} />
+                  </Link>
+                  <div
+                    className="absolute left-0 top-full pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
+                    role="menu"
+                  >
+                    <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
+                      {insightSubLinks.map((sub) => (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                          role="menuitem"
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+              </>
+            )}
+          </nav>
+          {isAdmin && <SearchBar className="w-64" />}
+        </div>
+
+        {/* Mobile */}
         {isMounted ? (
           <Sheet open={isOpen} onOpenChange={setIsOpen}>
             <SheetTrigger asChild className="md:hidden">
@@ -110,44 +158,63 @@ export function Header() {
             <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background/95 backdrop-blur-md">
               <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               <nav className="flex flex-col space-y-6 mt-8">
-                {/* Search bar for mobile */}
-                <div className="pb-4 border-b border-border/40">
-                  <SearchBar />
-                </div>
-                {navigation.map((item) =>
-                  item.href.startsWith("#") ? (
-                    <button
-                      key={item.name}
-                      onClick={() => handleNavigation(item.href)}
-                      className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
-                    >
-                      {item.name}
-                    </button>
-                  ) : (
-                    <Link
-                      key={item.name}
-                      href={item.href}
-                      className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
-                      onClick={() => setIsOpen(false)}
-                    >
-                      {item.name}
-                    </Link>
-                  )
+                {!isAdmin &&
+                  publicNav.map((item) =>
+                    item.href.startsWith("#") ? (
+                      <button
+                        key={item.name}
+                        type="button"
+                        onClick={() => handleNavigation(item.href)}
+                        className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
+                      >
+                        {item.name}
+                      </button>
+                    ) : (
+                      <Link
+                        key={item.name}
+                        href={item.href}
+                        className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    )
+                  )}
+
+                {isAdmin && (
+                  <>
+                    {adminNavLinks.map((item) => (
+                      <Link
+                        key={item.href}
+                        href={item.href}
+                        className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {item.name}
+                      </Link>
+                    ))}
+                    <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground pt-2">
+                      Insights
+                    </p>
+                    {insightSubLinks.map((sub) => (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className="text-lg font-medium text-muted-foreground hover:text-primary transition-colors text-left py-2 border-b border-border/40 pl-2"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {sub.name}
+                      </Link>
+                    ))}
+                    <div className="pb-4 border-b border-border/40 pt-2">
+                      <SearchBar />
+                    </div>
+                  </>
                 )}
-                <Link
-                  href="/start"
-                  onClick={() => setIsOpen(false)}
-                  className="mt-4"
-                >
-                  <Button className="w-full">
-                    Start Here
-                  </Button>
-                </Link>
               </nav>
             </SheetContent>
           </Sheet>
         ) : (
-          // Fallback button during SSR to prevent layout shift
           <Button variant="ghost" size="icon" className="h-10 w-10 md:hidden" disabled>
             <Menu className="h-6 w-6" />
           </Button>
@@ -158,4 +225,3 @@ export function Header() {
 }
 
 export default Header
-

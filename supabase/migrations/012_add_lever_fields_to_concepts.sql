@@ -16,3 +16,6 @@ COMMENT ON COLUMN concepts.is_lever IS 'True if this concept is one of the 5 cor
 COMMENT ON COLUMN concepts.lever_order IS 'Display order for levers (1-5)';
 COMMENT ON COLUMN concepts.lever_metadata IS 'JSONB field storing lever-specific data: {tagline, primaryBenefits: string[]}';
 
+
+
+

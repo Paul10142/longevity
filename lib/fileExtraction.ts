@@ -83,7 +83,7 @@ export async function extractTextFromPDF(file: File): Promise<string> {
       PDFParseClass = pdfParseModule.PDFParse
     } catch (importError) {
       // Fallback to require if dynamic import fails
-      // eslint-disable-next-line @typescript-eslint/no-require-imports, @typescript-eslint/no-var-requires
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const pdfParseRequire = require("pdf-parse")
       PDFParseClass = pdfParseRequire.PDFParse
     }

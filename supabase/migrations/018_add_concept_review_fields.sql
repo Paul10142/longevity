@@ -16,3 +16,6 @@ COMMENT ON COLUMN concepts.auto_created IS 'True if this concept was automatical
 COMMENT ON COLUMN concepts.needs_review IS 'True if this concept needs admin review (typically for auto-created concepts)';
 COMMENT ON COLUMN concepts.created_from_source_id IS 'Source that triggered the creation of this concept (for auto-created concepts)';
 
+
+
+

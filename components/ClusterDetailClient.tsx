@@ -374,3 +374,6 @@ export function ClusterDetailClient({
     </div>
   )
 }
+
+
+

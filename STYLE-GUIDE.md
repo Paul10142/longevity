@@ -212,3 +212,6 @@
 4. **Performance**: Optimize fonts (subset, display: swap)
 5. **Branding**: Logo should incorporate primary color + gold accent
 
+
+
+

@@ -123,16 +123,18 @@ export async function POST(request: NextRequest) {
     }
 
     // Step 7: Record training data export
-    await supabaseAdmin
-      .from('training_data_exports')
-      .insert({
-        positive_examples: trainingData.positive.length,
-        negative_examples: trainingData.negative.length,
-        total_examples: trainingData.total,
-        format: 'openai_jsonl',
-        model_version: nextVersion,
-        exported_by: 'system'
-      })
+    if (modelRecord) {
+      await supabaseAdmin
+        .from('training_data_exports')
+        .insert({
+          positive_examples: trainingData.positive.length,
+          negative_examples: trainingData.negative.length,
+          total_examples: trainingData.total,
+          format: 'openai_jsonl',
+          model_id: modelRecord.id, // Reference to model record
+          exported_by: 'system'
+        })
+    }
 
     return NextResponse.json({
       success: true,
@@ -159,6 +161,13 @@ export async function POST(request: NextRequest) {
  */
 export async function GET(request: NextRequest) {
   try {
+    if (!supabaseAdmin) {
+      return NextResponse.json(
+        { error: 'Supabase not configured' },
+        { status: 500 }
+      )
+    }
+
     const searchParams = request.nextUrl.searchParams
     const jobId = searchParams.get('jobId')
 
@@ -175,7 +184,7 @@ export async function GET(request: NextRequest) {
     // If job is complete, update model record with actual model ID
     if (job.status === 'succeeded' && job.fine_tuned_model) {
       const { data: modelRecord } = await supabaseAdmin
-        ?.from('deduplication_models')
+        .from('deduplication_models')
         .select('id')
         .eq('model_id', jobId) // Match by job ID initially
         .single()
@@ -208,3 +217,6 @@ export async function GET(request: NextRequest) {
     )
   }
 }
+
+
+

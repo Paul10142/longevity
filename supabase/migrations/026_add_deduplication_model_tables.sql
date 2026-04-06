@@ -28,7 +28,7 @@ CREATE TABLE IF NOT EXISTS training_data_exports (
   total_examples int NOT NULL,
   format text CHECK (format IN ('openai_jsonl', 'custom_json')) NOT NULL,
   file_path text,
-  model_version int REFERENCES deduplication_models(version),
+  model_id uuid REFERENCES deduplication_models(id),
   exported_by text,
   notes text
 );
@@ -61,3 +61,6 @@ CREATE INDEX IF NOT EXISTS model_predictions_created_at_idx ON model_predictions
 COMMENT ON TABLE deduplication_models IS 'Fine-tuned models for automatic deduplication';
 COMMENT ON TABLE training_data_exports IS 'Exports of training data used for fine-tuning';
 COMMENT ON TABLE model_predictions IS 'Model predictions for evaluation and continuous learning';
+
+
+

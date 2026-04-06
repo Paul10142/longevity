@@ -19,3 +19,6 @@ CREATE INDEX IF NOT EXISTS concept_connections_type_idx ON concept_connections (
 
 -- Add comment for documentation
 COMMENT ON TABLE concept_connections IS 'Stores relationships between concepts based on shared insights, semantic similarity, or hierarchy. Used for cross-concept navigation and narrative generation.';
+
+
+

@@ -45,8 +45,8 @@ export default async function AdminConceptsPage() {
               <Link href="/admin/insights/review">
                 <Button variant="outline">Review Insights</Button>
               </Link>
-              <Link href="/topics">
-                <Button variant="outline">View Public Topics</Button>
+              <Link href="/admin/topics">
+                <Button variant="outline">Topics</Button>
               </Link>
             </div>
           </div>

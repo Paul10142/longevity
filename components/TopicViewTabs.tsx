@@ -1150,7 +1150,7 @@ function AdminInsightView({
                         {insight.concepts && insight.concepts.length > 0 ? (
                           <div className="flex flex-wrap gap-1 mt-1">
                             {insight.concepts.map((concept: any) => (
-                              <Link key={concept.id} href={`/topics/${concept.slug}`}>
+                              <Link key={concept.id} href={`/admin/topics/${concept.slug}`}>
                                 <Badge variant="secondary" className="text-xs hover:bg-primary/20">
                                   {concept.name}
                                 </Badge>

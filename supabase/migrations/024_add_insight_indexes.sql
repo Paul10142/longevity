@@ -9,3 +9,6 @@ CREATE INDEX IF NOT EXISTS insights_evidence_type_idx ON insights (evidence_type
 COMMENT ON INDEX insights_importance_idx IS 'Index for sorting insights by importance (used in prioritization and evidence tab)';
 COMMENT ON INDEX insights_actionability_idx IS 'Index for filtering insights by actionability';
 COMMENT ON INDEX insights_evidence_type_idx IS 'Index for filtering insights by evidence type';
+
+
+

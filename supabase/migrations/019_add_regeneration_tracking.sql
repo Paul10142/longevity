@@ -26,3 +26,6 @@ CREATE INDEX IF NOT EXISTS topic_articles_last_regenerated_idx ON topic_articles
 COMMENT ON COLUMN topic_protocols.last_regenerated_at IS 'Timestamp when this protocol was last regenerated (used to determine if regeneration needed)';
 COMMENT ON COLUMN topic_articles.last_regenerated_at IS 'Timestamp when this article was last regenerated (used to determine if regeneration needed)';
 
+
+
+

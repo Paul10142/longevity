@@ -17,3 +17,6 @@ CREATE INDEX IF NOT EXISTS insight_sources_run_id_idx ON insight_sources (run_id
 -- The application code will set run_id for new rows going forward
 -- For existing data, you may want to backfill run_id based on created_at timestamps if needed
 
+
+
+

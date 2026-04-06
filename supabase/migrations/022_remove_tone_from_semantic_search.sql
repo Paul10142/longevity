@@ -52,3 +52,6 @@ $$;
 
 -- Add comment for documentation
 COMMENT ON FUNCTION search_insights_semantic IS 'Semantic search function for insights using cosine similarity. Returns insights with similarity score above threshold.';
+
+
+

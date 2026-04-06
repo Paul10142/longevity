@@ -200,3 +200,6 @@ export default async function UniqueInsightDetailPage({
     </div>
   )
 }
+
+
+

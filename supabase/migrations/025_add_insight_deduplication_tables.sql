@@ -143,3 +143,6 @@ COMMENT ON COLUMN insights.run_id IS 'Processing run that created this raw insig
 COMMENT ON COLUMN insights.unique_insight_id IS 'Link to unique_insights if this raw has been merged';
 COMMENT ON TABLE merge_clusters IS 'Candidate groups of similar raw insights for manual review';
 COMMENT ON TABLE merge_cluster_members IS 'Individual raw insights within a merge cluster';
+
+
+

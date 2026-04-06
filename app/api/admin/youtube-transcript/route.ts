@@ -136,7 +136,11 @@ export async function POST(request: NextRequest) {
       transcriptText = videoData.text
     } else if (videoData.transcript || videoData.text) {
       // Fallback: try to stringify if it's an object
-      console.warn('Unexpected transcript format, attempting to stringify:', typeof videoData.transcript || typeof videoData.text)
+      console.warn(
+        'Unexpected transcript format, attempting to stringify:',
+        typeof videoData.transcript,
+        typeof videoData.text
+      )
       transcriptText = JSON.stringify(videoData.transcript || videoData.text)
     }
 
@@ -186,3 +190,6 @@ export async function POST(request: NextRequest) {
     )
   }
 }
+
+
+

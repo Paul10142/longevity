@@ -810,7 +810,7 @@ function splitIntoChunks(text: string, chunkSize: number = DEFAULT_CHUNK_SIZE, o
       let currentChunk = ''
       
       // Reconstruct sentences (split includes delimiters, so we need to merge them back)
-      let reconstructedSentences: string[] = []
+      const reconstructedSentences: string[] = []
       for (let i = 0; i < sentences.length; i++) {
         const part = sentences[i].trim()
         if (!part) continue
@@ -1330,7 +1330,7 @@ export async function processSourceFromPlainText(
 
         // 5. Link insight to source (insert into insight_sources for backward compatibility)
         // Note: New code should use insights.source_id directly, but we keep this for legacy compatibility
-        // CRITICAL: This link must succeed - if it fails, we have an orphaned insight
+        // If link creation fails, flag the insight for investigation instead of deleting it
         const { error: linkError } = await supabaseAdmin
           .from('insight_sources')
           .insert({
@@ -1347,20 +1347,29 @@ export async function processSourceFromPlainText(
           if (linkError.message.includes('duplicate') || linkError.message.includes('unique')) {
             console.log(`[${chunk.locator}] ✓ Linked insight ${insightId.substring(0, 8)}... (or already linked)`)
           } else {
-            // Non-duplicate error: this is a problem - we have an orphaned insight
-            // Delete the orphaned insight to maintain data integrity
+            // Non-duplicate error: flag the insight for investigation
+            // Store error details in context_note for debugging
+            const errorDetails = linkError.message || String(linkError)
+            const existingContext = insight.context_note || ''
+            const updatedContext = existingContext 
+              ? `${existingContext}\n\n[LINK ERROR] Failed to create insight_sources link: ${errorDetails}`
+              : `[LINK ERROR] Failed to create insight_sources link: ${errorDetails}`
+            
             console.error(`[${chunk.locator}] ❌ Failed to link insight ${insightId.substring(0, 8)}... to source:`, linkError)
-            console.error(`[${chunk.locator}] Deleting orphaned insight ${insightId.substring(0, 8)}... to maintain data integrity`)
-            const { error: deleteError } = await supabaseAdmin
+            console.error(`[${chunk.locator}] Flagging insight ${insightId.substring(0, 8)}... for link verification`)
+            
+            const { error: flagError } = await supabaseAdmin
               .from('insights')
-              .delete()
+              .update({
+                needs_link_verification: true,
+                context_note: updatedContext
+              })
               .eq('id', insightId)
             
-            if (deleteError) {
-              console.error(`[${chunk.locator}] ❌ Failed to delete orphaned insight ${insightId.substring(0, 8)}...:`, deleteError)
+            if (flagError) {
+              console.error(`[${chunk.locator}] ❌ Failed to flag insight ${insightId.substring(0, 8)}...:`, flagError)
             } else {
-              console.log(`[${chunk.locator}] ✓ Deleted orphaned insight ${insightId.substring(0, 8)}...`)
-              insightsCreated-- // Adjust count since we're removing this insight
+              console.log(`[${chunk.locator}] ⚠ Flagged insight ${insightId.substring(0, 8)}... for link verification`)
             }
           }
         } else {

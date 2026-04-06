@@ -189,7 +189,7 @@ export function InsightReviewClient({
                                 <div className="flex flex-wrap gap-1">
                                   <span className="text-xs text-muted-foreground mr-2">Topics:</span>
                                   {insight.topics.map((topic: any) => (
-                                    <Link key={topic.id} href={`/topics/${topic.slug}`}>
+                                    <Link key={topic.id} href={`/admin/topics/${topic.slug}`}>
                                       <Badge variant="secondary" className="text-xs hover:bg-primary/20">
                                         {topic.name}
                                       </Badge>

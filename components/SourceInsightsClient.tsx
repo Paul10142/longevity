@@ -222,7 +222,7 @@ function InsightsListForRun({
                     <div className="mt-4 pt-4 border-t">
                       <div className="flex flex-wrap gap-1">
                         {insight.topics.map((topic: any) => (
-                          <Link key={topic.id} href={`/topics/${topic.slug}`}>
+                          <Link key={topic.id} href={`/admin/topics/${topic.slug}`}>
                             <Badge variant="secondary" className="text-xs hover:bg-primary/20">
                               {topic.name}
                             </Badge>

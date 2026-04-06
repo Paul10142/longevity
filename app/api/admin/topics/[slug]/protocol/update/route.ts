@@ -75,7 +75,7 @@ export async function POST(
     }
 
     // Revalidate the topic page so it updates quickly
-    revalidatePath(`/topics/${slug}`)
+    revalidatePath(`/admin/topics/${slug}`)
 
     return NextResponse.json({
       success: true,
@@ -92,4 +92,7 @@ export async function POST(
     )
   }
 }
+
+
+
 

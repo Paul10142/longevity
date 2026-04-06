@@ -521,3 +521,6 @@ Help users find relevant insights and concepts as the knowledge base grows.
 ---
 
 **Key Principle:** Build for narratives first, lists second. The prioritization system already handles scale - we just need to ensure narratives can reference related concepts naturally.
+
+
+
