@@ -16,9 +16,9 @@ const publicNav = [
 ] as const
 
 const adminNavLinks = [
-  { name: "Topics", href: "/admin/topics" },
   { name: "Sources", href: "/admin/sources" },
-  { name: "Concepts", href: "/admin/concepts" },
+  { name: "Topics", href: "/admin/topics" },
+  { name: "Merge reviews", href: "/admin/reviews" },
 ] as const
 
 const insightSubLinks = [

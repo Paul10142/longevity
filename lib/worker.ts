@@ -10,7 +10,8 @@
 import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
 import { extractSource, type ExtractCheckpoint } from './extraction'
-import { consolidateSource, type ConsolidateCheckpoint } from './consolidation'
+import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
+import { tagClaims, type TagCheckpoint } from './taxonomy'
 
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
@@ -58,8 +59,34 @@ async function handleConsolidateSource(job: Job): Promise<void> {
 
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })
-    // Hand off to tagging (Phase 3). No-op until that handler exists.
+    // Hand off to tagging. Deduped so many consolidations coalesce into one.
     await enqueueJob('tag_claims', {})
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
+  }
+}
+
+async function handleTagClaims(job: Job): Promise<void> {
+  const progress = job.progress as Partial<TagCheckpoint>
+  const result = await tagClaims(
+    progress,
+    async (cp) => { await heartbeatJob(job.id, { ...cp }) },
+    220_000
+  )
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
+  }
+}
+
+async function handleClaimSweep(job: Job): Promise<void> {
+  const result = await sweepClaims(
+    async (done, total, merged) => { await heartbeatJob(job.id, { processed: done, total, merged }) },
+    220_000
+  )
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
   } else {
     await requeueJob(job.id, { ...result.checkpoint })
   }
@@ -72,9 +99,11 @@ async function runHandler(job: Job): Promise<void> {
     case 'consolidate_source':
       return handleConsolidateSource(job)
     case 'tag_claims':
+      return handleTagClaims(job)
+    case 'claim_sweep':
+      return handleClaimSweep(job)
     case 'discover_topics':
     case 'generate_topic':
-    case 'claim_sweep':
       // Implemented in later phases. Complete as no-op so the queue drains.
       console.log(`[worker] ${job.type} not yet implemented — skipping`)
       return
@@ -96,9 +125,10 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
 
     try {
       await runHandler(job)
-      // extract_source and consolidate_source manage their own completion
-      // (they may requeue to resume from a checkpoint).
-      if (job.type !== 'extract_source' && job.type !== 'consolidate_source') {
+      // Checkpointed handlers manage their own completion (they may requeue to
+      // resume). Only the no-op / instantaneous types are completed here.
+      const selfManaged = ['extract_source', 'consolidate_source', 'tag_claims', 'claim_sweep']
+      if (!selfManaged.includes(job.type)) {
         await completeJob(job.id)
       }
     } catch (err) {

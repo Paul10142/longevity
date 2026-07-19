@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const mainLinks = [
-  { name: "Topics", href: "/admin/topics", description: "Topic pages and evidence" },
-  { name: "Sources", href: "/admin/sources", description: "Ingested sources and transcripts" },
-  { name: "Concepts", href: "/admin/concepts", description: "Concept list and tagging" },
+  { name: "Sources", href: "/admin/sources", description: "Ingested sources, transcripts, and the processing queue" },
+  { name: "Topics", href: "/admin/topics", description: "The AI-managed taxonomy (audit / edit)" },
 ] as const
 
 const insightLinks = [
