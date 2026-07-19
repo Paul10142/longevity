@@ -33,6 +33,9 @@ export async function POST(
     case "rename": {
       const name = String(body.name ?? "").trim()
       if (!name) return NextResponse.json({ error: "name required" }, { status: 400 })
+      // Rename updates the display name and re-embeds for matching, but NEVER
+      // the slug — the slug is a stable identifier that URLs and generated-
+      // article references depend on. See ARCHITECTURE.md (taxonomy durability).
       const embedding = await generateEmbedding(name)
       await supabaseAdmin.from("topics").update({ name, embedding, reviewed_by_human: true }).eq("id", id)
       break
@@ -74,7 +77,11 @@ export async function POST(
       await supabaseAdmin.from("claim_topics").delete().eq("topic_id", id)
       // Move children under the merge target.
       await supabaseAdmin.from("topics").update({ parent_id: intoId }).eq("parent_id", id)
-      await supabaseAdmin.from("topics").update({ status: "archived", reviewed_by_human: true }).eq("id", id)
+      // Archive the merged topic and record the survivor so its old slug redirects.
+      await supabaseAdmin
+        .from("topics")
+        .update({ status: "archived", merged_into_id: intoId, reviewed_by_human: true })
+        .eq("id", id)
       await supabaseAdmin.from("topics").update({ reviewed_by_human: true }).eq("id", intoId)
       await recomputeTopicCounts()
       break

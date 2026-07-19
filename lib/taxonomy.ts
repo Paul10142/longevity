@@ -67,7 +67,8 @@ async function ensureTopic(name: string, parentName: string | null, cache: Topic
     parentId = parent.id
   }
 
-  // Unique slug (append counter on collision).
+  // Unique slug, assigned ONCE at creation and frozen thereafter (rename never
+  // re-slugs) so topic URLs and article citations stay stable. See ARCHITECTURE.md.
   let slug = slugify(name) || 'topic'
   for (let n = 2; ; n++) {
     const { data: clash } = await db().from('topics').select('id').eq('slug', slug).limit(1)

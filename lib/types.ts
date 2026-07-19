@@ -92,10 +92,11 @@ export type MergeReview = {
 export type Topic = {
   id: string
   name: string
-  slug: string
+  slug: string                 // stable identifier; assigned once, never re-derived on rename
   description: string | null
   parent_id: string | null
   status: 'active' | 'archived'
+  merged_into_id: string | null // survivor topic when this one was merged (old slugs redirect here)
   created_by: 'ai' | 'human'
   reviewed_by_human: boolean
   claim_count: number

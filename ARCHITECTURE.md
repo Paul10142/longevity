@@ -64,6 +64,60 @@ It works within a ~250s budget and exits; checkpoints make that safe.
   row. Accept in the review UI collapses the two claims; reject keeps both.
   Nothing blocks the pipeline on human review.
 
+## Taxonomy durability & maintenance
+
+The taxonomy must stay coherent from 6 sources to thousands over months/years.
+The governing principle: **incremental by default, scheduled maintenance for
+structure, full re-derivation almost never.** Regenerating the whole taxonomy
+per source is rejected — it destroys human curation, drifts non-deterministically
+(breaking URLs and article citations), and re-does O(all claims) of work that
+didn't change.
+
+### Three cadences
+
+1. **Per-source (continuous, automatic)** — `tag_claims` assigns new claims into
+   the *existing* taxonomy (ANN hints + LLM), minting a new topic only when a
+   claim fits nothing. Append-mostly, O(new claims), so the core never moves.
+   This is the default and is implemented today.
+2. **Scheduled maintenance (periodic; the `taxonomy_maintenance` job — planned)**
+   — evaluates the tree and emits *proposals* (split an oversized/multi-modal
+   topic, merge near-duplicates, re-parent a drifted topic, re-home stranded
+   claims). Most decisions are cheap vector math on **topic centroid embeddings**
+   (mean of member-claim embeddings), not LLM scans; the LLM only names new
+   splits and adjudicates borderline merges. Safe proposals on unreviewed AI
+   topics auto-apply; everything else routes to the merge-review queue.
+3. **Full re-derivation** — rare, deliberate, never automatic; done as a
+   migration with an old→new topic mapping so URLs redirect and content re-homes.
+
+### Durability invariants
+
+- **Frozen slugs.** A topic's `slug` is assigned once at creation; rename changes
+  only the display `name` (and re-embeds for matching). URLs and generated-article
+  references depend on the slug, so it never changes. Enforced in
+  `lib/taxonomy.ts` (creation) and `app/api/admin/topics/[id]` (rename).
+- **Merge/archive, never delete.** A merged topic is archived with
+  `merged_into_id` pointing at the survivor, so old slugs 301-redirect instead of
+  404 (the public read side resolves the chain). Claims and children move to the
+  survivor.
+- **Human-reviewed topics are pinned.** Once `reviewed_by_human` is set,
+  automated maintenance may *propose* changes but never applies them silently —
+  they go to the review queue. Automation moves freely only on unreviewed AI
+  leaves. This keeps the curated spine stable while the edges stay fluid.
+
+### Generated content is decoupled
+
+Article/protocol regeneration is separate from taxonomy maintenance: each carries
+`claims_snapshot_at`, and a scheduled sweep regenerates only topics whose claim
+set changed materially (lazy, per-topic) — the tree reshuffling does not trigger
+a mass regen.
+
+### Name-embedding vs centroid (planned)
+
+`topics.embedding` today embeds the topic *name* (good for matching a claim's
+meaning to a topic). Structural maintenance instead needs a **centroid** = what
+the topic has *become* (mean of its claims). Cadence 2 adds a separate centroid
+column; the name-embedding stays for tagging.
+
 ## Models
 
 - Extraction + adjudication + tagging: `gpt-5-mini`
