@@ -12,6 +12,7 @@ import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJo
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
 import { tagClaims, type TagCheckpoint } from './taxonomy'
+import { generateTopicContent } from './synthesis'
 
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
@@ -102,9 +103,14 @@ async function runHandler(job: Job): Promise<void> {
       return handleTagClaims(job)
     case 'claim_sweep':
       return handleClaimSweep(job)
+    case 'generate_topic': {
+      const topicId = job.payload.topic_id as string
+      if (!topicId) throw new Error('generate_topic job missing topic_id')
+      await generateTopicContent(topicId)
+      return
+    }
     case 'discover_topics':
-    case 'generate_topic':
-      // Implemented in later phases. Complete as no-op so the queue drains.
+      // Implemented in a later phase. Complete as no-op so the queue drains.
       console.log(`[worker] ${job.type} not yet implemented — skipping`)
       return
     default:

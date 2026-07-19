@@ -59,6 +59,26 @@ export function TopicsAuditClient() {
     }
   }
 
+  async function generate(id: string) {
+    setBusy(id)
+    try {
+      await fetch(`/api/admin/topics/${id}/generate`, { method: "POST" })
+    } finally {
+      setBusy(null)
+    }
+  }
+
+  async function generateAll() {
+    if (!confirm("Queue synthesis for all topics with ≥5 claims? This runs LLM generation in the background.")) return
+    const res = await fetch("/api/admin/topics/generate", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ minClaims: 5 }),
+    })
+    const data = await res.json()
+    alert(`Queued synthesis for ${data.queued ?? 0} topics.`)
+  }
+
   function TopicNode({ topic, depth }: { topic: Topic; depth: number }) {
     const children = childrenOf.get(topic.id) ?? []
     return (
@@ -102,6 +122,10 @@ export function TopicsAuditClient() {
               }}
             >move</Button>
             <Button
+              size="sm" variant="ghost" className="h-6 px-2 text-xs" disabled={busy === topic.id}
+              onClick={() => generate(topic.id)}
+            >generate</Button>
+            <Button
               size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" disabled={busy === topic.id}
               onClick={() => { if (confirm(`Archive "${topic.name}"? Its claims keep their other topics.`)) act(topic.id, { action: "archive" }) }}
             >archive</Button>
@@ -121,9 +145,12 @@ export function TopicsAuditClient() {
 
   return (
     <div>
-      <p className="text-xs text-muted-foreground mb-3">
-        {topics.length} topics · {aiUnreviewed} AI-created awaiting review. Hover a row for actions.
-      </p>
+      <div className="flex items-center justify-between mb-3">
+        <p className="text-xs text-muted-foreground">
+          {topics.length} topics · {aiUnreviewed} AI-created awaiting review. Hover a row for actions.
+        </p>
+        <Button size="sm" variant="secondary" onClick={generateAll}>Generate all (≥5 claims)</Button>
+      </div>
       <div className="rounded-md border">
         {roots.map(t => <TopicNode key={t.id} topic={t} depth={0} />)}
       </div>
