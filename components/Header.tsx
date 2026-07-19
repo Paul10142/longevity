@@ -23,8 +23,6 @@ const adminNavLinks = [
 
 const insightSubLinks = [
   { name: "Review", href: "/admin/insights/review" },
-  { name: "Unique", href: "/admin/insights/unique" },
-  { name: "Clusters", href: "/admin/insights/clusters" },
 ] as const
 
 export function Header() {

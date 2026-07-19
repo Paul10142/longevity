@@ -1,4 +1,141 @@
 // Shared types for Medical Library
+//
+// ── v2 Knowledge Engine types ───────────────────────────────
+// Layered model: sources → chunks → raw_insights → claims → topics.
+// See ARCHITECTURE.md. Legacy v1 types remain below until every
+// surface is migrated.
+
+export type EvidenceType =
+  | 'RCT' | 'Cohort' | 'MetaAnalysis' | 'CaseSeries'
+  | 'Mechanistic' | 'Animal' | 'ExpertOpinion' | 'Other'
+export type Confidence = 'high' | 'medium' | 'low'
+export type Actionability = 'Low' | 'Medium' | 'High'
+export type Audience = 'Patient' | 'Clinician' | 'Both'
+export type InsightType =
+  | 'Protocol' | 'Explanation' | 'Mechanism' | 'Anecdote'
+  | 'Warning' | 'Controversy' | 'Other'
+
+export type InsightQualifiers = {
+  population?: string | null
+  dose?: string | null
+  duration?: string | null
+  outcome?: string | null
+  effect_size?: string | null
+  caveats?: string | null
+}
+
+// Immutable extraction record — one per (chunk, extracted statement).
+export type RawInsight = {
+  id: string
+  source_id: string
+  chunk_id: string | null
+  run_id: string | null
+  locator: string
+  start_ms: number | null
+  end_ms: number | null
+  statement: string
+  context_note: string | null
+  evidence_type: EvidenceType
+  confidence: Confidence
+  importance: 1 | 2 | 3 | null
+  actionability: Actionability | null
+  primary_audience: Audience | null
+  insight_type: InsightType | null
+  qualifiers: InsightQualifiers | null
+  embedding: number[] | null
+  extraction_model: string
+  created_at: string
+}
+
+// Canonical deduplicated knowledge unit; the public-facing atom.
+export type Claim = {
+  id: string
+  canonical_statement: string
+  context_note: string | null
+  status: 'active' | 'merged_into' | 'retired'
+  merged_into_id: string | null
+  best_evidence_type: EvidenceType | null
+  max_importance: 1 | 2 | 3 | null
+  actionability: Actionability | null
+  primary_audience: Audience | null
+  insight_type: InsightType | null
+  qualifiers: InsightQualifiers | null
+  member_count: number
+  source_count: number
+  needs_tagging: boolean
+  created_at: string
+  updated_at: string
+}
+
+export type ClaimMember = {
+  claim_id: string
+  raw_insight_id: string
+  match_confidence: number | null
+  matched_by: 'auto' | 'human' | 'seed'
+  created_at: string
+}
+
+export type MergeReview = {
+  id: string
+  claim_id: string
+  candidate_claim_id: string
+  similarity: number | null
+  model_verdict: 'SAME' | 'DIFFERENT' | 'UNSURE' | null
+  model_confidence: number | null
+  model_reasoning: string | null
+  status: 'pending' | 'accepted' | 'rejected'
+  decided_at: string | null
+  decided_by: string | null
+  created_at: string
+}
+
+export type Topic = {
+  id: string
+  name: string
+  slug: string
+  description: string | null
+  parent_id: string | null
+  status: 'active' | 'archived'
+  created_by: 'ai' | 'human'
+  reviewed_by_human: boolean
+  claim_count: number
+  created_at: string
+  updated_at: string
+}
+
+export type JobType =
+  | 'extract_source' | 'consolidate_source' | 'tag_claims'
+  | 'discover_topics' | 'generate_topic' | 'claim_sweep'
+export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
+
+export type Job = {
+  id: string
+  type: JobType
+  payload: Record<string, unknown>
+  status: JobStatus
+  progress: Record<string, unknown>
+  attempts: number
+  max_attempts: number
+  run_after: string
+  locked_at: string | null
+  error: string | null
+  created_at: string
+  started_at: string | null
+  finished_at: string | null
+}
+
+export type PipelineRun = {
+  id: string
+  source_id: string | null
+  kind: 'extract' | 'consolidate' | 'tag' | 'discover_topics' | 'generate_topic' | 'claim_sweep'
+  status: 'running' | 'success' | 'failed'
+  stats: Record<string, number | string>
+  error_message: string | null
+  started_at: string
+  finished_at: string | null
+}
+
+// ── Legacy v1 types (being migrated phase by phase) ─────────
 
 export type TopicArticleSection = {
   id: string

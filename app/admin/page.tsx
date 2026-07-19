@@ -10,8 +10,6 @@ const mainLinks = [
 
 const insightLinks = [
   { name: "Review", href: "/admin/insights/review", description: "Review raw insights" },
-  { name: "Unique", href: "/admin/insights/unique", description: "Curated unique insights" },
-  { name: "Clusters", href: "/admin/insights/clusters", description: "Insight clusters" },
 ] as const
 
 export default function AdminHomePage() {
