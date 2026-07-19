@@ -115,6 +115,44 @@ function isLowValue(statement: string): boolean {
   return LOW_VALUE_PATTERNS.some(p => p.test(statement))
 }
 
+// ── Enum coercion ───────────────────────────────────────────
+// The LLM occasionally returns values outside our allowed sets (e.g.
+// "moderate", "Definition", capitalized confidence). Coerce every enum to a
+// valid value with a safe fallback so one stray field can never break the
+// whole chunk's insert.
+const EVIDENCE_TYPES: EvidenceType[] = ['RCT','Cohort','MetaAnalysis','CaseSeries','Mechanistic','Animal','ExpertOpinion','Other']
+const INSIGHT_TYPES: InsightType[] = ['Protocol','Explanation','Mechanism','Anecdote','Warning','Controversy','Other']
+
+function coerceEvidenceType(v: unknown): EvidenceType {
+  const match = EVIDENCE_TYPES.find(t => t.toLowerCase() === String(v ?? '').toLowerCase())
+  return match ?? 'Other'
+}
+function coerceConfidence(v: unknown): Confidence {
+  const s = String(v ?? '').toLowerCase()
+  if (s === 'high' || s === 'medium' || s === 'low') return s
+  return 'medium'
+}
+function coerceImportance(v: unknown): 1 | 2 | 3 {
+  const n = Number(v)
+  return n === 1 || n === 3 ? n : 2
+}
+function coerceActionability(v: unknown): Actionability {
+  const s = String(v ?? '').toLowerCase()
+  if (s === 'high') return 'High'
+  if (s === 'low' || s === 'background') return 'Low'
+  return 'Medium'
+}
+function coerceAudience(v: unknown): Audience {
+  const s = String(v ?? '').toLowerCase()
+  if (s === 'patient') return 'Patient'
+  if (s === 'clinician') return 'Clinician'
+  return 'Both'
+}
+function coerceInsightType(v: unknown): InsightType {
+  const match = INSIGHT_TYPES.find(t => t.toLowerCase() === String(v ?? '').toLowerCase())
+  return match ?? 'Other'
+}
+
 // ── Chunking (ported from v1 splitIntoChunks) ───────────────
 export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSize = CHUNK_OVERLAP): string[] {
   const forceSplit = (input: string): string[] => {
@@ -190,12 +228,14 @@ async function extractFromChunk(content: string, label: string): Promise<Extract
   return parsed.insights
     .filter(i => i && typeof i.statement === 'string' && !isLowValue(i.statement))
     .map(i => ({
-      ...i,
-      importance: i.importance ?? 2,
-      actionability: (i.actionability as Actionability) ?? 'Medium',
-      primary_audience: i.primary_audience ?? 'Both',
-      insight_type: i.insight_type ?? 'Explanation',
+      statement: i.statement,
       context_note: i.context_note ?? null,
+      evidence_type: coerceEvidenceType(i.evidence_type),
+      confidence: coerceConfidence(i.confidence),
+      importance: coerceImportance(i.importance),
+      actionability: coerceActionability(i.actionability),
+      primary_audience: coerceAudience(i.primary_audience),
+      insight_type: coerceInsightType(i.insight_type),
       qualifiers: i.qualifiers ?? null,
     }))
 }

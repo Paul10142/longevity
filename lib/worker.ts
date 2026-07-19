@@ -10,6 +10,7 @@
 import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
 import { extractSource, type ExtractCheckpoint } from './extraction'
+import { consolidateSource, type ConsolidateCheckpoint } from './consolidation'
 
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
@@ -40,11 +41,36 @@ async function handleExtractSource(job: Job): Promise<void> {
   }
 }
 
+async function handleConsolidateSource(job: Job): Promise<void> {
+  const sourceId = job.payload.source_id as string
+  if (!sourceId) throw new Error('consolidate_source job missing source_id')
+
+  const progress = job.progress as Partial<ConsolidateCheckpoint>
+
+  const result = await consolidateSource(
+    sourceId,
+    progress,
+    async (cp) => {
+      await heartbeatJob(job.id, { ...cp })
+    },
+    220_000
+  )
+
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
+    // Hand off to tagging (Phase 3). No-op until that handler exists.
+    await enqueueJob('tag_claims', {})
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
+  }
+}
+
 async function runHandler(job: Job): Promise<void> {
   switch (job.type) {
     case 'extract_source':
       return handleExtractSource(job)
     case 'consolidate_source':
+      return handleConsolidateSource(job)
     case 'tag_claims':
     case 'discover_topics':
     case 'generate_topic':
@@ -70,8 +96,9 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
 
     try {
       await runHandler(job)
-      // extract_source manages its own completion (may requeue itself).
-      if (job.type !== 'extract_source') {
+      // extract_source and consolidate_source manage their own completion
+      // (they may requeue to resume from a checkpoint).
+      if (job.type !== 'extract_source' && job.type !== 'consolidate_source') {
         await completeJob(job.id)
       }
     } catch (err) {

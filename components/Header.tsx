@@ -23,6 +23,7 @@ const adminNavLinks = [
 
 const insightSubLinks = [
   { name: "Review", href: "/admin/insights/review" },
+  { name: "Merge reviews", href: "/admin/reviews" },
 ] as const
 
 export function Header() {
