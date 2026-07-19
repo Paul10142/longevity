@@ -37,6 +37,7 @@ function db() {
 type ExtractedInsight = {
   statement: string
   context_note?: string | null
+  direct_quote?: string | null   // verbatim span from the chunk supporting the insight
   evidence_type: EvidenceType
   qualifiers?: InsightQualifiers | null
   confidence: Confidence
@@ -96,8 +97,11 @@ AUDIENCE: Patient | Clinician | Both.
 WRITING STYLE
 1–3 sentences per insight; clear accessible language; briefly define jargon; never include speaker names or podcast references; include practical examples when they help; if context from earlier is required, put it in the statement or context_note.
 
+DIRECT QUOTE (for verifiability)
+For each insight, also return "direct_quote": the SHORTEST verbatim span copied EXACTLY from the chunk text above that best supports the insight — same words, punctuation, and casing, no paraphrasing or ellipses. This is used to quote the source precisely, so it must appear character-for-character in the chunk. If no single span cleanly supports it, return null.
+
 OUTPUT FORMAT (STRICT JSON)
-{"insights":[{"statement":"...","context_note":"...","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
+{"insights":[{"statement":"...","context_note":"...","direct_quote":"exact words from the chunk or null","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
 If no high-value insights are present, return {"insights":[]}.
 `.trim()
 
@@ -230,6 +234,7 @@ async function extractFromChunk(content: string, label: string): Promise<Extract
     .map(i => ({
       statement: i.statement,
       context_note: i.context_note ?? null,
+      direct_quote: typeof i.direct_quote === 'string' && i.direct_quote.trim() ? i.direct_quote.trim() : null,
       evidence_type: coerceEvidenceType(i.evidence_type),
       confidence: coerceConfidence(i.confidence),
       importance: coerceImportance(i.importance),
@@ -342,13 +347,20 @@ export async function extractSource(
 
     if (extracted.length > 0) {
       const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
-      const rows = extracted.map((ins, i) => ({
+      const rows = extracted.map((ins, i) => {
+        // Locate the verbatim quote within the chunk to store char offsets
+        // (only when it matches exactly — the prompt requires an exact copy).
+        const at = ins.direct_quote ? content.indexOf(ins.direct_quote) : -1
+        return {
         source_id: sourceId,
         chunk_id: chunkIdByIndex.get(idx) ?? null,
         run_id: runId,
         locator,
         statement: ins.statement,
         context_note: ins.context_note ?? null,
+        direct_quote: at >= 0 ? ins.direct_quote : (ins.direct_quote ?? null),
+        quote_char_start: at >= 0 ? at : null,
+        quote_char_end: at >= 0 ? at + (ins.direct_quote as string).length : null,
         evidence_type: ins.evidence_type,
         confidence: ins.confidence,
         importance: ins.importance ?? null,
@@ -358,7 +370,8 @@ export async function extractSource(
         qualifiers: ins.qualifiers ?? null,
         embedding: embeddings[i],
         extraction_model: EXTRACTION_MODEL,
-      }))
+        }
+      })
       const { error: insErr } = await db().from('raw_insights').insert(rows)
       if (insErr) throw new Error(`Failed to insert raw_insights for chunk ${label}: ${insErr.message}`)
       cp.insights_created += rows.length

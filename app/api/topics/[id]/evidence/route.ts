@@ -6,9 +6,10 @@ export const dynamic = "force-dynamic"
 const PAGE_SIZE = 25
 
 /**
- * Paginated claims for a topic and its descendants, ranked by importance /
- * corroboration. The Evidence tab's backbone. Member raw insights (the
- * provenance drill-down) are loaded per-claim via /api/claims/[id]/members.
+ * Paginated claims for a topic and its descendants, ranked by the composite
+ * score. Backed by the topic_claims() RPC — scoring, subtree rollup, and
+ * pagination all happen in SQL (no app-side IN of claim ids). Member raw
+ * insights + verified references are loaded per-claim via /api/claims/[id].
  */
 export async function GET(
   request: NextRequest,
@@ -18,38 +19,20 @@ export async function GET(
   const { id } = await params
   const page = Math.max(0, parseInt(request.nextUrl.searchParams.get("page") || "0", 10))
 
-  // Topic + descendant ids.
-  const { data: allTopics } = await supabaseAdmin.from("topics").select("id, parent_id").eq("status", "active")
-  const childrenOf = new Map<string, string[]>()
-  for (const t of (allTopics ?? []) as { id: string; parent_id: string | null }[]) {
-    if (!t.parent_id) continue
-    if (!childrenOf.has(t.parent_id)) childrenOf.set(t.parent_id, [])
-    childrenOf.get(t.parent_id)!.push(t.id)
-  }
-  const topicIds: string[] = []
-  const stack = [id]
-  while (stack.length) {
-    const t = stack.pop()!
-    topicIds.push(t)
-    for (const c of childrenOf.get(t) ?? []) stack.push(c)
-  }
-
-  const { data: links } = await supabaseAdmin.from("claim_topics").select("claim_id").in("topic_id", topicIds)
-  const claimIds = Array.from(new Set((links ?? []).map((l: { claim_id: string }) => l.claim_id)))
-  if (claimIds.length === 0) return NextResponse.json({ claims: [], total: 0, page, pageSize: PAGE_SIZE })
-
-  const { data: claims } = await supabaseAdmin
-    .from("claims")
-    .select("id, canonical_statement, context_note, best_evidence_type, max_importance, member_count, source_count")
-    .in("id", claimIds)
-    .eq("status", "active")
-    .order("max_importance", { ascending: false, nullsFirst: false })
-    .order("source_count", { ascending: false })
-    .range(page * PAGE_SIZE, page * PAGE_SIZE + PAGE_SIZE - 1)
+  const [{ data: claims, error }, { data: total }] = await Promise.all([
+    supabaseAdmin.rpc("topic_claims", {
+      p_topic_id: id,
+      p_audience: null,
+      p_limit: PAGE_SIZE,
+      p_offset: page * PAGE_SIZE,
+    }),
+    supabaseAdmin.rpc("topic_claim_count", { p_topic_id: id }),
+  ])
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 })
 
   return NextResponse.json({
     claims: claims ?? [],
-    total: claimIds.length,
+    total: typeof total === "number" ? total : 0,
     page,
     pageSize: PAGE_SIZE,
   })

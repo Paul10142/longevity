@@ -18,11 +18,21 @@ type Member = {
   raw_insight_id: string
   matched_by: string
   statement: string
+  direct_quote: string | null
   locator: string
   start_ms: number | null
   evidence_type: string
   confidence: string
   source: { id: string; title: string; type: string; url: string | null } | null
+}
+
+type Reference = {
+  id: string
+  title: string
+  authors: string[] | null
+  year: number | null
+  journal: string | null
+  url: string | null
 }
 
 function formatMs(ms: number | null): string | null {
@@ -39,6 +49,7 @@ function formatMs(ms: number | null): string | null {
 function ClaimRow({ claim }: { claim: Claim }) {
   const [open, setOpen] = useState(false)
   const [members, setMembers] = useState<Member[] | null>(null)
+  const [references, setReferences] = useState<Reference[]>([])
 
   async function toggle() {
     const next = !open
@@ -47,6 +58,7 @@ function ClaimRow({ claim }: { claim: Claim }) {
       const res = await fetch(`/api/claims/${claim.id}/members`, { cache: "no-store" })
       const data = await res.json()
       setMembers(data.members || [])
+      setReferences(data.references || [])
     }
   }
 
@@ -92,9 +104,32 @@ function ClaimRow({ claim }: { claim: Claim }) {
                     {formatMs(m.start_ms) ?? m.locator}
                   </span>
                 </div>
-                <div className="mt-0.5">{m.statement}</div>
+                {m.direct_quote ? (
+                  <blockquote className="mt-1 border-l-2 border-muted-foreground/30 pl-2 italic">“{m.direct_quote}”</blockquote>
+                ) : (
+                  <div className="mt-0.5">{m.statement}</div>
+                )}
               </div>
             ))
+          )}
+          {references.length > 0 && (
+            <div className="pt-1">
+              <div className="text-[11px] font-semibold text-muted-foreground uppercase tracking-wide">Referenced literature</div>
+              {references.map((r) => (
+                <div key={r.id} className="text-xs mt-1">
+                  {r.url ? (
+                    <a href={r.url} target="_blank" rel="noopener noreferrer" className="hover:underline">
+                      {r.title}
+                    </a>
+                  ) : (
+                    r.title
+                  )}
+                  <span className="text-muted-foreground">
+                    {r.journal ? ` · ${r.journal}` : ""}{r.year ? ` (${r.year})` : ""}
+                  </span>
+                </div>
+              ))}
+            </div>
           )}
         </div>
       )}

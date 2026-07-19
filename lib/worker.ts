@@ -13,6 +13,7 @@ import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
 import { tagClaims, type TagCheckpoint } from './taxonomy'
 import { generateTopicContent } from './synthesis'
+import { extractReferences, resolveReferences, type ExtractRefCheckpoint } from './references'
 
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
@@ -35,11 +36,43 @@ async function handleExtractSource(job: Job): Promise<void> {
 
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint, run_id: result.runId })
-    // Hand off to consolidation (Phase 2). Safe no-op until that handler exists.
+    // Fan out: consolidate the claims, and (in parallel) extract references.
     await enqueueJob('consolidate_source', { source_id: sourceId })
+    await enqueueJob('extract_references', { source_id: sourceId })
   } else {
     // Yielded to stay under budget: requeue the same row to resume from checkpoint.
     await requeueJob(job.id, { ...result.checkpoint, run_id: result.runId })
+  }
+}
+
+async function handleExtractReferences(job: Job): Promise<void> {
+  const sourceId = job.payload.source_id as string
+  if (!sourceId) throw new Error('extract_references job missing source_id')
+  const progress = job.progress as Partial<ExtractRefCheckpoint>
+  const result = await extractReferences(
+    sourceId,
+    progress,
+    async (cp) => { await heartbeatJob(job.id, { ...cp }) },
+    220_000
+  )
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
+    // Resolve the newly-captured mentions (deduped/throttled).
+    await enqueueJob('resolve_references', {})
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
+  }
+}
+
+async function handleResolveReferences(job: Job): Promise<void> {
+  const result = await resolveReferences(
+    async (cp) => { await heartbeatJob(job.id, { ...cp }) },
+    220_000
+  )
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
   }
 }
 
@@ -109,6 +142,10 @@ async function runHandler(job: Job): Promise<void> {
       await generateTopicContent(topicId)
       return
     }
+    case 'extract_references':
+      return handleExtractReferences(job)
+    case 'resolve_references':
+      return handleResolveReferences(job)
     case 'discover_topics':
       // Implemented in a later phase. Complete as no-op so the queue drains.
       console.log(`[worker] ${job.type} not yet implemented — skipping`)
@@ -133,7 +170,7 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
       await runHandler(job)
       // Checkpointed handlers manage their own completion (they may requeue to
       // resume). Only the no-op / instantaneous types are completed here.
-      const selfManaged = ['extract_source', 'consolidate_source', 'tag_claims', 'claim_sweep']
+      const selfManaged = ['extract_source', 'consolidate_source', 'tag_claims', 'claim_sweep', 'extract_references', 'resolve_references']
       if (!selfManaged.includes(job.type)) {
         await completeJob(job.id)
       }

@@ -35,6 +35,9 @@ export type RawInsight = {
   end_ms: number | null
   statement: string
   context_note: string | null
+  direct_quote: string | null           // verbatim source span supporting the insight
+  quote_char_start: number | null
+  quote_char_end: number | null
   evidence_type: EvidenceType
   confidence: Confidence
   importance: 1 | 2 | 3 | null
@@ -44,6 +47,34 @@ export type RawInsight = {
   qualifiers: InsightQualifiers | null
   embedding: number[] | null
   extraction_model: string
+  created_at: string
+}
+
+// ── v3 reference layer ──────────────────────────────────────
+export type Reference = {
+  id: string
+  type: 'journal_article' | 'trial' | 'guideline' | 'book' | 'preprint' | 'other'
+  title: string
+  authors: string[] | null
+  year: number | null
+  journal: string | null
+  doi: string | null
+  url: string | null
+  fingerprint: string
+  resolved_source: 'crossref' | 'pubmed'
+  created_at: string
+}
+
+export type ReferenceMention = {
+  id: string
+  source_id: string
+  chunk_id: string | null
+  run_id: string | null
+  locator: string | null
+  raw_text: string
+  parsed: Record<string, unknown> | null
+  resolution_status: 'pending' | 'resolved' | 'not_found'
+  reference_id: string | null
   created_at: string
 }
 
@@ -107,6 +138,7 @@ export type Topic = {
 export type JobType =
   | 'extract_source' | 'consolidate_source' | 'tag_claims'
   | 'discover_topics' | 'generate_topic' | 'claim_sweep'
+  | 'extract_references' | 'resolve_references' | 'compute_relations'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
 
 export type Job = {

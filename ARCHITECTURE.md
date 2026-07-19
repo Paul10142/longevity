@@ -118,6 +118,44 @@ meaning to a topic). Structural maintenance instead needs a **centroid** = what
 the topic has *become* (mean of its claims). Cadence 2 adds a separate centroid
 column; the name-embedding stays for tagging.
 
+## v3 evidence layer + scale invariants
+
+To support training physicians (verbatim evidence + primary literature), v3 adds
+two trust primitives and hardens the system against volume.
+
+**Trust primitives**
+- **Verbatim quotes**: `raw_insights.direct_quote` (+ char offsets into the chunk)
+  captured at extraction — the exact source words behind each claim.
+- **Verified references**: sources' third-party citations are extracted
+  (`reference_mentions`, immutable/raw) then resolved against CrossRef/PubMed into
+  canonical, deduped `references_`. Resolution is conservative by design: a
+  minimum-specificity gate + strict title/year match + an **LLM verification gate**
+  ("is this candidate actually the work the speaker meant?"). Vague or
+  unverifiable mentions are marked `not_found` and **never surfaced** — a wrong
+  citation is worse than none. `claim_references` links verified works to claims.
+
+**Article views** are distinct surfaces: the **patient** article is plain and
+reference-free; the **clinician** article carries inline `[R#]` citations and a
+**deterministically-appended** References section built from verified data (the
+model places markers but never authors citations, so it cannot invent one).
+
+**Scale invariants** (must hold as content grows):
+- Vector search uses **HNSW** (claims/topics/references) — accurate into the
+  millions; ivfflat retired.
+- No code path builds an `IN(...)` from an unbounded id list. Topic claim
+  retrieval goes through the **`topic_claims()` / `topic_claim_count()` RPCs**
+  (recursive subtree CTE + scoring + `LIMIT` in SQL). Synthesis and the Evidence
+  tab both use it.
+- External resolution (CrossRef/PubMed) is **throttled + cached + deduped**, never
+  inline; a work cited many times resolves once.
+- Reference dedup and (future) claim relations are **ANN-bounded + incremental**,
+  never O(n²).
+- All long-running work stays in the `jobs` queue with checkpoints.
+
+New job types: `extract_references`, `resolve_references` (+ `compute_relations`
+reserved for Phase 8). `extract_source` fans out to both consolidation and
+reference extraction.
+
 ## Models
 
 - Extraction + adjudication + tagging: `gpt-5-mini`

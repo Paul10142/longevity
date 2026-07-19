@@ -1,19 +1,20 @@
 /**
- * Synthesis stage (v2): topic + its claims → clinician article, patient
+ * Synthesis stage (v3): topic + its claims → clinician article, patient
  * article, and protocol, each citing claim_ids per paragraph.
  *
- * Adapted from the v1 concept generators (lib/topicNarrative, topicProtocols),
- * repointed at the claims layer. A topic's content = its directly-linked claims
- * plus those of its descendant topics (rollup), prioritized and capped so we
- * stay within token limits. Clinician article is generated from claims; the
- * patient article is translated from the clinician version; the protocol is
- * generated from claims. Output is versioned and stamped with
- * claims_snapshot_at for staleness tracking.
+ * v3 changes:
+ *  - Claim loading + prioritization happens IN THE DB via the topic_claims()
+ *    RPC (scored + LIMITed) — no unbounded IN(...) or load-all-then-slice.
+ *  - The clinician article is enriched with verbatim source quotes and
+ *    VERIFIED third-party references; a References section is appended
+ *    deterministically from our verified data (the model only places [R#]
+ *    markers, so it cannot invent a citation).
+ *
+ * Output is versioned and stamped with claims_snapshot_at for staleness.
  */
 
 import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
-import type { Claim, EvidenceType } from './types'
 
 const SYNTHESIS_MODEL = 'gpt-5.1'
 const MAX_CLAIMS = 250
@@ -33,84 +34,134 @@ function db() {
   return supabaseAdmin
 }
 
-// ── Claim prioritization (composite score; adapted from insightPrioritization) ─
-const EVIDENCE_SCORE: Record<EvidenceType, number> = {
-  MetaAnalysis: 5, RCT: 4, Cohort: 3, CaseSeries: 2,
-  Mechanistic: 1, Animal: 1, Other: 1, ExpertOpinion: 0,
-}
-const ACTIONABILITY_SCORE: Record<string, number> = { High: 3, Medium: 2, Low: 1 }
-
-function claimScore(c: Claim): number {
-  const importance = (c.max_importance ?? 2) * 10
-  const action = (ACTIONABILITY_SCORE[c.actionability ?? 'Medium'] ?? 2) * 5
-  const evidence = (EVIDENCE_SCORE[c.best_evidence_type ?? 'Other'] ?? 1) * 3
-  const corroboration = Math.min(c.source_count, 5) * 2 // claims seen across sources rank higher
-  return importance + action + evidence + corroboration
+// Claim shape returned by the topic_claims RPC (already scored + capped).
+type ScoredClaim = {
+  id: string
+  canonical_statement: string
+  context_note: string | null
+  best_evidence_type: string | null
+  max_importance: number | null
+  source_count: number
 }
 
-function prioritizeClaims(claims: Claim[], audience?: 'patient' | 'clinician'): Claim[] {
-  let pool = claims
-  if (audience) {
-    const want = audience === 'patient' ? 'Patient' : 'Clinician'
-    pool = claims.filter(c => (c.primary_audience ?? 'Both') === want || (c.primary_audience ?? 'Both') === 'Both')
-  }
-  return [...pool].sort((a, b) => claimScore(b) - claimScore(a)).slice(0, MAX_CLAIMS)
+/** Prioritized claims for a topic subtree — scoring + LIMIT happen in SQL. */
+async function loadPrioritizedClaims(
+  topicId: string,
+  audience: 'patient' | 'clinician' | null,
+  limit = MAX_CLAIMS
+): Promise<ScoredClaim[]> {
+  const { data, error } = await db().rpc('topic_claims', {
+    p_topic_id: topicId,
+    p_audience: audience,
+    p_limit: limit,
+    p_offset: 0,
+  })
+  if (error) throw new Error(`topic_claims RPC failed: ${error.message}`)
+  return (data ?? []) as ScoredClaim[]
 }
 
-// ── Topic rollup ────────────────────────────────────────────
-async function topicAndDescendantIds(topicId: string): Promise<string[]> {
-  const { data } = await db().from('topics').select('id, parent_id').eq('status', 'active')
-  const childrenOf = new Map<string, string[]>()
-  for (const t of (data ?? []) as { id: string; parent_id: string | null }[]) {
-    if (!t.parent_id) continue
-    if (!childrenOf.has(t.parent_id)) childrenOf.set(t.parent_id, [])
-    childrenOf.get(t.parent_id)!.push(t.id)
-  }
-  const ids: string[] = []
-  const stack = [topicId]
-  while (stack.length) {
-    const id = stack.pop()!
-    ids.push(id)
-    for (const c of childrenOf.get(id) ?? []) stack.push(c)
-  }
-  return ids
+// ── Quote + reference enrichment (clinician profile) ────────
+type Enrichment = {
+  quoteByClaim: Map<string, { quote: string; source: string }>
+  refMarkersByClaim: Map<string, string[]>
+  references: { marker: string; citation: string; url: string | null }[]
 }
 
-async function loadTopicClaims(topicId: string): Promise<Claim[]> {
-  const topicIds = await topicAndDescendantIds(topicId)
-  const { data: links } = await db().from('claim_topics').select('claim_id').in('topic_id', topicIds)
-  const claimIds = Array.from(new Set((links ?? []).map((l: { claim_id: string }) => l.claim_id)))
-  if (claimIds.length === 0) return []
+function citationText(r: {
+  authors: string[] | null; year: number | null; title: string; journal: string | null; doi: string | null
+}): string {
+  const authors = r.authors && r.authors.length
+    ? (r.authors.length > 3 ? `${r.authors[0]} et al.` : r.authors.join(', '))
+    : ''
+  const parts = [authors, r.year ? `(${r.year}).` : '', `${r.title}.`, r.journal ?? '', r.doi ? `https://doi.org/${r.doi}` : '']
+  return parts.filter(Boolean).join(' ').replace(/\s+/g, ' ').trim()
+}
 
-  // Load in batches to avoid overly long IN clauses.
-  const claims: Claim[] = []
-  for (let i = 0; i < claimIds.length; i += 500) {
-    const { data } = await db()
-      .from('claims')
-      .select('*')
-      .in('id', claimIds.slice(i, i + 500))
-      .eq('status', 'active')
-    claims.push(...((data ?? []) as Claim[]))
+async function enrichClinician(claimIds: string[]): Promise<Enrichment> {
+  const quoteByClaim = new Map<string, { quote: string; source: string }>()
+  const refMarkersByClaim = new Map<string, string[]>()
+  const references: Enrichment['references'] = []
+  if (claimIds.length === 0) return { quoteByClaim, refMarkersByClaim, references }
+
+  // One representative verbatim quote per claim (via its member raw insights).
+  const { data: members } = await db()
+    .from('claim_members')
+    .select('claim_id, raw_insights ( direct_quote, sources ( title ) )')
+    .in('claim_id', claimIds)
+  for (const m of (members ?? []) as {
+    claim_id: string
+    raw_insights: { direct_quote: string | null; sources: { title: string } | null } | null
+  }[]) {
+    const q = m.raw_insights?.direct_quote
+    if (q && !quoteByClaim.has(m.claim_id)) {
+      quoteByClaim.set(m.claim_id, { quote: q, source: m.raw_insights?.sources?.title ?? 'source' })
+    }
   }
+
+  // Verified references supporting these claims → numbered markers.
+  const { data: links } = await db().from('claim_references').select('claim_id, reference_id').in('claim_id', claimIds)
+  const refIds = Array.from(new Set((links ?? []).map((l: { reference_id: string }) => l.reference_id)))
+  if (refIds.length > 0) {
+    const { data: refs } = await db()
+      .from('references_')
+      .select('id, title, authors, year, journal, doi, url')
+      .in('id', refIds)
+      .order('year', { ascending: false, nullsFirst: false })
+    const markerById = new Map<string, string>()
+    ;(refs ?? []).forEach((r: {
+      id: string; title: string; authors: string[] | null; year: number | null
+      journal: string | null; doi: string | null; url: string | null
+    }, i: number) => {
+      const marker = `R${i + 1}`
+      markerById.set(r.id, marker)
+      references.push({ marker, citation: citationText(r), url: r.url ?? (r.doi ? `https://doi.org/${r.doi}` : null) })
+    })
+    for (const l of (links ?? []) as { claim_id: string; reference_id: string }[]) {
+      const marker = markerById.get(l.reference_id)
+      if (!marker) continue
+      const arr = refMarkersByClaim.get(l.claim_id) ?? []
+      if (!arr.includes(marker)) arr.push(marker)
+      refMarkersByClaim.set(l.claim_id, arr)
+    }
+  }
+
+  return { quoteByClaim, refMarkersByClaim, references }
+}
+
+// ── Topic metadata ──────────────────────────────────────────
+function claimsBlock(claims: ScoredClaim[], enrich?: Enrichment): string {
   return claims
+    .map(c => {
+      const base = `[${c.id}] (${c.best_evidence_type ?? 'Other'}, imp ${c.max_importance ?? '?'}, ${c.source_count} src) ${c.canonical_statement}${c.context_note ? ` — ${c.context_note}` : ''}`
+      if (!enrich) return base
+      const refs = enrich.refMarkersByClaim.get(c.id)
+      const quote = enrich.quoteByClaim.get(c.id)
+      const extra = [
+        refs && refs.length ? ` refs: ${refs.join(',')}` : '',
+        quote ? ` quote: "${quote.quote}" —${quote.source}` : '',
+      ].join('')
+      return base + extra
+    })
+    .join('\n')
 }
 
-// ── Prompts (adapted from v1, claims-based citations) ───────
 const CLINICIAN_PROMPT = `
-You are a physician building an evidence-based lifestyle-medicine reference. You are given a TOPIC and a set of verified CLAIMS (each with an id). Write a comprehensive clinician-facing article.
+You are a physician building an evidence-based clinical reference to help train other physicians. You are given a TOPIC and a set of verified CLAIMS (each with an id, and where available a verbatim source quote and reference markers like R1).
 
 Sections (use those that apply): overview, mechanisms, protocols, risks, controversies.
 
 Rules:
 - Use ONLY the provided claims as factual source. Do NOT add facts from outside knowledge.
-- Incorporate all material claims; connect related ones into coherent narrative. No word limit.
+- Incorporate the material claims; connect related ones into coherent narrative. No word limit.
 - Preserve numeric detail (doses, thresholds, frequencies, durations, populations).
-- Be explicit about evidence strength where relevant. Refer to study types generically ("randomized trials"), never by name.
-- Do not mention "claims", "insights", or transcripts. Professional prose for physicians.
+- CITATIONS: when a claim carries reference markers (e.g. refs: R1,R3), cite them inline as [R1][R3] where you use that claim. Do NOT invent reference markers or studies — only use the markers provided. A formatted References section will be appended automatically; do not write one yourself.
+- QUOTES: when a claim carries a verbatim quote, you MAY include it verbatim in quotation marks with attribution when it is especially illustrative — but do not overuse quotes.
+- Be explicit about evidence strength and uncertainty. This is for physician education.
+- Do not mention "claims" or transcripts. Professional prose for clinicians.
 - No H1 title heading in the body; start with section content.
 
 Return STRICT JSON:
-{"title":"...","sections":[{"id":"overview","title":"...","paragraphs":[{"id":"p1","text":"...","claim_ids":["<id>","<id>"]}]}]}
+{"title":"...","sections":[{"id":"overview","title":"...","paragraphs":[{"id":"p1","text":"... [R1] ...","claim_ids":["<id>"]}]}]}
 Every paragraph MUST list the claim_ids it primarily relied on.
 `.trim()
 
@@ -121,24 +172,25 @@ Sections: big-picture, mechanisms, actions, risks, questions.
 
 Rules:
 - Base it ENTIRELY on the provided clinician article; add no new facts.
-- Translate, don't summarize away — preserve all numeric detail and caveats.
+- Translate, don't summarize away — preserve numeric detail and caveats.
 - Simplify jargon, use analogies, keep advice general (suggest discussing with a clinician).
-- No H1 title heading. No mention of "claims"/"insights".
+- Drop inline reference markers like [R1] — patients don't need them.
+- No H1 title heading. No mention of "claims".
 
 Return STRICT JSON:
 {"title":"...","sections":[{"id":"big-picture","title":"...","paragraphs":[{"id":"p1","text":"...","claim_ids":[]}]}]}
 `.trim()
 
 const PROTOCOL_PROMPT = `
-You are a physician distilling verified CLAIMS into a concise, actionable PROTOCOL for a topic — the practical "what to do" derived from the evidence.
+You distill verified CLAIMS into a concise, actionable PROTOCOL for a topic — the practical "what to do".
 
 Sections (use those that apply): summary, who-its-for, steps, dosing-and-targets, monitoring, cautions.
 
 Rules:
 - Use ONLY the provided claims. Prefer high-actionability, high-importance, well-corroborated claims.
-- Concrete and specific: doses, frequencies, thresholds, durations, populations. Numbered steps for sequences.
-- Note evidence strength/uncertainty where it affects the recommendation. No study names.
-- No H1 title heading. No mention of "claims"/"insights".
+- Concrete: doses, frequencies, thresholds, durations, populations. Numbered steps for sequences.
+- Note evidence strength/uncertainty where it affects the recommendation.
+- No H1 title heading. No mention of "claims".
 
 Return STRICT JSON:
 {"title":"...","sections":[{"id":"summary","title":"...","paragraphs":[{"id":"p1","text":"...","claim_ids":["<id>"]}]}]}
@@ -148,12 +200,7 @@ Every paragraph MUST list the claim_ids it relied on.
 type Outline = {
   title: string
   sections: { id: string; title: string; paragraphs: { id: string; text: string; claim_ids: string[] }[] }[]
-}
-
-function claimsBlock(claims: Claim[]): string {
-  return claims
-    .map(c => `[${c.id}] (${c.best_evidence_type ?? 'Other'}, imp ${c.max_importance ?? '?'}, ${c.source_count} src) ${c.canonical_statement}${c.context_note ? ` — ${c.context_note}` : ''}`)
-    .join('\n')
+  references?: { marker: string; citation: string; url: string | null }[]
 }
 
 function outlineToMarkdown(outline: Outline): string {
@@ -161,6 +208,13 @@ function outlineToMarkdown(outline: Outline): string {
   for (const s of outline.sections ?? []) {
     parts.push(`## ${s.title}`)
     for (const p of s.paragraphs ?? []) parts.push(p.text)
+  }
+  // Deterministic References section from our verified data (never model-authored).
+  if (outline.references && outline.references.length) {
+    parts.push('## References')
+    for (const r of outline.references) {
+      parts.push(`${r.marker.replace('R', '')}. ${r.citation}`)
+    }
   }
   return parts.join('\n\n')
 }
@@ -198,8 +252,9 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     .single()
   if (error || !topic) throw new Error(`Topic not found: ${error?.message}`)
 
-  const allClaims = await loadTopicClaims(topicId)
-  if (allClaims.length === 0) return { claims: 0, skipped: true }
+  const clinClaims = await loadPrioritizedClaims(topicId, 'clinician')
+  const protoClaims = await loadPrioritizedClaims(topicId, null)
+  if (clinClaims.length === 0 && protoClaims.length === 0) return { claims: 0, skipped: true }
 
   const run = await db()
     .from('pipeline_runs')
@@ -211,12 +266,13 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
   const header = `Topic: ${topic.name}${topic.description ? `\nDescription: ${topic.description}` : ''}`
 
   try {
-    // Clinician article from prioritized claims.
-    const clinClaims = prioritizeClaims(allClaims, 'clinician')
+    // Clinician article — enriched with verbatim quotes + verified references.
+    const enrich = await enrichClinician(clinClaims.map(c => c.id))
     const clinician = await generateJson(
       CLINICIAN_PROMPT,
-      `${header}\n\nClaims:\n${claimsBlock(clinClaims)}`
+      `${header}\n\nClaims:\n${claimsBlock(clinClaims, enrich)}`
     )
+    clinician.references = enrich.references // appended deterministically in markdown
     const clinVer = await nextVersion('topic_articles', topicId, 'clinician')
     await db().from('topic_articles').insert({
       topic_id: topicId, audience: 'clinician', version: clinVer,
@@ -227,7 +283,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     // Patient article translated from the clinician article.
     const patient = await generateJson(
       PATIENT_PROMPT,
-      `${header}\n\nClinician article:\n${clinician.title}\n\n${outlineToMarkdown(clinician)}`
+      `${header}\n\nClinician article:\n${clinician.title}\n\n${outlineToMarkdown({ ...clinician, references: undefined })}`
     )
     const patVer = await nextVersion('topic_articles', topicId, 'patient')
     await db().from('topic_articles').insert({
@@ -237,7 +293,6 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     })
 
     // Protocol from prioritized (audience-agnostic) claims.
-    const protoClaims = prioritizeClaims(allClaims)
     const protocol = await generateJson(
       PROTOCOL_PROMPT,
       `${header}\n\nClaims:\n${claimsBlock(protoClaims)}`
@@ -252,10 +307,10 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     if (runId) {
       await db().from('pipeline_runs').update({
         status: 'success', finished_at: new Date().toISOString(),
-        stats: { topic: topic.name, claims: allClaims.length },
+        stats: { topic: topic.name, claims: clinClaims.length, references: enrich.references.length },
       }).eq('id', runId)
     }
-    return { claims: allClaims.length }
+    return { claims: clinClaims.length }
   } catch (err) {
     if (runId) {
       await db().from('pipeline_runs').update({
