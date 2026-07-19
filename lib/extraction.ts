@@ -1,0 +1,346 @@
+/**
+ * Extraction stage (v2): transcript → chunks → raw_insights.
+ *
+ * Ported from the v1 lib/pipeline.ts, restructured to:
+ *  - write immutable `raw_insights` (never dedup here — that's consolidation),
+ *  - checkpoint per chunk so a killed worker resumes,
+ *  - embed each chunk's insights in one batched call.
+ *
+ * Deduplication, tagging, and synthesis are separate job stages.
+ */
+
+import OpenAI from 'openai'
+import { supabaseAdmin } from './supabaseServer'
+import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
+import type { EvidenceType, Confidence, Actionability, Audience, InsightType, InsightQualifiers } from './types'
+
+const EXTRACTION_MODEL = 'gpt-5-mini'
+const CHUNK_SIZE = 2400
+const CHUNK_OVERLAP = 200
+
+let openaiInstance: OpenAI | null = null
+function getOpenAI(): OpenAI {
+  if (!openaiInstance) {
+    const apiKey = process.env.OPENAI_API_KEY
+    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
+    openaiInstance = new OpenAI({ apiKey })
+  }
+  return openaiInstance
+}
+
+function db() {
+  if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
+  return supabaseAdmin
+}
+
+// ── Extracted-insight shape (LLM output) ────────────────────
+type ExtractedInsight = {
+  statement: string
+  context_note?: string | null
+  evidence_type: EvidenceType
+  qualifiers?: InsightQualifiers | null
+  confidence: Confidence
+  importance?: 1 | 2 | 3
+  actionability?: Actionability
+  primary_audience?: Audience
+  insight_type?: InsightType
+}
+
+// ── Prompt (ported verbatim from the v1 optimized prompt) ───
+const EXTRACTION_SYSTEM_PROMPT = `
+Extract show-note–worthy insights from transcript chunks for a large, multi-source lifestyle and health knowledge base.
+
+Your job is NOT to capture everything that was said. Your job is to extract only the ideas that would appear in polished show notes or an educational article. Prefer FEWER, HIGHER-VALUE, GENERALIZABLE insights over many small, conversational, or anecdotal ones.
+
+PURPOSE (CRITICAL)
+The insights you produce will be merged with insights from thousands of other chunks and sources to form a unified knowledge base. Because they will be recombined across episodes, each insight must:
+• Stand alone without relying on the surrounding conversation.
+• Express generalizable, durable knowledge—NOT episode-specific details.
+• Capture mechanisms, principles, evolutionary logic, or explanatory frameworks.
+• Translate personal anecdotes into the *underlying principle* rather than retelling the story.
+• Include specific, practical examples (foods, practices, protocols) that help readers apply the insight.
+• Avoid any dependency on host interactions, podcast structure, or context.
+
+STITCHABILITY (CRITICAL)
+Write each insight so it can combine cleanly with insights from other chunks, episodes, and sources:
+• No references to "earlier we discussed…", "as you said…", or speaker names.
+• No reliance on personal anecdotes unless the insight explicitly states the principle illustrated.
+• Clear, standalone phrasing that conveys a durable meaning.
+• Emphasis on mechanisms, frameworks, and conceptual distinctions, supported by concrete examples when helpful.
+
+WHAT COUNTS AS A HIGH-VALUE INSIGHT
+Produce an insight ONLY if it is: conceptually important; generalizable beyond the transcript; mechanistic or explanatory; self-contained and clear; and non-obvious (avoid generic statements like "testosterone affects behavior"—extract the deeper takeaway).
+
+WHAT SHOULD NOT BECOME AN INSIGHT
+Never extract: host anecdotes, jokes, or personal reflections; biographical info about the guest; podcast logistics ("on this show we talk about…"); narrative transitions; one-off anecdotes that don't generalize; observations without mechanism; context-dependent statements; platitudes ("biology is complex").
+DO extract concrete examples of foods, exercises, practices, or protocols when they illustrate a principle.
+
+NUMERIC DETAIL PRESERVATION
+Preserve ALL important numeric details: lab thresholds, ranges, percentages, doses (mg, IU), frequencies (times/week, hours/night), durations, population qualifiers (e.g. postmenopausal women, T2DM, elite athletes), and context qualifiers (fasting, post-exercise, on medication).
+
+INSIGHT TYPES
+Protocol – concrete action or threshold; Explanation – how/why something works; Mechanism – biological/developmental/evolutionary process; Warning – risk, trade-off, contraindication; Anecdote – ONLY if it illustrates a generalizable principle; Controversy – mixed/uncertain evidence; Other – rare.
+
+EVIDENCE TYPE
+Choose one: RCT | Cohort | MetaAnalysis | CaseSeries | Mechanistic | Animal | ExpertOpinion | Other. If evidence isn't described, choose the most appropriate type (often ExpertOpinion).
+
+CONFIDENCE
+"high" = strongly supported (multiple RCTs, meta-analyses, strong consensus); "medium" = supported but not definitive, or a mix of data and expert opinion; "low" = speculative, early, conflicting, or the speaker emphasizes uncertainty.
+
+IMPORTANCE (1–3)
+3 = core idea that shapes understanding; 2 = helpful secondary bullet; 1 = background nuance.
+
+ACTIONABILITY: High = directly guides decisions; Medium = influences interpretation; Low = conceptual background.
+AUDIENCE: Patient | Clinician | Both.
+
+WRITING STYLE
+1–3 sentences per insight; clear accessible language; briefly define jargon; never include speaker names or podcast references; include practical examples when they help; if context from earlier is required, put it in the statement or context_note.
+
+OUTPUT FORMAT (STRICT JSON)
+{"insights":[{"statement":"...","context_note":"...","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
+If no high-value insights are present, return {"insights":[]}.
+`.trim()
+
+const LOW_VALUE_PATTERNS: RegExp[] = [
+  /this (podcast|episode|discussion|conversation) (will|is going to|features?)/i,
+  /(two-part|multi-part|part \d+)/i,
+  /^(.* )?(is|are) (a|an) (leading|prominent|notable|expert|researcher|scientist|doctor|professor)/i,
+  /conflict(s)? of interest/i,
+  /no conflict/i,
+  /^(this|the) (podcast|episode|discussion|conversation|topic)/i,
+]
+
+function isLowValue(statement: string): boolean {
+  if (statement.trim().length < 30) return true
+  return LOW_VALUE_PATTERNS.some(p => p.test(statement))
+}
+
+// ── Chunking (ported from v1 splitIntoChunks) ───────────────
+export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSize = CHUNK_OVERLAP): string[] {
+  const forceSplit = (input: string): string[] => {
+    const out: string[] = []
+    let start = 0
+    let guard = Math.ceil(input.length / Math.max(1, chunkSize - overlapSize)) + 10
+    while (start < input.length && guard-- > 0) {
+      let end = Math.min(start + chunkSize, input.length)
+      if (end < input.length) {
+        const searchStart = Math.max(start, end - 300)
+        const window = input.substring(searchStart, end)
+        const best = Math.max(
+          window.lastIndexOf(' '), window.lastIndexOf('.'),
+          window.lastIndexOf('!'), window.lastIndexOf('?'), window.lastIndexOf('\n')
+        )
+        if (best > 50) end = searchStart + best + 1
+      }
+      const chunk = input.substring(start, end).trim()
+      if (chunk.length > 0) out.push(chunk)
+      const next = end - overlapSize
+      start = next <= start ? end : next
+      if (end >= input.length) break
+    }
+    return out.filter(c => c.length > 0)
+  }
+
+  if (text.length > chunkSize && !text.includes('\n\n')) return forceSplit(text)
+
+  const paragraphs = text.split(/\n\n+/).filter(p => p.trim().length > 0)
+  const chunks: string[] = []
+  let current = ''
+
+  for (const paragraph of paragraphs) {
+    const p = paragraph.trim()
+    if (p.length > chunkSize) {
+      if (current.trim().length > 0) { chunks.push(current.trim()); current = '' }
+      for (const sub of forceSplit(p)) chunks.push(sub)
+      continue
+    }
+    if (current.length + p.length + 2 > chunkSize && current.length > 0) {
+      chunks.push(current.trim())
+      current = current.slice(-overlapSize) + '\n\n' + p
+    } else {
+      current = current ? current + '\n\n' + p : p
+    }
+  }
+  if (current.trim().length > 0) chunks.push(current.trim())
+  return chunks.filter(c => c.length > 0)
+}
+
+// ── LLM extraction for one chunk ────────────────────────────
+async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
+  const completion = await getOpenAI().chat.completions.create({
+    model: EXTRACTION_MODEL,
+    messages: [
+      { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
+      { role: 'user', content: `Text to analyze:\n${content}` },
+    ],
+    response_format: { type: 'json_object' },
+  })
+
+  const raw = completion.choices[0]?.message?.content
+  if (!raw) return []
+  let parsed: { insights?: ExtractedInsight[] }
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    console.warn(`[extract ${label}] JSON parse failed`)
+    return []
+  }
+  if (!Array.isArray(parsed.insights)) return []
+
+  return parsed.insights
+    .filter(i => i && typeof i.statement === 'string' && !isLowValue(i.statement))
+    .map(i => ({
+      ...i,
+      importance: i.importance ?? 2,
+      actionability: (i.actionability as Actionability) ?? 'Medium',
+      primary_audience: i.primary_audience ?? 'Both',
+      insight_type: i.insight_type ?? 'Explanation',
+      context_note: i.context_note ?? null,
+      qualifiers: i.qualifiers ?? null,
+    }))
+}
+
+export type ExtractCheckpoint = {
+  chunk_index: number      // next chunk to process
+  total_chunks: number
+  insights_created: number
+}
+
+/**
+ * Extract raw insights for one source, resuming from `checkpoint`.
+ *
+ * On the first call it (re)builds chunks and a pipeline_runs row, then
+ * processes chunks one at a time. `onProgress` persists the checkpoint +
+ * heartbeat after each chunk so the worker can be killed and resumed.
+ * Idempotent per chunk: a chunk's raw_insights are keyed by run_id, and a
+ * resumed run only appends chunks at/after the checkpoint.
+ */
+export async function extractSource(
+  sourceId: string,
+  checkpoint: Partial<ExtractCheckpoint> | undefined,
+  onProgress: (cp: ExtractCheckpoint, runId: string) => Promise<void>,
+  timeBudgetMs = 220_000
+): Promise<{ done: boolean; checkpoint: ExtractCheckpoint; runId: string }> {
+  const started = Date.now()
+
+  // Load transcript
+  const { data: source, error: srcErr } = await db()
+    .from('sources')
+    .select('id, transcript')
+    .eq('id', sourceId)
+    .single()
+  if (srcErr || !source) throw new Error(`Source ${sourceId} not found: ${srcErr?.message}`)
+  if (!source.transcript || source.transcript.trim().length === 0) {
+    throw new Error(`Source ${sourceId} has no transcript`)
+  }
+
+  // Resume or start a run
+  let runId: string = (checkpoint as { run_id?: string })?.run_id ?? ''
+  if (!runId) {
+    const { data: run, error: runErr } = await db()
+      .from('pipeline_runs')
+      .insert({ source_id: sourceId, kind: 'extract', status: 'running' })
+      .select('id')
+      .single()
+    if (runErr || !run) throw new Error(`Failed to create pipeline run: ${runErr?.message}`)
+    runId = run.id as string
+
+    // Fresh run: clear any prior chunks + reset the source's derived state.
+    await db().from('chunks').delete().eq('source_id', sourceId)
+    await db().from('sources').update({ processing_status: 'processing', processing_error: null }).eq('id', sourceId)
+  }
+
+  // Rebuild chunks deterministically (cheap, in-memory) so we can map an
+  // index → content on any invocation without persisting chunk text first.
+  const chunkTexts = splitIntoChunks(source.transcript)
+  const total = chunkTexts.length
+
+  // Persist chunk rows once (first invocation only).
+  const { count: existingChunks } = await db()
+    .from('chunks')
+    .select('id', { count: 'exact', head: true })
+    .eq('source_id', sourceId)
+  const chunkIdByIndex = new Map<number, string>()
+  if (!existingChunks) {
+    const rows = chunkTexts.map((content, i) => ({
+      source_id: sourceId,
+      locator: `seg-${String(i + 1).padStart(3, '0')}`,
+      content,
+    }))
+    const { data: inserted, error: chunkErr } = await db().from('chunks').insert(rows).select('id, locator')
+    if (chunkErr) throw new Error(`Failed to insert chunks: ${chunkErr.message}`)
+    for (const c of inserted ?? []) {
+      const idx = parseInt(c.locator.replace('seg-', ''), 10) - 1
+      chunkIdByIndex.set(idx, c.id)
+    }
+  } else {
+    const { data: chunkRows } = await db().from('chunks').select('id, locator').eq('source_id', sourceId)
+    for (const c of chunkRows ?? []) {
+      const idx = parseInt(c.locator.replace('seg-', ''), 10) - 1
+      chunkIdByIndex.set(idx, c.id)
+    }
+  }
+
+  let cp: ExtractCheckpoint = {
+    chunk_index: checkpoint?.chunk_index ?? 0,
+    total_chunks: total,
+    insights_created: checkpoint?.insights_created ?? 0,
+  }
+
+  while (cp.chunk_index < total) {
+    if (Date.now() - started > timeBudgetMs) {
+      // Yield: not done, worker will resume this run on the next tick.
+      return { done: false, checkpoint: cp, runId }
+    }
+
+    const idx = cp.chunk_index
+    const label = `${idx + 1}/${total}`
+    const content = chunkTexts[idx]
+    const locator = `seg-${String(idx + 1).padStart(3, '0')}`
+
+    const extracted = await extractFromChunk(content, label)
+
+    if (extracted.length > 0) {
+      const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
+      const rows = extracted.map((ins, i) => ({
+        source_id: sourceId,
+        chunk_id: chunkIdByIndex.get(idx) ?? null,
+        run_id: runId,
+        locator,
+        statement: ins.statement,
+        context_note: ins.context_note ?? null,
+        evidence_type: ins.evidence_type,
+        confidence: ins.confidence,
+        importance: ins.importance ?? null,
+        actionability: ins.actionability ?? null,
+        primary_audience: ins.primary_audience ?? null,
+        insight_type: ins.insight_type ?? null,
+        qualifiers: ins.qualifiers ?? null,
+        embedding: embeddings[i],
+        extraction_model: EXTRACTION_MODEL,
+      }))
+      const { error: insErr } = await db().from('raw_insights').insert(rows)
+      if (insErr) throw new Error(`Failed to insert raw_insights for chunk ${label}: ${insErr.message}`)
+      cp.insights_created += rows.length
+    }
+
+    cp = { ...cp, chunk_index: idx + 1 }
+    await onProgress(cp, runId)
+  }
+
+  // Finalize the run + source status.
+  await db()
+    .from('pipeline_runs')
+    .update({
+      status: 'success',
+      finished_at: new Date().toISOString(),
+      stats: { chunks: total, insights_created: cp.insights_created },
+    })
+    .eq('id', runId)
+  await db()
+    .from('sources')
+    .update({ processing_status: 'succeeded', last_processed_at: new Date().toISOString() })
+    .eq('id', sourceId)
+
+  return { done: true, checkpoint: cp, runId }
+}
