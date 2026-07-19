@@ -10,7 +10,8 @@ import { SearchBar } from "@/components/SearchBar"
 import { cn } from "@/lib/utils"
 
 const publicNav = [
-  { name: "Longevity Toolkit", href: "#tips" },
+  { name: "Medical Library", href: "/topics" },
+  { name: "Search", href: "/search" },
   { name: "Resources", href: "#resources" },
   { name: "About", href: "#about" },
 ] as const
