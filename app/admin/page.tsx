@@ -3,15 +3,13 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 
 const mainLinks = [
-  { name: "Topics", href: "/admin/topics", description: "Topic pages and evidence" },
-  { name: "Sources", href: "/admin/sources", description: "Ingested sources and transcripts" },
-  { name: "Concepts", href: "/admin/concepts", description: "Concept list and tagging" },
+  { name: "Sources", href: "/admin/sources", description: "Ingested sources, transcripts, and the processing queue" },
+  { name: "Topics", href: "/admin/topics", description: "The AI-managed taxonomy (audit / edit)" },
 ] as const
 
 const insightLinks = [
-  { name: "Review", href: "/admin/insights/review", description: "Review raw insights" },
-  { name: "Unique", href: "/admin/insights/unique", description: "Curated unique insights" },
-  { name: "Clusters", href: "/admin/insights/clusters", description: "Insight clusters" },
+  { name: "Raw insights", href: "/admin/insights/review", description: "Browse raw extractions" },
+  { name: "Merge reviews", href: "/admin/reviews", description: "Resolve borderline duplicate claims" },
 ] as const
 
 export default function AdminHomePage() {

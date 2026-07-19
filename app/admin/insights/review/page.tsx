@@ -500,12 +500,6 @@ export default async function InsightsReviewPage({
                 <Link href="/admin/concepts">
                   <Button variant="ghost" size="sm">Concepts</Button>
                 </Link>
-                <Link href="/admin/insights/clusters">
-                  <Button variant="ghost" size="sm">Merge Clusters</Button>
-                </Link>
-                <Link href="/admin/insights/unique">
-                  <Button variant="ghost" size="sm">Unique Insights</Button>
-                </Link>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
                 {rawInsights.toLocaleString()} raw insights • {uniqueInsights.toLocaleString()} unique insights • {totalSourceLinks.toLocaleString()} source links

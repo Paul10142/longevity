@@ -47,6 +47,36 @@ export async function generateEmbedding(text: string): Promise<number[]> {
 }
 
 /**
+ * Generate embeddings for many texts in one API call.
+ * Preserves input order; the OpenAI API allows up to 2048 inputs per request,
+ * we stay well under that with per-call batches.
+ */
+export async function generateEmbeddingsBatch(texts: string[]): Promise<number[][]> {
+  if (texts.length === 0) return []
+  const cleaned = texts.map(t => (t && t.trim().length > 0 ? t.trim() : ' '))
+
+  const openai = getOpenAI()
+  const response = await openai.embeddings.create({
+    model: 'text-embedding-3-small',
+    input: cleaned,
+  })
+
+  if (!response.data || response.data.length !== cleaned.length) {
+    throw new Error(`Embedding batch size mismatch: sent ${cleaned.length}, got ${response.data?.length ?? 0}`)
+  }
+
+  // API returns items with an index field; sort defensively to preserve order
+  return [...response.data].sort((a, b) => a.index - b.index).map(d => d.embedding)
+}
+
+/**
+ * Text used to embed an insight or claim: statement + context note.
+ */
+export function insightEmbeddingText(item: { statement: string; context_note?: string | null }): string {
+  return `${item.statement}${item.context_note ? ` ${item.context_note}` : ''}`
+}
+
+/**
  * Generate embedding for an insight
  * Combines statement and context_note for better semantic representation
  */

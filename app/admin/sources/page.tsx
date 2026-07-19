@@ -3,6 +3,7 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { JobQueuePanel } from "@/components/JobQueuePanel"
 
 export default async function AdminSourcesPage() {
   if (!supabaseAdmin) {
@@ -44,29 +45,19 @@ export default async function AdminSourcesPage() {
       console.error('Error details:', error.details)
       console.error('Error hint:', error.hint)
     } else if (sources) {
-      // Fetch insights count for each source (count distinct insights)
+      // Count raw insights per source (v2: raw_insights carries source_id directly).
       const sourceIds = sources.map((s: any) => s.id)
       const { data: insightCounts } = await supabaseAdmin
-        .from('insight_sources')
-        .select('source_id, insight_id')
+        .from('raw_insights')
+        .select('source_id')
         .in('source_id', sourceIds)
-      
-      // Count distinct insights per source
-      const insightsCountMap = new Map<string, Set<string>>()
+
+      const insightsCountMapFinal = new Map<string, number>()
       if (insightCounts) {
         insightCounts.forEach((item: any) => {
-          if (!insightsCountMap.has(item.source_id)) {
-            insightsCountMap.set(item.source_id, new Set())
-          }
-          insightsCountMap.get(item.source_id)!.add(item.insight_id)
+          insightsCountMapFinal.set(item.source_id, (insightsCountMapFinal.get(item.source_id) || 0) + 1)
         })
       }
-      
-      // Convert Sets to counts
-      const insightsCountMapFinal = new Map<string, number>()
-      insightsCountMap.forEach((insightSet, sourceId) => {
-        insightsCountMapFinal.set(sourceId, insightSet.size)
-      })
 
       // Add insights count and word count to each source
       sources = sources.map((source: any) => {
@@ -147,6 +138,10 @@ export default async function AdminSourcesPage() {
                 <Button>New Source</Button>
               </Link>
             </div>
+          </div>
+
+          <div className="mb-8">
+            <JobQueuePanel />
           </div>
 
           {sources && sources.length > 0 ? (

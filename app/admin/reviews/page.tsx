@@ -1,10 +1,10 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { TopicsAuditClient } from "@/components/TopicsAuditClient"
+import { MergeReviewClient } from "@/components/MergeReviewClient"
 
 export const dynamic = "force-dynamic"
 
-export default function TopicsAuditPage() {
+export default function ReviewQueuePage() {
   return (
     <div className="min-h-screen bg-background">
       <main>
@@ -12,17 +12,17 @@ export default function TopicsAuditPage() {
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Topics</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Merge review queue</h1>
                 <p className="text-muted-foreground mt-1">
-                  The AI-managed taxonomy. Rename, move, merge, or archive topics — every edit is
-                  recorded as human-reviewed.
+                  Borderline deduplication decisions. Merge folds the new claim into the existing one;
+                  keeping them separate leaves both.
                 </p>
               </div>
               <Link href="/admin/sources">
                 <Button variant="ghost" size="sm">← Sources</Button>
               </Link>
             </div>
-            <TopicsAuditClient />
+            <MergeReviewClient />
           </div>
         </div>
       </main>

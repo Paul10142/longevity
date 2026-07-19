@@ -10,21 +10,21 @@ import { SearchBar } from "@/components/SearchBar"
 import { cn } from "@/lib/utils"
 
 const publicNav = [
-  { name: "Longevity Toolkit", href: "#tips" },
+  { name: "Medical Library", href: "/topics" },
+  { name: "Search", href: "/search" },
   { name: "Resources", href: "#resources" },
   { name: "About", href: "#about" },
 ] as const
 
 const adminNavLinks = [
-  { name: "Topics", href: "/admin/topics" },
   { name: "Sources", href: "/admin/sources" },
-  { name: "Concepts", href: "/admin/concepts" },
+  { name: "Topics", href: "/admin/topics" },
+  { name: "Merge reviews", href: "/admin/reviews" },
 ] as const
 
 const insightSubLinks = [
   { name: "Review", href: "/admin/insights/review" },
-  { name: "Unique", href: "/admin/insights/unique" },
-  { name: "Clusters", href: "/admin/insights/clusters" },
+  { name: "Merge reviews", href: "/admin/reviews" },
 ] as const
 
 export function Header() {
