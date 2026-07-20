@@ -12,7 +12,7 @@ export default function ReviewQueuePage() {
           <div className="max-w-4xl mx-auto space-y-6">
             <div className="flex items-center justify-between">
               <div>
-                <h1 className="text-3xl font-bold tracking-tight">Merge review queue</h1>
+                <h1 className="text-3xl font-bold tracking-tight">Merge Review Queue</h1>
                 <p className="text-muted-foreground mt-1">
                   Borderline deduplication decisions. Merge folds the new claim into the existing one;
                   keeping them separate leaves both.

@@ -8,8 +8,8 @@ const mainLinks = [
 ] as const
 
 const insightLinks = [
-  { name: "Raw insights", href: "/admin/insights/review", description: "Browse raw extractions" },
-  { name: "Merge reviews", href: "/admin/reviews", description: "Resolve borderline duplicate claims" },
+  { name: "Raw Insights", href: "/admin/insights/review", description: "Browse raw extractions" },
+  { name: "Merge Reviews", href: "/admin/reviews", description: "Resolve borderline duplicate claims" },
 ] as const
 
 export default function AdminHomePage() {
@@ -27,7 +27,7 @@ export default function AdminHomePage() {
 
             <Card>
               <CardHeader className="pb-3">
-                <CardTitle className="text-lg">Library &amp; topics</CardTitle>
+                <CardTitle className="text-lg">Library &amp; Topics</CardTitle>
                 <CardDescription>Primary editing areas</CardDescription>
               </CardHeader>
               <CardContent className="flex flex-wrap gap-3">

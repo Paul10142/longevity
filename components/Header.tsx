@@ -19,12 +19,12 @@ const publicNav = [
 const adminNavLinks = [
   { name: "Sources", href: "/admin/sources" },
   { name: "Topics", href: "/admin/topics" },
-  { name: "Merge reviews", href: "/admin/reviews" },
+  { name: "Merge Reviews", href: "/admin/reviews" },
 ] as const
 
 const insightSubLinks = [
   { name: "Review", href: "/admin/insights/review" },
-  { name: "Merge reviews", href: "/admin/reviews" },
+  { name: "Merge Reviews", href: "/admin/reviews" },
 ] as const
 
 export function Header() {
