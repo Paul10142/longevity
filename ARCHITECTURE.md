@@ -56,6 +56,27 @@ Worker: `app/api/worker/tick` — invoked by Vercel cron (see `vercel.json`),
 by a fire-and-forget ping after enqueue, or manually from the admin UI.
 It works within a ~250s budget and exits; checkpoints make that safe.
 
+### Deployment / cron cadence (Vercel plan constraint)
+
+The project currently runs on the Vercel **Hobby** plan, which caps cron jobs at
+**once per day** and function `maxDuration` at 60s. The worker cron is therefore
+set to `0 8 * * *` (daily). This is safe because prompt processing does **not**
+depend on the cron: the fire-and-forget `pingWorker` after each enqueue
+(`app/api/admin/sources/route.ts`) starts work within seconds, and the admin
+"Run worker now" button triggers it on demand. The daily cron is only a
+safety-net sweep for jobs that stalled (a tick that yielded on its budget, or a
+ping that didn't land).
+
+**When we upgrade to Vercel Pro** (unblocks sub-daily crons + 300s `maxDuration`,
+which `app/api/worker/tick/route.ts` already assumes):
+
+- Restore the worker cron to **every 15 minutes** — `*/15 * * * *` — **not**
+  every minute. Per-minute (`* * * * *`) was the original Phase 1 setting; 15 min
+  is plenty given the enqueue ping already handles real-time starts, and it keeps
+  invocation volume/cost sane.
+- No code change needed for `maxDuration`; it's already 300 in the tick route and
+  only takes effect on Pro.
+
 ### Consolidation thresholds
 
 - ANN similarity floor for candidates: **0.80** (below → automatic new claim).

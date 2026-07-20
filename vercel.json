@@ -4,7 +4,7 @@
   "installCommand": "npm install",
   "ignoreCommand": "git diff --quiet HEAD^ HEAD ./",
   "crons": [
-    { "path": "/api/worker/tick", "schedule": "* * * * *" }
+    { "path": "/api/worker/tick", "schedule": "0 8 * * *" }
   ]
 }
 
