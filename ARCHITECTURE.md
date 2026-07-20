@@ -177,6 +177,62 @@ New job types: `extract_references`, `resolve_references` (+ `compute_relations`
 reserved for Phase 8). `extract_source` fans out to both consolidation and
 reference extraction.
 
+## v3.1 target spec — physician-grade comprehensiveness (agreed, not yet built)
+
+The product goal: a **B2B knowledge product sold to lifestyle-medicine
+physicians**. Clinicians rely on it, so it must be detailed, trustworthy, and
+never silently lossy. The following is the canonical target agreed with Paul
+(July 2026); it extends — does not replace — the v3 evidence layer above.
+
+### Comprehensiveness — no caps
+
+- **Remove `MAX_CLAIMS = 250`** in `lib/synthesis.ts`. The clinician view is an
+  **exhaustive, claim-complete reference**: every deduplicated claim on a topic
+  appears, rewritten into the project's common prose (complete in substance, not
+  a verbatim transcript), organized by sub-theme, each carrying its verbatim
+  quote + verified reference. No source cap either — if a topic draws on 12
+  sources, all 12 are represented.
+- The first source on a topic is ~all-new, so its article is near-complete
+  coverage of what it said; later sources contribute only their *novel* claims.
+- **Generate section-by-section** (one sub-theme cluster of claims per LLM pass),
+  then assemble — so "no cap" scales past what a single call can hold instead of
+  quietly truncating. A **coverage gate** verifies every input claim made it into
+  the article (target 100%; flag any drop). The patient view is the plain-language
+  translation of the same complete body.
+
+### Novelty & corroboration (the core value made visible)
+
+- Dedup already attaches an overlapping insight as another evidence member of an
+  existing claim (SAME) vs. minting a new claim (DIFFERENT). Surface, **per new
+  source, the novelty split** ("41 new claims — 23% novel; the rest reinforced
+  existing knowledge"). This is the thing traditional media can't do: you never
+  re-consume overlap.
+- Surface `claims.source_count` (already computed) so heavily-corroborated claims
+  are recognized as well-established.
+
+### Consensus / contested labeling — auto, with human override
+
+- Every claim gets a consensus dimension (**established / emerging-single-opinion
+  / contested**), **derived automatically** from `sources.authority_tier` +
+  multi-source agreement (`source_count`) + contradictions (`claim_relations`,
+  Phase 8). Paul can **override contested calls** in the admin.
+- Articles state established knowledge plainly and flag contested points as "for
+  discussion" — heterodox/debate content is never silently asserted as settled.
+
+### Timestamped provenance
+
+- Capture **where in the source** each insight came from. YouTube/video: a real
+  timestamp in `raw_insights.start_ms`, rendered as a **deep-link**
+  (`source.url` + `&t=<seconds>`) for one-click manual review. Pure-text
+  transcripts: an approximate locator (segment/char position). Verbatim quotes
+  are already 100% captured; this adds the *location*. (As of this writing,
+  `start_ms` is populated on 0 insights — net-new ingestion work.)
+
+### Human claim review/edit
+
+- Admin surface to review and edit claims directly (beyond the merge-review
+  queue) — correct a bad rewrite, split/retag, adjust consensus.
+
 ## Models
 
 - Extraction + adjudication + tagging: `gpt-5-mini`
