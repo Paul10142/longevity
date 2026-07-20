@@ -1,14 +1,18 @@
 /**
- * Synthesis stage (v3): topic + its claims → clinician article, patient
- * article, and protocol, each citing claim_ids per paragraph.
+ * Synthesis stage (v3.1): topic + ALL its claims → an exhaustive, claim-complete
+ * clinician article, a patient translation, and a concise protocol.
  *
- * v3 changes:
- *  - Claim loading + prioritization happens IN THE DB via the topic_claims()
- *    RPC (scored + LIMITed) — no unbounded IN(...) or load-all-then-slice.
- *  - The clinician article is enriched with verbatim source quotes and
- *    VERIFIED third-party references; a References section is appended
- *    deterministically from our verified data (the model only places [R#]
- *    markers, so it cannot invent a citation).
+ * Physician-grade comprehensiveness (see ARCHITECTURE.md "v3.1 target spec"):
+ *  - No claim cap. The clinician article must surface EVERY deduplicated claim
+ *    on the topic, not a summary. To make "no cap" scale past what a single LLM
+ *    call can hold, generation is SECTIONED:
+ *      1. group all claims into themed sections (one cheap LLM call),
+ *      2. generate each section claim-complete (one call per section),
+ *      3. mop up any uncited claims into an "Additional Evidence" section,
+ *      4. record a coverage score = cited claims / total claims (target ~1.0).
+ *  - Enriched with verbatim source quotes + VERIFIED third-party references; the
+ *    References section is appended deterministically (the model only places
+ *    [R#] markers, so it cannot invent a citation).
  *
  * Output is versioned and stamped with claims_snapshot_at for staleness.
  */
@@ -17,7 +21,12 @@ import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 
 const SYNTHESIS_MODEL = 'gpt-5.1'
-const MAX_CLAIMS = 250
+const OUTLINE_MODEL = 'gpt-5-mini'
+// Effectively uncapped at current scale; pagination of topic_claims() is the
+// scale path when a single topic exceeds this. NOT the old summarizing cap.
+const CLINICIAN_CLAIM_CAP = 2000
+// The protocol is deliberately concise ("what to do"), so it stays prioritized.
+const PROTOCOL_CLAIM_CAP = 80
 
 let openaiInstance: OpenAI | null = null
 function getOpenAI(): OpenAI {
@@ -34,7 +43,7 @@ function db() {
   return supabaseAdmin
 }
 
-// Claim shape returned by the topic_claims RPC (already scored + capped).
+// Claim shape returned by the topic_claims RPC (already scored).
 type ScoredClaim = {
   id: string
   canonical_statement: string
@@ -44,11 +53,12 @@ type ScoredClaim = {
   source_count: number
 }
 
-/** Prioritized claims for a topic subtree — scoring + LIMIT happen in SQL. */
+/** All claims for a topic subtree (scored in SQL). Loaded uncapped for the
+ * clinician article; the caller passes a small limit for the concise protocol. */
 async function loadPrioritizedClaims(
   topicId: string,
   audience: 'patient' | 'clinician' | null,
-  limit = MAX_CLAIMS
+  limit = CLINICIAN_CLAIM_CAP
 ): Promise<ScoredClaim[]> {
   const { data, error } = await db().rpc('topic_claims', {
     p_topic_id: topicId,
@@ -128,7 +138,6 @@ async function enrichClinician(claimIds: string[]): Promise<Enrichment> {
   return { quoteByClaim, refMarkersByClaim, references }
 }
 
-// ── Topic metadata ──────────────────────────────────────────
 function claimsBlock(claims: ScoredClaim[], enrich?: Enrichment): string {
   return claims
     .map(c => {
@@ -145,40 +154,47 @@ function claimsBlock(claims: ScoredClaim[], enrich?: Enrichment): string {
     .join('\n')
 }
 
-const CLINICIAN_PROMPT = `
-You are a physician building an evidence-based clinical reference to help train other physicians. You are given a TOPIC and a set of verified CLAIMS (each with an id, and where available a verbatim source quote and reference markers like R1).
-
-Sections (use those that apply): overview, mechanisms, protocols, risks, controversies.
+// ── Prompts ─────────────────────────────────────────────────
+const CLINICIAN_OUTLINE_PROMPT = `
+You organize verified clinical CLAIMS (each: [id] statement) into a sectioned outline for a COMPREHENSIVE physician reference on a TOPIC.
 
 Rules:
-- Use ONLY the provided claims as factual source. Do NOT add facts from outside knowledge.
-- Incorporate the material claims; connect related ones into coherent narrative. No word limit.
-- Preserve numeric detail (doses, thresholds, frequencies, durations, populations).
-- CITATIONS: when a claim carries reference markers (e.g. refs: R1,R3), cite them inline as [R1][R3] where you use that claim. Do NOT invent reference markers or studies — only use the markers provided. A formatted References section will be appended automatically; do not write one yourself.
-- QUOTES: when a claim carries a verbatim quote, you MAY include it verbatim in quotation marks with attribution when it is especially illustrative — but do not overuse quotes.
-- Be explicit about evidence strength and uncertainty. This is for physician education.
-- Do not mention "claims" or transcripts. Professional prose for clinicians.
-- No H1 title heading in the body; start with section content.
+- Group EVERY claim into exactly one section. Never drop or duplicate a claim id.
+- Choose 3–12 sections with clear clinical themes (e.g. overview, physiology/mechanisms, evaluation/diagnostics, treatment/protocols, dosing-and-targets, monitoring, risks/adverse-effects, special-populations, controversies). Use only sections that fit the claims; order them logically.
+- Keep sections reasonably balanced; split a very large theme into sub-themes so no section is overloaded.
 
 Return STRICT JSON:
-{"title":"...","sections":[{"id":"overview","title":"...","paragraphs":[{"id":"p1","text":"... [R1] ...","claim_ids":["<id>"]}]}]}
-Every paragraph MUST list the claim_ids it primarily relied on.
+{"sections":[{"id":"overview","title":"Overview","claim_ids":["<id>","<id>"]}]}
 `.trim()
 
-const PATIENT_PROMPT = `
-You translate a clinician article into a patient-accessible version (≈10th-grade reading level) for motivated laypeople.
-
-Sections: big-picture, mechanisms, actions, risks, questions.
+const CLINICIAN_SECTION_PROMPT = `
+You are a physician writing ONE SECTION of a comprehensive, evidence-based clinical reference used to train other physicians. You are given the TOPIC, the SECTION title, and the verified CLAIMS assigned to this section (each with an id, and where available a verbatim source quote and reference markers like R1).
 
 Rules:
-- Base it ENTIRELY on the provided clinician article; add no new facts.
-- Translate, don't summarize away — preserve numeric detail and caveats.
-- Simplify jargon, use analogies, keep advice general (suggest discussing with a clinician).
-- Drop inline reference markers like [R1] — patients don't need them.
-- No H1 title heading. No mention of "claims".
+- This is an EXHAUSTIVE reference, not a summary. Represent EVERY provided claim — do not drop any. Merge closely related claims into the same paragraph; give distinct claims their own sentences or paragraphs. No word limit.
+- Use ONLY the provided claims as factual source. Do NOT add facts from outside knowledge.
+- Preserve ALL numeric detail (doses, thresholds, frequencies, durations, populations).
+- CITATIONS: when a claim carries reference markers (e.g. refs: R1,R3), cite them inline as [R1][R3] where you use that claim. Never invent markers or studies. A References section is appended automatically — do not write one.
+- QUOTES: when a claim carries a verbatim quote, you MAY include it verbatim in quotation marks with attribution when especially illustrative — but do not overuse.
+- Be explicit about evidence strength and uncertainty; present contested or non-consensus points as areas of debate rather than settled fact.
+- Do not mention "claims" or transcripts. Professional prose. No headings — return paragraphs only.
 
 Return STRICT JSON:
-{"title":"...","sections":[{"id":"big-picture","title":"...","paragraphs":[{"id":"p1","text":"...","claim_ids":[]}]}]}
+{"paragraphs":[{"id":"p1","text":"... [R1] ...","claim_ids":["<id>"]}]}
+Every paragraph MUST list the claim_ids it used, and collectively the paragraphs MUST cover EVERY provided claim id.
+`.trim()
+
+const PATIENT_SECTION_PROMPT = `
+You translate ONE SECTION of a clinician reference into patient-accessible prose (≈10th-grade reading level) for motivated laypeople.
+
+Rules:
+- Base it ENTIRELY on the provided section text; add no new facts.
+- Translate, don't summarize away — preserve numeric detail and important caveats.
+- Simplify jargon, use plain language and analogies, keep advice general (suggest discussing specifics with a clinician).
+- Drop inline reference markers like [R1]. No mention of "claims".
+
+Return STRICT JSON:
+{"title":"...","paragraphs":[{"id":"p1","text":"..."}]}
 `.trim()
 
 const PROTOCOL_PROMPT = `
@@ -197,9 +213,11 @@ Return STRICT JSON:
 Every paragraph MUST list the claim_ids it relied on.
 `.trim()
 
+type Paragraph = { id: string; text: string; claim_ids: string[] }
+type Section = { id: string; title: string; paragraphs: Paragraph[] }
 type Outline = {
   title: string
-  sections: { id: string; title: string; paragraphs: { id: string; text: string; claim_ids: string[] }[] }[]
+  sections: Section[]
   references?: { marker: string; citation: string; url: string | null }[]
 }
 
@@ -219,11 +237,87 @@ function outlineToMarkdown(outline: Outline): string {
   return parts.join('\n\n')
 }
 
+async function chatJson<T>(system: string, user: string, model: string = SYNTHESIS_MODEL): Promise<T> {
+  const completion = await getOpenAI().chat.completions.create({
+    model,
+    messages: [
+      { role: 'system', content: system },
+      { role: 'user', content: user },
+    ],
+    response_format: { type: 'json_object' },
+  })
+  const raw = completion.choices[0]?.message?.content
+  if (!raw) throw new Error('Empty synthesis response')
+  return JSON.parse(raw) as T
+}
+
+/** Group all claims into themed sections. Guarantees every claim is assigned
+ * exactly once (strays after the LLM pass go into an "Additional Findings"
+ * section) so nothing is silently dropped before generation. */
+async function outlineSections(
+  header: string,
+  claims: ScoredClaim[]
+): Promise<{ id: string; title: string; claim_ids: string[] }[]> {
+  const list = claims.map(c => `[${c.id}] ${c.canonical_statement}`).join('\n')
+  let raw: { sections?: { id: string; title: string; claim_ids?: string[] }[] } = {}
+  try {
+    raw = await chatJson(CLINICIAN_OUTLINE_PROMPT, `${header}\n\nClaims:\n${list}`, OUTLINE_MODEL)
+  } catch {
+    raw = {}
+  }
+  const valid = new Set(claims.map(c => c.id))
+  const assigned = new Set<string>()
+  const cleaned: { id: string; title: string; claim_ids: string[] }[] = []
+  for (const s of raw.sections ?? []) {
+    const ids = (s.claim_ids ?? []).filter(id => valid.has(id) && !assigned.has(id))
+    ids.forEach(id => assigned.add(id))
+    if (ids.length) cleaned.push({ id: s.id || `s${cleaned.length + 1}`, title: s.title || 'Section', claim_ids: ids })
+  }
+  const strays = claims.filter(c => !assigned.has(c.id)).map(c => c.id)
+  if (strays.length) cleaned.push({ id: 'additional-findings', title: 'Additional Findings', claim_ids: strays })
+  return cleaned
+}
+
+/** Generate one clinician section, claim-complete over its assigned claims. */
+async function generateClinicianSection(
+  header: string,
+  section: { id: string; title: string; claim_ids: string[] },
+  claimById: Map<string, ScoredClaim>,
+  enrich: Enrichment
+): Promise<Section> {
+  const secClaims = section.claim_ids
+    .map(id => claimById.get(id))
+    .filter((c): c is ScoredClaim => Boolean(c))
+  if (secClaims.length === 0) return { id: section.id, title: section.title, paragraphs: [] }
+  const res = await chatJson<{ paragraphs?: Paragraph[] }>(
+    CLINICIAN_SECTION_PROMPT,
+    `${header}\n\nSection: ${section.title}\n\nClaims:\n${claimsBlock(secClaims, enrich)}`
+  )
+  return {
+    id: section.id,
+    title: section.title,
+    paragraphs: (res.paragraphs ?? []).map(p => ({ id: p.id, text: p.text, claim_ids: p.claim_ids ?? [] })),
+  }
+}
+
+async function translatePatientSection(topicName: string, section: Section): Promise<Section> {
+  const md = section.paragraphs.map(p => p.text).join('\n\n')
+  if (!md.trim()) return { id: section.id, title: section.title, paragraphs: [] }
+  const res = await chatJson<{ title?: string; paragraphs?: { id: string; text: string }[] }>(
+    PATIENT_SECTION_PROMPT,
+    `Topic: ${topicName}\nSection: ${section.title}\n\n${md}`
+  )
+  return {
+    id: section.id,
+    title: res.title || section.title,
+    paragraphs: (res.paragraphs ?? []).map(p => ({ id: p.id, text: p.text, claim_ids: [] })),
+  }
+}
+
 /**
  * Groundedness gate: check that every factual assertion in each paragraph is
  * supported by that paragraph's cited claims. Returns the fraction of grounded
- * paragraphs (1.0 = fully grounded). One batched cheap-model call. Physician
- * content must not assert what the evidence doesn't support.
+ * paragraphs (1.0 = fully grounded). One batched cheap-model call.
  */
 async function scoreGroundedness(outline: Outline, claimById: Map<string, string>): Promise<number> {
   const paras = (outline.sections ?? []).flatMap(s => s.paragraphs ?? [])
@@ -259,18 +353,12 @@ async function scoreGroundedness(outline: Outline, claimById: Map<string, string
   }
 }
 
-async function generateJson(system: string, user: string): Promise<Outline> {
-  const completion = await getOpenAI().chat.completions.create({
-    model: SYNTHESIS_MODEL,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ],
-    response_format: { type: 'json_object' },
-  })
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) throw new Error('Empty synthesis response')
-  return JSON.parse(raw) as Outline
+function coverageOf(sections: Section[], validIds: Set<string>): { covered: Set<string>; score: number } {
+  const covered = new Set<string>()
+  for (const s of sections) for (const p of s.paragraphs) for (const id of p.claim_ids ?? []) {
+    if (validIds.has(id)) covered.add(id)
+  }
+  return { covered, score: validIds.size ? covered.size / validIds.size : 1 }
 }
 
 async function nextVersion(table: 'topic_articles' | 'topic_protocols', topicId: string, audience?: string): Promise<number> {
@@ -284,7 +372,7 @@ async function nextVersion(table: 'topic_articles' | 'topic_protocols', topicId:
  * Generate (or regenerate) the clinician article, patient article, and protocol
  * for a topic from its claims. Bumps version; stamps claims_snapshot_at.
  */
-export async function generateTopicContent(topicId: string): Promise<{ claims: number; skipped?: boolean }> {
+export async function generateTopicContent(topicId: string): Promise<{ claims: number; coverage?: number; skipped?: boolean }> {
   const { data: topic, error } = await db()
     .from('topics')
     .select('id, name, description')
@@ -293,7 +381,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
   if (error || !topic) throw new Error(`Topic not found: ${error?.message}`)
 
   const clinClaims = await loadPrioritizedClaims(topicId, 'clinician')
-  const protoClaims = await loadPrioritizedClaims(topicId, null)
+  const protoClaims = await loadPrioritizedClaims(topicId, null, PROTOCOL_CLAIM_CAP)
   if (clinClaims.length === 0 && protoClaims.length === 0) return { claims: 0, skipped: true }
 
   const run = await db()
@@ -306,16 +394,38 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
   const header = `Topic: ${topic.name}${topic.description ? `\nDescription: ${topic.description}` : ''}`
 
   try {
-    // Clinician article — enriched with verbatim quotes + verified references.
+    // ── Clinician article: exhaustive, sectioned, claim-complete ──
     const enrich = await enrichClinician(clinClaims.map(c => c.id))
-    const clinician = await generateJson(
-      CLINICIAN_PROMPT,
-      `${header}\n\nClaims:\n${claimsBlock(clinClaims, enrich)}`
-    )
-    clinician.references = enrich.references // appended deterministically in markdown
-    // Groundedness gate: score how well the article's assertions are supported.
-    const claimById = new Map(clinClaims.map(c => [c.id, c.canonical_statement]))
-    const groundedness = await scoreGroundedness(clinician, claimById)
+    const claimById = new Map(clinClaims.map(c => [c.id, c]))
+    const validIds = new Set(clinClaims.map(c => c.id))
+
+    const outlineSecs = await outlineSections(header, clinClaims)
+    const sections: Section[] = []
+    for (const s of outlineSecs) {
+      sections.push(await generateClinicianSection(header, s, claimById, enrich))
+    }
+
+    // Coverage mop-up: any claim not cited by a section gets its own pass, so the
+    // reference is genuinely complete rather than quietly dropping evidence.
+    let { covered, score: coverage } = coverageOf(sections, validIds)
+    const missing = clinClaims.filter(c => !covered.has(c.id))
+    if (missing.length) {
+      sections.push(
+        await generateClinicianSection(
+          header,
+          { id: 'additional-evidence', title: 'Additional Evidence', claim_ids: missing.map(c => c.id) },
+          claimById,
+          enrich
+        )
+      )
+      ;({ covered, score: coverage } = coverageOf(sections, validIds))
+    }
+    if (coverage < 0.95) {
+      console.warn(`[synthesis] low coverage ${coverage.toFixed(2)} for topic ${topic.name} (${covered.size}/${validIds.size} claims)`)
+    }
+
+    const clinician: Outline = { title: topic.name, sections, references: enrich.references }
+    const groundedness = await scoreGroundedness(clinician, new Map(clinClaims.map(c => [c.id, c.canonical_statement])))
     if (groundedness < 0.7) {
       console.warn(`[synthesis] low groundedness ${groundedness.toFixed(2)} for topic ${topic.name}`)
     }
@@ -324,14 +434,16 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
       topic_id: topicId, audience: 'clinician', version: clinVer,
       title: clinician.title, outline: clinician, body_markdown: outlineToMarkdown(clinician),
       generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
-      groundedness_score: groundedness,
+      groundedness_score: groundedness, coverage_score: coverage,
     })
 
-    // Patient article translated from the clinician article.
-    const patient = await generateJson(
-      PATIENT_PROMPT,
-      `${header}\n\nClinician article:\n${clinician.title}\n\n${outlineToMarkdown({ ...clinician, references: undefined })}`
-    )
+    // ── Patient article: translate each clinician section (keeps it complete) ──
+    const patientSections: Section[] = []
+    for (const s of sections) {
+      if (s.paragraphs.length === 0) continue
+      patientSections.push(await translatePatientSection(topic.name, s))
+    }
+    const patient: Outline = { title: topic.name, sections: patientSections }
     const patVer = await nextVersion('topic_articles', topicId, 'patient')
     await db().from('topic_articles').insert({
       topic_id: topicId, audience: 'patient', version: patVer,
@@ -339,8 +451,8 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
       generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
     })
 
-    // Protocol from prioritized (audience-agnostic) claims.
-    const protocol = await generateJson(
+    // ── Protocol: concise, prioritized claims ──
+    const protocol = await chatJson<Outline>(
       PROTOCOL_PROMPT,
       `${header}\n\nClaims:\n${claimsBlock(protoClaims)}`
     )
@@ -354,10 +466,14 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     if (runId) {
       await db().from('pipeline_runs').update({
         status: 'success', finished_at: new Date().toISOString(),
-        stats: { topic: topic.name, claims: clinClaims.length, references: enrich.references.length },
+        stats: {
+          topic: topic.name, claims: clinClaims.length, sections: sections.length,
+          coverage: Number(coverage.toFixed(3)), groundedness: Number(groundedness.toFixed(3)),
+          references: enrich.references.length,
+        },
       }).eq('id', runId)
     }
-    return { claims: clinClaims.length }
+    return { claims: clinClaims.length, coverage }
   } catch (err) {
     if (runId) {
       await db().from('pipeline_runs').update({
