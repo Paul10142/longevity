@@ -54,6 +54,7 @@ type ParsedRef = {
   year?: number
   journal?: string
   doi?: string
+  context?: string | null  // the finding/claim the work is cited to support (disambiguator)
 }
 
 const EXTRACT_REF_SYSTEM = `
@@ -65,8 +66,9 @@ For each, return:
 - raw_text: the mention exactly as said
 - type: journal_article | trial | guideline | book | preprint | other
 - title, authors (array), year, journal, doi — ONLY the fields actually stated or clearly implied; omit unknown fields (do not guess).
+- context: a one-sentence summary of the specific FINDING, population, or claim the speaker attributes to this work (this is used to identify the exact paper later — capture the substance, e.g. "a study of ~700 couples showing that paternal age affects miscarriage risk").
 
-Return STRICT JSON: {"references":[{"raw_text":"...","type":"...","title":"...","year":2019,"journal":"...","authors":["..."],"doi":"..."}]}
+Return STRICT JSON: {"references":[{"raw_text":"...","type":"...","title":"...","year":2019,"journal":"...","authors":["..."],"doi":"...","context":"..."}]}
 If none, return {"references":[]}.
 `.trim()
 
@@ -135,6 +137,7 @@ export async function extractReferences(
         parsed: {
           type: r.type ?? null, title: r.title ?? null, authors: r.authors ?? null,
           year: r.year ?? null, journal: r.journal ?? null, doi: r.doi ?? null,
+          context: r.context ?? null,
         },
       }))
       const { error: insErr } = await db().from('reference_mentions').insert(toInsert)
@@ -162,70 +165,96 @@ function fingerprintOf(title: string, year: number | null, doi: string | null): 
   if (doi) return `doi:${doi.toLowerCase()}`
   return `t:${normalizeTitle(title)}${year ? `:${year}` : ''}`
 }
-function titleOverlap(a: string, b: string): number {
-  const at = new Set(normalizeTitle(a).split(' ').filter(w => w.length > 3))
-  const bt = new Set(normalizeTitle(b).split(' ').filter(w => w.length > 3))
-  if (at.size === 0 || bt.size === 0) return 0
-  let hit = 0
-  for (const w of at) if (bt.has(w)) hit++
-  return hit / Math.min(at.size, bt.size)
-}
-
-// Minimum-specificity gate: only attempt resolution when the mention is
-// identifiable enough to VERIFY. A DOI, or a real title (>= 3 substantive
-// words). Vague mentions ("a NEJM paper about 700 couples") never resolve —
-// presenting a wrong citation as verified is worse than none.
-const MIN_TITLE_OVERLAP = 0.6
 function resolvableTitle(title?: string): boolean {
   return !!title && normalizeTitle(title).split(' ').filter(w => w.length > 3).length >= 3
 }
+// Attempt resolution when the mention carries enough to identify a specific
+// work: a DOI, a real title, or a journal anchored by a year/author. Precision
+// is enforced downstream by the LLM judge + confidence threshold, so this gate
+// only needs to skip hopelessly vague mentions ("a study showed…").
 function canAttemptResolution(parsed: ParsedRef): boolean {
-  return !!parsed.doi || resolvableTitle(parsed.title)
-}
-// A candidate is acceptable only if it strongly matches the mention's title and
-// (when both known) the publication year.
-function candidateMatches(parsed: ParsedRef, candTitle: string, candYear: number | null): boolean {
-  if (!parsed.title) return false // never accept a fuzzy match without a title to check
-  if (titleOverlap(parsed.title, candTitle) < MIN_TITLE_OVERLAP) return false
-  if (parsed.year && candYear && Math.abs(parsed.year - candYear) > 1) return false
-  return true
+  if (parsed.doi || resolvableTitle(parsed.title)) return true
+  if (parsed.journal && (parsed.year || (parsed.authors?.length ?? 0) > 0)) return true
+  return false
 }
 
 type ResolvedRef = {
   type: string; title: string; authors: string[]; year: number | null
   journal: string | null; doi: string | null; url: string | null
-  resolved_source: 'crossref' | 'pubmed'
+  abstract?: string | null
+  resolved_source: 'crossref' | 'pubmed' | 'openalex'
 }
 
-async function resolveViaCrossref(parsed: ParsedRef): Promise<ResolvedRef | null> {
-  await throttle()
+// ── Agentic resolution: gather candidates from several databases, then let an
+//    LLM pick the true match on SUBSTANCE (abstract vs the described finding),
+//    not just title tokens. Raises recall (find the paper from a description)
+//    while keeping precision (never a topically-similar wrong paper).
+
+const AUTO_ACCEPT_CONFIDENCE = 0.7   // below this → not_found
+
+function reconstructAbstract(inv?: Record<string, number[]>): string | null {
+  if (!inv) return null
+  const words: { pos: number; w: string }[] = []
+  for (const [w, positions] of Object.entries(inv)) for (const p of positions) words.push({ pos: p, w })
+  if (words.length === 0) return null
+  return words.sort((a, b) => a.pos - b.pos).map(x => x.w).join(' ').slice(0, 1200)
+}
+
+async function openAlexCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
+  const query = (parsed.title || rawText).slice(0, 300)
+  if (!query.trim()) return []
   try {
-    if (parsed.doi) {
-      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(parsed.doi)}`, {
-        headers: { 'User-Agent': USER_AGENT },
-      })
-      if (res.ok) {
-        const j = await res.json()
-        return crossrefItem(j.message)
-      }
-    }
-    const query = [parsed.title, (parsed.authors ?? [])[0], parsed.year].filter(Boolean).join(' ')
-    if (!query.trim()) return null
+    await throttle()
     const res = await fetch(
-      `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(query)}&rows=1`,
+      `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=5&mailto=${encodeURIComponent(CONTACT_MAILTO)}`,
       { headers: { 'User-Agent': USER_AGENT } }
     )
-    if (!res.ok) return null
+    if (!res.ok) return []
     const j = await res.json()
-    const item = j.message?.items?.[0]
-    if (!item) return null
-    const candidate = crossrefItem(item)
-    if (!candidate) return null
-    // Only accept a strong, year-consistent title match (never a fuzzy top hit).
-    if (!candidateMatches(parsed, candidate.title, candidate.year)) return null
-    return candidate
+    return (j.results ?? []).map((w: {
+      title?: string; publication_year?: number; doi?: string; type?: string
+      authorships?: { author?: { display_name?: string } }[]
+      primary_location?: { source?: { display_name?: string } }
+      abstract_inverted_index?: Record<string, number[]>
+    }): ResolvedRef | null => {
+      if (!w.title) return null
+      const doi = w.doi ? w.doi.replace('https://doi.org/', '') : null
+      return {
+        type: w.type === 'book' ? 'book' : 'journal_article',
+        title: w.title,
+        authors: (w.authorships ?? []).map(a => a.author?.display_name).filter((x): x is string => !!x),
+        year: w.publication_year ?? null,
+        journal: w.primary_location?.source?.display_name ?? null,
+        doi,
+        url: doi ? `https://doi.org/${doi}` : null,
+        abstract: reconstructAbstract(w.abstract_inverted_index),
+        resolved_source: 'openalex',
+      }
+    }).filter((x: ResolvedRef | null): x is ResolvedRef => !!x)
   } catch {
-    return null
+    return []
+  }
+}
+
+async function crossrefCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
+  try {
+    if (parsed.doi) {
+      await throttle()
+      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(parsed.doi)}`, { headers: { 'User-Agent': USER_AGENT } })
+      if (res.ok) { const j = await res.json(); const c = crossrefItem(j.message); if (c) return [c] }
+    }
+    const query = (parsed.title || rawText).slice(0, 300)
+    if (!query.trim()) return []
+    await throttle()
+    const res = await fetch(
+      `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(query)}&rows=3`,
+      { headers: { 'User-Agent': USER_AGENT } }
+    )
+    if (!res.ok) return []
+    const j = await res.json()
+    return (j.message?.items ?? []).map(crossrefItem).filter((x: ResolvedRef | null): x is ResolvedRef => !!x)
+  } catch {
+    return []
   }
 }
 
@@ -248,52 +277,34 @@ function crossrefItem(item: {
   }
 }
 
-async function resolveViaPubmed(parsed: ParsedRef): Promise<ResolvedRef | null> {
-  const term = [parsed.title, parsed.year].filter(Boolean).join(' ')
-  if (!term.trim()) return null
-  try {
-    await throttle()
-    const esearch = await fetch(
-      `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=1&term=${encodeURIComponent(term)}`,
-      { headers: { 'User-Agent': USER_AGENT } }
-    )
-    if (!esearch.ok) return null
-    const sj = await esearch.json()
-    const pmid = sj.esearchresult?.idlist?.[0]
-    if (!pmid) return null
-    await throttle()
-    const esum = await fetch(
-      `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id=${pmid}`,
-      { headers: { 'User-Agent': USER_AGENT } }
-    )
-    if (!esum.ok) return null
-    const uj = await esum.json()
-    const doc = uj.result?.[pmid]
-    if (!doc?.title) return null
-    const year = doc.pubdate ? parseInt(String(doc.pubdate).slice(0, 4), 10) : null
-    if (!candidateMatches(parsed, doc.title, Number.isFinite(year) ? year : null)) return null
-    const doi = (doc.articleids ?? []).find((x: { idtype: string; value: string }) => x.idtype === 'doi')?.value ?? null
-    return {
-      type: 'journal_article',
-      title: doc.title.replace(/\.$/, ''),
-      authors: (doc.authors ?? []).map((a: { name: string }) => a.name).filter(Boolean),
-      year: Number.isFinite(year) ? year : null,
-      journal: doc.fulljournalname ?? doc.source ?? null,
-      doi,
-      url: doi ? `https://doi.org/${doi}` : `https://pubmed.ncbi.nlm.nih.gov/${pmid}/`,
-      resolved_source: 'pubmed',
-    }
-  } catch {
-    return null
+/** Gather + dedup candidates across databases. */
+async function gatherCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
+  const [oa, cr] = await Promise.all([openAlexCandidates(parsed, rawText), crossrefCandidates(parsed, rawText)])
+  const all = [...oa, ...cr]
+  const seen = new Set<string>()
+  const deduped: ResolvedRef[] = []
+  for (const c of all) {
+    const key = c.doi ? `doi:${c.doi.toLowerCase()}` : `t:${normalizeTitle(c.title)}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    deduped.push(c)
   }
+  return deduped.slice(0, 8)
 }
 
+type Judgement = { index: number | null; confidence: number }
+
 /**
- * Final trust gate: confirm the database record is actually the specific work
- * the speaker referred to (not just a topically-similar paper). Catches the
- * "generic topic phrase → arbitrary real paper" failure mode. Only YES accepts.
+ * LLM judge: given the speaker's mention (+ the finding they described) and a
+ * list of candidate works with abstracts, pick the one that is the SAME specific
+ * work, or none. Matching on substance is what distinguishes a real citation
+ * from a topically-similar paper.
  */
-async function verifyMatch(rawText: string, r: ResolvedRef): Promise<boolean> {
+async function judgeCandidates(rawText: string, context: string | null, candidates: ResolvedRef[]): Promise<Judgement> {
+  if (candidates.length === 0) return { index: null, confidence: 0 }
+  const list = candidates
+    .map((c, i) => `[${i}] "${c.title}" — ${(c.authors ?? []).slice(0, 3).join(', ') || 'unknown authors'}, ${c.journal ?? 'n/a'}, ${c.year ?? 'n/a'}${c.abstract ? `\n    abstract: ${c.abstract.slice(0, 500)}` : ''}`)
+    .join('\n')
   try {
     const completion = await getOpenAI().chat.completions.create({
       model: REFERENCE_MODEL,
@@ -301,20 +312,22 @@ async function verifyMatch(rawText: string, r: ResolvedRef): Promise<boolean> {
         {
           role: 'system',
           content:
-            'A speaker referred to an external published work. A citation database returned a candidate record. Decide if the candidate is plausibly the SAME specific work the speaker meant. If the speaker only named a general topic, technique, or field (not a specific identifiable work), answer NO. Answer with STRICT JSON {"same": true|false}.',
+            'A speaker referred to an external published work. Choose which candidate (if any) is the SAME specific work — match on substance: the described finding, population, topic, and era should fit the candidate\'s abstract/metadata. If the speaker only named a general topic/technique (not a specific identifiable work), or no candidate clearly fits, return index null. Return STRICT JSON {"index": <number or null>, "confidence": <0..1>}.',
         },
         {
           role: 'user',
-          content: `Speaker referred to: "${rawText}"\n\nCandidate record:\nTitle: ${r.title}\nJournal: ${r.journal ?? '—'}\nYear: ${r.year ?? '—'}\nAuthors: ${(r.authors ?? []).slice(0, 3).join(', ') || '—'}`,
+          content: `Speaker referred to: "${rawText}"${context ? `\nFinding described: ${context}` : ''}\n\nCandidates:\n${list}`,
         },
       ],
       response_format: { type: 'json_object' },
     })
     const raw = completion.choices[0]?.message?.content
-    if (!raw) return false
-    return JSON.parse(raw).same === true
+    if (!raw) return { index: null, confidence: 0 }
+    const j = JSON.parse(raw)
+    const index = typeof j.index === 'number' && j.index >= 0 && j.index < candidates.length ? j.index : null
+    return { index, confidence: typeof j.confidence === 'number' ? j.confidence : 0 }
   } catch {
-    return false
+    return { index: null, confidence: 0 }
   }
 }
 
@@ -368,7 +381,7 @@ export async function resolveReferences(
   timeBudgetMs = 220_000
 ): Promise<{ done: boolean; checkpoint: ResolveCheckpoint }> {
   const started = Date.now()
-  const cache = new Map<string, string | null>() // fingerprint-ish key → reference_id or null(not_found)
+  const cache = new Map<string, { id: string | null; conf: number }>() // key → {reference_id|null, confidence}
   const cp: ResolveCheckpoint = { processed: 0, resolved: 0, not_found: 0 }
 
   while (Date.now() - started < timeBudgetMs) {
@@ -385,24 +398,29 @@ export async function resolveReferences(
       if (Date.now() - started > timeBudgetMs) return { done: false, checkpoint: cp }
       const parsed = m.parsed || ({} as ParsedRef)
 
-      let referenceId: string | null
-      if (!canAttemptResolution(parsed)) {
-        // Too vague to verify — do not guess a citation.
-        referenceId = null
-      } else {
+      let referenceId: string | null = null
+      let confidence = 0
+      if (canAttemptResolution(parsed)) {
         const cacheKey = fingerprintOf(parsed.title ?? parsed.doi ?? '(none)', parsed.year ?? null, parsed.doi ?? null)
         if (cache.has(cacheKey)) {
-          referenceId = cache.get(cacheKey)!
+          const hit = cache.get(cacheKey)!
+          referenceId = hit.id
+          confidence = hit.conf
         } else {
-          const resolved = (await resolveViaCrossref(parsed)) ?? (await resolveViaPubmed(parsed))
-          // Final LLM gate: accept only if the candidate is truly the work meant.
-          referenceId = resolved && (await verifyMatch(m.raw_text, resolved)) ? await upsertReference(resolved) : null
-          cache.set(cacheKey, referenceId)
+          const candidates = await gatherCandidates(parsed, m.raw_text)
+          const j = await judgeCandidates(m.raw_text, parsed.context ?? null, candidates)
+          if (j.index !== null && j.confidence >= AUTO_ACCEPT_CONFIDENCE) {
+            referenceId = await upsertReference(candidates[j.index])
+            confidence = j.confidence
+          }
+          cache.set(cacheKey, { id: referenceId, conf: confidence })
         }
       }
 
       if (referenceId) {
-        await db().from('reference_mentions').update({ resolution_status: 'resolved', reference_id: referenceId }).eq('id', m.id)
+        await db().from('reference_mentions').update({
+          resolution_status: 'resolved', reference_id: referenceId, match_confidence: confidence,
+        }).eq('id', m.id)
         await linkReferenceToClaims(m.chunk_id, referenceId)
         cp.resolved++
       } else {

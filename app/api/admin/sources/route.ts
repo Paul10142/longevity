@@ -82,6 +82,11 @@ export async function POST(request: NextRequest) {
       }
     }
 
+    // Default authority tier by source type (overridable later in the source
+    // editor). Peer-reviewed for articles, expert for books/podcasts/videos.
+    const authorityTier =
+      type === "article" ? "peer_reviewed" : type === "book" ? "expert" : "expert"
+
     const { data: source, error: insertError } = await supabaseAdmin
       .from("sources")
       .insert({
@@ -92,6 +97,7 @@ export async function POST(request: NextRequest) {
         url: url || null,
         transcript_quality: "high",
         transcript,
+        authority_tier: authorityTier,
         processing_status: "pending",
         processing_error: null,
         last_processed_at: null,

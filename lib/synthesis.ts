@@ -219,6 +219,46 @@ function outlineToMarkdown(outline: Outline): string {
   return parts.join('\n\n')
 }
 
+/**
+ * Groundedness gate: check that every factual assertion in each paragraph is
+ * supported by that paragraph's cited claims. Returns the fraction of grounded
+ * paragraphs (1.0 = fully grounded). One batched cheap-model call. Physician
+ * content must not assert what the evidence doesn't support.
+ */
+async function scoreGroundedness(outline: Outline, claimById: Map<string, string>): Promise<number> {
+  const paras = (outline.sections ?? []).flatMap(s => s.paragraphs ?? [])
+  if (paras.length === 0) return 1
+
+  const items = paras
+    .map((p, i) => {
+      const support = (p.claim_ids ?? []).map(id => claimById.get(id)).filter(Boolean)
+      return `[${i}] PARAGRAPH: ${p.text}\nSUPPORTING CLAIMS: ${support.join(' | ') || '(none cited)'}`
+    })
+    .join('\n\n')
+
+  try {
+    const completion = await getOpenAI().chat.completions.create({
+      model: 'gpt-5-mini',
+      messages: [
+        {
+          role: 'system',
+          content:
+            'You audit a physician reference for groundedness. For each numbered paragraph, decide if EVERY factual/clinical assertion is supported by its listed supporting claims. Ignore pure transitions, framing, or general connective prose. Return STRICT JSON {"ungrounded":[<indices of paragraphs containing an assertion NOT supported by their claims>]}.',
+        },
+        { role: 'user', content: items },
+      ],
+      response_format: { type: 'json_object' },
+    })
+    const raw = completion.choices[0]?.message?.content
+    if (!raw) return 1
+    const ungrounded = JSON.parse(raw).ungrounded
+    const count = Array.isArray(ungrounded) ? ungrounded.length : 0
+    return Math.max(0, 1 - count / paras.length)
+  } catch {
+    return 1 // don't block on checker failure
+  }
+}
+
 async function generateJson(system: string, user: string): Promise<Outline> {
   const completion = await getOpenAI().chat.completions.create({
     model: SYNTHESIS_MODEL,
@@ -273,11 +313,18 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
       `${header}\n\nClaims:\n${claimsBlock(clinClaims, enrich)}`
     )
     clinician.references = enrich.references // appended deterministically in markdown
+    // Groundedness gate: score how well the article's assertions are supported.
+    const claimById = new Map(clinClaims.map(c => [c.id, c.canonical_statement]))
+    const groundedness = await scoreGroundedness(clinician, claimById)
+    if (groundedness < 0.7) {
+      console.warn(`[synthesis] low groundedness ${groundedness.toFixed(2)} for topic ${topic.name}`)
+    }
     const clinVer = await nextVersion('topic_articles', topicId, 'clinician')
     await db().from('topic_articles').insert({
       topic_id: topicId, audience: 'clinician', version: clinVer,
       title: clinician.title, outline: clinician, body_markdown: outlineToMarkdown(clinician),
       generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
+      groundedness_score: groundedness,
     })
 
     // Patient article translated from the clinician article.
