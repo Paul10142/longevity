@@ -17,26 +17,14 @@
  * Output is versioned and stamped with claims_snapshot_at for staleness.
  */
 
-import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
+import { claudeJson, CLAUDE_MODEL } from './llm'
 
-const SYNTHESIS_MODEL = 'gpt-5.1'
-const OUTLINE_MODEL = 'gpt-5-mini'
 // Effectively uncapped at current scale; pagination of topic_claims() is the
 // scale path when a single topic exceeds this. NOT the old summarizing cap.
 const CLINICIAN_CLAIM_CAP = 2000
 // The protocol is deliberately concise ("what to do"), so it stays prioritized.
 const PROTOCOL_CLAIM_CAP = 80
-
-let openaiInstance: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
-    openaiInstance = new OpenAI({ apiKey })
-  }
-  return openaiInstance
-}
 
 function db() {
   if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
@@ -237,18 +225,8 @@ function outlineToMarkdown(outline: Outline): string {
   return parts.join('\n\n')
 }
 
-async function chatJson<T>(system: string, user: string, model: string = SYNTHESIS_MODEL): Promise<T> {
-  const completion = await getOpenAI().chat.completions.create({
-    model,
-    messages: [
-      { role: 'system', content: system },
-      { role: 'user', content: user },
-    ],
-    response_format: { type: 'json_object' },
-  })
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) throw new Error('Empty synthesis response')
-  return JSON.parse(raw) as T
+async function chatJson<T>(system: string, user: string, maxTokens = 8000): Promise<T> {
+  return claudeJson<T>(system, user, maxTokens)
 }
 
 /** Group all claims into themed sections. Guarantees every claim is assigned
@@ -261,7 +239,7 @@ async function outlineSections(
   const list = claims.map(c => `[${c.id}] ${c.canonical_statement}`).join('\n')
   let raw: { sections?: { id: string; title: string; claim_ids?: string[] }[] } = {}
   try {
-    raw = await chatJson(CLINICIAN_OUTLINE_PROMPT, `${header}\n\nClaims:\n${list}`, OUTLINE_MODEL)
+    raw = await chatJson(CLINICIAN_OUTLINE_PROMPT, `${header}\n\nClaims:\n${list}`, 6000)
   } catch {
     raw = {}
   }
@@ -291,7 +269,8 @@ async function generateClinicianSection(
   if (secClaims.length === 0) return { id: section.id, title: section.title, paragraphs: [] }
   const res = await chatJson<{ paragraphs?: Paragraph[] }>(
     CLINICIAN_SECTION_PROMPT,
-    `${header}\n\nSection: ${section.title}\n\nClaims:\n${claimsBlock(secClaims, enrich)}`
+    `${header}\n\nSection: ${section.title}\n\nClaims:\n${claimsBlock(secClaims, enrich)}`,
+    12000
   )
   return {
     id: section.id,
@@ -331,22 +310,12 @@ async function scoreGroundedness(outline: Outline, claimById: Map<string, string
     .join('\n\n')
 
   try {
-    const completion = await getOpenAI().chat.completions.create({
-      model: 'gpt-5-mini',
-      messages: [
-        {
-          role: 'system',
-          content:
-            'You audit a physician reference for groundedness. For each numbered paragraph, decide if EVERY factual/clinical assertion is supported by its listed supporting claims. Ignore pure transitions, framing, or general connective prose. Return STRICT JSON {"ungrounded":[<indices of paragraphs containing an assertion NOT supported by their claims>]}.',
-        },
-        { role: 'user', content: items },
-      ],
-      response_format: { type: 'json_object' },
-    })
-    const raw = completion.choices[0]?.message?.content
-    if (!raw) return 1
-    const ungrounded = JSON.parse(raw).ungrounded
-    const count = Array.isArray(ungrounded) ? ungrounded.length : 0
+    const res = await claudeJson<{ ungrounded?: number[] }>(
+      'You audit a physician reference for groundedness. For each numbered paragraph, decide if EVERY factual/clinical assertion is supported by its listed supporting claims. Ignore pure transitions, framing, or general connective prose. Return STRICT JSON {"ungrounded":[<indices of paragraphs containing an assertion NOT supported by their claims>]}.',
+      items,
+      2000
+    )
+    const count = Array.isArray(res.ungrounded) ? res.ungrounded.length : 0
     return Math.max(0, 1 - count / paras.length)
   } catch {
     return 1 // don't block on checker failure
@@ -433,7 +402,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     await db().from('topic_articles').insert({
       topic_id: topicId, audience: 'clinician', version: clinVer,
       title: clinician.title, outline: clinician, body_markdown: outlineToMarkdown(clinician),
-      generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
+      generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
       groundedness_score: groundedness, coverage_score: coverage,
     })
 
@@ -448,7 +417,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     await db().from('topic_articles').insert({
       topic_id: topicId, audience: 'patient', version: patVer,
       title: patient.title, outline: patient, body_markdown: outlineToMarkdown(patient),
-      generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
+      generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
     })
 
     // ── Protocol: concise, prioritized claims ──
@@ -460,7 +429,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     await db().from('topic_protocols').insert({
       topic_id: topicId, version: protoVer,
       title: protocol.title, outline: protocol, body_markdown: outlineToMarkdown(protocol),
-      generation_model: SYNTHESIS_MODEL, claims_snapshot_at: snapshot,
+      generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
     })
 
     if (runId) {
