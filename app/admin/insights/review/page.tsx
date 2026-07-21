@@ -5,6 +5,15 @@ import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 import { InsightReviewClient } from '@/components/InsightReviewClient'
 
+/**
+ * Raw-insight review (v2).
+ *
+ * The layered model makes this query flat: `raw_insights` carries `source_id`,
+ * so filtering by source is a column predicate rather than the join gymnastics
+ * the v1 version needed. Topic filtering still goes through the claim layer,
+ * since topics are attached to canonical claims, not to raw extractions.
+ */
+
 interface SearchParams {
   search?: string
   source?: string
@@ -16,13 +25,15 @@ interface SearchParams {
   page?: string
 }
 
+const PAGE_SIZE = 100
+
 export default async function InsightsReviewPage({
   searchParams,
 }: {
   searchParams: Promise<SearchParams>
 }) {
-  // Await searchParams in Next.js 15+
   const params = await searchParams
+
   if (!supabaseAdmin) {
     return (
       <div className="min-h-screen bg-background">
@@ -38,450 +49,196 @@ export default async function InsightsReviewPage({
     )
   }
 
-  // Get raw insights count (all insight records - this is the raw layer)
-  const { count: rawInsightsCount } = await supabaseAdmin
-    .from('insights')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null)
+  const db = supabaseAdmin
 
-  // Get unique insights count (from unique_insights table)
-  const { count: uniqueInsightsCount } = await supabaseAdmin
-    .from('unique_insights')
-    .select('*', { count: 'exact', head: true })
+  // ── Corpus-wide stats ────────────────────────────────────────
+  const [
+    { count: rawInsightsCount },
+    { count: claimsCount },
+    { count: memberCount },
+    { count: highActionabilityCount },
+  ] = await Promise.all([
+    db.from('raw_insights').select('*', { count: 'exact', head: true }),
+    db.from('claims').select('*', { count: 'exact', head: true }).eq('status', 'active'),
+    db.from('claim_members').select('*', { count: 'exact', head: true }),
+    db.from('raw_insights').select('*', { count: 'exact', head: true }).eq('actionability', 'High'),
+  ])
 
-  // Get total source links count (all insight-source links for non-deleted insights)
-  // This counts all source links, so if an insight appears in 3 sources, it counts as 3
-  const { count: totalSourceLinksCount } = await supabaseAdmin
-    .from('insight_sources')
-    .select('insight_id, insights!inner(deleted_at)', { count: 'exact', head: true })
-    .is('insights.deleted_at', null)
-  
   const rawInsights = rawInsightsCount || 0
-  const uniqueInsights = uniqueInsightsCount || 0
-  const totalSourceLinks = totalSourceLinksCount || 0
+  const claims = claimsCount || 0
+  const consolidated = memberCount || 0
 
-
-  // Get high actionability count (raw insights)
-  const { count: highActionabilityCount } = await supabaseAdmin
-    .from('insights')
-    .select('*', { count: 'exact', head: true })
-    .is('deleted_at', null)
-    .eq('actionability', 'High')
-
-  // Extract search and filter params
-  const searchQuery = params.search || ''
+  // ── Filter inputs ────────────────────────────────────────────
+  const searchQuery = (params.search || '').trim()
   const selectedSource = params.source
   const selectedTopic = params.topic
   const selectedActionability = params.actionability
   const selectedType = params.type
   const selectedEvidenceType = params.evidenceType
   const selectedConfidence = params.confidence
-  const page = parseInt(params.page || '1', 10)
-  const limit = 100 // Limit results per page
-  const offset = (page - 1) * limit
+  const page = Math.max(parseInt(params.page || '1', 10) || 1, 1)
+  const offset = (page - 1) * PAGE_SIZE
 
-  // Debug logging
-  if (process.env.NODE_ENV === 'development') {
-    console.log('Search params received:', {
-      searchQuery,
-      selectedSource,
-      selectedTopic,
-      selectedActionability,
-      selectedType,
-      selectedEvidenceType,
-      selectedConfidence,
-      page
-    })
-  }
-
-  // Only fetch insights if there's a search query or active filters
+  const isSet = (v: string | undefined) => !!v && v !== 'all'
   const hasSearchOrFilters = !!(
     searchQuery ||
-    (selectedSource && selectedSource !== 'all') ||
-    (selectedTopic && selectedTopic !== 'all') ||
-    (selectedActionability && selectedActionability !== 'all') ||
-    (selectedType && selectedType !== 'all') ||
-    (selectedEvidenceType && selectedEvidenceType !== 'all') ||
-    (selectedConfidence && selectedConfidence !== 'all')
+    isSet(selectedSource) ||
+    isSet(selectedTopic) ||
+    isSet(selectedActionability) ||
+    isSet(selectedType) ||
+    isSet(selectedEvidenceType) ||
+    isSet(selectedConfidence)
   )
 
-  let insightsQuery = supabaseAdmin
-    .from('insights')
-    .select(`
-      id,
-      statement,
-      context_note,
-      evidence_type,
-      confidence,
-      actionability,
-      primary_audience,
-      insight_type,
-      qualifiers,
-      created_at,
-      insight_sources (
-        source_id,
-        locator,
-        sources (
-          id,
-          title,
-          type
-        )
-      ),
-      insight_concepts (
-        concept_id,
-        concepts (
-          id,
-          name,
-          slug
-        )
-      )
-    `, { count: 'exact' })
-    .is('deleted_at', null)
+  // Dropdown options.
+  const [{ data: sourcesData }, { data: topicsData }] = await Promise.all([
+    db.from('sources').select('id, title, type').order('title', { ascending: true }),
+    db
+      .from('topics')
+      .select('id, name, slug')
+      .eq('status', 'active')
+      .order('name', { ascending: true }),
+  ])
+  const allSourceRows = (sourcesData || []) as { id: string; title: string; type: string }[]
+  const allSources = allSourceRows.map((s) => s.title).filter(Boolean)
+  const allTopics = (topicsData || []) as { id: string; name: string; slug: string }[]
 
-  // Apply text search if provided
-  // Search across statement and context_note fields
-  if (searchQuery && searchQuery.trim()) {
-    const trimmedQuery = searchQuery.trim()
-    const searchPattern = `%${trimmedQuery}%`
-    
-    // Use or() to search across multiple columns
-    // Supabase PostgREST syntax: column.operator.value,column2.operator.value2
-    // The % signs should be included in the pattern string
-    try {
-      insightsQuery = insightsQuery.or(
-        `statement.ilike.${searchPattern},context_note.ilike.${searchPattern}`
-      )
-    } catch (searchError) {
-      // Fallback: if or() fails, just search statement field
-      console.error('Error with or() search, falling back to statement search:', searchError)
-      insightsQuery = insightsQuery.ilike('statement', searchPattern)
-    }
-    
-    if (process.env.NODE_ENV === 'development') {
-      console.log('Applying search with pattern:', searchPattern)
-      console.log('Search query:', trimmedQuery)
-    }
-  }
+  // Per-source totals for the card headers.
+  const { data: allInsightSourceIds } = await db
+    .from('raw_insights')
+    .select('source_id')
+    .range(0, 49999)
+  const accurateInsightCounts: Record<string, number> = {}
+  ;(allInsightSourceIds || []).forEach((r: any) => {
+    accurateInsightCounts[r.source_id] = (accurateInsightCounts[r.source_id] || 0) + 1
+  })
+  const totalSourcesWithInsights = Object.keys(accurateInsightCounts).length
 
-  // Apply source filter - use a different query structure to avoid headers overflow
-  // When source filter is active, query from insight_sources instead of insights
-  let sourceFilteredQuery: any = null
-  let useSourceQuery = false
-  
-  if (selectedSource && selectedSource !== 'all') {
-    // First, get the source ID(s) that match the selected source title
-    const { data: matchingSources, error: sourcesError } = await supabaseAdmin
-      .from('sources')
-      .select('id')
-      .eq('title', selectedSource)
-    
-    if (sourcesError) {
-      console.error('Error fetching sources for filter:', sourcesError)
-    }
-    
-    const sourceIds = matchingSources?.map((s: { id: string }) => s.id) || []
-    
-    if (sourceIds.length > 0) {
-      // Query from insight_sources to avoid headers overflow
-      // This is the same pattern used in the export route
-      useSourceQuery = true
-      sourceFilteredQuery = supabaseAdmin
-        .from('insight_sources')
-        .select(`
-          source_id,
-          locator,
-          insights!inner (
-            id,
-            statement,
-            context_note,
-            evidence_type,
-            confidence,
-            actionability,
-            primary_audience,
-            insight_type,
-            qualifiers,
-            created_at,
-            deleted_at,
-            insight_sources (
-              source_id,
-              locator,
-              sources (
-                id,
-                title,
-                type
-              )
-            ),
-            insight_concepts (
-              concept_id,
-              concepts (
-                id,
-                name,
-                slug
-              )
-            )
-          )
-        `, { count: 'exact' })
-        .in('source_id', sourceIds)
-        .is('insights.deleted_at', null)
-    } else {
-      // Source title not found - return empty by using impossible filter
-      insightsQuery = insightsQuery.eq('id', '00000000-0000-0000-0000-000000000000')
-    }
-  }
-
-  // Apply topic filter if specified
-  let selectedConceptId: string | null = null
-  if (selectedTopic && selectedTopic !== 'all') {
-    // Get concept ID from slug
-    const { data: conceptData } = await supabaseAdmin
-      .from('concepts')
-      .select('id')
-      .eq('slug', selectedTopic)
-      .single()
-    
-    if (conceptData) {
-      selectedConceptId = conceptData.id
-      // Filter insights by concept through insight_concepts
-      // Get insight IDs linked to this concept
-      const { data: insightConceptLinks } = await supabaseAdmin
-        .from('insight_concepts')
-        .select('insight_id')
-        .eq('concept_id', selectedConceptId)
-      
-      const topicInsightIds = insightConceptLinks?.map((link: { insight_id: string }) => link.insight_id) || []
-      
-      if (topicInsightIds.length > 0) {
-        // Apply topic filter to the query
-        if (topicInsightIds.length > 1000) {
-          // Limit to avoid headers overflow
-          insightsQuery = insightsQuery.in('id', topicInsightIds.slice(0, 1000))
-        } else {
-          insightsQuery = insightsQuery.in('id', topicInsightIds)
-        }
-      } else {
-        // No insights match the topic - return empty
-        insightsQuery = insightsQuery.eq('id', '00000000-0000-0000-0000-000000000000')
-      }
-    }
-  }
-
-  // Apply other filters
-  if (selectedActionability && selectedActionability !== 'all') {
-    insightsQuery = insightsQuery.eq('actionability', selectedActionability)
-  }
-  if (selectedType && selectedType !== 'all') {
-    insightsQuery = insightsQuery.eq('insight_type', selectedType)
-  }
-  if (selectedEvidenceType && selectedEvidenceType !== 'all') {
-    insightsQuery = insightsQuery.eq('evidence_type', selectedEvidenceType)
-  }
-  if (selectedConfidence && selectedConfidence !== 'all') {
-    insightsQuery = insightsQuery.eq('confidence', selectedConfidence)
-  }
-
-  // Only fetch if there's a search or filters, otherwise return empty
-  let insightsData = null
-  let error = null
-  let insightsCount = 0
+  // ── Filtered page of raw insights ────────────────────────────
+  let insightRows: any[] = []
+  let matchingCount = 0
+  let queryError: { message: string } | null = null
 
   if (hasSearchOrFilters) {
-    try {
-      let result
-      
-      if (useSourceQuery && sourceFilteredQuery) {
-        // Apply other filters to the source-based query
-        let query = sourceFilteredQuery
-        
-        // Apply text search if provided
-        if (searchQuery && searchQuery.trim()) {
-          const trimmedQuery = searchQuery.trim()
-          const searchPattern = `%${trimmedQuery}%`
-          query = query.or(`insights.statement.ilike.${searchPattern},insights.context_note.ilike.${searchPattern}`)
-        }
-        
-        // Apply topic filter if specified (use already-fetched conceptId)
-        if (selectedTopic && selectedTopic !== 'all' && selectedConceptId) {
-          // Get insight IDs linked to this concept (reuse the query from above if available)
-          // Since we already have selectedConceptId, we can filter directly
-          // But we need to get the insight IDs first
-          const { data: insightConceptLinks } = await supabaseAdmin
-            .from('insight_concepts')
-            .select('insight_id')
-            .eq('concept_id', selectedConceptId)
-          
-          const topicInsightIds = insightConceptLinks?.map((link: { insight_id: string }) => link.insight_id) || []
-          
-          if (topicInsightIds.length > 0) {
-            if (topicInsightIds.length > 1000) {
-              query = query.in('insights.id', topicInsightIds.slice(0, 1000))
-            } else {
-              query = query.in('insights.id', topicInsightIds)
-            }
-          } else {
-            // No insights match - return empty
-            query = query.eq('insights.id', '00000000-0000-0000-0000-000000000000')
-          }
-        }
-        
-        // Apply other filters
-        if (selectedActionability && selectedActionability !== 'all') {
-          query = query.eq('insights.actionability', selectedActionability)
-        }
-        if (selectedType && selectedType !== 'all') {
-          query = query.eq('insights.insight_type', selectedType)
-        }
-        if (selectedEvidenceType && selectedEvidenceType !== 'all') {
-          query = query.eq('insights.evidence_type', selectedEvidenceType)
-        }
-        if (selectedConfidence && selectedConfidence !== 'all') {
-          query = query.eq('insights.confidence', selectedConfidence)
-        }
-        
-        result = await query
-          .order('insights.created_at', { ascending: false })
-          .range(offset, offset + limit - 1)
-        
-        // Transform the data structure to match the expected format
-        // When querying from insight_sources, we need to extract the insights and preserve the structure
-        const transformedData: any[] = []
-        const seenInsightIds = new Set<string>()
-        
-        result.data?.forEach((item: any) => {
-          const insight = item.insights
-          if (insight && !seenInsightIds.has(insight.id)) {
-            seenInsightIds.add(insight.id)
-            // Preserve the insight_sources structure from the nested data
-            transformedData.push(insight)
-          }
-        })
-        
-        insightsData = transformedData
-        error = result.error
-        insightsCount = result.count || 0
+    // Topic filter resolves through claims → the raw insights that back them.
+    let topicRawIds: string[] | null = null
+    if (isSet(selectedTopic)) {
+      const { data: topic } = await db
+        .from('topics')
+        .select('id')
+        .eq('slug', selectedTopic)
+        .maybeSingle()
+
+      if (!topic) {
+        topicRawIds = []
       } else {
-        // Use regular insights query
-        result = await insightsQuery
-          .order('created_at', { ascending: false })
-          .range(offset, offset + limit - 1)
-        
-        insightsData = result.data
-        error = result.error
-        insightsCount = result.count || 0
+        const { data: claimLinks } = await db
+          .from('claim_topics')
+          .select('claim_id')
+          .eq('topic_id', topic.id)
+        const claimIds = (claimLinks || []).map((l: any) => l.claim_id)
+
+        if (claimIds.length === 0) {
+          topicRawIds = []
+        } else {
+          const { data: members } = await db
+            .from('claim_members')
+            .select('raw_insight_id')
+            .in('claim_id', claimIds)
+            .range(0, 49999)
+          topicRawIds = (members || []).map((m: any) => m.raw_insight_id)
+        }
       }
-    } catch (queryError) {
-      console.error('Exception during query execution:', queryError)
-      error = queryError instanceof Error ? { message: queryError.message, stack: queryError.stack } : queryError
     }
 
-    if (error) {
-      console.error('Error fetching insights:', error)
-      console.error('Error details:', JSON.stringify(error, null, 2))
-      // Log more details for debugging
-      console.error('Search query:', searchQuery)
-      console.error('Filters:', {
-        selectedSource,
-        selectedTopic,
-        selectedActionability,
-        selectedType,
-        selectedEvidenceType,
-        selectedConfidence
+    let q = db
+      .from('raw_insights')
+      .select(
+        `
+        id, source_id, locator, start_ms, statement, context_note, direct_quote,
+        evidence_type, confidence, importance, actionability,
+        primary_audience, insight_type, qualifiers, created_at,
+        sources ( id, title, type )
+      `,
+        { count: 'exact' }
+      )
+
+    if (searchQuery) {
+      const pattern = `%${searchQuery.replace(/[%,()]/g, ' ')}%`
+      q = q.or(
+        `statement.ilike.${pattern},context_note.ilike.${pattern},direct_quote.ilike.${pattern}`
+      )
+    }
+    if (isSet(selectedSource)) {
+      const ids = allSourceRows.filter((s) => s.title === selectedSource).map((s) => s.id)
+      // No source matched the title → force an empty result rather than ignoring the filter.
+      q = ids.length > 0 ? q.in('source_id', ids) : q.eq('source_id', '00000000-0000-0000-0000-000000000000')
+    }
+    if (topicRawIds !== null) {
+      q = topicRawIds.length > 0
+        ? q.in('id', topicRawIds.slice(0, 1000))
+        : q.eq('id', '00000000-0000-0000-0000-000000000000')
+    }
+    if (isSet(selectedActionability)) q = q.eq('actionability', selectedActionability)
+    if (isSet(selectedType)) q = q.eq('insight_type', selectedType)
+    if (isSet(selectedEvidenceType)) q = q.eq('evidence_type', selectedEvidenceType)
+    if (isSet(selectedConfidence)) q = q.eq('confidence', selectedConfidence)
+
+    const result = await q
+      .order('created_at', { ascending: false })
+      .range(offset, offset + PAGE_SIZE - 1)
+
+    if (result.error) {
+      console.error('Error fetching raw insights:', result.error)
+      queryError = result.error
+    }
+    insightRows = result.data || []
+    matchingCount = result.count || 0
+  }
+
+  // Topics for the insights on this page, via their claims.
+  const topicsByInsightId = new Map<string, Array<{ id: string; name: string; slug: string }>>()
+  if (insightRows.length > 0) {
+    const { data: members } = await db
+      .from('claim_members')
+      .select('raw_insight_id, claim_id')
+      .in('raw_insight_id', insightRows.map((i) => i.id))
+
+    const claimIds = Array.from(new Set((members || []).map((m: any) => m.claim_id)))
+    if (claimIds.length > 0) {
+      const { data: links } = await db
+        .from('claim_topics')
+        .select('claim_id, topics ( id, name, slug )')
+        .in('claim_id', claimIds)
+
+      const topicsByClaim = new Map<string, Array<{ id: string; name: string; slug: string }>>()
+      ;(links || []).forEach((l: any) => {
+        if (!l.topics?.id) return
+        const list = topicsByClaim.get(l.claim_id) || []
+        list.push({ id: l.topics.id, name: l.topics.name, slug: l.topics.slug })
+        topicsByClaim.set(l.claim_id, list)
       })
-      console.error('Has search or filters:', hasSearchOrFilters)
-      console.error('Using source query:', useSourceQuery)
+      ;(members || []).forEach((m: any) => {
+        const t = topicsByClaim.get(m.claim_id)
+        if (t?.length) topicsByInsightId.set(m.raw_insight_id, t)
+      })
     }
   }
 
-  // Get accurate insight counts per source from insight_sources table
-  // This matches how the Source page and Manage Sources page count insights
-  // This ensures we count all insights, even if some are soft-deleted
-  const { data: allInsightSources } = await supabaseAdmin
-    .from('insight_sources')
-    .select('source_id, insight_id, insights!inner(deleted_at)')
-    .is('insights.deleted_at', null)
-  
-  // Count distinct insights per source (matching Manage Sources page logic)
-  const accurateInsightCounts: Record<string, number> = {}
-  // Count distinct sources that have insights
-  const distinctSourcesWithInsights = new Set<string>()
-  if (allInsightSources) {
-    const insightsCountMap = new Map<string, Set<string>>()
-    allInsightSources.forEach((item: any) => {
-      // Track distinct sources
-      distinctSourcesWithInsights.add(item.source_id)
-      // Count insights per source
-      if (!insightsCountMap.has(item.source_id)) {
-        insightsCountMap.set(item.source_id, new Set())
-      }
-      insightsCountMap.get(item.source_id)!.add(item.insight_id)
-    })
-    insightsCountMap.forEach((insightSet, sourceId) => {
-      accurateInsightCounts[sourceId] = insightSet.size
-    })
-  }
-  
-  const totalSourcesWithInsights = distinctSourcesWithInsights.size
-
-  // Fetch all source titles for the filter dropdown
-  const { data: sourcesData } = await supabaseAdmin
-    .from('sources')
-    .select('id, title')
-    .order('title', { ascending: true })
-  
-  const allSources = sourcesData?.map((s: { title: string }) => s.title).filter(Boolean) || []
-
-  // Fetch all topics/concepts for the filter dropdown
-  const { data: topicsData } = await supabaseAdmin
-    .from('concepts')
-    .select('id, name, slug')
-    .order('name', { ascending: true })
-  
-  const allTopics = topicsData || []
-
-  const uniqueInsightsShown = insightsData?.length || 0
-
-  // Group insights by source for easier review
+  // Group for display.
   const insightsBySource: Record<string, any[]> = {}
-  if (insightsData) {
-    insightsData.forEach((item: any) => {
-      const sourceLinks = item.insight_sources || []
-      // Get all topics/concepts this insight is connected to
-      const conceptLinks = item.insight_concepts || []
-      const topics = conceptLinks
-        .map((ic: any) => ic.concepts)
-        .filter(Boolean)
-      
-      // Apply topic filter if specified
-      if (selectedTopic && selectedTopic !== 'all') {
-        const hasTopic = topics.some((t: any) => t?.slug === selectedTopic)
-        if (!hasTopic) {
-          return // Skip this insight if it doesn't have the selected topic
-        }
-      }
-
-      sourceLinks.forEach((link: any) => {
-        // Apply source filter if specified (filter by source title)
-        if (selectedSource && selectedSource !== 'all') {
-          if (link.sources?.title !== selectedSource) {
-            return // Skip this source link if it doesn't match
-          }
-        }
-        const sourceId = link.source_id
-        if (!insightsBySource[sourceId]) {
-          insightsBySource[sourceId] = []
-        }
-        insightsBySource[sourceId].push({
-          ...item,
-          locator: link.locator,
-          sourceTitle: link.sources?.title,
-          sourceType: link.sources?.type,
-          topics: topics
-        })
-      })
+  insightRows.forEach((i: any) => {
+    const list = insightsBySource[i.source_id] || []
+    list.push({
+      ...i,
+      sourceTitle: i.sources?.title,
+      sourceType: i.sources?.type,
+      topics: topicsByInsightId.get(i.id) || [],
     })
-  }
-  
-  // Calculate total source links from grouped data (for display in filtered results)
-  const totalSourceLinksFromGrouped = Object.values(insightsBySource).reduce((sum, insights) => sum + insights.length, 0)
+    insightsBySource[i.source_id] = list
+  })
+
+  const shown = insightRows.length
 
   return (
     <div className="min-h-screen bg-background">
@@ -497,23 +254,20 @@ export default async function InsightsReviewPage({
                 <Link href="/admin/sources">
                   <Button variant="ghost" size="sm">← Sources</Button>
                 </Link>
-                <Link href="/admin/concepts">
-                  <Button variant="ghost" size="sm">Concepts</Button>
+                <Link href="/admin/topics">
+                  <Button variant="ghost" size="sm">Topics</Button>
                 </Link>
               </div>
               <p className="text-sm text-muted-foreground mt-1">
-                {rawInsights.toLocaleString()} raw insights • {uniqueInsights.toLocaleString()} unique insights • {totalSourceLinks.toLocaleString()} source links
-                {hasSearchOrFilters && (
-                  <span> • Showing {uniqueInsightsShown.toLocaleString()} of {insightsCount || 0} matching insights ({totalSourceLinksFromGrouped.toLocaleString()} source links)</span>
-                )}
-                {!hasSearchOrFilters && (
-                  <span> • Use search or filters to view insights</span>
-                )}
+                {rawInsights.toLocaleString()} raw insights • {claims.toLocaleString()} claims
+                {hasSearchOrFilters
+                  ? ` • Showing ${shown.toLocaleString()} of ${matchingCount.toLocaleString()} matching`
+                  : ' • Use search or filters to view insights'}
               </p>
             </div>
             <div className="flex gap-2">
               <Button asChild variant="outline">
-                <a href={`/api/admin/insights/export?format=json&limit=${uniqueInsights || 10000}`} download>
+                <a href={`/api/admin/insights/export?format=json&limit=${rawInsights || 10000}`} download>
                   <Download className="mr-2 h-4 w-4" />
                   Export JSON
                 </a>
@@ -536,21 +290,19 @@ export default async function InsightsReviewPage({
                   <div className="text-xs text-muted-foreground/70 mt-1">(All extracted)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{uniqueInsights.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Unique Insights</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Merged)</div>
+                  <div className="text-2xl font-bold">{claims.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Claims</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(Deduplicated)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">{totalSourceLinks.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Source Links</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(All connections)</div>
+                  <div className="text-2xl font-bold">{consolidated.toLocaleString()}</div>
+                  <div className="text-sm text-muted-foreground">Consolidated</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(Insights in a claim)</div>
                 </div>
                 <div>
-                  <div className="text-2xl font-bold">
-                    {(highActionabilityCount || 0).toLocaleString()}
-                  </div>
+                  <div className="text-2xl font-bold">{(highActionabilityCount || 0).toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">High Actionability</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Unique)</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">(Raw)</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{totalSourcesWithInsights.toLocaleString()}</div>
@@ -562,26 +314,40 @@ export default async function InsightsReviewPage({
           </Card>
         </div>
 
-        <InsightReviewClient 
-          insightsBySource={insightsBySource} 
+        {queryError && (
+          <Card className="mb-6">
+            <CardContent className="py-6 text-center">
+              <p className="text-destructive font-medium">Error loading insights</p>
+              <p className="text-sm text-muted-foreground mt-1">{queryError.message}</p>
+            </CardContent>
+          </Card>
+        )}
+
+        <InsightReviewClient
+          insightsBySource={insightsBySource}
           accurateInsightCounts={accurateInsightCounts}
           searchParams={params as Record<string, string | undefined>}
-          totalCount={insightsCount || 0}
+          totalCount={matchingCount}
           currentPage={page}
           hasSearchOrFilters={hasSearchOrFilters}
           allSources={allSources}
+          allTopics={allTopics}
         />
 
         {!hasSearchOrFilters && (
           <Card>
             <CardContent className="py-12 text-center">
-              <p className="text-muted-foreground mb-2">Enter a search query or apply filters to view insights</p>
-              <p className="text-sm text-muted-foreground/70">There are {rawInsights.toLocaleString()} raw insights available to search</p>
+              <p className="text-muted-foreground mb-2">
+                Enter a search query or apply filters to view insights
+              </p>
+              <p className="text-sm text-muted-foreground/70">
+                There are {rawInsights.toLocaleString()} raw insights available to search
+              </p>
             </CardContent>
           </Card>
         )}
 
-        {hasSearchOrFilters && uniqueInsightsShown === 0 && (
+        {hasSearchOrFilters && shown === 0 && !queryError && (
           <Card>
             <CardContent className="py-12 text-center">
               <p className="text-muted-foreground">No insights found matching your search criteria</p>

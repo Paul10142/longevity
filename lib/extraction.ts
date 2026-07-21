@@ -12,6 +12,7 @@
 import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
+import { finishRun, failRun } from './pipelineRuns'
 import type { EvidenceType, Confidence, Actionability, Audience, InsightType, InsightQualifiers } from './types'
 
 const EXTRACTION_MODEL = 'gpt-5-mini'
@@ -295,6 +296,7 @@ export async function extractSource(
     await db().from('sources').update({ processing_status: 'processing', processing_error: null }).eq('id', sourceId)
   }
 
+  try {
   // Rebuild chunks deterministically (cheap, in-memory) so we can map an
   // index → content on any invocation without persisting chunk text first.
   const chunkTexts = splitIntoChunks(source.transcript)
@@ -382,18 +384,24 @@ export async function extractSource(
   }
 
   // Finalize the run + source status.
-  await db()
-    .from('pipeline_runs')
-    .update({
-      status: 'success',
-      finished_at: new Date().toISOString(),
-      stats: { chunks: total, insights_created: cp.insights_created },
-    })
-    .eq('id', runId)
+  await finishRun(runId, { chunks: total, insights_created: cp.insights_created })
   await db()
     .from('sources')
     .update({ processing_status: 'succeeded', last_processed_at: new Date().toISOString() })
     .eq('id', sourceId)
 
   return { done: true, checkpoint: cp, runId }
+  } catch (err) {
+    // Close out the run and the source; otherwise both sit in a permanent
+    // in-flight state that the admin UI reports as still running.
+    await failRun(runId, err)
+    await db()
+      .from('sources')
+      .update({
+        processing_status: 'failed',
+        processing_error: (err instanceof Error ? err.message : String(err)).substring(0, 2000),
+      })
+      .eq('id', sourceId)
+    throw err
+  }
 }

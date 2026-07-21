@@ -19,6 +19,7 @@
 
 import { supabaseAdmin } from './supabaseServer'
 import { claudeJson, CLAUDE_MODEL } from './llm'
+import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 // Effectively uncapped at current scale; pagination of topic_claims() is the
 // scale path when a single topic exceeds this. NOT the old summarizing cap.
@@ -353,12 +354,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
   const protoClaims = await loadPrioritizedClaims(topicId, null, PROTOCOL_CLAIM_CAP)
   if (clinClaims.length === 0 && protoClaims.length === 0) return { claims: 0, skipped: true }
 
-  const run = await db()
-    .from('pipeline_runs')
-    .insert({ kind: 'generate_topic', status: 'running' })
-    .select('id')
-    .single()
-  const runId = run.data?.id
+  const runId = await startOrResumeRun('generate_topic', null, null)
   const snapshot = new Date().toISOString()
   const header = `Topic: ${topic.name}${topic.description ? `\nDescription: ${topic.description}` : ''}`
 
@@ -432,24 +428,14 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
       generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
     })
 
-    if (runId) {
-      await db().from('pipeline_runs').update({
-        status: 'success', finished_at: new Date().toISOString(),
-        stats: {
-          topic: topic.name, claims: clinClaims.length, sections: sections.length,
-          coverage: Number(coverage.toFixed(3)), groundedness: Number(groundedness.toFixed(3)),
-          references: enrich.references.length,
-        },
-      }).eq('id', runId)
-    }
+    await finishRun(runId, {
+      topic: topic.name, claims: clinClaims.length, sections: sections.length,
+      coverage: Number(coverage.toFixed(3)), groundedness: Number(groundedness.toFixed(3)),
+      references: enrich.references.length,
+    })
     return { claims: clinClaims.length, coverage }
   } catch (err) {
-    if (runId) {
-      await db().from('pipeline_runs').update({
-        status: 'failed', finished_at: new Date().toISOString(),
-        error_message: err instanceof Error ? err.message : String(err),
-      }).eq('id', runId)
-    }
+    await failRun(runId, err)
     throw err
   }
 }

@@ -56,6 +56,24 @@ Worker: `app/api/worker/tick` — invoked by Vercel cron (see `vercel.json`),
 by a fire-and-forget ping after enqueue, or manually from the admin UI.
 It works within a ~250s budget and exits; checkpoints make that safe.
 
+### `pipeline_runs` lifecycle
+
+`pipeline_runs` is the human-readable history behind the jobs queue, and every
+row must reach a terminal state exactly once. Stages go through
+`lib/pipelineRuns.ts` (`startOrResumeRun` / `finishRun` / `failRun`) rather than
+writing the table directly, which enforces two rules:
+
+- **A resumed stage reuses its run.** The run id rides in the stage's
+  checkpoint, so a stage that yields on its time budget and resumes on the next
+  tick continues the same row. Opening a fresh run per invocation abandons the
+  previous one (tagging used to leak a row every ~4 minutes this way).
+- **A throwing stage closes its run.** Each stage catches, calls `failRun`, and
+  rethrows so the job's own retry/backoff still applies. Without this, any
+  provider outage leaves rows stuck in `running` forever.
+
+A budget yield is deliberately *not* terminal — the row stays `running` because
+the work genuinely is still in flight.
+
 ### Deployment / cron cadence (Vercel plan constraint)
 
 The project currently runs on the Vercel **Hobby** plan, which caps cron jobs at

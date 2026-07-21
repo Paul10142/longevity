@@ -2,263 +2,148 @@ import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
 
 /**
- * Export insights with full context for review
- * 
+ * Export raw insights with their source context for offline review.
+ *
+ * v2: `raw_insights` carries `source_id` directly, so this is a single query
+ * plus a lookup for the claim each insight was consolidated into.
+ *
  * Query params:
  * - format: 'json' | 'csv' (default: 'json')
- * - sourceId: filter by specific source
- * - limit: max number of insights (default: 1000)
- * - includeChunks: include chunk content (default: false)
+ * - sourceId: filter to one source
+ * - limit: max rows (default: 1000)
+ * - includeChunks: include the chunk text each insight came from (default: false)
  */
 export async function GET(request: NextRequest) {
   try {
     if (!supabaseAdmin) {
-      return NextResponse.json(
-        { error: 'Supabase not configured' },
-        { status: 500 }
-      )
+      return NextResponse.json({ error: 'Supabase not configured' }, { status: 500 })
     }
 
     const searchParams = request.nextUrl.searchParams
     const format = searchParams.get('format') || 'json'
     const sourceId = searchParams.get('sourceId')
-    const limit = parseInt(searchParams.get('limit') || '1000')
+    const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10) || 1000, 10000)
     const includeChunks = searchParams.get('includeChunks') === 'true'
 
-    // Build query - fetch insights with their sources and chunks
-    let insights: any[] = []
-    let error: any = null
+    let query = supabaseAdmin
+      .from('raw_insights')
+      .select(`
+        id, source_id, chunk_id, locator, start_ms, end_ms,
+        statement, context_note, direct_quote,
+        evidence_type, confidence, importance, actionability,
+        primary_audience, insight_type, qualifiers, created_at,
+        sources ( id, title, type, authors, date )
+      `)
+      .order('created_at', { ascending: false })
+      .limit(limit)
 
-    if (sourceId) {
-      // Query from insight_sources when filtering by source
-      const { data, error: queryError } = await supabaseAdmin
-        .from('insight_sources')
-        .select(`
-          source_id,
-          locator,
-          start_ms,
-          end_ms,
-          insights (
-            id,
-            statement,
-            context_note,
-            evidence_type,
-            qualifiers,
-            confidence,
-            importance,
-            actionability,
-            primary_audience,
-            insight_type,
-            created_at,
-            insight_sources (
-              source_id,
-              locator,
-              start_ms,
-              end_ms,
-              sources (
-                id,
-                title,
-                type,
-                authors,
-                date
-              )
-            )
-          )
-        `)
-        .eq('source_id', sourceId)
-        .is('insights.deleted_at', null)
-        .limit(limit)
+    if (sourceId) query = query.eq('source_id', sourceId)
 
-      // Transform the data structure
-      insights = (data || []).map((item: any) => ({
-        ...item.insights,
-        insight_sources: item.insights?.insight_sources || [{
-          source_id: item.source_id,
-          locator: item.locator,
-          start_ms: item.start_ms,
-          end_ms: item.end_ms,
-          sources: null // Will be populated from insight_sources
-        }]
-      }))
-      
-      // Sort by created_at in JavaScript (since we can't order by nested field in Supabase query)
-      insights.sort((a: any, b: any) => {
-        const aDate = a?.created_at ? new Date(a.created_at).getTime() : 0
-        const bDate = b?.created_at ? new Date(b.created_at).getTime() : 0
-        return bDate - aDate // Descending order (newest first)
-      })
-      
-      error = queryError
-    } else {
-      // Query all insights
-      const { data, error: queryError } = await supabaseAdmin
-        .from('insights')
-        .select(`
-          id,
-          statement,
-          context_note,
-          evidence_type,
-          qualifiers,
-          confidence,
-          importance,
-          actionability,
-          primary_audience,
-          insight_type,
-          tone,
-          created_at,
-          insight_sources (
-            source_id,
-            locator,
-            start_ms,
-            end_ms,
-            sources (
-              id,
-              title,
-              type,
-              authors,
-              date
-            )
-          )
-        `)
-        .is('deleted_at', null)
-        .order('created_at', { ascending: false })
-        .limit(limit)
+    const { data: rows, error } = await query
+    if (error) throw new Error(`Failed to fetch raw insights: ${error.message}`)
+    const insights = rows || []
 
-      insights = data || []
-      error = queryError
-    }
-
-    if (error) {
-      throw new Error(`Failed to fetch insights: ${error.message}`)
-    }
-
-    // If chunks are requested, fetch them
-    const chunksMap: Record<string, any> = {}
-    if (includeChunks && insights) {
-      const locators = new Set<string>()
-      insights.forEach((insight: any) => {
-        insight.insight_sources?.forEach((link: any) => {
-          if (link.locator) {
-            locators.add(link.locator)
-          }
-        })
-      })
-
-      if (locators.size > 0) {
-        const { data: chunks } = await supabaseAdmin
-          .from('chunks')
-          .select('locator, content, source_id')
-          .in('locator', Array.from(locators))
-
-        chunks?.forEach((chunk: any) => {
-          const key = `${chunk.source_id}-${chunk.locator}`
-          chunksMap[key] = chunk.content
-        })
-      }
-    }
-
-    // Transform data for export
-    const exportData = insights?.map((insight: any) => {
-      const sources = insight.insight_sources?.map((link: any) => ({
-        sourceId: link.source_id,
-        sourceTitle: link.sources?.title,
-        sourceType: link.sources?.type,
-        locator: link.locator,
-        startMs: link.start_ms,
-        endMs: link.end_ms,
-        chunkContent: includeChunks 
-          ? chunksMap[`${link.source_id}-${link.locator}`] 
-          : undefined
-      })) || []
-
-      return {
-        id: insight.id,
-        statement: insight.statement,
-        contextNote: insight.context_note,
-        evidenceType: insight.evidence_type,
-        confidence: insight.confidence,
-        importance: insight.importance,
-        actionability: insight.actionability,
-        primaryAudience: insight.primary_audience,
-        insightType: insight.insight_type,
-        qualifiers: insight.qualifiers,
-        createdAt: insight.created_at,
-        sources: sources,
-        sourceCount: sources.length,
-        firstSource: sources[0]?.sourceTitle || 'Unknown'
-      }
-    }) || []
-
-    if (format === 'csv') {
-      // Convert to CSV
-      const headers = [
-        'ID',
-        'Statement',
-        'Context Note',
-        'Evidence Type',
-        'Confidence',
-        'Importance',
-        'Actionability',
-        'Primary Audience',
-        'Insight Type',
-        'Population',
-        'Dose',
-        'Duration',
-        'Outcome',
-        'Effect Size',
-        'Caveats',
-        'Source Title',
-        'Source Type',
-        'Locator',
-        'Created At'
-      ]
-
-      const rows = exportData.map((item: any) => [
-        item.id,
-        `"${(item.statement || '').replace(/"/g, '""')}"`,
-        `"${(item.contextNote || '').replace(/"/g, '""')}"`,
-        item.evidenceType,
-        item.confidence,
-        item.importance,
-        item.actionability,
-        item.primaryAudience,
-        item.insightType,
-        `"${(item.qualifiers?.population || '').replace(/"/g, '""')}"`,
-        `"${(item.qualifiers?.dose || '').replace(/"/g, '""')}"`,
-        `"${(item.qualifiers?.duration || '').replace(/"/g, '""')}"`,
-        `"${(item.qualifiers?.outcome || '').replace(/"/g, '""')}"`,
-        `"${(item.qualifiers?.effect_size || '').replace(/"/g, '""')}"`,
-        `"${(item.firstSource || '').replace(/"/g, '""')}"`,
-        item.sources[0]?.sourceType || '',
-        item.sources[0]?.locator || '',
-        item.createdAt
-      ])
-
-      const csv = [
-        headers.join(','),
-        ...rows.map((row: any[]) => row.join(','))
-      ].join('\n')
-
-      return new NextResponse(csv, {
-        headers: {
-          'Content-Type': 'text/csv',
-          'Content-Disposition': `attachment; filename="insights-export-${new Date().toISOString().split('T')[0]}.csv"`
+    // Claim membership: which canonical claim each raw insight rolled up into.
+    const claimByInsightId = new Map<string, { id: string; statement: string; sourceCount: number }>()
+    if (insights.length > 0) {
+      const { data: members } = await supabaseAdmin
+        .from('claim_members')
+        .select('raw_insight_id, claims ( id, canonical_statement, source_count )')
+        .in('raw_insight_id', insights.map((i: any) => i.id))
+      members?.forEach((m: any) => {
+        if (m.claims?.id) {
+          claimByInsightId.set(m.raw_insight_id, {
+            id: m.claims.id,
+            statement: m.claims.canonical_statement,
+            sourceCount: m.claims.source_count,
+          })
         }
       })
     }
 
-    // Return JSON
-    return NextResponse.json({
-      count: exportData.length,
-      exportedAt: new Date().toISOString(),
-      insights: exportData
-    }, {
-      headers: {
-        'Content-Type': 'application/json',
-        'Content-Disposition': `attachment; filename="insights-export-${new Date().toISOString().split('T')[0]}.json"`
+    const chunkContentById = new Map<string, string>()
+    if (includeChunks && insights.length > 0) {
+      const chunkIds = Array.from(
+        new Set(insights.map((i: any) => i.chunk_id).filter(Boolean))
+      ) as string[]
+      if (chunkIds.length > 0) {
+        const { data: chunks } = await supabaseAdmin
+          .from('chunks')
+          .select('id, content')
+          .in('id', chunkIds)
+        chunks?.forEach((c: any) => chunkContentById.set(c.id, c.content))
+      }
+    }
+
+    const exportData = insights.map((i: any) => {
+      const claim = claimByInsightId.get(i.id) ?? null
+      return {
+        id: i.id,
+        statement: i.statement,
+        contextNote: i.context_note,
+        directQuote: i.direct_quote,
+        evidenceType: i.evidence_type,
+        confidence: i.confidence,
+        importance: i.importance,
+        actionability: i.actionability,
+        primaryAudience: i.primary_audience,
+        insightType: i.insight_type,
+        qualifiers: i.qualifiers,
+        createdAt: i.created_at,
+        source: {
+          id: i.source_id,
+          title: i.sources?.title ?? null,
+          type: i.sources?.type ?? null,
+          authors: i.sources?.authors ?? null,
+          date: i.sources?.date ?? null,
+          locator: i.locator,
+          startMs: i.start_ms,
+          endMs: i.end_ms,
+        },
+        claim,
+        chunkContent: includeChunks && i.chunk_id ? chunkContentById.get(i.chunk_id) ?? null : undefined,
       }
     })
 
+    if (format === 'csv') {
+      const q = (v: unknown) => `"${String(v ?? '').replace(/"/g, '""')}"`
+      const headers = [
+        'ID', 'Statement', 'Context Note', 'Direct Quote',
+        'Evidence Type', 'Confidence', 'Importance', 'Actionability',
+        'Primary Audience', 'Insight Type',
+        'Population', 'Dose', 'Duration', 'Outcome', 'Effect Size', 'Caveats',
+        'Source Title', 'Source Type', 'Locator',
+        'Claim ID', 'Claim Source Count', 'Created At',
+      ]
+      const rowsCsv = exportData.map((item: any) => [
+        q(item.id), q(item.statement), q(item.contextNote), q(item.directQuote),
+        q(item.evidenceType), q(item.confidence), q(item.importance), q(item.actionability),
+        q(item.primaryAudience), q(item.insightType),
+        q(item.qualifiers?.population), q(item.qualifiers?.dose), q(item.qualifiers?.duration),
+        q(item.qualifiers?.outcome), q(item.qualifiers?.effect_size), q(item.qualifiers?.caveats),
+        q(item.source.title), q(item.source.type), q(item.source.locator),
+        q(item.claim?.id), q(item.claim?.sourceCount), q(item.createdAt),
+      ])
+
+      const csv = [headers.map(q).join(','), ...rowsCsv.map((r: string[]) => r.join(','))].join('\n')
+
+      return new NextResponse(csv, {
+        headers: {
+          'Content-Type': 'text/csv',
+          'Content-Disposition': `attachment; filename="insights-export-${new Date().toISOString().split('T')[0]}.csv"`,
+        },
+      })
+    }
+
+    return NextResponse.json(
+      { count: exportData.length, exportedAt: new Date().toISOString(), insights: exportData },
+      {
+        headers: {
+          'Content-Type': 'application/json',
+          'Content-Disposition': `attachment; filename="insights-export-${new Date().toISOString().split('T')[0]}.json"`,
+        },
+      }
+    )
   } catch (error) {
     console.error('Export error:', error)
     return NextResponse.json(
@@ -267,4 +152,3 @@ export async function GET(request: NextRequest) {
     )
   }
 }
-

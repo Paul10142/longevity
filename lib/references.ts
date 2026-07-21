@@ -16,6 +16,7 @@
 import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding } from './embeddings'
+import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 const REFERENCE_MODEL = 'gpt-5-mini'
 const CONTACT_MAILTO = process.env.REFERENCE_CONTACT_EMAIL || 'team@admissionsacademy.org'
@@ -91,7 +92,12 @@ async function extractRefsFromChunk(content: string): Promise<ParsedRef[]> {
   }
 }
 
-export type ExtractRefCheckpoint = { chunk_index: number; total_chunks: number; mentions_created: number }
+export type ExtractRefCheckpoint = {
+  chunk_index: number
+  total_chunks: number
+  mentions_created: number
+  run_id?: string | null
+}
 
 /** Stage: extract reference mentions from a source's chunks. Checkpointed. */
 export async function extractReferences(
@@ -102,6 +108,9 @@ export async function extractReferences(
 ): Promise<{ done: boolean; checkpoint: ExtractRefCheckpoint }> {
   const started = Date.now()
 
+  const runId = await startOrResumeRun('extract', sourceId, checkpoint?.run_id, { stage: 'references' })
+
+  try {
   const { data: chunks, error } = await db()
     .from('chunks')
     .select('id, locator, content')
@@ -110,17 +119,11 @@ export async function extractReferences(
   if (error) throw new Error(`Failed to load chunks: ${error.message}`)
   const rows = (chunks ?? []) as { id: string; locator: string; content: string }[]
 
-  const run = await db()
-    .from('pipeline_runs')
-    .insert({ source_id: sourceId, kind: 'extract', status: 'running', stats: { stage: 'references' } })
-    .select('id')
-    .single()
-  const runId = run.data?.id
-
   let cp: ExtractRefCheckpoint = {
     chunk_index: checkpoint?.chunk_index ?? 0,
     total_chunks: rows.length,
     mentions_created: checkpoint?.mentions_created ?? 0,
+    run_id: runId,
   }
 
   for (let i = cp.chunk_index; i < rows.length; i++) {
@@ -148,13 +151,12 @@ export async function extractReferences(
     await onProgress(cp)
   }
 
-  if (runId) {
-    await db().from('pipeline_runs').update({
-      status: 'success', finished_at: new Date().toISOString(),
-      stats: { stage: 'references', mentions: cp.mentions_created },
-    }).eq('id', runId)
-  }
+  await finishRun(runId, { stage: 'references', mentions: cp.mentions_created })
   return { done: true, checkpoint: cp }
+  } catch (err) {
+    await failRun(runId, err)
+    throw err
+  }
 }
 
 // ── Resolution (CrossRef → PubMed) ──────────────────────────

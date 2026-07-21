@@ -16,6 +16,7 @@
 import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding, generateEmbeddingsBatch } from './embeddings'
+import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 const TAXONOMY_MODEL = 'gpt-5-mini'
 const BATCH_SIZE = 12               // claims per LLM call
@@ -140,7 +141,12 @@ async function assignBatch(
   }
 }
 
-export type TagCheckpoint = { processed: number; topics_created: number; links_created: number }
+export type TagCheckpoint = {
+  processed: number
+  topics_created: number
+  links_created: number
+  run_id?: string | null
+}
 
 /**
  * Tag all claims flagged needs_tagging, discovering topics as needed.
@@ -152,13 +158,9 @@ export async function tagClaims(
   timeBudgetMs = 220_000
 ): Promise<{ done: boolean; checkpoint: TagCheckpoint }> {
   const started = Date.now()
-  const { data: run } = await db()
-    .from('pipeline_runs')
-    .insert({ kind: 'tag', status: 'running' })
-    .select('id')
-    .single()
-  const runId = run?.id
+  const runId = await startOrResumeRun('tag', null, checkpoint?.run_id)
 
+  try {
   const cache = await loadTopicCache()
   const topicCountBefore = cache.size
 
@@ -166,6 +168,7 @@ export async function tagClaims(
     processed: checkpoint?.processed ?? 0,
     topics_created: checkpoint?.topics_created ?? 0,
     links_created: checkpoint?.links_created ?? 0,
+    run_id: runId,
   }
 
   while (true) {
@@ -226,13 +229,16 @@ export async function tagClaims(
   // Refresh claim_count per topic from the links.
   await recomputeTopicCounts()
 
-  if (runId) {
-    await db()
-      .from('pipeline_runs')
-      .update({ status: 'success', finished_at: new Date().toISOString(), stats: { ...cp } })
-      .eq('id', runId)
-  }
+  await finishRun(runId, {
+    processed: cp.processed,
+    topics_created: cp.topics_created,
+    links_created: cp.links_created,
+  })
   return { done: true, checkpoint: cp }
+  } catch (err) {
+    await failRun(runId, err)
+    throw err
+  }
 }
 
 /** Recompute every active topic's claim_count from claim_topics. */

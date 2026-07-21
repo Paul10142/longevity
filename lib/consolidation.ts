@@ -18,6 +18,7 @@
 import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
+import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 const ADJUDICATION_MODEL = 'gpt-5-mini'
 
@@ -288,7 +289,13 @@ export async function sweepClaims(
   return { done: true, checkpoint: { processed, total: claims.length, merged: merged.size } }
 }
 
-export type ConsolidateCheckpoint = { processed: number; total: number; claims_created: number; reviews_queued: number }
+export type ConsolidateCheckpoint = {
+  processed: number
+  total: number
+  claims_created: number
+  reviews_queued: number
+  run_id?: string | null
+}
 
 /**
  * Consolidate one source's raw insights into claims, resuming from `checkpoint`.
@@ -302,13 +309,9 @@ export async function consolidateSource(
 ): Promise<{ done: boolean; checkpoint: ConsolidateCheckpoint }> {
   const started = Date.now()
 
-  const { data: run } = await db()
-    .from('pipeline_runs')
-    .insert({ source_id: sourceId, kind: 'consolidate', status: 'running' })
-    .select('id')
-    .single()
-  const runId = run?.id
+  const runId = await startOrResumeRun('consolidate', sourceId, checkpoint?.run_id)
 
+  try {
   // Unconsolidated raw insights for this source (no membership yet), oldest first.
   const { data: rawRows, error } = await db()
     .from('raw_insights')
@@ -334,6 +337,7 @@ export async function consolidateSource(
     total: (checkpoint?.processed ?? 0) + pending.length,
     claims_created: checkpoint?.claims_created ?? 0,
     reviews_queued: checkpoint?.reviews_queued ?? 0,
+    run_id: runId,
   }
 
   for (let i = 0; i < pending.length; i++) {
@@ -390,16 +394,15 @@ export async function consolidateSource(
     await onProgress(cp)
   }
 
-  if (runId) {
-    await db()
-      .from('pipeline_runs')
-      .update({
-        status: 'success',
-        finished_at: new Date().toISOString(),
-        stats: { processed: cp.processed, claims_created: cp.claims_created, reviews_queued: cp.reviews_queued },
-      })
-      .eq('id', runId)
-  }
+  await finishRun(runId, {
+    processed: cp.processed,
+    claims_created: cp.claims_created,
+    reviews_queued: cp.reviews_queued,
+  })
 
   return { done: true, checkpoint: cp }
+  } catch (err) {
+    await failRun(runId, err)
+    throw err
+  }
 }
