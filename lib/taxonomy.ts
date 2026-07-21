@@ -13,25 +13,17 @@
  * cleared once assigned.
  */
 
-import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding, generateEmbeddingsBatch } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
+import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
 
-const TAXONOMY_MODEL = 'gpt-5-mini'
+// Judgment tier: topic placement shapes the whole taxonomy, so a bad call here
+// compounds across every claim filed under it.
+const TAXONOMY_MODEL = CLAUDE_JUDGMENT_MODEL
 const BATCH_SIZE = 12               // claims per LLM call
 const CANDIDATES_PER_CLAIM = 6      // existing-topic hints shown per claim
 const TOPIC_MATCH_THRESHOLD = 0.28  // ANN floor for "existing topic" hints
-
-let openaiInstance: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
-    openaiInstance = new OpenAI({ apiKey })
-  }
-  return openaiInstance
-}
 
 function db() {
   if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
@@ -122,19 +114,13 @@ async function assignBatch(
     })
     .join('\n')
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: TAXONOMY_MODEL,
-    messages: [
-      { role: 'system', content: TAXONOMY_SYSTEM },
-      { role: 'user', content: `Assign topics to these claims:\n${body}` },
-    ],
-    response_format: { type: 'json_object' },
-  })
-
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) return []
   try {
-    const parsed = JSON.parse(raw) as { assignments?: Assignment[] }
+    const parsed = await claudeJson<{ assignments?: Assignment[] }>(
+      TAXONOMY_SYSTEM,
+      `Assign topics to these claims:\n${body}`,
+      8000,
+      TAXONOMY_MODEL
+    )
     return Array.isArray(parsed.assignments) ? parsed.assignments : []
   } catch {
     return []
@@ -235,6 +221,208 @@ export async function tagClaims(
     links_created: cp.links_created,
   })
   return { done: true, checkpoint: cp }
+  } catch (err) {
+    await failRun(runId, err)
+    throw err
+  }
+}
+
+// ── Topic discovery ─────────────────────────────────────────
+//
+// Tagging can only make *local* decisions: for one claim, which of the topics
+// that already exist fit best? It cannot notice that forty supplement claims
+// are scattered across Metabolic Health and Endocrinology and deserve a branch
+// of their own. That stepping-back pass is this stage.
+//
+// It only *proposes and creates* topics — placement stays with the tagger. Any
+// claim under a reshaped topic is flagged `needs_tagging`, and the follow-on
+// `tag_claims` job re-files it against the now-richer tree. That keeps one
+// code path responsible for assignment.
+
+const DISCOVERY_SYSTEM = `
+You are curating the topic taxonomy for a lifestyle-medicine knowledge library.
+
+You are shown the current topic tree and a sample of claims that are either
+unfiled or sitting in over-broad buckets. Propose NEW topics that would give
+these claims a better home.
+
+Rules:
+- Propose a topic only when several claims genuinely share a subject. Never
+  propose a topic for a single claim.
+- Prefer a small number of durable, clinically meaningful topics over many
+  narrow ones. Proposing zero topics is a valid and common answer.
+- "parent" must be the exact name of an existing topic, or null for a new
+  top-level topic. Only use null when the subject genuinely sits alongside the
+  existing top-level topics rather than inside one.
+- Do not propose a topic whose name duplicates or merely rephrases an existing
+  one.
+
+Return STRICT JSON:
+{"topics":[{"name":"...","parent":"... or null","rationale":"why these claims cluster"}]}
+`.trim()
+
+type ProposedTopic = { name?: string; parent?: string | null; rationale?: string }
+
+export type DiscoverCheckpoint = {
+  topics_created: number
+  claims_reflagged: number
+  run_id?: string | null
+}
+
+// A topic holding more than this many claims is a candidate for splitting.
+const OVERBROAD_CLAIM_COUNT = 15
+// How many claim statements to show the model per over-broad topic.
+const DISCOVERY_SAMPLE = 40
+
+/**
+ * Propose and create new topics for unfiled or poorly-filed claims, then flag
+ * the affected claims for re-tagging. Enqueue `tag_claims` after this runs.
+ */
+export async function discoverTopics(
+  checkpoint: Partial<DiscoverCheckpoint> | undefined,
+  onProgress: (cp: DiscoverCheckpoint) => Promise<void>,
+  timeBudgetMs = 220_000,
+  // `dryRun` proposes without writing — the taxonomy is human-curated, so it
+  // should be possible to see what the model wants before it lands.
+  options: {
+    dryRun?: boolean
+    onPropose?: (p: { name: string; parent: string | null; rationale: string; batch: string }) => void
+  } = {}
+): Promise<{ done: boolean; checkpoint: DiscoverCheckpoint }> {
+  const started = Date.now()
+  const { dryRun = false, onPropose } = options
+  const runId = dryRun ? null : await startOrResumeRun('discover_topics', null, checkpoint?.run_id)
+
+  try {
+    const cache = await loadTopicCache()
+    let cp: DiscoverCheckpoint = {
+      topics_created: checkpoint?.topics_created ?? 0,
+      claims_reflagged: checkpoint?.claims_reflagged ?? 0,
+      run_id: runId,
+    }
+
+    // Current tree, for both the prompt and duplicate rejection.
+    const { data: topicRows } = await db()
+      .from('topics')
+      .select('id, name, parent_id, claim_count')
+      .eq('status', 'active')
+    const topics = (topicRows ?? []) as { id: string; name: string; parent_id: string | null; claim_count: number }[]
+    const nameById = new Map(topics.map(t => [t.id, t.name]))
+    const treeText = topics
+      .map(t => `- ${t.name}${t.parent_id ? ` (under ${nameById.get(t.parent_id) ?? '?'})` : ''} — ${t.claim_count} claims`)
+      .join('\n')
+
+    // Pool 1: claims with no topic at all.
+    const { data: linkRows } = await db().from('claim_topics').select('claim_id').range(0, 49999)
+    const linked = new Set((linkRows ?? []).map((l: { claim_id: string }) => l.claim_id))
+    const { data: allClaims } = await db()
+      .from('claims')
+      .select('id, canonical_statement')
+      .eq('status', 'active')
+      .range(0, 49999)
+    const orphans = ((allClaims ?? []) as { id: string; canonical_statement: string }[])
+      .filter(c => !linked.has(c.id))
+      .slice(0, DISCOVERY_SAMPLE)
+
+    // Pool 2: one batch per over-broad topic.
+    const overbroad = topics.filter(t => t.claim_count >= OVERBROAD_CLAIM_COUNT)
+
+    type Batch = { label: string; claimIds: string[]; statements: string[] }
+    const batches: Batch[] = []
+    if (orphans.length >= 2) {
+      batches.push({
+        label: 'Claims that currently have no topic at all',
+        claimIds: orphans.map(c => c.id),
+        statements: orphans.map(c => c.canonical_statement),
+      })
+    }
+    for (const t of overbroad) {
+      const { data: members } = await db()
+        .from('claim_topics')
+        .select('claim_id, claims!inner(id, canonical_statement, status)')
+        .eq('topic_id', t.id)
+        .eq('claims.status', 'active')
+        .limit(DISCOVERY_SAMPLE)
+      const rows = (members ?? []) as { claim_id: string; claims: { canonical_statement: string } }[]
+      if (rows.length < 2) continue
+      batches.push({
+        label: `Claims currently filed under the broad topic "${t.name}"`,
+        claimIds: rows.map(r => r.claim_id),
+        statements: rows.map(r => r.claims.canonical_statement),
+      })
+    }
+
+    const reflag = new Set<string>()
+
+    for (const batch of batches) {
+      if (Date.now() - started > timeBudgetMs) {
+        return { done: false, checkpoint: cp }
+      }
+
+      let proposed: ProposedTopic[] = []
+      try {
+        const result = await claudeJson<{ topics?: ProposedTopic[] }>(
+          DISCOVERY_SYSTEM,
+          `Existing topic tree:\n${treeText}\n\n${batch.label}:\n${batch.statements.map((s, i) => `${i + 1}. ${s}`).join('\n')}`,
+          4000,
+          CLAUDE_JUDGMENT_MODEL
+        )
+        proposed = Array.isArray(result.topics) ? result.topics : []
+      } catch (err) {
+        console.warn('[discover] proposal failed:', err instanceof Error ? err.message : err)
+        continue
+      }
+
+      let createdHere = 0
+      for (const p of proposed) {
+        const name = typeof p.name === 'string' ? p.name.trim() : ''
+        if (!name) continue
+        // Skip anything that already exists — ensureTopic would no-op, but this
+        // keeps topics_created honest.
+        if (cache.has(name.toLowerCase())) continue
+        // A proposed parent must already exist; otherwise place at top level
+        // rather than inventing an unreviewed intermediate node.
+        const parent =
+          typeof p.parent === 'string' && cache.has(p.parent.trim().toLowerCase())
+            ? p.parent.trim()
+            : null
+
+        onPropose?.({ name, parent, rationale: p.rationale ?? '', batch: batch.label })
+        if (dryRun) {
+          cp = { ...cp, topics_created: cp.topics_created + 1 }
+          continue
+        }
+
+        try {
+          await ensureTopic(name, parent, cache)
+          createdHere++
+          cp = { ...cp, topics_created: cp.topics_created + 1 }
+        } catch (err) {
+          console.warn(`[discover] could not create topic "${name}":`, err instanceof Error ? err.message : err)
+        }
+      }
+
+      // Only re-tag when this batch actually gained somewhere to go.
+      if (createdHere > 0) for (const id of batch.claimIds) reflag.add(id)
+      await onProgress(cp)
+    }
+
+    if (!dryRun && reflag.size > 0) {
+      const ids = Array.from(reflag)
+      for (let i = 0; i < ids.length; i += 200) {
+        await db().from('claims').update({ needs_tagging: true }).in('id', ids.slice(i, i + 200))
+      }
+      cp = { ...cp, claims_reflagged: ids.length }
+    }
+
+    if (dryRun) return { done: true, checkpoint: cp }
+
+    await recomputeTopicCounts()
+    await finishRun(runId, {
+      topics_created: cp.topics_created,
+      claims_reflagged: cp.claims_reflagged,
+    })
+    return { done: true, checkpoint: cp }
   } catch (err) {
     await failRun(runId, err)
     throw err

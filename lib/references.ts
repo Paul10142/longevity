@@ -13,25 +13,16 @@
  * once); dedup uses a fingerprint + the match_references ANN, never all-pairs.
  */
 
-import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
+import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
 
-const REFERENCE_MODEL = 'gpt-5-mini'
+// Bulk tier: scanning every chunk for citation mentions.
+const REFERENCE_MODEL = CLAUDE_BULK_MODEL
 const CONTACT_MAILTO = process.env.REFERENCE_CONTACT_EMAIL || 'team@admissionsacademy.org'
 const USER_AGENT = `LifestyleAcademy/1.0 (mailto:${CONTACT_MAILTO})`
 const MIN_EXTERNAL_INTERVAL_MS = 350 // gentle spacing for CrossRef/PubMed
-
-let openaiInstance: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
-    openaiInstance = new OpenAI({ apiKey })
-  }
-  return openaiInstance
-}
 
 function db() {
   if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
@@ -74,18 +65,13 @@ If none, return {"references":[]}.
 `.trim()
 
 async function extractRefsFromChunk(content: string): Promise<ParsedRef[]> {
-  const completion = await getOpenAI().chat.completions.create({
-    model: REFERENCE_MODEL,
-    messages: [
-      { role: 'system', content: EXTRACT_REF_SYSTEM },
-      { role: 'user', content: `Chunk:\n${content}` },
-    ],
-    response_format: { type: 'json_object' },
-  })
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) return []
   try {
-    const parsed = JSON.parse(raw) as { references?: ParsedRef[] }
+    const parsed = await claudeJson<{ references?: ParsedRef[] }>(
+      EXTRACT_REF_SYSTEM,
+      `Chunk:\n${content}`,
+      4000,
+      REFERENCE_MODEL
+    )
     return (parsed.references ?? []).filter(r => r && typeof r.raw_text === 'string' && r.raw_text.trim().length > 3)
   } catch {
     return []
@@ -308,24 +294,15 @@ async function judgeCandidates(rawText: string, context: string | null, candidat
     .map((c, i) => `[${i}] "${c.title}" — ${(c.authors ?? []).slice(0, 3).join(', ') || 'unknown authors'}, ${c.journal ?? 'n/a'}, ${c.year ?? 'n/a'}${c.abstract ? `\n    abstract: ${c.abstract.slice(0, 500)}` : ''}`)
     .join('\n')
   try {
-    const completion = await getOpenAI().chat.completions.create({
-      model: REFERENCE_MODEL,
-      messages: [
-        {
-          role: 'system',
-          content:
-            'A speaker referred to an external published work. Choose which candidate (if any) is the SAME specific work — match on substance: the described finding, population, topic, and era should fit the candidate\'s abstract/metadata. If the speaker only named a general topic/technique (not a specific identifiable work), or no candidate clearly fits, return index null. Return STRICT JSON {"index": <number or null>, "confidence": <0..1>}.',
-        },
-        {
-          role: 'user',
-          content: `Speaker referred to: "${rawText}"${context ? `\nFinding described: ${context}` : ''}\n\nCandidates:\n${list}`,
-        },
-      ],
-      response_format: { type: 'json_object' },
-    })
-    const raw = completion.choices[0]?.message?.content
-    if (!raw) return { index: null, confidence: 0 }
-    const j = JSON.parse(raw)
+    // Judgment tier: deciding whether a candidate paper is *the* work a speaker
+    // meant (rather than a topically-similar one) is exactly the call that
+    // determines whether a citation is real.
+    const j = await claudeJson<{ index?: number | null; confidence?: number }>(
+      'A speaker referred to an external published work. Choose which candidate (if any) is the SAME specific work — match on substance: the described finding, population, topic, and era should fit the candidate\'s abstract/metadata. If the speaker only named a general topic/technique (not a specific identifiable work), or no candidate clearly fits, return index null. Return STRICT JSON {"index": <number or null>, "confidence": <0..1>}.',
+      `Speaker referred to: "${rawText}"${context ? `\nFinding described: ${context}` : ''}\n\nCandidates:\n${list}`,
+      1000,
+      CLAUDE_JUDGMENT_MODEL
+    )
     const index = typeof j.index === 'number' && j.index >= 0 && j.index < candidates.length ? j.index : null
     return { index, confidence: typeof j.confidence === 'number' ? j.confidence : 0 }
   } catch {

@@ -11,7 +11,7 @@ import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
-import { tagClaims, type TagCheckpoint } from './taxonomy'
+import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
 import { generateTopicContent } from './synthesis'
 import { extractReferences, resolveReferences, type ExtractRefCheckpoint } from './references'
 
@@ -114,6 +114,22 @@ async function handleTagClaims(job: Job): Promise<void> {
   }
 }
 
+async function handleDiscoverTopics(job: Job): Promise<void> {
+  const progress = job.progress as Partial<DiscoverCheckpoint>
+  const result = await discoverTopics(
+    progress,
+    async (cp) => { await heartbeatJob(job.id, { ...cp }) },
+    220_000
+  )
+  if (result.done) {
+    await completeJob(job.id, { ...result.checkpoint })
+    // New topics only matter once claims are re-filed against them.
+    if (result.checkpoint.claims_reflagged > 0) await enqueueJob('tag_claims', {})
+  } else {
+    await requeueJob(job.id, { ...result.checkpoint })
+  }
+}
+
 async function handleClaimSweep(job: Job): Promise<void> {
   const result = await sweepClaims(
     async (done, total, merged) => { await heartbeatJob(job.id, { processed: done, total, merged }) },
@@ -147,9 +163,7 @@ async function runHandler(job: Job): Promise<void> {
     case 'resolve_references':
       return handleResolveReferences(job)
     case 'discover_topics':
-      // Implemented in a later phase. Complete as no-op so the queue drains.
-      console.log(`[worker] ${job.type} not yet implemented — skipping`)
-      return
+      return handleDiscoverTopics(job)
     default:
       throw new Error(`Unknown job type: ${job.type}`)
   }
@@ -170,7 +184,7 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
       await runHandler(job)
       // Checkpointed handlers manage their own completion (they may requeue to
       // resume). Only the no-op / instantaneous types are completed here.
-      const selfManaged = ['extract_source', 'consolidate_source', 'tag_claims', 'claim_sweep', 'extract_references', 'resolve_references']
+      const selfManaged = ['extract_source', 'consolidate_source', 'tag_claims', 'claim_sweep', 'extract_references', 'resolve_references', 'discover_topics']
       if (!selfManaged.includes(job.type)) {
         await completeJob(job.id)
       }

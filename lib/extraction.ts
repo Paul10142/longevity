@@ -9,25 +9,17 @@
  * Deduplication, tagging, and synthesis are separate job stages.
  */
 
-import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
+import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
 import type { EvidenceType, Confidence, Actionability, Audience, InsightType, InsightQualifiers } from './types'
 
-const EXTRACTION_MODEL = 'gpt-5-mini'
+// Bulk tier: one call per transcript chunk, so this is the pipeline's
+// highest-volume model by a wide margin.
+const EXTRACTION_MODEL = CLAUDE_BULK_MODEL
 const CHUNK_SIZE = 2400
 const CHUNK_OVERLAP = 200
-
-let openaiInstance: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
-    openaiInstance = new OpenAI({ apiKey })
-  }
-  return openaiInstance
-}
 
 function db() {
   if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
@@ -210,22 +202,16 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 
 // ── LLM extraction for one chunk ────────────────────────────
 async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
-  const completion = await getOpenAI().chat.completions.create({
-    model: EXTRACTION_MODEL,
-    messages: [
-      { role: 'system', content: EXTRACTION_SYSTEM_PROMPT },
-      { role: 'user', content: `Text to analyze:\n${content}` },
-    ],
-    response_format: { type: 'json_object' },
-  })
-
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) return []
   let parsed: { insights?: ExtractedInsight[] }
   try {
-    parsed = JSON.parse(raw)
-  } catch {
-    console.warn(`[extract ${label}] JSON parse failed`)
+    parsed = await claudeJson<{ insights?: ExtractedInsight[] }>(
+      EXTRACTION_SYSTEM_PROMPT,
+      `Text to analyze:\n${content}`,
+      8000,
+      EXTRACTION_MODEL
+    )
+  } catch (err) {
+    console.warn(`[extract ${label}] extraction failed:`, err instanceof Error ? err.message : err)
     return []
   }
   if (!Array.isArray(parsed.insights)) return []

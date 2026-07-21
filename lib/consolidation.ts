@@ -15,12 +15,14 @@
  * concurrently).
  */
 
-import OpenAI from 'openai'
 import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
+import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
 
-const ADJUDICATION_MODEL = 'gpt-5-mini'
+// Judgment tier: deciding whether two claims are the same is the call that
+// determines whether the library deduplicates correctly.
+const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 
 // Similarity floor for ANN candidates (cosine). Below this, no LLM call.
 const CANDIDATE_THRESHOLD = 0.8
@@ -32,16 +34,6 @@ const AUTO_MERGE_CONFIDENCE = 0.85
 const EVIDENCE_RANK: Record<EvidenceType, number> = {
   MetaAnalysis: 8, RCT: 7, Cohort: 6, CaseSeries: 5,
   Mechanistic: 4, Animal: 3, ExpertOpinion: 2, Other: 1,
-}
-
-let openaiInstance: OpenAI | null = null
-function getOpenAI(): OpenAI {
-  if (!openaiInstance) {
-    const apiKey = process.env.OPENAI_API_KEY
-    if (!apiKey) throw new Error('Missing OPENAI_API_KEY')
-    openaiInstance = new OpenAI({ apiKey })
-  }
-  return openaiInstance
 }
 
 function db() {
@@ -77,19 +69,13 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
 
-  const completion = await getOpenAI().chat.completions.create({
-    model: ADJUDICATION_MODEL,
-    messages: [
-      { role: 'system', content: ADJUDICATION_SYSTEM },
-      { role: 'user', content: `NEW insight:\n${rawStatement}\n\nEXISTING claims:\n${list}` },
-    ],
-    response_format: { type: 'json_object' },
-  })
-
-  const raw = completion.choices[0]?.message?.content
-  if (!raw) return { verdict: 'DIFFERENT', candidate_index: null, confidence: 0, reasoning: 'no model output' }
   try {
-    const parsed = JSON.parse(raw) as Adjudication
+    const parsed = await claudeJson<Adjudication>(
+      ADJUDICATION_SYSTEM,
+      `NEW insight:\n${rawStatement}\n\nEXISTING claims:\n${list}`,
+      2000,
+      ADJUDICATION_MODEL
+    )
     return {
       verdict: parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT',
       candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,

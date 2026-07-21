@@ -49,12 +49,47 @@ running jobs with old `locked_at` heartbeats get reclaimed).
 | Consolidate | `consolidate_source` | Per raw insight: ANN over `claims.embedding` (`match_claims` RPC) → LLM adjudication SAME/DIFFERENT/UNSURE → attach member, create claim, or create provisionally + queue `merge_reviews` |
 | Sweep | `claim_sweep` | Periodic claim-vs-claim ANN pass to catch accumulated near-duplicates |
 | Tag | `tag_claims` | Assign claims to topics (ANN over `topics.embedding` + LLM multi-label) |
-| Discover | `discover_topics` | Cluster poorly-fitting claims, LLM proposes new topics with parent placement |
+| Discover | `discover_topics` | Review unfiled claims + over-broad topics, propose new topics with parent placement, flag affected claims `needs_tagging` and hand back to Tag |
 | Synthesize | `generate_topic` | Prioritized claims → clinician article + protocol (per-paragraph `claim_ids`), patient article translated from clinician version |
 
 Worker: `app/api/worker/tick` — invoked by Vercel cron (see `vercel.json`),
 by a fire-and-forget ping after enqueue, or manually from the admin UI.
 It works within a ~250s budget and exits; checkpoints make that safe.
+
+### Model providers
+
+All generative calls go through `lib/llm.ts` (`claudeJson`). Stages never talk
+to a provider SDK directly. Two tiers:
+
+| Tier | Model | Used by |
+|---|---|---|
+| Bulk | `claude-haiku-4-5` | `extract_source`, reference-mention extraction — one call per transcript chunk |
+| Judgment | `claude-opus-4-8` | dedup adjudication, topic assignment/discovery, reference matching, `generate_topic` |
+
+**Embeddings are the one exception and stay on OpenAI**
+(`text-embedding-3-small`, 1536-d, `lib/embeddings.ts`). Anthropic ships no
+embeddings model, and both `match_claims` (dedup) and `match_topics` (tagging)
+are pgvector ANN searches — without them consolidation degenerates from a
+~10-candidate shortlist per insight into a full-corpus comparison. Changing
+embedding provider means re-embedding every `raw_insights`, `claims`, and
+`topics` row, and a migration if the new model isn't 1536-dimensional.
+
+`LLM_BACKEND` selects how Claude is reached:
+
+- `api` (default) — `ANTHROPIC_API_KEY`. What the deployed worker uses.
+- `claude-code` — shells out to the local `claude` CLI, billing a Claude
+  subscription rather than API credits. This is the default in
+  `npm run pipeline`, so a developer can drive extraction, consolidation, and
+  tagging locally without spending API credit. Embeddings still need
+  `OPENAI_API_KEY` in this mode.
+
+### Human-curated taxonomy
+
+`discover_topics` only *creates* topics; it never assigns claims. It flags the
+claims it touched `needs_tagging` and enqueues `tag_claims`, so placement stays
+in one code path. Because the topic tree is curated, the stage supports a
+dry run — `npm run pipeline -- discover --dry-run` prints what it would create
+and writes nothing.
 
 ### `pipeline_runs` lifecycle
 

@@ -8,7 +8,8 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
-    "devtools": "react-devtools"
+    "devtools": "react-devtools",
+    "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
