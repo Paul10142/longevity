@@ -164,6 +164,7 @@ Rules:
 - Use ONLY the provided claims as factual source. Do NOT add facts from outside knowledge.
 - Preserve ALL numeric detail (doses, thresholds, frequencies, durations, populations).
 - CITATIONS: when a claim carries reference markers (e.g. refs: R1,R3), cite them inline as [R1][R3] where you use that claim. Never invent markers or studies. A References section is appended automatically — do not write one.
+- CLAIM IDS ARE INTERNAL. Each claim is shown prefixed with a long UUID token in brackets (e.g. [d5d0e719-3b37-4855-b72e-e213a3394ac7]). Put that id in the paragraph's claim_ids array — NEVER write it in the prose text. The ONLY bracketed markers allowed in the text are reference markers like [R1].
 - QUOTES: when a claim carries a verbatim quote, you MAY include it verbatim in quotation marks with attribution when especially illustrative — but do not overuse.
 - Be explicit about evidence strength and uncertainty; present contested or non-consensus points as areas of debate rather than settled fact.
 - Do not mention "claims" or transcripts. Professional prose. No headings — return paragraphs only.
@@ -210,11 +211,23 @@ type Outline = {
   references?: { marker: string; citation: string; url: string | null }[]
 }
 
+/** Remove any inline claim-id UUID tokens the model may have echoed into prose
+ * (e.g. "…male factors [d5d0e719-3b37-4855-b72e-e213a3394ac7]."). Claim ids
+ * belong in the paragraph's claim_ids array, never in reader-facing text.
+ * Leaves [R#] reference markers untouched. */
+function stripInlineClaimIds(text: string): string {
+  return text
+    .replace(/\s*\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\]/g, '')
+    .replace(/ +([.,;:)])/g, '$1')
+    .replace(/[ \t]{2,}/g, ' ')
+    .trim()
+}
+
 function outlineToMarkdown(outline: Outline): string {
   const parts: string[] = []
   for (const s of outline.sections ?? []) {
     parts.push(`## ${s.title}`)
-    for (const p of s.paragraphs ?? []) parts.push(p.text)
+    for (const p of s.paragraphs ?? []) parts.push(stripInlineClaimIds(p.text))
   }
   // Deterministic References section from our verified data (never model-authored).
   if (outline.references && outline.references.length) {
@@ -276,7 +289,7 @@ async function generateClinicianSection(
   return {
     id: section.id,
     title: section.title,
-    paragraphs: (res.paragraphs ?? []).map(p => ({ id: p.id, text: p.text, claim_ids: p.claim_ids ?? [] })),
+    paragraphs: (res.paragraphs ?? []).map(p => ({ id: p.id, text: stripInlineClaimIds(p.text), claim_ids: p.claim_ids ?? [] })),
   }
 }
 
