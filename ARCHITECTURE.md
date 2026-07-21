@@ -286,11 +286,101 @@ never silently lossy. The following is the canonical target agreed with Paul
 - Admin surface to review and edit claims directly (beyond the merge-review
   queue) — correct a bad rewrite, split/retag, adjust consensus.
 
+## v3.2 incremental update model — section-level regen + living documents (agreed, not yet built)
+
+Full-article regeneration on every new source is wrong on two counts: it is
+expensive (a 6,000-word Opus rewrite to fold in one added claim), and it churns
+prose physicians have already read and trust, making a revisited article feel
+unstable. The update unit is therefore the **section**, not the whole article —
+which the sectioned synthesis (v3.1) already makes natural, since the stored
+`outline` is `sections[] → paragraphs[] → claim_ids`.
+
+### Three update tiers (by what actually changed)
+
+When consolidation + tagging finish for a new source, each affected topic is
+classified by the strongest change it received:
+
+1. **Reinforcing only** — every new insight was a SAME verdict (attached as
+   evidence to an existing claim; no new claim). Prose does not change. Update
+   **metadata only**: `source_count`, the representative quote, the evidence
+   grade. No LLM prose call. ~$0.
+2. **New claim in an existing theme** — regenerate **only the section(s)** whose
+   claim set changed, claim-complete over the larger set. Every other section's
+   stored prose is reused byte-for-byte; `body_markdown` is re-assembled from
+   unchanged + regenerated sections. ~1/N of a full regen.
+3. **New claim fits no section** — generate **one new section** and insert it.
+
+Reinforcing-heavy sources (the common case as the corpus matures) cost ~$0; a
+genuinely novel source costs one or a few section regenerations.
+
+### Coherence valve (periodic full regen)
+
+Sections are generated independently, so a patch cannot propagate a *reframing*
+claim across the whole article, and many successive patches drift toward a
+patchwork. Each topic therefore also carries a **full-regen trigger**: rebuild
+the entire article when its claim set has grown past a threshold (e.g. >25%)
+since the last full build, or every N incremental updates. Cheap section
+patches for freshness; a periodic full rewrite for coherence. Per-section
+versioning records which sections changed when.
+
+### Propagation across article versions
+
+A changed clinician section ripples minimally: the corresponding **patient**
+section is re-translated (patient is already a per-section translation); the
+**protocol** regenerates only if the new claim is actionable — a purely
+mechanistic claim does not change "what to do."
+
+### Living document (the feature this unlocks)
+
+Because sections are stable and per-section versions are tracked, the read side
+surfaces the delta — *"Evaluation section updated: 2 new findings since your
+last visit"* — instead of silently rewriting the page. Reader trust plus a
+premium B2B behavior; also the substrate for the Phase 8 changelog/diff.
+
+### Contradiction — detected, then human-confirmed
+
+The consolidation adjudicator gains a **CONTRADICTS** verdict alongside
+SAME/DIFFERENT/UNSURE. A contradiction creates a new (opposing) claim + a
+`claim_relations` row (`relation = contradicts`) and routes to a
+**contradiction-review queue** (mirrors `merge_reviews`). Nothing is
+auto-asserted — a human confirms genuine disagreement vs. context/nuance.
+Confirmed contradictions surface both claims in that section's **"points of
+debate"** treatment, clearly labeled contested (feeding the v3.1 consensus
+dimension).
+
+### Topic split (growth pressure-release)
+
+When a topic grows too large or its claims form ≥2 distinct clusters (cheap to
+detect on centroid embeddings), taxonomy maintenance **proposes a split**: the
+LLM names the sub-topics; claims re-home to new children **under the same
+curated parent**; the original slug 301-redirects (frozen-slug invariant); the
+now-smaller topics regenerate. Structural, so **human-reviewed** (propose →
+approve → apply), never silent. A source that floods a topic is a primary split
+trigger — splitting and incremental update work together.
+
+### Invariants
+
+- **Article prose always uses the top model (Opus).** Cost levers (Haiku,
+  batching, caching) apply only to mechanical steps (section grouping,
+  groundedness audit, extraction, tagging) — never to clinician/patient prose.
+  Quality is never traded for cost.
+- **Reinforcing-only never triggers a prose regen** — only new claims, or the
+  coherence valve, do.
+- **Sections are the atomic, independently-versioned unit** of both storage and
+  update.
+
 ## Models
 
-- Extraction + adjudication + tagging: `gpt-5-mini`
-- Narrative/protocol synthesis: `gpt-5.1`
-- Embeddings: `text-embedding-3-small` (1536d, pgvector ivfflat cosine)
+- Article generation (synthesis, section grouping, groundedness audit):
+  **Claude Opus 4.8** via `lib/llm.ts` (`claudeJson`). Prose always uses the top
+  model; only mechanical steps may drop to the Haiku bulk tier.
+- Extraction / consolidation adjudication / tagging: migrating to Claude through
+  the same helper (Haiku bulk tier / Opus judgment tier); OpenAI `gpt-5-mini` on
+  the legacy path.
+- Embeddings: OpenAI `text-embedding-3-small` (1536d, pgvector **HNSW** cosine) —
+  no Anthropic equivalent, so this stays on OpenAI.
+- Backends (`LLM_BACKEND`): `api` (ANTHROPIC_API_KEY) or `claude-code` (shells to
+  the local `claude` CLI, billing a Claude subscription instead of API credits).
 
 ## Schema
 
