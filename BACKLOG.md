@@ -33,38 +33,64 @@ would otherwise mass-produce the same defects at ~$400–600.
    `processing`, and the 5 queued `update_topic` jobs (decide: run or drop).
    → P2
 
-### Stage 2 — Make the corpus worth building from
+### Stage 2 — Fix what the article *is*, before mass-producing it
 
-5. **Ingest breadth** — Exercise, Sleep, Nutrition sources. The skew is an
+The 2026-07-21 walkthrough moved this stage ahead of corpus work. Every item is
+a property of **each generated article**, so the full build multiplies it by
+100+. Regenerating afterwards means paying $400–600 twice.
+
+5. **Stop narrating sources in prose** ("as the source said"). One prompt rule.
+   → P1.5 A1
+6. **Give articles a block schema** (bullets, sub-heads, callouts, figures).
+   The current `Paragraph { text }` model cannot express any of it, so this
+   blocks the "make it engaging" work entirely. → P1.5 A2
+7. **Give the patient article its own outline pass** — today it is a
+   paragraph-for-paragraph translation of the clinician one and structurally
+   cannot differ. → P1.5 A3
+
+### Stage 3 — Make the corpus worth building from
+
+8. **Ingest breadth** — Exercise, Sleep, Nutrition sources. The skew is an
    ingestion artefact, not a defect, but building now yields one deep branch
    and nine thin ones. → P3.6
-6. **Regenerate the 45 pre-coverage-gate articles.** Cheap relative to the full
+9. **Regenerate the 45 pre-coverage-gate articles.** Cheap relative to the full
    build, and it makes "comprehensive" true of the library rather than ten
-   articles. → P1
+   articles. Do it *after* stages 1–2 so the regeneration is not itself
+   wasted. → P1
 
-### Stage 3 — The full library build (one budgeted run)
+### Stage 4 — The full library build (one budgeted run)
 
-7. **Batch API path** first if the discount is wanted — it is a 50% lever on
-   the single most expensive action in the project. → P3.5
-8. **Run the build.** Preconditions: taxonomy settled (✅ done), gate blocking
-   (1), provenance captured (2), corpus balanced (5). → P3.6
+10. **Batch API path** first if the discount is wanted — it is a 50% lever on
+    the single most expensive action in the project. → P3.5
+11. **Run the build.** Preconditions: taxonomy settled (✅ done), gate blocking
+    (1), provenance captured (2), article shape fixed (5–7), corpus balanced
+    (8). → P3.6
 
-### Stage 4 — The B2B differentiators (what makes it sellable)
+### Stage 5 — The B2B differentiators (what makes it sellable)
 
 Sequenced by dependency, not by appeal:
 
-9. **Per-source novelty %** — inputs already exist (consolidation decides
-   SAME/DIFFERENT); this is recording and surfacing, not new inference. The
-   single clearest proof the dedup engine is real. → P3.5
-10. **Consensus vs contested labelling** — needs a structured field before any
+12. **Per-source novelty %** — inputs already exist (consolidation decides
+    SAME/DIFFERENT); this is recording and surfacing, not new inference. The
+    single clearest proof the dedup engine is real. Build it together with the
+    admin per-source stats dropdown (P1.5 D3) — same query, two views. → P3.5
+13. **Consensus vs contested labelling** — needs a structured field before any
     UI or override can exist. → P3.5
-11. **Claim relations → contradiction queue** — depends on 10 for its verdict
+14. **Claim relations → contradiction queue** — depends on 13 for its verdict
     vocabulary. → P3.5 / Phase 8
-12. **"What's new since last visit"** — versioned sections are the hard
+15. **"What's new since last visit"** — versioned sections are the hard
     prerequisite and already exist. → P3.5
 
-Running alongside, unblocked by any of the above: the **public-site P1s** (legal
-pages, lever copy) — they are user-facing today and touch none of the pipeline.
+**Running alongside, unblocked by any of the above.** None of these touch the
+pipeline, and all are user-facing today:
+
+- The public-site P1s — legal pages, lever copy.
+- The admin/UX cluster from the walkthrough: evidence grouping (P1.5 B), the
+  jobs/run-history merge (C), insight badge labels and sorting (D), the
+  default-empty Insight Review (D2), UI polish (F), and library navigation (G).
+- **Manual article editing (P1.5 E)** is the exception — it looks like UI work
+  but collides with regeneration, so treat it as pipeline work and settle the
+  edit-survives-regen question before building the editor.
 
 ---
 
@@ -137,6 +163,194 @@ never existed); the stopgap remapped them to real v2 topic slugs.
 
 **Done when:** sourced from the `topic_protocols` table instead of a hardcoded
 array. Blocked on protocols actually being generated for these topics.
+
+---
+
+## P1.5 — Site walkthrough, 2026-07-21 (reader & operator experience)
+
+Paul used the live site and recorded feedback. Grouped by **root cause** rather
+than by screen, because a dozen of the observations trace back to four causes —
+each was traced into the code or the database, and the finding is recorded next
+to the symptom so nobody re-derives it.
+
+**Sequencing consequence, and it is the important one:** items A1–A4 below must
+land *before* the full library build, for exactly the reason the groundedness
+gate must. The build is a single budgeted run producing 100+ articles; if it
+runs against the current prose rules and the current article schema, every one
+of those articles is written in a voice Paul has rejected and a structure that
+cannot hold a bullet list. Fixing it afterwards means regenerating the entire
+library — paying the $400–600 twice.
+
+### A. The reader-facing article (product-defining)
+
+#### A1. Articles say "as the source said" — the prompt explicitly asks for it
+Not a model quirk. `CLINICIAN_SECTION_PROMPT` (`lib/synthesis.ts:169`) instructs:
+*"QUOTES: when a claim carries a verbatim quote, you MAY include it verbatim in
+quotation marks **with attribution** when especially illustrative."*
+
+This is the Phase 6 trust foundation behaving exactly as designed — verbatim
+anchoring was built to make claims auditable. The conflict is that it was wired
+into **reader-facing prose** rather than kept as backend provenance. A reader
+should never have to wonder who "the source" is; the whole point of the
+consolidation engine is that many sources became one coherent statement.
+
+**Done when:** verbatim quotes are provenance only — visible in the Evidence
+drill-down, never narrated in article prose. The `direct_quote` data stays; it
+stops being quoted at the reader. Keep the reference markers `[R1]`, which are
+citations to primary literature, not to our ingested sources — those are a
+different thing and belong in a clinician article.
+
+#### A2. Articles cannot be "broken up" — the data model has no way to express it
+The blocker is structural, not stylistic. The article shape is
+`Outline → Section → Paragraph { id, text, claim_ids }` (`lib/synthesis.ts:206`),
+and `outlineToMarkdown` emits `## Title` followed by raw paragraph text. **There
+is no representation for a bullet list, sub-heading, callout, table, key-takeaway
+box, or image.** No amount of prompt tuning produces them, because the JSON
+schema the model must return has nowhere to put them.
+
+**Done when:** paragraphs become typed blocks (`prose | bullets | callout |
+table | figure | key_takeaways`), the section prompts may emit them, and the
+markdown renderer handles each. This also unblocks A4 (images) and varied
+sentence structure, since the model is currently instructed to return a flat
+list of prose paragraphs and is doing so faithfully.
+
+#### A3. The patient article is a paragraph-for-paragraph mirror of the clinician one
+`PATIENT_SECTION_PROMPT` (`lib/synthesis.ts:177`) translates **one clinician
+section at a time** and is told to *"base it ENTIRELY on the provided section
+text."* The generation loop (`lib/synthesis.ts:439`) walks the clinician sections
+and emits one patient section per clinician section.
+
+So the patient article structurally cannot differ from the clinician article: it
+inherits the same section count, the same order, and the same paragraph count.
+Paul wants it *engaging* — something a layperson keeps reading — and that is
+unreachable while it is a translation layer rather than its own document.
+
+**Done when:** the patient article gets its own outline pass over the claims —
+free to re-order, merge, lead with what matters to a patient, and use the block
+types from A2. Comparable in spirit to how the clinician outline is generated,
+not derived from it.
+
+#### A4. No image support anywhere
+No field exists on `topic_articles`, in the `Outline` type, or in the renderer.
+Paul plans to ingest images from existing articles and re-create them as needed.
+
+**Done when:** a `figure` block type (A2) carries an image reference, alt text,
+and a caption, with provenance for where the image came from and its licence.
+**Licence provenance is not optional** — re-using images from ingested articles
+in a product sold to physicians is a rights question, not just a technical one.
+
+### B. Evidence looks duplicated — but dedup is working correctly
+
+Paul saw "Longevity 101, segment 10, segment 11" under COPD looking identical.
+**Checked against the live database.** Both segments are `claim_members` of a
+*single* claim (`2991c6f3`), and their underlying statements are genuinely
+different sentences ("COPD is largely preventable…" vs "COPD remains a major
+cause of…"). Consolidation did its job.
+
+Two real findings behind the appearance:
+
+1. **`CHUNK_OVERLAP = 200` on `CHUNK_SIZE = 2400`** (`lib/extraction.ts:21`) means
+   adjacent chunks share 200 characters, so a passage on a chunk boundary is
+   extracted twice by design. That overlap exists to avoid losing
+   boundary-spanning content, and consolidation is what cleans up after it. Working
+   as intended.
+2. **The Evidence panel renders `claim_members` — the raw, pre-dedup layer.** So
+   the UI displays precisely the duplication the engine already resolved, which
+   makes a working system look broken.
+
+**Done when:** the Evidence drill-down groups members by claim and collapses
+same-source segments, showing "Longevity 101 (2 segments)" expandable rather
+than two near-identical rows. Presentational only — **do not "fix" the dedup,
+there is nothing wrong with it.**
+
+### C. Admin: jobs vs. run history are the same work at two altitudes
+
+`jobs` is the **queue** (intended work, with checkpoints); `pipeline_runs` is the
+**execution record** (attempts, including resumed and failed ones —
+`lib/pipelineRuns.ts` documents why a run row can legitimately stay `running`
+across ticks). `app/sources/[id]/page.tsx:193` renders them as two flat,
+unlabelled lists, so the same processing appears twice with no stated relation.
+
+The "three different jobs" on one source are separate *stages*
+(`extract_source`, then downstream) of a single logical processing episode.
+Nothing in the schema groups them, so nothing in the UI can.
+
+**Done when:** one collapsible entry per processing episode, labelled with date
+and time, with its stages nested underneath and their run attempts inside those;
+sorted newest-first. Needs a grouping key — likely the run/checkpoint id already
+threaded through `startOrResumeRun`. Explaining the two tables in the UI copy is
+the cheap half; grouping is the half that actually answers the confusion.
+
+### D. Insight metadata is unlabelled and unsortable
+
+- **"Peripheral" and "Useful" are not evidence types — they are `importance`.**
+  `components/SourceRawInsightsClient.tsx:48` maps `1 → Core, 2 → Useful,
+  3 → Peripheral` and renders the badge next to `evidence_type` with no label,
+  so it reads as a competing evidence taxonomy. The distinct axes are
+  `evidence_type` (RCT/Cohort/Mechanistic/…), `importance`, `actionability`,
+  `confidence`, and `insight_type`. **Done when:** each badge says what axis it
+  is on.
+- **Sorting was specced and typed but never built.** `InsightSortOption`
+  (`importance | recency | evidence_strength | actionability`) and
+  `InsightGroupOption` (`source | evidence_type | date | none`) exist in
+  `lib/types.ts:235-236` and are imported by **nothing**. The vocabulary Paul is
+  asking for is already designed; only the UI and query are missing.
+
+#### D1. Insight → article traceability (Paul: "where is each insight used?")
+**The data already exists.** Every article paragraph stores `claim_ids`
+(`lib/synthesis.ts:206`), so the chain `raw_insight → claim_members → claim →
+paragraph → article` is fully traversable today. This is a read-side feature, not
+a pipeline change — considerably cheaper than it sounds.
+
+**Done when:** an insight shows the articles and sections it landed in, linked;
+ideally the reverse too (a paragraph reveals its supporting insights).
+
+#### D2. Insight Review shows nothing until you search
+`app/admin/insights/review/page.tsx:83` computes `hasSearchOrFilters` and skips
+the query entirely when no search or filter is set — so the page reports "1,072
+raw insights" and then lists none. The guard looks like it was meant to avoid
+loading everything, but **the query is already paginated** (`PAGE_SIZE`, `.range(offset, …)`),
+so it is guarding against a cost that isn't there.
+
+**Done when:** the unfiltered first page renders by default.
+
+#### D3. Per-source stats dropdown
+Paul wants the stats card to break down by source: insights, claims, and
+consolidation ratio each. The consolidation ratio is the interesting one — it is
+the same number as the **per-source novelty %** in P3.5, viewed from the admin
+side. Build them together; they share a query.
+
+### E. Manual article editing — with a collision to resolve first
+Paul wants to edit clinician/patient/protocol articles by hand while reading.
+
+**The hard part is not the editor.** Articles are regenerated by `update_topic`
+jobs and `stale_topics()`, and the read side renders `version desc limit 1` — so
+a hand-edit is silently discarded the next time the topic goes stale. Any editor
+must answer: does a manual edit pin the article against regeneration, merge with
+it, or feed back as a corrected claim?
+
+**Recommended:** edits become a new version marked `human`, and regeneration
+preserves human-edited sections the way `updateTopicContent()` already preserves
+untouched ones — the mechanism exists. **Done when:** an edit survives a
+subsequent `update_topic` run. Test that explicitly; it is the whole risk.
+
+### F. UI polish (small, independent, safe to batch)
+- `app/admin/topics` — no vertical spacing under major headings.
+- Back button from Topics → Sources, and from Insight Review → Sources, reads
+  wrong. Use a plain **"Back to Sources"**.
+- Card-shaped buttons (Sources, Topics on Insight Review) need a visible border /
+  hover state so they read as clickable.
+
+### G. Taxonomy navigation
+Admin `/admin/topics` and the Medical Library present the same tree with no
+stated difference, which is confusing. Paul wants **hovering "Medical Library"
+to open a dropdown of the topic tree** so the scope of the library is visible
+without drilling in.
+
+Worth deciding deliberately: with 10 roots and ~130 topics, a hover menu must
+show branches (and probably only two levels), not everything. Related to the
+P3.6 item about thin branches being reader-visible — the nav is where a
+17-claim branch is most conspicuous.
 
 ---
 
