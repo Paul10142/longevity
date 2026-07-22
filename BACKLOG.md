@@ -10,6 +10,96 @@ list, not a spec. Items already specced there are linked rather than restated.
 
 ---
 
+## Before starting — preconditions, decisions, and what is missing
+
+Audited 2026-07-22 before beginning the plan below. Three gaps were **not
+represented anywhere in this file**, and one piece of good news materially
+de-risks the largest change.
+
+### Decisions only Paul can make (each blocks a Stage 1 item)
+
+None of these are research tasks; they are judgement calls, and work stalls
+without them.
+
+1. **What is the groundedness floor?** 0.7 is a log threshold nobody chose. And
+   what happens below it — hold from publication, auto-regenerate, or publish
+   with a visible flag? Blocks Stage 1 item 1.
+2. **Reference resolution: fix or retire?** At 4 of 76, either it gets fixed or
+   verified references stop being presented as a feature. The full build bakes
+   whichever answer is true into every article. Blocks Stage 1 item 3.
+3. **The 5 queued `update_topic` jobs — run or drop?** They will spend on the
+   next worker tick either way, so not deciding *is* deciding.
+4. **Image licensing (P1.5 A4).** Re-using images from ingested articles in a
+   paid physician product is a rights question before it is a technical one.
+
+### Missing infrastructure
+
+#### There are no tests and no CI
+No test runner, no `test` script, no `.github/workflows`. Every change so far
+has been verified by `npm run build`, type-check, and eye. That was tolerable
+while the work was schema and plumbing; it is **not** tolerable for Stage 2,
+which rewrites the prompts and the article schema — the highest-value and least
+verifiable code in the project.
+
+LLM prose can't be unit-tested, but the parts Stage 2 actually breaks are pure
+functions: `splitIntoChunks`, `outlineToMarkdown`, `stripInlineClaimIds`,
+`slugify`, and whatever block renderer A2 introduces. Those deserve tests before
+they are rewritten, not after.
+
+**Done when:** a test runner exists and covers the pure helpers in
+`lib/synthesis.ts` and `lib/extraction.ts`. Small — one afternoon — and it is
+the difference between "the build passed" and "the output is still correct".
+
+#### There is no regression check for article quality
+The real question for Stage 2 is *"did the articles get better or worse?"*, and
+nothing answers it today. Usefully, the metrics already exist: every article
+stores `groundedness_score` and `coverage_score`.
+
+**Recommendation:** before changing any prompt, pick ~5 topics as a fixed eval
+set, record their current scores and lengths, and re-measure after each prompt
+change. This turns a subjective "reads better" into a number, and costs about
+$5 per run. Do this **first** in Stage 2 — it is the instrument for everything
+else in that stage.
+
+#### Everything runs against production
+One Supabase project, one `.env.local`, no staging or branch database. Every
+migration, seed, and pipeline run so far has executed against live data — which
+is how a concurrent seed managed to split the live spine.
+
+Not necessarily worth fixing (Supabase branching exists but adds cost and
+friction for a solo project), but it should be a **conscious** choice rather than
+an unexamined default. The practical mitigation already in use — dry-run first,
+verify counts before and after — should stay mandatory for anything touching
+`topics` or `claims`.
+
+#### There is no spend cap
+`lib/worker.ts` enforces a **time** budget (300s, Vercel's `maxDuration`) — not
+a cost budget. Nothing stops a queue from spending unboundedly; the 51 stray
+`generate_topic` jobs were caught by inspection, not by a guardrail, and would
+have cost ~$50 unasked. The full build is $400–600 through the same path.
+
+**Done when:** a job-count or estimated-spend ceiling per tick, and a
+`generate_topic` enqueue path that refuses to queue a library-wide run without
+an explicit flag.
+
+### Good news: the article schema change is safer than it looks
+
+`app/topics/[slug]/page.tsx` renders **`body_markdown`**, not `outline`. So the
+55 existing articles keep rendering unchanged no matter what happens to the
+block schema, and `outlineToMarkdown` is the single choke point where new block
+types become reader-facing. A2 does not need a data migration or a
+dual-rendering path — it needs one function extended and one prompt schema
+widened.
+
+### Gaps I looked for and did not find
+
+Recorded so the audit isn't repeated: no orphaned references to dropped tables,
+no untracked files, working tree clean, `ARCHITECTURE.md` current as of
+`c0b42c0`. The taxonomy is settled and guarded at three layers. Nothing in
+`docs/archive/` is load-bearing.
+
+---
+
 ## The plan — what to work on, in order
 
 The sections below are a catalogue, ordered by severity. This section is the
@@ -39,6 +129,9 @@ The 2026-07-21 walkthrough moved this stage ahead of corpus work. Every item is
 a property of **each generated article**, so the full build multiplies it by
 100+. Regenerating afterwards means paying $400–600 twice.
 
+0. **First, build the instrument** — fix an eval set of ~5 topics and record
+   their current groundedness, coverage, and length. Without it, every change
+   below is judged by eye. ~$5/run. → "Before starting"
 5. **Stop narrating sources in prose** ("as the source said"). One prompt rule.
    → P1.5 A1
 6. **Give articles a block schema** (bullets, sub-heads, callouts, figures).
