@@ -51,6 +51,10 @@ const SPINE: { name: string; children: string[] }[] = [
       'Mindfulness & Meditation',
       // Behavior Change, Practice & Skill Acquisition, Evolutionary Psychology.
       'Behavioral Science',
+      // Three claims between them; kept as their own roots only because nothing
+      // had absorbed them yet.
+      'Neuroscience',
+      'Neurodevelopment',
     ],
   },
   // Added 2026-07-22. Everything in the library is ultimately in service of
