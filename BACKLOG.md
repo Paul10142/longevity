@@ -59,21 +59,48 @@ merges on production data.
 **Done when:** a merge has been run with the worker active and claim counts
 reconcile on both sides.
 
-### Reshape the taxonomy toward the curated top-level tree
-Target: Exercise / Nutrition / Sleep / Medications & Supplements / Mental &
-Emotional / Risks. As of 2026-07-22 the live tree had ~17 active top-level
-topics including AI-created ones (`research-methods`, `aging-longevity`,
-`health-policy`, `behavioral-science`, `evolutionary-biology`, …) alongside the
-intended six.
+### ~~Reshape the taxonomy toward the curated top-level tree~~ — DONE 2026-07-22
+Completed in `d0d4e83`..`89f4034`. The live tree is now 10 curated spine
+branches with **zero** legacy roots, all 1,013 claims still tagged. The six
+original headings were widened to ten because the corpus demanded it — most
+of the library is reproductive/hormonal health and research methodology, which
+had no home among the original six.
 
-Use the audit actions in `app/api/admin/topics/[id]/route.ts`
-(`rename` / `reparent` / `describe` / `archive` / `merge`) via `/admin/topics`.
-They set `merged_into_id` so old public URLs 301 rather than 404, and never
-rewrite slugs.
+Three mechanisms now hold the line, in increasing order of reliability:
+prompt (prefer existing topics) → code (`createChildTopic` requires a parent,
+so no call site can mint a root) → database (unique index on
+`(lower(name), parent)` for active topics, migration 008).
 
-**Note:** `lib/levers.ts` pins five lever cards to specific topic slugs. If a
-lever's topic is archived or merged, that card silently disappears from
-`/start`. Re-check the grid after any reshaping.
+**Note still live:** `lib/levers.ts` pins lever cards to specific topic slugs.
+If a lever's topic is archived or merged, that card silently disappears from
+`/start`. Re-check the grid after any future reshaping.
+
+### `claims.topic_fit` is not discriminating
+Added in migration 007 to flag placements the tagger wasn't confident about, so
+a human could review approximate filings. In the first real run all 77 claims
+came back `good` — zero `approximate`, zero `unfiled`. The value is the model's
+own self-report, and it does not currently separate a confident placement from
+a resigned one, so it cannot be trusted to surface bad filings.
+
+**Done when:** the signal is grounded in something measurable — e.g. derive it
+from the ANN similarity to the chosen topic rather than asking the model — and
+a spot-check shows `approximate` actually correlating with weak placements.
+
+### `discover_topics` splits rather than consolidates
+The stage samples claims **one existing topic at a time** and asks what finer
+topics live inside. Two consequences: every proposal is a split (a dry run
+produced 63 new topics against a 133-topic tree), and cross-cutting themes are
+structurally invisible — supplement claims sat 1–2 apiece across eleven topics,
+so no single batch ever saw enough of them to cluster. It never proposed
+"Supplements" for exactly this reason.
+
+Less urgent now that the spine constrains where anything can land, and that
+`placeTopic` routes new roots to the approval queue rather than creating them.
+
+**Done when:** clustering runs corpus-wide over `claims.embedding`, ignoring
+current topic membership, so thin cross-cutting themes surface. Costs no new
+embedding spend — every claim is already embedded; only creating a topic
+embeds anything new.
 
 ### `topic_protocols` generation
 Most topics have no generated protocol yet (all zero as of the cleanup). Gates
@@ -168,13 +195,23 @@ caught, not just top-level).
 
 Recorded to save the next person the trip:
 
-- **There were no duplicate active topics.** A "duplicate top-level topics"
-  concern raised during the cleanup was wrong. `medications-supplements-2` and
-  `risks-2` were transient rows already removed. The remaining `-2` slugs
-  (`reproductive-biology-2`, `child-development-2`) are the *live* topics —
-  their same-named predecessors are correctly `archived` with `merged_into_id`
-  set. Slugs are frozen and never reused, so `-2` is normal collision handling.
-  A duplicate-name check across active topics returned zero rows.
+- **There are no duplicate active topics *now* — but `medications-supplements-2`
+  and `risks-2` were a real bug, not transient noise.** Two concurrent
+  `seedSpine` runs each read the topic list before either had written, both
+  found no `Risks`, and both created it — splitting the spine in half across
+  duplicate roots. They were merged by hand (children re-parented onto the
+  survivor, then deleted); they held no claims or articles, so nothing was lost.
+
+  The cause is structural: the seeder reads once and inserts what's missing, and
+  slug collisions resolve by appending `-2`, so concurrent duplicate inserts
+  *succeed silently*. No application-level find-or-create can close that window.
+  Migration 008 adds a unique index on `(lower(name), parent)` for active
+  topics, turning it into a loud unique violation.
+
+  Unrelated: the remaining `-2` slugs (`reproductive-biology-2`,
+  `child-development-2`) are the *live* topics — their same-named predecessors
+  are correctly `archived` with `merged_into_id` set. Slugs are frozen and never
+  reused, so `-2` there is normal collision handling.
 - **`components/SourceEditor.tsx` and `components/TranscriptEditor.tsx` are
   live**, not orphans. They
   are the presentational halves behind `SourceEditorClient` /
