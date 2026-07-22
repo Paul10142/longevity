@@ -170,69 +170,6 @@ export type PipelineRun = {
 
 // ── Legacy v1 types (being migrated phase by phase) ─────────
 
-export type TopicArticleSection = {
-  id: string
-  title: string
-  paragraphs: {
-    id: string
-    text: string
-    insight_ids: string[]
-  }[]
-}
-
-export type TopicArticle = {
-  id: string
-  concept_id: string
-  audience: 'clinician' | 'patient'
-  version: number
-  title: string
-  outline: {
-    sections: TopicArticleSection[]
-  }
-  body_markdown: string
-  created_at: string
-  updated_at: string
-}
-
-export type TopicProtocolSection = {
-  id: string
-  title: string
-  paragraphs: {
-    id: string
-    text: string
-    insight_ids: string[]
-  }[]
-}
-
-export type TopicProtocol = {
-  id: string
-  concept_id: string
-  version: number
-  title: string
-  outline: {
-    sections: TopicProtocolSection[]
-  }
-  body_markdown: string
-  created_at: string
-  updated_at: string
-}
-
-export type LeverMetadata = {
-  tagline: string
-  primaryBenefits: string[]
-}
-
-export type Concept = {
-  id: string
-  name: string
-  slug: string
-  description: string | null
-  created_at: string
-  is_lever?: boolean | null
-  lever_order?: number | null
-  lever_metadata?: LeverMetadata | null
-}
-
 // Source types
 export type SourceType = 'book' | 'podcast' | 'video' | 'article'
 export type MediaType = 'audio' | 'video' | 'text' | 'book'

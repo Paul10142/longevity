@@ -29,8 +29,8 @@ export default function MedicalLibraryPage() {
                   <Link href="/admin/insights/review">
                     <Button variant="outline">Review Insights</Button>
                   </Link>
-                  <Link href="/admin/concepts">
-                    <Button variant="outline">Manage Concepts</Button>
+                  <Link href="/admin/topics">
+                    <Button variant="outline">Manage Topics</Button>
                   </Link>
                 </div>
               </CardContent>
