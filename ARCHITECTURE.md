@@ -31,9 +31,12 @@ Principles:
   be detached; consolidation can be re-run as models improve.
 - **Provenance is a chain, not a field:** article paragraph → `claim_ids` →
   `claim_members` → `raw_insights.locator` → source (+ timestamp).
-- **Topics are AI-managed but human-audited.** The AI creates/assigns topics;
-  the admin audit UI can rename, re-parent, merge, archive
-  (`topics.reviewed_by_human` tracks audit state).
+- **Topics grow inside a human-owned spine.** The AI assigns claims to topics
+  and may add children under an existing one, but **never creates a top-level
+  branch** — those come from `scripts/seedSpine.ts` or an approved
+  `topic_proposals` row. The admin audit UI can rename, re-parent, merge,
+  archive (`topics.reviewed_by_human` tracks audit state; `topics.is_spine`
+  marks a curated branch). See *Human-curated taxonomy* below.
 
 ## Processing pipeline
 
@@ -48,8 +51,8 @@ running jobs with old `locked_at` heartbeats get reclaimed).
 | Extract | `extract_source` | Chunk transcript, per-chunk LLM extraction → `raw_insights` + embeddings (batched, inline). Checkpoint = chunk index |
 | Consolidate | `consolidate_source` | Per raw insight: ANN over `claims.embedding` (`match_claims` RPC) → LLM adjudication SAME/DIFFERENT/UNSURE → attach member, create claim, or create provisionally + queue `merge_reviews` |
 | Sweep | `claim_sweep` | Periodic claim-vs-claim ANN pass to catch accumulated near-duplicates |
-| Tag | `tag_claims` | Assign claims to topics (ANN over `topics.embedding` + LLM multi-label) |
-| Discover | `discover_topics` | Review unfiled claims + over-broad topics, propose new topics with parent placement, flag affected claims `needs_tagging` and hand back to Tag |
+| Tag | `tag_claims` | File claims into the curated spine (ANN over `topics.embedding` + LLM multi-label). May create a child under an existing topic; a new **root** becomes a `topic_proposals` row instead |
+| Discover | `discover_topics` | Review unfiled claims + over-broad topics, propose new topics with parent placement (through the same root gate as Tag), flag affected claims `needs_tagging` and hand back to Tag |
 | Synthesize | `generate_topic` | Prioritized claims → clinician article + protocol (per-paragraph `claim_ids`), patient article translated from clinician version |
 
 Worker: `app/api/worker/tick` — invoked by Vercel cron (see `vercel.json`),
@@ -85,11 +88,65 @@ embedding provider means re-embedding every `raw_insights`, `claims`, and
 
 ### Human-curated taxonomy
 
-`discover_topics` only *creates* topics; it never assigns claims. It flags the
-claims it touched `needs_tagging` and enqueues `tag_claims`, so placement stays
-in one code path. Because the topic tree is curated, the stage supports a
-dry run — `npm run pipeline -- discover --dry-run` prints what it would create
-and writes nothing.
+The tree is anchored by a **curated spine**: top-level branches marked
+`topics.is_spine`, seeded by `scripts/seedSpine.ts` and owned by a human. The
+pipeline files claims into the spine and may deepen it, but may never restructure
+it. The governing rule:
+
+> **Roots come only from humans.** Everything else can be automated.
+
+This exists because the opposite was true and the tree grew 24 top-level topics.
+Tagging created topics as a side effect: when the model named a parent that
+didn't exist, the old `ensureTopic` recursed and created that parent as a new
+root. Nothing recorded the decision or asked anyone.
+
+**Placement (`tag_claims` → `placeTopic`)** resolves each model-suggested
+(name, parent) pair one of three ways:
+
+| Case | Result |
+|---|---|
+| Name already exists | Link the claim |
+| New name under an existing parent | Create the child — the tree deepens on its own |
+| Would need a new root | Record a `topic_proposals` row; file the claim under the named parent |
+
+`discover_topics` goes through the same gate, so there is one path to topic
+creation rather than two. It still only *creates* — it flags the claims it
+touched `needs_tagging` and hands placement back to `tag_claims`. It supports
+a dry run: `npm run pipeline -- discover --dry-run` writes nothing.
+
+**Three layers hold the line, in increasing order of reliability.** Each catches
+what the previous one cannot:
+
+1. **Prompt** — file by subject, prefer existing topics. Necessary but not
+   sufficient: the prompt already said "STRONGLY prefer an existing topic"
+   while the tree was sprawling.
+2. **Code** — `createChildTopic(name, parent)` *requires* a parent, so no call
+   site can widen the tree at the root. The rule is in the type signature, not
+   in a convention.
+3. **Database** — unique index on `(lower(name), COALESCE(parent_id, …))` for
+   active topics (migration 008). This is the only layer that survives
+   concurrency: two simultaneous `seedSpine` runs each read the tree before
+   either wrote, both found no `Risks`, and both created it. No
+   application-level find-or-create can close that window.
+
+**Approval queue** — `/admin/topics/proposals` renders pending proposals with
+the claims that motivated them. Repeat suggestions of a name coalesce onto one
+row, so a reviewer gets one decision rather than one per claim. Name and parent
+are editable at approval time; the parent picker offers only `is_spine` topics,
+so approving cannot rebuild the sprawl the queue exists to prevent. Approval
+embeds the name *before* inserting — a topic without an embedding is invisible
+to the `match_topics` ANN search, so a half-created row would silently degrade
+tagging rather than fail loudly.
+
+**`claims.topic_fit`** (`good` / `approximate` / `unfiled`) records how well a
+placement landed, so an approximate filing stays visible. See `BACKLOG.md` — it
+is currently the model's self-report and does not yet discriminate.
+
+**Filing is by subject, not by kind of statement.** A claim reporting what a
+specific study found belongs with the subject it is about; `Research & Evidence`
+is only for general methodology (design, confounding, replication, funding
+bias). The same applies to `Public Health & Policy` versus the lever a policy
+claim is really about.
 
 ### `pipeline_runs` lifecycle
 
