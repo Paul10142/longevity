@@ -53,7 +53,12 @@ const SPINE: { name: string; children: string[] }[] = [
       'Cancer',
       'Neurodegenerative Disease',
       'Metabolic Health',
-      'Hormones',
+      // 'Hormones' deliberately absent. It duplicated
+      // Sexual & Reproductive Health › Endocrinology, giving hormone claims two
+      // plausible homes and guaranteeing inconsistent tagging. Collapsed into
+      // Endocrinology on 2026-07-22 (archived + merged_into_id, so /hormones
+      // still redirects). Re-adding it here would recreate the ambiguity: this
+      // script only reads ACTIVE topics, so it cannot see the archived row.
       'Family Medical History & Genetics',
       'Accidental Death',
       // Legacy AI-minted roots whose subtrees are plainly disease risk.
