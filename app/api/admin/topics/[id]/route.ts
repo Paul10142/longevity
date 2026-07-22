@@ -68,13 +68,30 @@ export async function POST(
       const intoId = body.into_id as string
       if (!intoId || intoId === id) return NextResponse.json({ error: "valid into_id required" }, { status: 400 })
       // Move claim links (ignore conflicts where the claim is already in the target).
-      const { data: links } = await supabaseAdmin.from("claim_topics").select("claim_id").eq("topic_id", id)
-      for (const l of (links ?? []) as { claim_id: string }[]) {
-        await supabaseAdmin
+      //
+      // Drain in batches, and only ever delete the exact claim_ids we just
+      // moved. A blanket `delete().eq("topic_id", id)` would also destroy links
+      // that a concurrent `tag_claims` job added after our read — silently
+      // dropping the claim's topic assignment instead of moving it. Batching
+      // also avoids PostgREST's default row cap truncating the initial read.
+      const MERGE_BATCH = 500
+      for (let pass = 0; pass < 100; pass++) {
+        const { data: links } = await supabaseAdmin
           .from("claim_topics")
-          .upsert({ claim_id: l.claim_id, topic_id: intoId, assigned_by: "human" }, { onConflict: "claim_id,topic_id" })
+          .select("claim_id")
+          .eq("topic_id", id)
+          .limit(MERGE_BATCH)
+
+        const claimIds = ((links ?? []) as { claim_id: string }[]).map((l) => l.claim_id)
+        if (claimIds.length === 0) break
+
+        for (const claimId of claimIds) {
+          await supabaseAdmin
+            .from("claim_topics")
+            .upsert({ claim_id: claimId, topic_id: intoId, assigned_by: "human" }, { onConflict: "claim_id,topic_id" })
+        }
+        await supabaseAdmin.from("claim_topics").delete().eq("topic_id", id).in("claim_id", claimIds)
       }
-      await supabaseAdmin.from("claim_topics").delete().eq("topic_id", id)
       // Move children under the merge target.
       await supabaseAdmin.from("topics").update({ parent_id: intoId }).eq("parent_id", id)
       // Archive the merged topic and record the survivor so its old slug redirects.
