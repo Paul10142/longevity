@@ -27,7 +27,9 @@ const SPINE: { name: string; children: string[] }[] = [
       'Stability',
       'Zone 2',
       'VO2 Max',
-      'Centenarian Decathlon',
+      // Generic phrasing on purpose — the equivalent term in the source
+      // material is an author's coined phrase.
+      'Defining Physical Goals in Old Age',
       'High Intensity & Zone 5 Training',
     ],
   },
