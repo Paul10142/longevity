@@ -141,6 +141,27 @@ Two are worth more than a lint pass:
 `lib/membership.ts` has two TODOs standing in for database lookups until auth
 exists. Expected, not rot.
 
+### `eslint.config.*` doesn't scope out nested worktrees
+Its `ignores` list (`.next/**`, `node_modules/**`, `dist/**`, `coverage/**`,
+`src/**`) only matches those directories at the top level. Claude Code worktrees
+live inside the repo at `.claude/worktrees/<name>/` — a full nested checkout,
+each with its own `.next`, and potentially its own `dist/`/`src/`. None of the
+current patterns match a `.next` (or `dist`, `src`) three levels down, so
+`npm run lint` run from the real repo root while any such worktree exists
+sweeps up that worktree's build output and duplicate source tree as if it were
+part of the project.
+
+Hit this directly merging `claude/stoic-blackburn-91d7db` into `main`
+(2026-07-22): `npm run lint` from the repo root reported 24,599 problems.
+Excluding `.claude/**` brought it back to the true baseline (0 errors, 15
+warnings, matching a lint run from inside the worktree itself). Not a real
+regression — a scope gap that will misfire the same way for anyone who lints
+from the repo root while a worktree is present.
+
+**Done when:** `ignores` in `eslint.config.*` excludes `.claude/**` (or uses
+`**/.next/**`, `**/dist/**`, `**/src/**` so nested copies at any depth are
+caught, not just top-level).
+
 ---
 
 ## Verified — do not re-investigate
