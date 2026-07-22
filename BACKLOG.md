@@ -16,21 +16,150 @@ Audited 2026-07-22 before beginning the plan below. Three gaps were **not
 represented anywhere in this file**, and one piece of good news materially
 de-risks the largest change.
 
-### Decisions only Paul can make (each blocks a Stage 1 item)
+### Decisions — answered 2026-07-22
 
-None of these are research tasks; they are judgement calls, and work stalls
-without them.
+1. **Groundedness: hold and require manual approval.** Below the floor an
+   article is not published; it waits for Paul. See the section below for what
+   the number means and what the floor should be — the policy has a
+   prerequisite bug that must be fixed first.
+2. **References: fix, and include what resolves.** Partial resolution is
+   accepted — some citations are conversational and have nothing linkable.
+   Show the ones that resolve; never present an unresolved mention as verified.
+   This retires the "or stop presenting it as a feature" branch.
+3. **Queued `update_topic` jobs: delete them.** Reasoning below — it is safe,
+   and it avoids paying for output that Stage 2 will discard.
+4. **Images: include them now, licensing later.** Recorded as a deliberate
+   deferral, not an oversight. Revisit before the product is sold, since
+   re-used third-party images in a paid product is a rights exposure that grows
+   with every article.
 
-1. **What is the groundedness floor?** 0.7 is a log threshold nobody chose. And
-   what happens below it — hold from publication, auto-regenerate, or publish
-   with a visible flag? Blocks Stage 1 item 1.
-2. **Reference resolution: fix or retire?** At 4 of 76, either it gets fixed or
-   verified references stop being presented as a feature. The full build bakes
-   whichever answer is true into every article. Blocks Stage 1 item 3.
-3. **The 5 queued `update_topic` jobs — run or drop?** They will spend on the
-   next worker tick either way, so not deciding *is* deciding.
-4. **Image licensing (P1.5 A4).** Re-using images from ingested articles in a
-   paid physician product is a rights question before it is a technical one.
+---
+
+## Understanding groundedness (the number, not the concept)
+
+Paul asked what the levels actually mean. This is what the code computes, and
+what the live numbers say.
+
+### The formula
+
+`lib/synthesis.ts:332` sends every paragraph to Claude with the claims it cites
+and asks which paragraphs contain a factual assertion **not** supported by those
+claims. Then:
+
+```
+groundedness = 1 − (ungrounded paragraphs ÷ total paragraphs)
+```
+
+Three consequences follow, and each matters for setting a floor.
+
+**It is a paragraph ratio, not a fact ratio.** A paragraph with one loose clause
+counts exactly the same as a paragraph that is wholly invented. So the score is
+coarse, and at the margin pessimistic — 0.67 may be three paragraphs each with
+one unsupported sentence rather than a third of the article being fiction.
+
+**It is quantized by paragraph count, which makes short articles volatile.**
+AMPK Signaling has **5 paragraphs**, so its score can only ever be 0, 0.2, 0.4,
+0.6, 0.8 or 1.0. A floor of 0.7 on a 5-paragraph article means, exactly, "at
+most one bad paragraph". The same floor on a 29-paragraph article permits eight.
+
+**It measures support, not truth.** A claim can be wrong and the article
+perfectly grounded in it. Groundedness says the prose traces to the corpus; it
+says nothing about whether the corpus is right.
+
+### What the live numbers say
+
+| Topic | Score | Claims | Paragraphs | Ungrounded |
+|---|---|---|---|---|
+| AMPK Signaling | 0.40 | 5 | 5 | 3 |
+| Cognitive Aging | 0.60 | 8 | 15 | 6 |
+| Sleep & Cognition | 0.67 | 8 | 12 | 4 |
+| Resistance Training | 0.67 | 16 | 12 | 4 |
+| Rough-and-Tumble Play | 0.69 | 9 | 16 | 5 |
+| Sleep | 0.70 | 16 | 10 | 3 |
+| Mental Health & Psychology | 0.79 | 5 | 24 | 5 |
+| Functional Aging | 0.86 | — | 21 | 3 |
+
+**The dominant pattern is thin evidence, not bad writing.** The two worst
+articles have the two thinnest claim pools (5 and 8 claims). The prompt tells
+the model this is an *"EXHAUSTIVE reference"* with *"no word limit"*
+(`lib/synthesis.ts:161`) — so when a topic has five claims, the model writes to
+the ambition of the instruction and fills the gap with outside knowledge. That
+is precisely what an ungrounded paragraph is.
+
+Note the honest exception: Mental Health & Psychology has 5 claims and 24
+paragraphs yet scores 0.79. The correlation is real but not clean, so treat
+"thin claims → low groundedness" as the leading explanation, not a law.
+
+**Compare AMPK and Functional Aging: both have 3 ungrounded paragraphs.** One
+scores 0.40, the other 0.86. A pure ratio lets a long article carry far more
+unsupported assertions than a short one — which for a clinician product is
+arguably backwards.
+
+### What the floor should be
+
+**Prerequisite bug — fix this before any hold policy ships.**
+`scoreGroundedness` ends with `catch { return 1 }` (`lib/synthesis.ts:355`). A
+checker failure returns a **perfect** score. Under "publish everything" that was
+merely sloppy; under "hold below the floor" it becomes an auto-approve on error
+— the exact inversion of what the gate is for. Make the failure return `null`
+and treat null as "hold, unscored".
+
+**Recommendation — three gates rather than one number:**
+
+1. **Ratio floor ≈ 0.85.** Above the current 0.7 (which was never chosen), and
+   it holds everything in the table above except Functional Aging.
+2. **Absolute cap of ~2 ungrounded paragraphs**, so a long article cannot
+   accumulate unsupported assertions while passing on ratio.
+3. **A minimum claim count to attempt an article at all** — likely 10–15. This
+   attacks the cause rather than the symptom: a 5-claim topic should not be
+   generating a physician reference. It should stay a stub until the corpus
+   supports it, which also answers the P3.6 "thin branches are reader-visible"
+   item.
+
+Gate 3 is the high-value one. Gates 1 and 2 catch bad articles; gate 3 stops
+them being written, and stops paying for them.
+
+**This also implies a review queue** — "hold for manual approval" needs
+somewhere for held articles to sit, and a UI to approve or reject them. That
+work does not exist yet and is not costed anywhere else in this file.
+
+### Why deleting the queued jobs is safe
+
+`stale_topics()` (migration 005.2) is a `stable` SQL function that derives
+staleness by comparing `claim_topics.created_at` against the article's
+`claims_snapshot_at`. **Staleness is computed, never stored.** Deleting a queued
+`update_topic` row therefore discards nothing permanent — the next sweep
+recomputes the identical set.
+
+And deleting is the better choice right now: Stage 2 rewrites the prose rules
+and the article schema, so every article those jobs would patch is due for full
+regeneration anyway. Running them means paying to patch output that is about to
+be replaced.
+
+### Still open — the questions that shape the work
+
+Not urgent the way Stage 1 is, but each one changes what gets built, so leaving
+them unanswered means guessing.
+
+1. **Which article is the flagship — clinician or patient?** The product is sold
+   to physicians, yet the engagement feedback (P1.5 A3) was mostly about the
+   patient view. These pull in different directions: the clinician article
+   optimizes for exhaustiveness, the patient one for being readable enough to
+   finish. Stage 2 effort splits according to the answer.
+2. **Where do held articles go, and who approves them?** Implied by decision 1
+   above. Needs a review queue and an approve/reject UI that does not exist.
+   Does approval publish as-is, or is editing (P1.5 E) part of approving?
+3. **Which sources come next?** Stage 3 says "ingest breadth — Exercise, Sleep,
+   Nutrition" without naming anything. A concrete list is needed, and it
+   determines whether the thin branches fill in.
+4. **How big is the library at launch?** Ten strong topics or a hundred thin
+   ones is a positioning decision, and it sets the build budget.
+5. **Is per-source novelty reader-facing or admin-only?** It is the clearest
+   proof the dedup engine works, which argues for showing it to prospects — but
+   it also advertises how much of a source was redundant.
+6. **Does the manual editor edit prose, or the underlying claims?** Editing prose
+   fixes one article; editing a claim fixes everywhere it appears. The second is
+   more powerful and much harder.
 
 ### Missing infrastructure
 
