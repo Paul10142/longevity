@@ -191,6 +191,16 @@ Rules:
 - Topic names are concise Title Case noun phrases (2-4 words). No sentences.
 - Assign at most 2 topics per claim. Prefer 1 unless it genuinely spans two.
 
+File by SUBJECT, not by the kind of statement it is. Two traps:
+- "Research & Evidence" is only for claims about how evidence is produced or
+  judged IN GENERAL — study design, confounding, statistical interpretation,
+  replication, funding bias. A claim reporting what a specific study FOUND
+  belongs with the subject it is about. "An RCT showed testosterone raises
+  hematocrit" is a testosterone claim, not a research-methods claim.
+- The same holds for "Public Health & Policy": population-level policy belongs
+  there, but a policy claim that is really about a lever ("bariatric surgery
+  access improves outcomes") files under that lever.
+
 Return STRICT JSON:
 {"assignments":[{"claim_index":1,"topics":[{"name":"Insulin Resistance","parent":"Metabolic Health"}]}]}
 `.trim()
