@@ -102,6 +102,13 @@ const SPINE: { name: string; children: string[] }[] = [
       'Male Reproductive Health',
       'Regenerative Medicine',
       'Diagnostics',
+      // Folded here rather than kept as a root: 32 of its 52 claims are
+      // Reproductive Strategies, and the remaining evolutionary material
+      // (parental investment, sexual differentiation, comparative biology) is
+      // context for the same subject. Its smaller Child Development and
+      // Anthropology children come along — an imperfect fit for those two is
+      // the accepted cost of not minting a branch for six claims.
+      'Evolutionary & Developmental Biology',
     ],
   },
   // Meta-branches: about how evidence is made and delivered rather than about
