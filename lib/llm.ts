@@ -27,6 +27,9 @@ export const CLAUDE_BULK_MODEL = 'claude-haiku-4-5'
 // Synthesis default (kept under the original name — long-form clinical writing).
 export const CLAUDE_MODEL = CLAUDE_JUDGMENT_MODEL
 
+/** Reasoning depth for adaptive thinking. Unset = the API default (`high`). */
+export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
+
 /** Adaptive thinking is an Opus-4.x feature; Haiku 4.5 rejects it, and it also
  *  rejects `output_config.effort`. Gate both on the model. */
 function supportsAdaptiveThinking(model: string): boolean {
@@ -89,7 +92,8 @@ async function apiText(
   system: string,
   user: string,
   maxTokens: number,
-  model: string
+  model: string,
+  effort?: Effort
 ): Promise<string> {
   const params: Record<string, unknown> = {
     model,
@@ -101,6 +105,11 @@ async function apiText(
   // verdicts are obvious and skip it, so this stays self-regulating.
   if (supportsAdaptiveThinking(model)) {
     params.thinking = { type: 'adaptive' }
+    // Effort caps how deep that reasoning goes. It defaults to `high`, which is
+    // the right call for adjudication but overkill for mechanical prose work —
+    // thinking tokens bill as output ($25/M), so an uncapped synthesis run is
+    // mostly paying for invisible reasoning. Callers cap per call site.
+    if (effort) params.output_config = { effort }
   }
 
   const msg = await getAnthropic().messages.create(params as never)
@@ -118,12 +127,14 @@ export async function claudeJson<T>(
   system: string,
   user: string,
   maxTokens = 8000,
-  model: string = CLAUDE_MODEL
+  model: string = CLAUDE_MODEL,
+  effort?: Effort
 ): Promise<T> {
   const text =
     backend() === 'claude-code'
-      ? await claudeCodeText(system, user, model)
-      : await apiText(system, user, maxTokens, model)
+      ? // The CLI has no effort flag — subscription runs use its own defaults.
+        await claudeCodeText(system, user, model)
+      : await apiText(system, user, maxTokens, model, effort)
 
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T

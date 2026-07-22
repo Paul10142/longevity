@@ -18,7 +18,7 @@
  */
 
 import { supabaseAdmin } from './supabaseServer'
-import { claudeJson, CLAUDE_MODEL } from './llm'
+import { claudeJson, CLAUDE_MODEL, type Effort } from './llm'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 // Effectively uncapped at current scale; pagination of topic_claims() is the
@@ -239,8 +239,21 @@ function outlineToMarkdown(outline: Outline): string {
   return parts.join('\n\n')
 }
 
-async function chatJson<T>(system: string, user: string, maxTokens = 8000): Promise<T> {
-  return claudeJson<T>(system, user, maxTokens)
+/**
+ * Synthesis calls cap reasoning depth. Adaptive thinking defaults to `high`,
+ * and thinking tokens bill as output ($25/M) — uncapped, most of a synthesis
+ * run's cost is invisible reasoning on work that is largely mechanical.
+ * Mechanical steps (grouping, translation) run `low`; substantive prose and the
+ * groundedness audit run `medium`. Prose stays on Opus either way — we cap the
+ * reasoning, never the model.
+ */
+async function chatJson<T>(
+  system: string,
+  user: string,
+  maxTokens = 8000,
+  effort: Effort = 'medium'
+): Promise<T> {
+  return claudeJson<T>(system, user, maxTokens, CLAUDE_MODEL, effort)
 }
 
 /** Group all claims into themed sections. Guarantees every claim is assigned
@@ -253,7 +266,8 @@ async function outlineSections(
   const list = claims.map(c => `[${c.id}] ${c.canonical_statement}`).join('\n')
   let raw: { sections?: { id: string; title: string; claim_ids?: string[] }[] } = {}
   try {
-    raw = await chatJson(CLINICIAN_OUTLINE_PROMPT, `${header}\n\nClaims:\n${list}`, 6000)
+    // Grouping claims into themes is bucketing, not reasoning — cap it low.
+    raw = await chatJson(CLINICIAN_OUTLINE_PROMPT, `${header}\n\nClaims:\n${list}`, 6000, 'low')
   } catch {
     raw = {}
   }
@@ -296,9 +310,12 @@ async function generateClinicianSection(
 async function translatePatientSection(topicName: string, section: Section): Promise<Section> {
   const md = section.paragraphs.map(p => p.text).join('\n\n')
   if (!md.trim()) return { id: section.id, title: section.title, paragraphs: [] }
+  // Plain-language translation of existing prose — mechanical, cap it low.
   const res = await chatJson<{ title?: string; paragraphs?: { id: string; text: string }[] }>(
     PATIENT_SECTION_PROMPT,
-    `Topic: ${topicName}\nSection: ${section.title}\n\n${md}`
+    `Topic: ${topicName}\nSection: ${section.title}\n\n${md}`,
+    8000,
+    'low'
   )
   return {
     id: section.id,
@@ -324,10 +341,13 @@ async function scoreGroundedness(outline: Outline, claimById: Map<string, string
     .join('\n\n')
 
   try {
+    // The audit is a genuine judgment call — keep real reasoning here.
     const res = await claudeJson<{ ungrounded?: number[] }>(
       'You audit a physician reference for groundedness. For each numbered paragraph, decide if EVERY factual/clinical assertion is supported by its listed supporting claims. Ignore pure transitions, framing, or general connective prose. Return STRICT JSON {"ungrounded":[<indices of paragraphs containing an assertion NOT supported by their claims>]}.',
       items,
-      2000
+      2000,
+      CLAUDE_MODEL,
+      'medium'
     )
     const count = Array.isArray(res.ungrounded) ? res.ungrounded.length : 0
     return Math.max(0, 1 - count / paras.length)
