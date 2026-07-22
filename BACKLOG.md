@@ -22,6 +22,44 @@ planned.
 **Done when:** both routes exist with real policy text. Needs actual legal
 copy — scaffolding empty pages is not a fix.
 
+### Articles ship below the groundedness gate — live, on a clinician product
+`lib/synthesis.ts:427` scores groundedness, logs `[synthesis] low groundedness`
+when it falls under 0.7, and then **saves the article anyway**. Nothing blocks,
+quarantines, or retries. Measured across the 28 live clinician articles
+(2026-07-22):
+
+| Article | Groundedness |
+|---|---|
+| AMPK Signaling | **0.40** |
+| Cognitive Aging | **0.60** |
+| Sleep & Cognition / Resistance Training | 0.67 |
+| Rough-and-Tumble Play | 0.69 |
+| Sleep | 0.70 |
+| Lifespan / Cold Exposure Protocols | 0.75 |
+
+Groundedness is the share of paragraphs whose assertions are actually supported
+by their cited claims. At 0.40, most of the AMPK article's assertions trace to
+nothing in the corpus. The whole pitch is that a physician can trust every
+statement, so this outranks every cosmetic item in this file.
+
+**Done when:** an article below a chosen floor is not published — held for
+review, regenerated, or saved with a visible flag. Decide the floor
+deliberately (0.7 is currently only a log threshold, not a considered value).
+
+### Most of the library predates the coverage gate
+45 of 55 `topic_articles` rows have `coverage_score = null`: they were generated
+before sectioned, claim-complete synthesis existed. Only the ten regenerated
+since carry `coverage_score = 1`. The size gap is stark — Testosterone went
+5,385 → 46,001 characters when regenerated; Male Fertility Assessment 3,803 →
+45,214.
+
+So "comprehensive, nothing dropped" is currently true of ten articles, not the
+library. Because the read side renders `order by version desc limit 1`, the
+newest row wins and regeneration is safe — old versions stay as history.
+
+**Done when:** every clinician article has a non-null `coverage_score`. These
+topics are small, so this is far cheaper than the full build.
+
 ### Lever copy on `/start` is unreviewed placeholder
 See `TODO(copy)` in `lib/levers.ts`. The `tagline`, `description`, and
 `primaryBenefits` for all five levers were drafted to get the grid rendering
@@ -75,6 +113,54 @@ so no call site can mint a root) → database (unique index on
 If a lever's topic is archived or merged, that card silently disappears from
 `/start`. Re-check the grid after any future reshaping.
 
+### Reference resolution succeeds 5% of the time
+`reference_mentions` holds 76 extracted citations. **72 are `not_found`; 4
+resolved**, yielding 3 canonical rows in `references_` and 21 `claim_references`
+links. Verified references are a headline trust feature for the physician
+product — at this rate the References section is effectively empty, and the v3
+evidence layer's whole point is unmet.
+
+Extraction is working (76 mentions found across 6 sources); **resolution** is
+where it fails. Likely causes, in order: podcast speech names studies loosely
+("the Danish twin study"), so there is no title to match; query construction
+against CrossRef/PubMed may not be falling back from title → author+year.
+
+**Done when:** a spot-check of ten real mentions shows most resolving, or a
+documented finding that conversational citations are inherently unresolvable —
+in which case stop presenting resolution as a feature.
+
+### No timestamped provenance — 0 of 1,072 insights
+`raw_insights.start_ms` is populated on **zero** rows. You asked for this
+directly: an insight should deep-link to its exact moment in the source video
+so a manual review is one click. Nothing is captured.
+
+This is retroactive-hostile: fixing it later means re-extracting every source.
+**Do it before the next YouTube batch**, not after.
+
+**Done when:** extraction records `start_ms`/`end_ms` from chunk timing, and a
+topic-page citation links to `youtube.com/watch?v=…&t=…`.
+
+### Source stuck in `processing` with no job
+`d32c0fc8` ("Optimizing protein quantity, distribution, and quality", 16,186
+chars) has `processing_status = 'processing'`, 0 raw insights, and no queued
+job — its `extract_source` job was deleted at your request on 2026-07-22 so you
+could reprocess manually. The status was never reset, so admin shows it as
+permanently in-flight.
+
+**Done when:** the source is either reprocessed or its status reset to
+`pending`. Worth a general guard: a source in `processing` with no live job is
+by definition stale.
+
+### 5 `update_topic` jobs sitting queued
+Queued 2026-07-22 10:39 by the taxonomy reshape — re-tagging claims made those
+articles genuinely stale, so `stale_topics()` did its job. They are incremental
+section patches, not full rebuilds, so the cost is small but non-zero and they
+will run on the next worker tick.
+
+Left queued deliberately rather than deleted: unlike the 51 stray
+`generate_topic` jobs, these represent real work. **Decide** whether to let them
+run.
+
 ### `claims.topic_fit` is not discriminating
 Added in migration 007 to flag placements the tagger wasn't confident about, so
 a human could review approximate filings. In the first real run all 77 claims
@@ -108,16 +194,116 @@ the P1 protocols-strip item above.
 
 ---
 
-## P3 — Specced but not built
+## P3 — Specced; partly built
 
-Three phases are agreed and written up in `ARCHITECTURE.md` but not
-implemented. Not restated here — read the sections directly:
+The "agreed, not yet built" labels on the `ARCHITECTURE.md` v3.1/v3.2 sections
+are **stale** — the mechanics of both shipped on 2026-07-21/22. What is missing
+is not the machinery but the *product promises* layered on top. Corrected here
+because the old wording would send the next person to rebuild working code.
 
-- **v3 evidence layer + scale invariants** (`## v3 evidence layer`)
-- **v3.1 physician-grade comprehensiveness** (`## v3.1 target spec`) — marked
-  *agreed, not yet built*
-- **v3.2 incremental update model** (`## v3.2 incremental update model`) —
-  section-level regeneration and living documents, also *agreed, not yet built*
+**Built** (verify in `lib/synthesis.ts`, `lib/worker.ts`):
+
+- v3 evidence layer — `references_`, `reference_mentions`, `claim_references`
+  exist and are populated; `direct_quote` is set on **all 1,072** raw insights.
+- v3.1 core — claim cap removed (`CLINICIAN_CLAIM_CAP = 2000`), sectioned
+  generation, coverage gate + mop-up, `coverage_score`, groundedness scoring.
+- v3.2 core — `updateTopicContent()` with its three tiers and
+  `FULL_REGEN_THRESHOLD = 0.25`, wired through `stale_topics()` →
+  `update_topic` jobs (migration 005.2). One has already run successfully.
+
+**Not built — these are the B2B promises, and each is separately listed below:**
+per-source novelty %, consensus/contested labelling, timestamped provenance,
+contradiction review queue, topic-split flow, "what's new since last visit",
+and the Batch API discount path.
+
+---
+
+## P3.5 — The B2B promises (agreed in conversation, nothing built)
+
+These are what makes the library sellable rather than merely large. Each was
+agreed explicitly; none exists in code.
+
+### Per-source novelty ("N% of this source was new")
+The core differentiator. The pitch is that a clinician never re-reads overlap:
+ingest a source, and the system reports how much of it was genuinely new versus
+already known. Every input exists — consolidation already decides SAME vs
+DIFFERENT per raw insight — so this is a matter of recording and surfacing the
+ratio per source, not new inference.
+
+**Done when:** a source page shows "N% new" and the claims contributed.
+
+### Consensus vs contested labelling
+Agreed: **classify automatically, Paul overrides contested calls.** Contested
+material must read as "thought for discussion", never as settled fact. Today
+this exists only as a line in the synthesis prompt
+(`lib/synthesis.ts:169`) asking the model to hedge — there is no structured
+field, so nothing can be filtered, badged, or overridden.
+
+**Done when:** claims carry a consensus state, articles render it visibly, and
+an admin control flips a contested call.
+
+### Contradiction review queue
+`CONTRADICTS` was specced as a human-confirmed verdict. When a new source
+disputes an existing claim, that must surface for a decision rather than being
+silently merged or duplicated.
+
+### Topic split flow
+A topic that grows too broad should be splittable with its claims redistributed
+and its article re-sectioned. Specced in v3.2, not built. Related to the
+`discover_topics` item above, which currently only ever splits.
+
+### "What's new since last visit"
+The living-document delta. Readers who return should see what changed rather
+than re-reading. `topic_articles` is already versioned per section, which is the
+hard prerequisite.
+
+### Batch API path (50% discount)
+For the one budgeted full build. Ranked first among cost levers in
+`ARCHITECTURE.md` "Cost model".
+
+---
+
+## P3.6 — Corpus strategy
+
+### The library is lopsided, and it is an ingestion artefact
+As of 2026-07-22, 5 processed sources produced 1,072 raw insights → 1,013
+claims. Two sources (Attia #351 male fertility, #374 testosterone) account for
+**594 insights — 55% of everything**. Hence Sexual & Reproductive Health holds
+426 claims against Exercise's 51, Sleep's 24 and Medications & Supplements' 17.
+
+The skew is *not* a taxonomy problem and needs no correction: it is exactly what
+five sources should look like. It matters only for sequencing — a full library
+build now would produce one deep branch and several hollow ones.
+
+**Recommendation:** ingest a few Exercise / Sleep / Nutrition sources *before*
+the single budgeted full build, so that build produces a balanced product.
+
+### Thin branches are reader-visible
+Medications & Supplements (17 claims) and Sleep (24) render as full branches
+alongside Sexual & Reproductive Health (426). To a physician evaluating the
+product, a near-empty branch reads as abandoned rather than early.
+
+**Done when:** the reader tree hides or de-emphasises branches under a claim
+threshold. Display-only; the taxonomy itself is correct.
+
+### Keep spine branch names specific
+Not a task — a rule to hold to. `tag_claims` pulls candidate topics by embedding
+similarity (`match_topics`, `TOPIC_MATCH_THRESHOLD = 0.28`) and hands the names
+to the LLM as hints. A topic competes for claims **whether or not it has any**,
+so declaring branches early is cheap and safe, but a broad, vague name
+("Health Optimization", "Wellness") will siphon claims from every direction.
+Narrow empty branches are harmless; vague ones are not.
+
+This is why `Risks › Hormones` had to be collapsed into
+`Sexual & Reproductive Health › Endocrinology` — two plausible homes guaranteed
+inconsistent filing.
+
+### The full library build has not been run
+The taxonomy is now settled (10 curated roots, 0 legacy), which was the
+precondition. Measured cost is ~$1/topic, ~$400–600 for a full build; see
+`ARCHITECTURE.md` "Cost model". Nothing triggers it automatically —
+`stale_topics()` deliberately returns only topics that *already* have an
+article, so an ingest can never kick off a library-wide build.
 
 ---
 
@@ -212,6 +398,22 @@ Recorded to save the next person the trip:
   `child-development-2`) are the *live* topics — their same-named predecessors
   are correctly `archived` with `merged_into_id` set. Slugs are frozen and never
   reused, so `-2` there is normal collision handling.
+- **Duplicate `topic_articles` rows per topic are versions, not a bug.**
+  Testosterone, Male Fertility Assessment, Protein Intake, Functional Aging and
+  Longevity Definitions each have two clinician rows. `app/topics/[slug]/page.tsx`
+  selects `order("version", desc).limit(1)`, so the newest always renders and the
+  older row is retained history. Checked because a 5,385-char and a 46,001-char
+  Testosterone article coexist — the long one is what readers get.
+- **`seedSpine` reads only ACTIVE topics, so an archived branch left in its
+  `SPINE` list is silently recreated.** This is how a collapsed branch comes
+  back from the dead. When retiring a branch, remove it from `scripts/seedSpine.ts`
+  *and* archive the row — either alone is insufficient. Learned collapsing
+  `Risks › Hormones`.
+- **The `references` table is named `references_`** (trailing underscore) —
+  `references` is a SQL reserved word. Queries against `references` fail with a
+  syntax error that looks like a missing table.
+- **Two migrations both numbered 005.** The later by commit order is now
+  `005.2_update_topic_job_and_stale_topics.sql`. Both are applied; naming only.
 - **`components/SourceEditor.tsx` and `components/TranscriptEditor.tsx` are
   live**, not orphans. They
   are the presentational halves behind `SourceEditorClient` /
