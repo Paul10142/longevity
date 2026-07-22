@@ -369,18 +369,58 @@ trigger — splitting and incremental update work together.
 - **Sections are the atomic, independently-versioned unit** of both storage and
   update.
 
-## Models
+## Models & the provider boundary
 
-- Article generation (synthesis, section grouping, groundedness audit):
-  **Claude Opus 4.8** via `lib/llm.ts` (`claudeJson`). Prose always uses the top
-  model; only mechanical steps may drop to the Haiku bulk tier.
-- Extraction / consolidation adjudication / tagging: migrating to Claude through
-  the same helper (Haiku bulk tier / Opus judgment tier); OpenAI `gpt-5-mini` on
-  the legacy path.
-- Embeddings: OpenAI `text-embedding-3-small` (1536d, pgvector **HNSW** cosine) —
-  no Anthropic equivalent, so this stays on OpenAI.
-- Backends (`LLM_BACKEND`): `api` (ANTHROPIC_API_KEY) or `claude-code` (shells to
-  the local `claude` CLI, billing a Claude subscription instead of API credits).
+**Every generative call goes through Claude via `lib/llm.ts` (`claudeJson`).**
+Verified across all five live stages — `extraction`, `consolidation`, `taxonomy`,
+`references`, `synthesis`. The single exception is embeddings.
+
+- **Embeddings — the only OpenAI dependency.** `text-embedding-3-small` (1536d,
+  pgvector **HNSW** cosine) in `lib/embeddings.ts`. Anthropic ships no embeddings
+  model, and `match_claims` / `match_topics` are vector searches, so this stays
+  on OpenAI (Voyage is the alternative if we ever leave). Embeddings are ~$0.02/1M
+  tokens — the whole corpus costs cents, so this is never the cost problem.
+- **Judgment tier — Opus 4.8**: dedup adjudication, topic assignment, article
+  generation. **Bulk tier — Haiku 4.5**: high-volume mechanical per-chunk work.
+- **Reasoning depth is capped per call site** (`effort`). Adaptive thinking
+  defaults to `high`, and thinking tokens bill as output ($25/M) — uncapped, most
+  of a synthesis run's cost is invisible reasoning on mechanical work. Mechanical
+  steps (section grouping, patient translation) run `low`; prose and the
+  groundedness audit run `medium`. **We cap the reasoning, never the model** —
+  article prose is always Opus.
+- **Backends (`LLM_BACKEND`)**: `api` (ANTHROPIC_API_KEY, used by the deployed
+  worker) or `claude-code` (shells to the local `claude` CLI, billing a Claude
+  subscription instead of API credits). Both honor `effort`; the CLI takes
+  `--effort`.
+
+Legacy v1 modules (`autotag`, `conceptDiscovery`, `pipeline`, `topicNarrative`,
+`topicProtocols`) still import OpenAI, but nothing live imports *them* — they
+operate on the dropped `concepts` table and are inert pending deletion.
+
+## Cost model (measured, July 2026)
+
+Measured on real runs, so future decisions start from evidence rather than guesses.
+
+- **A "topic" is ~30 model calls, not one** — section grouping + one call per
+  section + one patient translation per section + protocol + groundedness. It
+  produces ~13–15k words across three documents.
+- **Measured: ~$1/topic** on the API at uncapped `high` effort. Five sample
+  topics all hit coverage 1.00 at groundedness 0.91–0.96.
+- **Ingestion is trivial**: ~$0.15/source. Synthesis dominates every estimate.
+- **Scaling is sub-linear in sources.** Articles are per-*topic*, and dedup makes
+  topic count plateau — 500 sources does not mean 500× the cost.
+
+Levers, in order of impact (none of which touch prose quality):
+
+1. **Batch API — 50% off.** Generation is not latency-sensitive; the bulk build
+   is a perfect batch workload.
+2. **Effort caps** (implemented) — kills the invisible thinking-token cost.
+3. **Prompt caching** — ~30 calls/topic re-send the same system prompt.
+4. **Incremental updates** (v3.2, implemented) — a new source patches only the
+   sections it touched; reinforcing-only sources cost ~$0.
+5. **Subscription backend** — flat-rate for spot/incremental work.
+
+Full-library build lands ≈ **$400–600** with the levers stacked, vs ~$1,700 naive.
 
 ## Schema
 
