@@ -472,3 +472,180 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
     throw err
   }
 }
+
+// ── Incremental update (v3.2) ───────────────────────────────
+/** Share of new claims above which section patching is abandoned for a full
+ *  rebuild — the coherence valve (ARCHITECTURE.md "v3.2 incremental update"). */
+const FULL_REGEN_THRESHOLD = 0.25
+
+const ASSIGN_SECTION_PROMPT = `
+You place NEW claims into the sections of an EXISTING clinical reference article.
+
+You are given the article's SECTIONS (id + title) and a list of NEW CLAIMS. For
+each new claim, choose the id of the section it belongs in. If a claim genuinely
+fits none of them, use "new".
+
+Return STRICT JSON:
+{"assignments":[{"claim_id":"<id>","section_id":"<section id, or new>"}]}
+`.trim()
+
+function claimIdsInSection(sec: Section): string[] {
+  const ids = new Set<string>()
+  for (const p of sec.paragraphs ?? []) for (const id of p.claim_ids ?? []) ids.add(id)
+  return [...ids]
+}
+
+/**
+ * Fold newly-arrived claims into a topic's existing articles without rewriting
+ * them. Three tiers (see ARCHITECTURE.md v3.2):
+ *   - `metadata` — no new claims (reinforcing evidence only). Prose untouched,
+ *     no LLM call, ~$0. Evidence/`source_count` already read live.
+ *   - `sections` — regenerate only the sections receiving new claims; every
+ *     other section's prose is reused byte-for-byte.
+ *   - `full`     — the claim set grew past FULL_REGEN_THRESHOLD, so rebuild the
+ *     whole article to keep it coherent.
+ */
+export async function updateTopicContent(topicId: string): Promise<{
+  tier: 'metadata' | 'sections' | 'full'
+  newClaims: number
+  sectionsRegenerated: number
+  coverage?: number
+}> {
+  const { data: topic, error } = await db()
+    .from('topics').select('id, name, description').eq('id', topicId).single()
+  if (error || !topic) throw new Error(`Topic not found: ${error?.message}`)
+
+  const { data: prevRows } = await db()
+    .from('topic_articles').select('outline')
+    .eq('topic_id', topicId).eq('audience', 'clinician')
+    .order('version', { ascending: false }).limit(1)
+  const prev = (prevRows?.[0] as { outline: Outline } | undefined)?.outline
+
+  // Nothing to patch yet — build it from scratch.
+  if (!prev?.sections?.length) {
+    const res = await generateTopicContent(topicId)
+    return { tier: 'full', newClaims: res.claims, sectionsRegenerated: 0, coverage: res.coverage }
+  }
+
+  const claims = await loadPrioritizedClaims(topicId, 'clinician')
+  const known = new Set<string>()
+  for (const sec of prev.sections) for (const id of claimIdsInSection(sec)) known.add(id)
+  const newClaims = claims.filter(c => !known.has(c.id))
+
+  // Tier 1 — reinforcing only. The prose says the same thing; only the evidence
+  // behind it grew, and that is read live. No generation, no cost.
+  if (newClaims.length === 0) {
+    return { tier: 'metadata', newClaims: 0, sectionsRegenerated: 0 }
+  }
+
+  // Coherence valve — a large influx can reframe the topic, which patching
+  // cannot propagate. Rebuild instead.
+  if (claims.length > 0 && newClaims.length / claims.length > FULL_REGEN_THRESHOLD) {
+    const res = await generateTopicContent(topicId)
+    return { tier: 'full', newClaims: newClaims.length, sectionsRegenerated: 0, coverage: res.coverage }
+  }
+
+  // Tier 2/3 — place each new claim into a section, or a brand-new one.
+  let assignments: { claim_id: string; section_id: string }[] = []
+  try {
+    const res = await chatJson<{ assignments?: { claim_id: string; section_id: string }[] }>(
+      ASSIGN_SECTION_PROMPT,
+      `Topic: ${topic.name}\n\nSections:\n${prev.sections.map(s => `${s.id}: ${s.title}`).join('\n')}` +
+        `\n\nNew claims:\n${newClaims.map(c => `[${c.id}] ${c.canonical_statement}`).join('\n')}`,
+      4000,
+      'low'
+    )
+    assignments = res.assignments ?? []
+  } catch {
+    assignments = []
+  }
+
+  const sectionIds = new Set(prev.sections.map(s => s.id))
+  const newBySection = new Map<string, string[]>()
+  const unplaced: string[] = []
+  const seen = new Set<string>()
+  for (const a of assignments) {
+    if (seen.has(a.claim_id) || !newClaims.some(c => c.id === a.claim_id)) continue
+    seen.add(a.claim_id)
+    if (sectionIds.has(a.section_id)) {
+      newBySection.set(a.section_id, [...(newBySection.get(a.section_id) ?? []), a.claim_id])
+    } else {
+      unplaced.push(a.claim_id)
+    }
+  }
+  // Never drop a claim the model forgot to place.
+  for (const c of newClaims) if (!seen.has(c.id)) unplaced.push(c.id)
+
+  const claimById = new Map(claims.map(c => [c.id, c]))
+  const enrich = await enrichClinician(claims.map(c => c.id))
+  const header = `Topic: ${topic.name}${topic.description ? `\nDescription: ${topic.description}` : ''}`
+
+  const sections: Section[] = []
+  const changed = new Set<string>()
+  for (const sec of prev.sections) {
+    const added = newBySection.get(sec.id)
+    if (!added?.length) {
+      sections.push(sec) // untouched — reuse the stored prose verbatim
+      continue
+    }
+    const full = [...claimIdsInSection(sec), ...added].filter(id => claimById.has(id))
+    sections.push(
+      await generateClinicianSection(header, { id: sec.id, title: sec.title, claim_ids: full }, claimById, enrich)
+    )
+    changed.add(sec.id)
+  }
+  if (unplaced.length) {
+    const id = `additional-${Date.now().toString(36)}`
+    sections.push(
+      await generateClinicianSection(
+        header, { id, title: 'Additional Findings', claim_ids: unplaced }, claimById, enrich
+      )
+    )
+    changed.add(id)
+  }
+
+  const validIds = new Set(claims.map(c => c.id))
+  const { score: coverage } = coverageOf(sections, validIds)
+  const clinician: Outline = { title: topic.name, sections, references: enrich.references }
+  const groundedness = await scoreGroundedness(
+    clinician, new Map(claims.map(c => [c.id, c.canonical_statement]))
+  )
+  const snapshot = new Date().toISOString()
+
+  const clinVer = await nextVersion('topic_articles', topicId, 'clinician')
+  await db().from('topic_articles').insert({
+    topic_id: topicId, audience: 'clinician', version: clinVer,
+    title: clinician.title, outline: clinician, body_markdown: outlineToMarkdown(clinician),
+    generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
+    groundedness_score: groundedness, coverage_score: coverage,
+  })
+
+  // Patient: re-translate only the sections that changed; reuse the rest.
+  const { data: prevPatRows } = await db()
+    .from('topic_articles').select('outline')
+    .eq('topic_id', topicId).eq('audience', 'patient')
+    .order('version', { ascending: false }).limit(1)
+  const prevPat = (prevPatRows?.[0] as { outline: Outline } | undefined)?.outline
+  const patById = new Map((prevPat?.sections ?? []).map(s => [s.id, s]))
+
+  const patientSections: Section[] = []
+  for (const sec of sections) {
+    if (sec.paragraphs.length === 0) continue
+    const reusable = !changed.has(sec.id) ? patById.get(sec.id) : undefined
+    patientSections.push(reusable ?? (await translatePatientSection(topic.name, sec)))
+  }
+  const patient: Outline = { title: topic.name, sections: patientSections }
+  const patVer = await nextVersion('topic_articles', topicId, 'patient')
+  await db().from('topic_articles').insert({
+    topic_id: topicId, audience: 'patient', version: patVer,
+    title: patient.title, outline: patient, body_markdown: outlineToMarkdown(patient),
+    generation_model: CLAUDE_MODEL, claims_snapshot_at: snapshot,
+  })
+
+  return {
+    tier: 'sections',
+    newClaims: newClaims.length,
+    sectionsRegenerated: changed.size,
+    coverage,
+  }
+}

@@ -68,12 +68,24 @@ function extractJson(s: string): string {
   return start >= 0 && end > start ? body.slice(start, end + 1) : body
 }
 
-/** Run a prompt through the local `claude` CLI on the developer's subscription. */
-function claudeCodeText(system: string, user: string, model: string): Promise<string> {
+/** Run a prompt through the local `claude` CLI on the developer's subscription.
+ *  The CLI takes `--effort`, so subscription runs cap reasoning the same way
+ *  API runs do. */
+function claudeCodeText(
+  system: string,
+  user: string,
+  model: string,
+  effort?: Effort
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = execFile(
       'claude',
-      ['-p', '--model', cliAlias(model), '--append-system-prompt', system],
+      [
+        '-p',
+        '--model', cliAlias(model),
+        ...(effort ? ['--effort', effort] : []),
+        '--append-system-prompt', system,
+      ],
       { maxBuffer: 64 * 1024 * 1024, timeout: 600_000 },
       (err, stdout, stderr) => {
         if (err) {
@@ -132,8 +144,7 @@ export async function claudeJson<T>(
 ): Promise<T> {
   const text =
     backend() === 'claude-code'
-      ? // The CLI has no effort flag — subscription runs use its own defaults.
-        await claudeCodeText(system, user, model)
+      ? await claudeCodeText(system, user, model, effort)
       : await apiText(system, user, maxTokens, model, effort)
 
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
