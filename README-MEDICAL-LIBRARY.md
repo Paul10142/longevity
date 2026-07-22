@@ -1,6 +1,12 @@
-# Medical Library - ClancyMedical MVP
+# Medical Library
 
-This is the Medical Library feature for LifestyleAcademy, built on Next.js 16 with Supabase and OpenAI integration.
+The knowledge-engine half of LifestyleAcademy: Next.js 16 (App Router) +
+Supabase (Postgres/pgvector) + Claude.
+
+This file covers setup and orientation. **`ARCHITECTURE.md` is the
+authoritative description of the data model and pipeline** — read it before
+touching pipeline code. `docs/archive/` holds stale v1 documentation kept for
+history; do not treat it as current.
 
 ## Setup
 
@@ -9,79 +15,98 @@ This is the Medical Library feature for LifestyleAcademy, built on Next.js 16 wi
    npm install
    ```
 
-2. **Set up environment variables:**
-   Copy `.env.example` to `.env.local` and fill in your values:
-   ```bash
-   cp .env.example .env.local
+2. **Set up environment variables** in `.env.local`:
+
+   - `NEXT_PUBLIC_SUPABASE_URL` — Supabase project URL
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` — publishable key (`sb_publishable_...`)
+   - `SUPABASE_SECRET_KEY` — secret key (`sb_secret_...`, server-only)
+   - `ANTHROPIC_API_KEY` — Claude, used for every generative call
+   - `OPENAI_API_KEY` — embeddings only (see Model providers below)
+   - `YOUTUBE_TRANSCRIPT_API_TOKEN` — YouTube transcript ingestion
+
+   **Note:** Supabase updated their API key system in 2025. Use the
+   `sb_publishable_...` / `sb_secret_...` formats. Legacy JWT keys (`eyJ...`)
+   still work but are deprecated in late 2026.
+
+3. **Database schema:**
+   Migrations live in `supabase/migrations_v2/` as numbered SQL files, applied
+   by hand via the Supabase SQL Editor — there is no local CLI or psql access.
+   The v2 baseline dropped the entire v1 insight/concept schema; `sources`
+   (including transcripts) was preserved and everything else is re-derived.
+
+   The layered model, each level re-derivable from the one above:
+
    ```
-
-   Required environment variables:
-   - `NEXT_PUBLIC_SUPABASE_URL` - Your Supabase project URL
-   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY` - Your Supabase publishable key (`sb_publishable_...` format)
-   - `SUPABASE_SECRET_KEY` - Your Supabase secret key (`sb_secret_...` format, server-only)
-   - `OPENAI_API_KEY` - Your OpenAI API key
-   
-   **Note:** Supabase has updated their API key system (2025). Use the new `sb_publishable_...` and `sb_secret_...` formats for future compatibility. Legacy JWT keys (`eyJ...`) still work but will be deprecated in late 2026.
-
-3. **Database Schema:**
-   The schema has already been applied via Supabase migration. It includes:
-   - `sources` - Podcast episodes, books, videos, articles
-   - `chunks` - Segmented transcript content
-   - `insights` - Extracted canonical statements
-   - `insight_sources` - Links insights to sources
-   - `concepts` - For future concept organization
-   - `insight_concepts` - Links insights to concepts
+   sources          metadata + full transcript (immutable original)
+     └─ chunks          segments with locator (+ timestamps when known)
+          └─ raw_insights   immutable per-chunk extraction records
+               └─ claims        canonical deduplicated knowledge units
+                    ├─ claim_members   claim ← raw insights
+                    ├─ claim_topics → topics   AI-managed taxonomy
+                    └─ topic_articles / topic_protocols
+   ```
 
 4. **Run the development server:**
    ```bash
    npm run dev
    ```
 
-## Features
+## Routes
 
-### Admin Interface
-- **`/admin/sources`** - List all sources
-- **`/admin/sources/new`** - Create a new source and paste transcript
+### Admin
+- `/admin` — index
+- `/admin/sources`, `/admin/sources/new` — ingest and manage sources
+- `/admin/insights/review` — browse raw extractions
+- `/admin/reviews` — resolve borderline duplicate claims
+- `/admin/topics` — audit and edit the taxonomy
 
-### Public Interface
-- **`/medical-library`** - Main Medical Library page
-- **`/sources/[id]`** - View insights for a specific source
+### Public
+- `/medical-library` — entry point
+- `/topics`, `/topics/[slug]` — generated articles and protocols
+- `/sources/[id]` — a source, its transcript, and its extractions
+- `/search` — semantic search over claims
 
-## How It Works
+## How it works
 
-1. **Create a Source:**
-   - Go to `/admin/sources/new`
-   - Fill in source metadata (type, title, authors, date, URL)
-   - Paste the full transcript
-   - Submit the form
+1. **Ingest.** Create a source at `/admin/sources/new` (paste a transcript,
+   pull a YouTube transcript, or upload a file). This stores the source and
+   enqueues an `extract_source` job.
 
-2. **Processing Pipeline:**
-   - Transcript is split into chunks (~1000-1500 characters)
-   - Each chunk is sent to OpenAI for insight extraction
-   - Insights are deduplicated using SHA256 hash of normalized statement
-   - Insights are linked to the source with locators (seg-001, seg-002, etc.)
+2. **Process.** Every stage runs as a job in the Postgres `jobs` table —
+   idempotent, checkpointed in `jobs.progress`, and resumable. Extraction
+   chunks the transcript and writes immutable `raw_insights`; consolidation
+   deduplicates them into `claims`; tagging and discovery maintain the topic
+   taxonomy; synthesis generates per-topic articles and protocols with
+   `claim_ids` cited per paragraph.
 
-3. **View Insights:**
-   - Navigate to `/sources/[source-id]` to see all extracted insights
-   - Each insight shows:
-     - Statement (canonical paraphrase)
-     - Context note (if any)
-     - Evidence type (RCT, Cohort, etc.)
-     - Confidence level
-     - Qualifiers (population, dose, duration, etc.)
-     - Locator (which chunk it came from)
+   Long-running work never happens inline in a request handler. The worker is
+   `app/api/worker/tick`, driven by Vercel cron, a fire-and-forget ping after
+   enqueue, or the admin UI. See `ARCHITECTURE.md` for the full stage table.
 
-## Architecture Notes
+3. **Read.** Articles cite claims, claims resolve to raw insights, and raw
+   insights carry a locator back to the source segment and timestamp, so every
+   generated sentence traces to its origin.
 
-- **Supabase Client:** `lib/supabaseClient.ts` - Client-side (uses `sb_publishable_...` key, respects RLS)
-- **Supabase Server:** `lib/supabaseServer.ts` - Server-side (uses `sb_secret_...` key, bypasses RLS)
-- **Processing Pipeline:** `lib/pipeline.ts` - Modular, can be moved to a worker service later
-- **API Routes:** `app/api/admin/sources/route.ts` - Handles source creation and processing
+Run the pipeline locally with:
 
-## Next Steps
+```bash
+npm run pipeline -- status
+```
 
-- Add embeddings for semantic search
-- Add concept assignment to insights
-- Improve OpenAI prompt for better extraction
-- Add authentication for admin pages
-- Add bulk processing for multiple sources
+Other subcommands: `work`, `discover [--dry-run]`, `sweep`,
+`extract <source_id>`. This defaults to `LLM_BACKEND=claude-code`, which bills
+your Claude subscription through the local `claude` CLI instead of API credits.
+
+## Architecture notes
+
+- **Supabase client:** `lib/supabaseClient.ts` — client-side, publishable key,
+  respects RLS. Never import the server client into a client component.
+- **Supabase server:** `lib/supabaseServer.ts` — server-side, secret key,
+  bypasses RLS.
+- **Model providers:** every generative call goes through `lib/llm.ts`; never
+  call a provider SDK directly from a pipeline stage. `lib/embeddings.ts` is
+  the only module that imports the `openai` package — Anthropic ships no
+  embeddings model, and `match_claims` / `match_topics` are vector searches.
+- **Types** for all v2 tables live in `lib/types.ts`. Legacy v1 types below the
+  marker in that file are being phased out; don't build new code on them.
+- **UI:** Tailwind + shadcn/ui in `components/ui/`.
