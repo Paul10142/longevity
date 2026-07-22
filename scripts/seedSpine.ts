@@ -43,9 +43,21 @@ const SPINE: { name: string; children: string[] }[] = [
     children: ['Medications', 'Supplements', 'Hormone Replacement Therapy'],
   },
   {
-    name: 'Mental & Emotional Health',
-    children: ['Quality of Life', 'Trauma & Therapy', 'Relationships', 'Mindfulness & Meditation'],
+    name: 'Mental Health & Psychology',
+    children: [
+      'Quality of Life',
+      'Trauma & Therapy',
+      'Relationships',
+      'Mindfulness & Meditation',
+      // Behavior Change, Practice & Skill Acquisition, Evolutionary Psychology.
+      'Behavioral Science',
+    ],
   },
+  // Added 2026-07-22. Everything in the library is ultimately in service of
+  // longevity, so this is not a peer of the lever branches in the strict
+  // sense — but healthspan is the product's thesis and needs a visible home
+  // rather than being scattered under Exercise and Risks.
+  { name: 'Healthy Aging', children: [] },
   {
     name: 'Risks',
     children: [
@@ -107,7 +119,11 @@ const SPINE: { name: string; children: string[] }[] = [
  */
 const ALIASES: Record<string, string[]> = {
   Sleep: ['Sleep & Circadian Rhythm'],
-  'Mental & Emotional Health': ['Mental Health'],
+  // Renamed twice: 'Mental Health' → 'Mental & Emotional Health' (2026-07-22
+  // seeding) → 'Mental Health & Psychology' (2026-07-22, to cover behavioural
+  // science). Both prior names stay listed so a fresh database lands correctly.
+  'Mental Health & Psychology': ['Mental & Emotional Health', 'Mental Health'],
+  'Healthy Aging': ['Aging & Longevity'],
   // "Reproductive Health" already holds 195 claims across 17 children,
   // including the Male Fertility Assessment article. Adopting and renaming it
   // keeps that subtree, its id, and its slug intact — creating a fresh branch
