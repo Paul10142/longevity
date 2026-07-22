@@ -10,6 +10,7 @@ const mainLinks = [
 const insightLinks = [
   { name: "Raw Insights", href: "/admin/insights/review", description: "Browse raw extractions" },
   { name: "Merge Reviews", href: "/admin/reviews", description: "Resolve borderline duplicate claims" },
+  { name: "Topic Approvals", href: "/admin/topics/proposals", description: "Approve new branches the pipeline wants" },
 ] as const
 
 export default function AdminHomePage() {
