@@ -6,35 +6,37 @@ import { Badge } from "@/components/ui/badge"
 import { ArrowRight, Clock } from "lucide-react"
 import { cn } from "@/lib/utils"
 
-// Synchronous lever name lookup for client components
+// Synchronous lever name lookup for client components.
+// Keep these labels in sync with LEVER_CONFIG in lib/levers.ts.
 const LEVER_NAMES: Record<string, string> = {
-  sleep: "Sleep & Circadian",
-  exercise: "Exercise & Training",
-  nutrition: "Nutrition & Diet",
-  "mental-health": "Mental Health",
-  "drugs-supplements": "Supplements & Adjuncts",
+  sleep: "Sleep",
+  exercise: "Exercise",
+  nutrition: "Nutrition",
+  "mental-health": "Mental & Emotional Health",
+  "drugs-supplements": "Medications & Supplements",
 }
 
-// TODO: Replace this hard-coded array with a database query once protocols have an `isPopular` field
-// Query should fetch protocols with isPopular = true, join with concepts to get lever mappings
+// TODO: Replace this hard-coded array with real generated protocols from the
+// `topic_protocols` table. Until then these are editorial cards that link to
+// the relevant topic page, so the card title is broader than its destination.
 type PopularProtocol = {
   id: string
   title: string
   description: string
   leverId: string // Maps to one of the 5 core levers
-  conceptSlug: string // Slug for linking to the topic page
+  topicSlug: string // v2 topics.slug — destination for the card link
   timeCommitment?: string // e.g., "15-30 min/day", "3x/week"
 }
 
-// Hard-coded popular protocols for now
-// These should eventually come from the database with isPopular = true
+// Hard-coded popular protocols for now.
+// topicSlug values must match live rows in `topics`; a wrong slug renders a 404.
 const POPULAR_PROTOCOLS: PopularProtocol[] = [
   {
     id: "sleep-hygiene",
     title: "Sleep Hygiene Protocol",
     description: "Optimize your sleep environment and schedule for better rest and recovery",
     leverId: "sleep",
-    conceptSlug: "sleep-circadian",
+    topicSlug: "sleep-circadian-rhythm",
     timeCommitment: "5-10 min/day"
   },
   {
@@ -42,7 +44,7 @@ const POPULAR_PROTOCOLS: PopularProtocol[] = [
     title: "Zone 2 Cardio Protocol",
     description: "Build cardiovascular fitness with low-intensity steady-state training",
     leverId: "exercise",
-    conceptSlug: "exercise-training",
+    topicSlug: "exercise",
     timeCommitment: "3-4x/week, 30-45 min"
   },
   {
@@ -50,7 +52,7 @@ const POPULAR_PROTOCOLS: PopularProtocol[] = [
     title: "Foundational Strength Training",
     description: "Essential strength movements for longevity and functional capacity",
     leverId: "exercise",
-    conceptSlug: "exercise-training",
+    topicSlug: "exercise",
     timeCommitment: "2-3x/week, 45-60 min"
   },
   {
@@ -58,7 +60,7 @@ const POPULAR_PROTOCOLS: PopularProtocol[] = [
     title: "Whole Foods Nutrition",
     description: "Simple, sustainable approach to eating that minimizes processed foods",
     leverId: "nutrition",
-    conceptSlug: "nutrition-diet",
+    topicSlug: "nutrition",
     timeCommitment: "Daily"
   },
   {
@@ -66,7 +68,7 @@ const POPULAR_PROTOCOLS: PopularProtocol[] = [
     title: "Stress Management Basics",
     description: "Evidence-based techniques for managing stress and improving mental resilience",
     leverId: "mental-health",
-    conceptSlug: "emotional-mental-health",
+    topicSlug: "mental-health",
     timeCommitment: "10-20 min/day"
   },
   {
@@ -74,7 +76,7 @@ const POPULAR_PROTOCOLS: PopularProtocol[] = [
     title: "Evidence-Based Supplements",
     description: "The few supplements with strong scientific support, when basics are covered",
     leverId: "drugs-supplements",
-    conceptSlug: "supplements-adjuncts",
+    topicSlug: "medications-supplements",
     timeCommitment: "Daily"
   }
 ]
@@ -140,7 +142,7 @@ export function PopularProtocolsStrip({
               return (
                 <Link
                   key={protocol.id}
-                  href={`/admin/topics/${protocol.conceptSlug}`}
+                  href={`/topics/${protocol.topicSlug}`}
                   className="flex-shrink-0 w-[280px] md:w-auto"
                 >
                   <Card className="h-full hover:shadow-lg transition-shadow duration-200 border-2 hover:border-primary/50">

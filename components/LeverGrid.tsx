@@ -118,7 +118,7 @@ export function LeverGrid({ highlightedLevers = [], levers: leversProp }: LeverG
                       variant="outline"
                       className="w-full group"
                     >
-                      <Link href={`/lever/${lever.id}`}>
+                      <Link href={`/topics/${lever.topicSlug}`}>
                         Explore {lever.name}
                         <ArrowRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                       </Link>
