@@ -1,13 +1,24 @@
 /**
- * Taxonomy stage (v2): claims → topics (AI-managed hierarchy).
+ * Taxonomy stage (v2): claims → topics, filed into a curated spine.
  *
- * A single pass both DISCOVERS and ASSIGNS: for each batch of untagged claims,
- * we show the model the closest existing topics (ANN over topics.embedding) and
- * ask it to either assign each claim to an existing topic or propose a new one
- * (optionally under a named parent). New topics are created + embedded on the
- * fly, so the hierarchy grows organically from the content. Topics go live
- * immediately; the admin audit UI lets a human rename / re-parent / merge /
- * archive them afterward (see topics.reviewed_by_human).
+ * The tree is anchored by human-curated top-level branches (`topics.is_spine`).
+ * Tagging's job is PLACEMENT, not restructuring, and new branches are a gated
+ * event rather than a side effect:
+ *
+ *   - Existing topic          → link the claim.
+ *   - New child under an
+ *     existing topic          → auto-created (the tree may deepen on its own).
+ *   - New TOP-LEVEL branch    → never created here. Recorded in
+ *                               `topic_proposals` for human approval, and the
+ *                               claim is filed under its best existing parent.
+ *
+ * That last rule is the one that matters: previously a model naming a parent
+ * that didn't exist got that parent auto-created as a new root, which is how
+ * the tree grew 24 top-level topics. Roots now only come from humans.
+ *
+ * `claims.topic_fit` records how well the placement actually landed, so an
+ * approximate filing is visible rather than silently indistinguishable from a
+ * confident one.
  *
  * Idempotent: only claims with needs_tagging=true are processed; a claim is
  * cleared once assigned.
@@ -36,30 +47,68 @@ function slugify(name: string): string {
 
 type ClaimForTagging = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
 
-type TopicRow = { id: string; name: string; slug: string; parent_id: string | null }
+type TopicRow = { id: string; name: string; slug: string; parent_id: string | null; is_spine?: boolean }
 
 // In-memory topic cache for a tagging run (name → row), refreshed as we create.
 type TopicCache = Map<string, TopicRow>
 
 async function loadTopicCache(): Promise<TopicCache> {
-  const { data } = await db().from('topics').select('id, name, slug, parent_id').eq('status', 'active')
+  const { data } = await db().from('topics').select('id, name, slug, parent_id, is_spine').eq('status', 'active')
   const cache: TopicCache = new Map()
   for (const t of (data ?? []) as TopicRow[]) cache.set(t.name.toLowerCase(), t)
   return cache
 }
 
-/** Find-or-create a topic by name, optionally under a parent. Embeds new topics. */
-async function ensureTopic(name: string, parentName: string | null, cache: TopicCache): Promise<TopicRow> {
-  const key = name.toLowerCase()
-  const existing = cache.get(key)
-  if (existing) return existing
+/**
+ * Record a wanted-but-not-created topic for human approval. Repeat suggestions
+ * of the same name coalesce onto one pending row (accumulating the claims that
+ * motivated it) so the reviewer gets one decision, not one per claim.
+ */
+async function proposeTopic(
+  name: string,
+  parentName: string | null,
+  parent: TopicRow | null,
+  claimId: string
+): Promise<void> {
+  const { data: existing } = await db()
+    .from('topic_proposals')
+    .select('id, claim_ids')
+    .eq('status', 'pending')
+    .ilike('name', name)
+    .maybeSingle()
 
-  let parentId: string | null = null
-  if (parentName) {
-    const parent = await ensureTopic(parentName, null, cache)
-    parentId = parent.id
+  if (existing) {
+    const ids: string[] = existing.claim_ids ?? []
+    if (ids.includes(claimId)) return
+    const next = [...ids, claimId]
+    await db()
+      .from('topic_proposals')
+      .update({ claim_ids: next, claim_count: next.length, updated_at: new Date().toISOString() })
+      .eq('id', existing.id)
+    return
   }
 
+  const { error } = await db().from('topic_proposals').insert({
+    name,
+    proposed_parent_name: parentName,
+    proposed_parent_id: parent?.id ?? null,
+    claim_ids: [claimId],
+    claim_count: 1,
+  })
+  // A concurrent worker may have inserted the same pending name; the partial
+  // unique index rejects the duplicate, which is the desired outcome.
+  if (error && !/duplicate key/i.test(error.message)) {
+    console.error(`[taxonomy] failed to record topic proposal "${name}":`, error.message)
+  }
+}
+
+/**
+ * Create a topic as a CHILD of an existing one. There is deliberately no path
+ * here to create a root — `parent` is required, so no call site can widen the
+ * tree at the top. Roots come from the curated spine seeder or an approved
+ * proposal.
+ */
+async function createChildTopic(name: string, parent: TopicRow, cache: TopicCache): Promise<TopicRow> {
   // Unique slug, assigned ONCE at creation and frozen thereafter (rename never
   // re-slugs) so topic URLs and article citations stay stable. See ARCHITECTURE.md.
   let slug = slugify(name) || 'topic'
@@ -72,14 +121,48 @@ async function ensureTopic(name: string, parentName: string | null, cache: Topic
   const embedding = await generateEmbedding(name)
   const { data: created, error } = await db()
     .from('topics')
-    .insert({ name, slug, parent_id: parentId, created_by: 'ai', embedding })
-    .select('id, name, slug, parent_id')
+    .insert({ name, slug, parent_id: parent.id, created_by: 'ai', embedding })
+    .select('id, name, slug, parent_id, is_spine')
     .single()
   if (error || !created) throw new Error(`Failed to create topic "${name}": ${error?.message}`)
 
   const row = created as TopicRow
-  cache.set(key, row)
+  cache.set(name.toLowerCase(), row)
   return row
+}
+
+type Placement =
+  | { kind: 'linked'; topic: TopicRow; fit: 'good' | 'approximate' }
+  | { kind: 'proposed' }
+
+/**
+ * Resolve one model-suggested (name, parent) pair to an actual topic.
+ *
+ * The gate: a name that already exists is reused; a new name under an existing
+ * parent is created; anything that would need a NEW root is recorded as a
+ * proposal and the claim falls back to the named parent when we have one.
+ */
+async function placeTopic(
+  name: string,
+  parentName: string | null,
+  claimId: string,
+  cache: TopicCache
+): Promise<Placement> {
+  const existing = cache.get(name.toLowerCase())
+  if (existing) return { kind: 'linked', topic: existing, fit: 'good' }
+
+  const parent = parentName ? cache.get(parentName.toLowerCase()) ?? null : null
+
+  if (parent) {
+    // New subject, but it has a real home — let the tree deepen on its own.
+    const created = await createChildTopic(name, parent, cache)
+    return { kind: 'linked', topic: created, fit: 'good' }
+  }
+
+  // Would require a new root. Record it, and file the claim under the best
+  // thing we do have rather than forcing a branch or dropping the claim.
+  await proposeTopic(name, parentName, null, claimId)
+  return { kind: 'proposed' }
 }
 
 type Assignment = {
@@ -88,28 +171,63 @@ type Assignment = {
 }
 
 const TAXONOMY_SYSTEM = `
-You organize health/medical CLAIMS into a topic taxonomy for a knowledge base.
+You file health/medical CLAIMS into an EXISTING topic taxonomy.
 
-For each claim, assign 1-2 topics that best capture what the claim is ABOUT (its subject area), not its format. Topics are reusable subject areas like "Zone 2 Training", "Insulin Resistance", "Protein Intake", "Testosterone", "Sleep & Circadian Rhythm", "Cardiovascular Disease Prevention".
+Your job is placement, not redesign. The taxonomy has a curated top-level
+structure that is deliberately small and stable. Filing a claim into a topic
+that already exists is always the preferred outcome — a slightly imperfect fit
+in an existing topic beats a new topic.
+
+For each claim, assign 1-2 topics capturing what it is ABOUT (its subject), not
+its format.
 
 Rules:
-- STRONGLY prefer an existing topic from the provided candidate list when one fits — reuse keeps the taxonomy coherent. Only propose a new topic when nothing fits.
+- Assign an existing topic whenever one is a reasonable home. "Reasonable" is a
+  low bar on purpose: if a claim is broadly about the subject, file it there.
+- Only when NO existing topic is reasonable, propose a new one — and it MUST
+  name an existing "parent" it belongs under. A new topic with no valid parent
+  will be rejected and held for human review, so always pick the best parent.
+- Never propose a new top-level area. The top level is fixed.
 - Topic names are concise Title Case noun phrases (2-4 words). No sentences.
-- Optionally place a topic under a broad parent domain (e.g. parent "Exercise" for "Zone 2 Training"; parent "Metabolic Health" for "Insulin Resistance"). Use a small set of broad parents; reuse parent names across claims.
-- Assign at most 2 topics per claim. Prefer 1 unless the claim genuinely spans two subjects.
+- Assign at most 2 topics per claim. Prefer 1 unless it genuinely spans two.
 
 Return STRICT JSON:
 {"assignments":[{"claim_index":1,"topics":[{"name":"Insulin Resistance","parent":"Metabolic Health"}]}]}
 `.trim()
 
+/**
+ * Render the curated spine (and its children) so the model can see the real
+ * shape of the tree rather than a handful of ANN name matches. Reuse is only
+ * realistic if it knows what already exists.
+ */
+function renderSpine(cache: TopicCache): string {
+  const all = Array.from(cache.values())
+  const roots = all.filter(t => t.parent_id === null).sort((a, b) => a.name.localeCompare(b.name))
+  if (roots.length === 0) return '(no topics yet)'
+
+  return roots
+    .map(root => {
+      const children = all
+        .filter(t => t.parent_id === root.id)
+        .map(t => t.name)
+        .sort()
+      const marker = root.is_spine ? '' : ' [unreviewed]'
+      return children.length
+        ? `- ${root.name}${marker}\n    ${children.join(' · ')}`
+        : `- ${root.name}${marker}`
+    })
+    .join('\n')
+}
+
 async function assignBatch(
   claims: ClaimForTagging[],
-  candidatesByClaim: Map<number, string[]>
+  candidatesByClaim: Map<number, string[]>,
+  cache: TopicCache
 ): Promise<Assignment[]> {
   const body = claims
     .map((c, i) => {
       const cands = candidatesByClaim.get(i) ?? []
-      const hint = cands.length ? `\n   existing candidates: ${cands.join('; ')}` : ''
+      const hint = cands.length ? `\n   closest existing: ${cands.join('; ')}` : ''
       return `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}${hint}`
     })
     .join('\n')
@@ -117,7 +235,7 @@ async function assignBatch(
   try {
     const parsed = await claudeJson<{ assignments?: Assignment[] }>(
       TAXONOMY_SYSTEM,
-      `Assign topics to these claims:\n${body}`,
+      `Existing taxonomy (file into this):\n${renderSpine(cache)}\n\nAssign topics to these claims:\n${body}`,
       8000,
       TAXONOMY_MODEL
     )
@@ -131,6 +249,7 @@ export type TagCheckpoint = {
   processed: number
   topics_created: number
   links_created: number
+  proposals_queued: number
   run_id?: string | null
 }
 
@@ -154,6 +273,7 @@ export async function tagClaims(
     processed: checkpoint?.processed ?? 0,
     topics_created: checkpoint?.topics_created ?? 0,
     links_created: checkpoint?.links_created ?? 0,
+    proposals_queued: checkpoint?.proposals_queued ?? 0,
     run_id: runId,
   }
 
@@ -186,7 +306,7 @@ export async function tagClaims(
       candidatesByClaim.set(i, ((cands ?? []) as { name: string }[]).map(c => c.name))
     }
 
-    const assignments = await assignBatch(claims, candidatesByClaim)
+    const assignments = await assignBatch(claims, candidatesByClaim, cache)
     const byIndex = new Map<number, Assignment>()
     for (const a of assignments) byIndex.set(a.claim_index, a)
 
@@ -195,16 +315,45 @@ export async function tagClaims(
       const assignment = byIndex.get(i + 1)
       const topics = (assignment?.topics ?? []).slice(0, 2)
 
+      let linked = 0
+      let bestFit: 'good' | 'approximate' | null = null
+
       for (const t of topics) {
         if (!t?.name) continue
-        const topic = await ensureTopic(t.name, t.parent ?? null, cache)
+        const placement = await placeTopic(t.name, t.parent ?? null, claim.id, cache)
+
+        if (placement.kind === 'proposed') {
+          // Wanted a new root. The proposal is queued; fall back to the named
+          // parent if it exists so the claim still gets a home.
+          const fallback = t.parent ? cache.get(t.parent.toLowerCase()) : undefined
+          if (!fallback) continue
+          const { error: fbErr } = await db()
+            .from('claim_topics')
+            .upsert({ claim_id: claim.id, topic_id: fallback.id, assigned_by: 'ai' }, { onConflict: 'claim_id,topic_id' })
+          if (!fbErr) {
+            linked++
+            cp = { ...cp, links_created: cp.links_created + 1 }
+            bestFit = bestFit === 'good' ? 'good' : 'approximate'
+            cp = { ...cp, proposals_queued: cp.proposals_queued + 1 }
+          }
+          continue
+        }
+
         const { error: linkErr } = await db()
           .from('claim_topics')
-          .upsert({ claim_id: claim.id, topic_id: topic.id, assigned_by: 'ai' }, { onConflict: 'claim_id,topic_id' })
-        if (!linkErr) cp = { ...cp, links_created: cp.links_created + 1 }
+          .upsert({ claim_id: claim.id, topic_id: placement.topic.id, assigned_by: 'ai' }, { onConflict: 'claim_id,topic_id' })
+        if (!linkErr) {
+          linked++
+          cp = { ...cp, links_created: cp.links_created + 1 }
+          if (placement.fit === 'good') bestFit = 'good'
+          else if (bestFit === null) bestFit = 'approximate'
+        }
       }
 
-      await db().from('claims').update({ needs_tagging: false }).eq('id', claim.id)
+      await db()
+        .from('claims')
+        .update({ needs_tagging: false, topic_fit: linked > 0 ? bestFit ?? 'approximate' : 'unfiled' })
+        .eq('id', claim.id)
       cp = { ...cp, processed: cp.processed + 1 }
     }
 
@@ -266,6 +415,7 @@ type ProposedTopic = { name?: string; parent?: string | null; rationale?: string
 export type DiscoverCheckpoint = {
   topics_created: number
   claims_reflagged: number
+  proposals_queued: number
   run_id?: string | null
 }
 
@@ -298,6 +448,7 @@ export async function discoverTopics(
     let cp: DiscoverCheckpoint = {
       topics_created: checkpoint?.topics_created ?? 0,
       claims_reflagged: checkpoint?.claims_reflagged ?? 0,
+      proposals_queued: checkpoint?.proposals_queued ?? 0,
       run_id: runId,
     }
 
@@ -393,10 +544,18 @@ export async function discoverTopics(
           continue
         }
 
+        // Same gate as tagging: a proposal with a real parent deepens the tree
+        // on its own; one that would need a new root waits for approval.
+        const parentRow = parent ? cache.get(parent.toLowerCase()) ?? null : null
         try {
-          await ensureTopic(name, parent, cache)
-          createdHere++
-          cp = { ...cp, topics_created: cp.topics_created + 1 }
+          if (parentRow) {
+            await createChildTopic(name, parentRow, cache)
+            createdHere++
+            cp = { ...cp, topics_created: cp.topics_created + 1 }
+          } else {
+            await proposeTopic(name, parent, null, batch.claimIds[0] ?? '')
+            cp = { ...cp, proposals_queued: cp.proposals_queued + 1 }
+          }
         } catch (err) {
           console.warn(`[discover] could not create topic "${name}":`, err instanceof Error ? err.message : err)
         }
