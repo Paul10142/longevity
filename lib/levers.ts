@@ -1,159 +1,148 @@
-// Shared configuration for Lifestyle Academy's 5 core health levers
-// Levers are now a subset of concepts stored in the database
-// This module provides a convenient API for accessing lever data
+// Lifestyle Academy's 5 core health levers.
+//
+// Levers are an *editorial* surface: the copy below is hand-maintained here,
+// not generated. Each lever points at a top-level topic by slug, and is
+// resolved against the live `topics` table at request time so the cards can
+// link into the knowledge engine.
+//
+// Topics are AI-managed (created, renamed, merged, archived by the pipeline),
+// so we deliberately do NOT read display copy from them — only the id and
+// claim count. A lever whose topic is missing or archived is skipped rather
+// than rendered as a dead link.
 
 import { supabaseAdmin } from "./supabaseServer"
-import type { Concept, LeverMetadata } from "./types"
 
 export type Lever = {
-  id: string // Derived from concept slug (e.g., "sleep", "exercise")
+  id: string
   name: string
   tagline: string
   description: string
   primaryBenefits: string[]
-  conceptSlug: string // The concept slug from the database
-  conceptId: string // The concept UUID
+  topicSlug: string
+  topicId: string
+  claimCount: number
 }
 
-/**
- * Map concept slugs to lever IDs
- * This mapping ensures backward compatibility with existing code that uses lever IDs
- */
-const SLUG_TO_LEVER_ID: Record<string, string> = {
-  "sleep-circadian": "sleep",
-  "exercise-training": "exercise",
-  "nutrition-diet": "nutrition",
-  "emotional-mental-health": "mental-health",
-  "supplements-adjuncts": "drugs-supplements",
-}
+type LeverConfig = Omit<Lever, "topicId" | "claimCount">
+
+// Order here is the display order on /start.
+//
+// TODO(copy): the `tagline`, `description`, and `primaryBenefits` strings below
+// are UNREVIEWED PLACEHOLDER copy. The originals lived in the v1 `concepts`
+// table and were lost when it was dropped; these were drafted to get the public
+// /start grid rendering again. Rewrite before treating them as final — this is
+// public-facing marketing copy.
+//
+// NOTE: `id` values are referenced by PRIORITY_TO_LEVERS in app/start/page.tsx
+// for the "what matters most" highlighting — keep them stable.
+const LEVER_CONFIG: LeverConfig[] = [
+  {
+    id: "sleep",
+    name: "Sleep",
+    tagline: "The foundation everything else is built on.",
+    description:
+      "Sleep duration, timing, and quality shape how well every other lever works — from training recovery to appetite regulation to mood.",
+    primaryBenefits: [
+      "Sharper focus and steadier mood",
+      "Better recovery from training",
+      "More stable appetite and energy",
+    ],
+    topicSlug: "sleep-circadian-rhythm",
+  },
+  {
+    id: "exercise",
+    name: "Exercise",
+    tagline: "The single most powerful lever for healthspan.",
+    description:
+      "Cardiorespiratory fitness and strength are among the strongest predictors of how long you stay healthy and independent.",
+    primaryBenefits: [
+      "Protects strength and mobility with age",
+      "Improves cardiovascular and metabolic health",
+      "Supports mood and cognition",
+    ],
+    topicSlug: "exercise",
+  },
+  {
+    id: "nutrition",
+    name: "Nutrition",
+    tagline: "What you eat, and how much — not the latest diet.",
+    description:
+      "Energy balance, protein sufficiency, and food quality drive most of the outcome. The details matter far less than the fundamentals.",
+    primaryBenefits: [
+      "Supports a healthy body composition",
+      "Preserves muscle as you age",
+      "Improves metabolic markers",
+    ],
+    topicSlug: "nutrition",
+  },
+  {
+    id: "mental-health",
+    name: "Mental & Emotional Health",
+    tagline: "Stress, connection, and purpose are health variables.",
+    description:
+      "Psychological wellbeing is not separate from physical health — it shapes sleep, eating, activity, and long-term risk.",
+    primaryBenefits: [
+      "Lower stress load",
+      "Stronger relationships and sense of purpose",
+      "Better adherence to every other lever",
+    ],
+    topicSlug: "mental-health",
+  },
+  {
+    id: "drugs-supplements",
+    name: "Medications & Supplements",
+    tagline: "Useful at the margins — after the basics are in place.",
+    description:
+      "Some drugs and supplements have real evidence behind them. Most do not, and none substitute for the other four levers.",
+    primaryBenefits: [
+      "Separates evidence from marketing",
+      "Targets specific, measurable gaps",
+      "Flags interactions and real risks",
+    ],
+    topicSlug: "medications-supplements",
+  },
+]
 
 /**
- * Derive lever ID from concept slug
- */
-function getLeverIdFromSlug(slug: string): string {
-  return SLUG_TO_LEVER_ID[slug] || slug
-}
-
-/**
- * Transform a Concept with lever metadata into a Lever object
- */
-function conceptToLever(concept: Concept): Lever | null {
-  if (!concept.is_lever || !concept.lever_metadata || !concept.lever_order) {
-    return null
-  }
-
-  const metadata = concept.lever_metadata as LeverMetadata
-  const leverId = getLeverIdFromSlug(concept.slug)
-
-  return {
-    id: leverId,
-    name: concept.name,
-    tagline: metadata.tagline,
-    description: concept.description || "",
-    primaryBenefits: metadata.primaryBenefits || [],
-    conceptSlug: concept.slug,
-    conceptId: concept.id,
-  }
-}
-
-// Module-level cache for levers (lasts for the lifetime of the process)
-let cachedLevers: Lever[] | null = null
-
-/**
- * Fetch all levers from the database
- * Results are cached for the lifetime of the process
- */
-async function fetchLevers(): Promise<Lever[]> {
-  if (cachedLevers) {
-    return cachedLevers
-  }
-
-  if (!supabaseAdmin) {
-    throw new Error("Supabase admin not configured")
-  }
-
-  const { data: concepts, error } = await supabaseAdmin
-    .from("concepts")
-    .select("*")
-    .eq("is_lever", true)
-    .order("lever_order", { ascending: true })
-
-  if (error) {
-    throw new Error(`Error fetching levers: ${error.message}`)
-  }
-
-  if (!concepts || concepts.length === 0) {
-    throw new Error("No levers found in database. Run migrations 012 and 013 to set up levers.")
-  }
-
-  const levers = concepts
-    .map(conceptToLever)
-    .filter((lever: Lever | null): lever is Lever => lever !== null)
-
-  if (levers.length !== 5) {
-    console.warn(
-      `Expected 5 levers but found ${levers.length}. Some lever concepts may be missing metadata.`
-    )
-  }
-
-  cachedLevers = levers
-  return levers
-}
-
-/**
- * Get all levers
- * @returns Array of all lever objects, ordered by lever_order
+ * Get all levers, resolved against the live topics table.
+ *
+ * Levers whose topic is missing or archived are omitted, so every card that
+ * renders has a working destination. Returns [] when Supabase is not
+ * configured (e.g. during a build with no env) rather than throwing.
  */
 export async function getAllLevers(): Promise<Lever[]> {
-  return fetchLevers()
-}
-
-/**
- * Get a lever by its ID
- * @param id - The lever ID (e.g., "sleep", "exercise")
- * @returns The lever object, or undefined if not found
- */
-export async function getLeverById(id: string): Promise<Lever | undefined> {
-  const levers = await fetchLevers()
-  return levers.find((lever) => lever.id === id)
-}
-
-/**
- * Get a lever by its associated concept slug
- * @param slug - The concept slug from the database (e.g., "sleep-circadian")
- * @returns The lever object, or undefined if not found
- */
-export async function getLeverByConceptSlug(slug: string): Promise<Lever | undefined> {
-  const levers = await fetchLevers()
-  return levers.find((lever) => lever.conceptSlug === slug)
-}
-
-/**
- * Clear the lever cache (useful for testing or after updates)
- */
-export function clearLeverCache(): void {
-  cachedLevers = null
-}
-
-// For backward compatibility, export a synchronous getter that returns cached levers
-// This will throw if levers haven't been fetched yet
-let leversPromise: Promise<Lever[]> | null = null
-
-/**
- * Synchronous access to cached levers (for client components that need immediate access)
- * WARNING: This will return an empty array if levers haven't been fetched yet.
- * Use the async functions (getAllLevers, etc.) in server components or when you can await.
- */
-export function getCachedLevers(): Lever[] {
-  return cachedLevers || []
-}
-
-/**
- * Pre-fetch levers (call this in server components to warm the cache)
- */
-export async function prefetchLevers(): Promise<void> {
-  if (!leversPromise) {
-    leversPromise = fetchLevers()
+  if (!supabaseAdmin) {
+    return []
   }
-  await leversPromise
+
+  const slugs = LEVER_CONFIG.map((lever) => lever.topicSlug)
+
+  const { data: topics, error } = await supabaseAdmin
+    .from("topics")
+    .select("id, slug, claim_count")
+    .in("slug", slugs)
+    .eq("status", "active")
+
+  if (error) {
+    throw new Error(`Error fetching lever topics: ${error.message}`)
+  }
+
+  type LeverTopicRow = { id: string; slug: string; claim_count: number | null }
+
+  const bySlug = new Map<string, LeverTopicRow>(
+    ((topics ?? []) as LeverTopicRow[]).map((topic) => [topic.slug, topic])
+  )
+
+  const levers = LEVER_CONFIG.flatMap((lever) => {
+    const topic = bySlug.get(lever.topicSlug)
+    if (!topic) {
+      console.warn(
+        `Lever "${lever.id}" has no active topic for slug "${lever.topicSlug}" — skipping.`
+      )
+      return []
+    }
+    return [{ ...lever, topicId: topic.id, claimCount: topic.claim_count ?? 0 }]
+  })
+
+  return levers
 }

@@ -1,12 +1,11 @@
 /**
  * Embeddings Generation System
  * 
- * Generates vector embeddings for insights and concepts using OpenAI's embedding API
- * Enables semantic search and concept matching
+ * Generates vector embeddings for raw insights and claims using OpenAI's
+ * embedding API. Enables semantic search and `match_claims` / `match_topics`.
  */
 
 import OpenAI from 'openai'
-import { supabaseAdmin } from './supabaseServer'
 
 // Lazy initialization of OpenAI client
 let openaiInstance: OpenAI | null = null
@@ -74,96 +73,6 @@ export async function generateEmbeddingsBatch(texts: string[]): Promise<number[]
  */
 export function insightEmbeddingText(item: { statement: string; context_note?: string | null }): string {
   return `${item.statement}${item.context_note ? ` ${item.context_note}` : ''}`
-}
-
-/**
- * Generate embedding for an insight
- * Combines statement and context_note for better semantic representation
- */
-export async function generateInsightEmbedding(insight: {
-  statement: string
-  context_note?: string | null
-}): Promise<number[]> {
-  const text = `${insight.statement}${insight.context_note ? ` ${insight.context_note}` : ''}`
-  return generateEmbedding(text)
-}
-
-/**
- * Generate embedding for a concept
- * Combines name and description for better semantic representation
- */
-export async function generateConceptEmbedding(concept: {
-  name: string
-  description?: string | null
-}): Promise<number[]> {
-  const text = `${concept.name}${concept.description ? ` ${concept.description}` : ''}`
-  return generateEmbedding(text)
-}
-
-/**
- * Generate and store embedding for an insight
- */
-export async function generateAndStoreInsightEmbedding(insightId: string): Promise<void> {
-  if (!supabaseAdmin) {
-    throw new Error('Supabase admin not configured')
-  }
-
-  // Fetch insight
-  const { data: insight, error: fetchError } = await supabaseAdmin
-    .from('insights')
-    .select('id, statement, context_note')
-    .eq('id', insightId)
-    .single()
-
-  if (fetchError || !insight) {
-    throw new Error(`Insight not found: ${fetchError?.message}`)
-  }
-
-  // Generate embedding
-  const embedding = await generateInsightEmbedding(insight)
-
-  // Store embedding
-  const { error: updateError } = await supabaseAdmin
-    .from('insights')
-    .update({ embedding })
-    .eq('id', insightId)
-
-  if (updateError) {
-    throw new Error(`Failed to store embedding: ${updateError.message}`)
-  }
-}
-
-/**
- * Generate and store embedding for a concept
- */
-export async function generateAndStoreConceptEmbedding(conceptId: string): Promise<void> {
-  if (!supabaseAdmin) {
-    throw new Error('Supabase admin not configured')
-  }
-
-  // Fetch concept
-  const { data: concept, error: fetchError } = await supabaseAdmin
-    .from('concepts')
-    .select('id, name, description')
-    .eq('id', conceptId)
-    .single()
-
-  if (fetchError || !concept) {
-    throw new Error(`Concept not found: ${fetchError?.message}`)
-  }
-
-  // Generate embedding
-  const embedding = await generateConceptEmbedding(concept)
-
-  // Store embedding
-  const { error: updateError } = await supabaseAdmin
-    .from('concepts')
-    .update({ embedding })
-    .eq('id', conceptId)
-
-  if (updateError) {
-    throw new Error(`Failed to store embedding: ${updateError.message}`)
-  }
 }
 
 

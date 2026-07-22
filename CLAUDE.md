@@ -27,9 +27,8 @@ into a client component.
 **Model providers.** Every generative call goes through `lib/llm.ts` —
 never call a provider SDK directly from a pipeline stage. `OPENAI_API_KEY`
 is used *only* by `lib/embeddings.ts`: Anthropic ships no embeddings model,
-and `match_claims` / `match_topics` are vector searches. (`lib/autotag.ts`,
-`lib/conceptDiscovery.ts`, and `lib/pipeline.ts` still call OpenAI directly,
-but they are dead v1 code operating on the dropped `concepts` table.)
+and `match_claims` / `match_topics` are vector searches. It is the only
+module that imports the `openai` package.
 
 ## Conventions
 
