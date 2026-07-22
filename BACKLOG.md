@@ -10,6 +10,64 @@ list, not a spec. Items already specced there are linked rather than restated.
 
 ---
 
+## The plan — what to work on, in order
+
+The sections below are a catalogue, ordered by severity. This section is the
+*sequence*, ordered by dependency. Four stages, and the ordering is not
+preference: each one is cheaper or safer because the one before it happened.
+
+### Stage 1 — Stop shipping untrustworthy articles (do first, blocks the build)
+
+Everything here must land **before** the full library build, because the build
+would otherwise mass-produce the same defects at ~$400–600.
+
+1. **Make the groundedness gate block.** Pick a floor; hold or flag articles
+   below it instead of logging. Live articles sit at 0.40. → P1
+2. **Capture `start_ms` at extraction.** Retroactive-hostile: fixing it later
+   means re-extracting everything. Must precede the next ingest, not follow it.
+   → P2
+3. **Diagnose reference resolution** (4 of 76). Either fix it or stop
+   presenting verified references as a feature — the build bakes whichever is
+   true into every article. → P2
+4. **Clear the two operational stragglers**: source `d32c0fc8` stuck in
+   `processing`, and the 5 queued `update_topic` jobs (decide: run or drop).
+   → P2
+
+### Stage 2 — Make the corpus worth building from
+
+5. **Ingest breadth** — Exercise, Sleep, Nutrition sources. The skew is an
+   ingestion artefact, not a defect, but building now yields one deep branch
+   and nine thin ones. → P3.6
+6. **Regenerate the 45 pre-coverage-gate articles.** Cheap relative to the full
+   build, and it makes "comprehensive" true of the library rather than ten
+   articles. → P1
+
+### Stage 3 — The full library build (one budgeted run)
+
+7. **Batch API path** first if the discount is wanted — it is a 50% lever on
+   the single most expensive action in the project. → P3.5
+8. **Run the build.** Preconditions: taxonomy settled (✅ done), gate blocking
+   (1), provenance captured (2), corpus balanced (5). → P3.6
+
+### Stage 4 — The B2B differentiators (what makes it sellable)
+
+Sequenced by dependency, not by appeal:
+
+9. **Per-source novelty %** — inputs already exist (consolidation decides
+   SAME/DIFFERENT); this is recording and surfacing, not new inference. The
+   single clearest proof the dedup engine is real. → P3.5
+10. **Consensus vs contested labelling** — needs a structured field before any
+    UI or override can exist. → P3.5
+11. **Claim relations → contradiction queue** — depends on 10 for its verdict
+    vocabulary. → P3.5 / Phase 8
+12. **"What's new since last visit"** — versioned sections are the hard
+    prerequisite and already exist. → P3.5
+
+Running alongside, unblocked by any of the above: the **public-site P1s** (legal
+pages, lever copy) — they are user-facing today and touch none of the pipeline.
+
+---
+
 ## P1 — Broken for users right now
 
 ### Legal pages 404 on every page of the site
@@ -188,6 +246,17 @@ current topic membership, so thin cross-cutting themes surface. Costs no new
 embedding spend — every claim is already embedded; only creating a topic
 embeds anything new.
 
+### Taxonomy maintenance job (task #8)
+A scheduled pass that proposes split / merge / re-parent moves from claim
+centroids, so the tree self-corrects as the corpus grows instead of drifting
+until someone notices. Also the natural owner of periodic count reconciliation
+(`recomputeTopicCounts` currently full-scans every topic).
+
+Deliberately **deferred, not dropped.** The spine plus the three-layer root
+guard now hold the shape by construction, so drift is slow; and with 10 curated
+roots and ~1,000 claims there is not yet enough signal for centroid moves to
+beat human judgement. Revisit once the corpus is several times larger.
+
 ### `topic_protocols` generation
 Most topics have no generated protocol yet (all zero as of the cleanup). Gates
 the P1 protocols-strip item above.
@@ -260,6 +329,28 @@ hard prerequisite.
 ### Batch API path (50% discount)
 For the one budgeted full build. Ranked first among cost levers in
 `ARCHITECTURE.md` "Cost model".
+
+### Article-profile registry (task #10 / Phase 7)
+Today's clinician / patient / protocol variants are hardcoded. Specced as a
+**code registry**, not a table: `{ key, audience, depth, claim_cap, prompt,
+requires_quotes, requires_references }`, with a `profile` column on
+`topic_articles`. Adding a depth level — a CME monograph, a patient handout —
+then costs one registry entry rather than a schema change.
+
+Lower priority than it looks: one profile done well beats three done thinly,
+and the clinician profile is the product.
+
+### Computed evidence grading (task #10 / Phase 7)
+A derived grade per claim from evidence_type + confidence + source_count +
+best-reference tier + recency, surfaced in Evidence and in articles.
+**Depends on reference resolution working** — the best-reference-tier input is
+currently near-empty (4 resolved of 76), so building this now would grade
+almost everything on missing data.
+
+### Physician Q&A (task #11 / Phase 8)
+RAG over claims + verified references. Last in the sequence deliberately: it
+inherits every trust property of the layers under it, so it is only as
+trustworthy as the groundedness gate and reference resolution make it.
 
 ---
 
@@ -423,4 +514,13 @@ Recorded to save the next person the trip:
   `insight_concepts`, `concepts`, `concept_connections`, `concept_parents`,
   `source_processing_runs` — all clear as of `ebe3697`.
 - **`openai` is imported only by `lib/embeddings.ts`**, matching the claim in
-  `CLAUDE.md`.
+  `CLAUDE.md`. The inert v1 OpenAI cluster (`autotag`, `conceptDiscovery`,
+  `pipeline`, `topicNarrative`, `topicProtocols`) is **already deleted** — `lib/`
+  holds 18 modules and none of them is one of these. An earlier note listing
+  this as pending work was stale.
+- **The scale-durability refactor shipped.** Migration `003_evidence_layer.sql`
+  creates HNSW (`vector_cosine_ops`) indexes on `claims`, `topics` and
+  `references_`, superseding the baseline ivfflat `lists = 100` index that would
+  have degraded past ~100k rows. The `topic_claims` RPC replaced the unbounded
+  `IN (...)` of claim ids. Both were open cliffs in the v3 plan; neither needs
+  re-doing.
