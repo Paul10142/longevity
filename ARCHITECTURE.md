@@ -1,7 +1,11 @@
 # Knowledge Engine v2 — Architecture
 
-**Status:** v2 rebuild in progress (branch `v2-rebuild`, started July 2026).
-Supersedes the archived v1 reports in `docs/archive/`.
+**Status:** v2 shipped to `main`; v3 evidence layer, v3.1 comprehensiveness and
+v3.2 incremental updates all shipped (2026-07-21/22). What remains is the B2B
+product layer on top — novelty %, consensus/contested, contradiction queue.
+Outstanding work and its running order live in `BACKLOG.md`; this file is the
+design spec, not a to-do list. Supersedes the archived v1 reports in
+`docs/archive/`.
 
 ## Purpose
 
@@ -287,7 +291,7 @@ New job types: `extract_references`, `resolve_references` (+ `compute_relations`
 reserved for Phase 8). `extract_source` fans out to both consolidation and
 reference extraction.
 
-## v3.1 target spec — physician-grade comprehensiveness (agreed, not yet built)
+## v3.1 — physician-grade comprehensiveness (SHIPPED 2026-07-21)
 
 The product goal: a **B2B knowledge product sold to lifestyle-medicine
 physicians**. Clinicians rely on it, so it must be detailed, trustworthy, and
@@ -343,7 +347,7 @@ never silently lossy. The following is the canonical target agreed with Paul
 - Admin surface to review and edit claims directly (beyond the merge-review
   queue) — correct a bad rewrite, split/retag, adjust consensus.
 
-## v3.2 incremental update model — section-level regen + living documents (agreed, not yet built)
+## v3.2 incremental update model — section-level regen + living documents (SHIPPED 2026-07-21)
 
 Full-article regeneration on every new source is wrong on two counts: it is
 expensive (a 6,000-word Opus rewrite to fold in one added claim), and it churns

@@ -400,13 +400,15 @@ article, so an ingest can never kick off a library-wide build.
 
 ## P4 — Documentation
 
-### `ARCHITECTURE.md` status line is stale
-Line 3 reads *"v2 rebuild in progress (branch `v2-rebuild`, started July
-2026)"* while the same file carries v3, v3.1 and v3.2 sections below it, and
-work has moved off that branch. Since `CLAUDE.md` designates this file as
-authoritative, its status line is the first thing a reader trusts.
+### ~~`ARCHITECTURE.md` status was stale~~ — DONE 2026-07-22
+Three separate stale labels, not one: line 3 claimed *"v2 rebuild in progress
+(branch `v2-rebuild`)"*, and the **v3.1 and v3.2 section headers both read
+"(agreed, not yet built)"** for machinery that shipped 2026-07-21. Since
+`CLAUDE.md` designates this file as authoritative, those headers would have sent
+the next reader to rebuild working code — the same error this file's P3 section
+was written to correct.
 
-**Done when:** the header reflects actual current phase.
+All three now state shipped status and point here for outstanding work.
 
 ### `docs/archive/` is intentionally stale
 v1 documentation kept for history. Not a to-do — listed so nobody "fixes" it.

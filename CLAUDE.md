@@ -14,6 +14,12 @@ pipeline; `docs/archive/` is stale v1 documentation kept for history).
   (`status`, `work`, `discover [--dry-run]`, `sweep`, `extract <source_id>`).
   Defaults to `LLM_BACKEND=claude-code`, which bills your Claude subscription
   through the local `claude` CLI instead of API credits.
+- `npm run seed-spine [-- --dry-run]` — seed/repair the curated taxonomy spine.
+  **Always dry-run first**, and never run two copies concurrently (that raced
+  and split the spine across duplicate roots once; migration 008 now makes it
+  fail loudly instead).
+- `npm run regen -- <topicId>` — regenerate one topic's article off-queue,
+  bypassing the job system. Same subscription-billing default as `pipeline`.
 
 ## Environment
 
