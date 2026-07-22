@@ -56,8 +56,37 @@ const SPINE: { name: string; children: string[] }[] = [
       'Hormones',
       'Family Medical History & Genetics',
       'Accidental Death',
+      // Legacy AI-minted roots whose subtrees are plainly disease risk.
+      'Oncology',
+      'Pulmonology',
     ],
   },
+  // Added 2026-07-22. Not in the original curated image, but the corpus forced
+  // it: male reproductive and hormonal health is the single largest cluster
+  // (~380 claims) and holds two of the five validated articles, with no home
+  // among the original six branches. The tree was always meant to grow parents
+  // as the evidence demands.
+  {
+    name: 'Sexual & Reproductive Health',
+    children: [
+      // Testosterone, DHT, and estrogen physiology live here: in this corpus
+      // they are reproductive endocrinology, not a general risk factor.
+      'Endocrinology',
+      'Reproductive Biology',
+      // Genetic Infertility, CFTR, sex-chromosome aneuploidy — reproductive
+      // genetics specifically, distinct from Risks › Family Medical History.
+      'Genetics',
+      'Fertility',
+      'Reproductive Aging',
+      'Male Reproductive Health',
+      'Regenerative Medicine',
+      'Diagnostics',
+    ],
+  },
+  // Meta-branches: about how evidence is made and delivered rather than about
+  // a lifestyle lever. Kept reader-facing by Paul's decision (2026-07-22).
+  { name: 'Research & Evidence', children: [] },
+  { name: 'Public Health & Policy', children: [] },
 ]
 
 /**
@@ -74,6 +103,11 @@ const SPINE: { name: string; children: string[] }[] = [
 const ALIASES: Record<string, string[]> = {
   Sleep: ['Sleep & Circadian Rhythm'],
   'Mental & Emotional Health': ['Mental Health'],
+  // "Reproductive Health" already holds 195 claims across 17 children,
+  // including the Male Fertility Assessment article. Adopting and renaming it
+  // keeps that subtree, its id, and its slug intact — creating a fresh branch
+  // beside it would strand the corpus's largest cluster.
+  'Sexual & Reproductive Health': ['Reproductive Health'],
 }
 
 function db() {
