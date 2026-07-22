@@ -12,8 +12,9 @@ import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJo
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
 import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
-import { generateTopicContent } from './synthesis'
+import { generateTopicContent, updateTopicContent } from './synthesis'
 import { extractReferences, resolveReferences, type ExtractRefCheckpoint } from './references'
+import { supabaseAdmin } from './supabaseServer'
 
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
@@ -100,6 +101,30 @@ async function handleConsolidateSource(job: Job): Promise<void> {
   }
 }
 
+/**
+ * After tagging, fold the newly-filed claims into the articles they actually
+ * touched — the incremental path (ARCHITECTURE.md "v3.2"). `stale_topics()`
+ * returns only topics that ALREADY have an article and have since gained
+ * claims, so an ingest can never silently kick off a full library build; that
+ * stays a deliberate, budgeted `generate_topic` run.
+ */
+async function enqueueStaleTopicUpdates(): Promise<void> {
+  if (!supabaseAdmin) return
+  const { data, error } = await supabaseAdmin.rpc('stale_topics')
+  if (error) {
+    console.error('[worker] stale_topics failed:', error.message)
+    return
+  }
+  const rows = (data ?? []) as { topic_id: string; new_claims: number }[]
+  for (const r of rows) {
+    // Deduped by (type, payload), so repeated tagging passes coalesce.
+    await enqueueJob('update_topic', { topic_id: r.topic_id })
+  }
+  if (rows.length) {
+    console.log(`[worker] queued ${rows.length} incremental topic update(s)`)
+  }
+}
+
 async function handleTagClaims(job: Job): Promise<void> {
   const progress = job.progress as Partial<TagCheckpoint>
   const result = await tagClaims(
@@ -109,6 +134,7 @@ async function handleTagClaims(job: Job): Promise<void> {
   )
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })
+    await enqueueStaleTopicUpdates()
   } else {
     await requeueJob(job.id, { ...result.checkpoint })
   }
@@ -156,6 +182,12 @@ async function runHandler(job: Job): Promise<void> {
       const topicId = job.payload.topic_id as string
       if (!topicId) throw new Error('generate_topic job missing topic_id')
       await generateTopicContent(topicId)
+      return
+    }
+    case 'update_topic': {
+      const topicId = job.payload.topic_id as string
+      if (!topicId) throw new Error('update_topic job missing topic_id')
+      await updateTopicContent(topicId)
       return
     }
     case 'extract_references':

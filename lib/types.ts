@@ -139,6 +139,7 @@ export type JobType =
   | 'extract_source' | 'consolidate_source' | 'tag_claims'
   | 'discover_topics' | 'generate_topic' | 'claim_sweep'
   | 'extract_references' | 'resolve_references' | 'compute_relations'
+  | 'update_topic'
 export type JobStatus = 'queued' | 'running' | 'done' | 'failed'
 
 export type Job = {
