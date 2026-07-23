@@ -10,6 +10,53 @@ novelty %, consensus/contested, contradiction queue. Outstanding work and its
 running order live in `BACKLOG.md`; this file is the design spec, not a to-do
 list. Supersedes the archived v1 reports in `docs/archive/`.
 
+## Why this exists — the seven principles
+
+Lifestyle Academy exists to solve one problem: the knowledge is scattered across
+dozens of overlapping sources, and no physician has time to listen to forty
+podcasts and notice that thirty of them say the same three things. **The product
+does that noticing.** It reads everything, discards the repetition, keeps the
+disagreements, and returns one clean, trustworthy body of knowledge — a *haiku*,
+not an encyclopedia dump: nothing wasted, nothing invented, every word earned.
+The purpose is to teach physicians and, through them, make patients' lives better.
+
+"Trustworthy" is the entire business. The moment a physician catches the tool
+asserting something untrue or uncheckable, they leave and tell their colleagues.
+Every engineering decision bends back to one question: *does this protect the
+trust, or spend it?* The seven principles below are that question, answered — and
+each design rule elsewhere in this document serves one of them.
+
+1. **The machine may reorganize knowledge; it may never add any.** Our engine
+   writes the connective prose but contributes no fact, dose, or conclusion that
+   isn't in a source. *Accepted tradeoff:* a smaller true library over a larger
+   believable one. (→ v4 spec §2, §5: length follows evidence.)
+2. **When two sources almost agree, keep both — never average them.** Blending
+   "1.6 g/kg" and "2.2 g/kg for older adults" into "1.6–2.2" erases the fact that
+   the dose depends on the patient, and a physician could act on the blur.
+   *Accepted tradeoff:* a less impressive dedup headline in exchange for fidelity.
+   (→ v4 spec §6; the current merge prompt violates this — `v4-build-risks-and-cost.md` §A2.)
+3. **The human is editor-in-chief; the machine is the junior writer.** Anything
+   uncertain is held for human review *before* a physician sees it. *Accepted
+   tradeoff:* a few weak claims slip through to a later safety net rather than
+   stalling everything. (→ v4 spec §7: claims gated before synthesis.)
+4. **Prove it on a little, then pour in the ocean.** One excellent, verifiable
+   topic teaches — and protects the brand — more than fifty shaky ones. Measure
+   the engine on today's sources before ingesting 200. *Accepted tradeoff:*
+   slower start, far faster to a sellable product. (→ v4 spec §11 step 0.)
+5. **Build for the physician first; give the patient the same truth in plainer
+   words.** The patient view is a translation of verified clinician content,
+   never a looser separate thing. *Accepted tradeoff:* patients wait; they never
+   get engaging-but-wrong. (→ v4 spec §10: patient deferred.)
+6. **If we sell "trustworthy dedupe," we measure both words.** Build the ruler —
+   false-merge rate and groundedness — before the features. (→ v4 spec §6.1.)
+7. **Spend on the writing, save everywhere else.** The prose a physician reads
+   uses the best model; the mechanical grunt work (dedup triage, audits) uses
+   cheaper models and batching. Quality is never traded for cost. (→ `Cost model`,
+   `v4-build-risks-and-cost.md` §C.)
+
+In one sentence: **we are building the one source of truth, so we would rather be
+smaller, slower, and more expensive than be wrong once.**
+
 ## Purpose
 
 Take many sources (podcasts, books, videos, articles), break their content
