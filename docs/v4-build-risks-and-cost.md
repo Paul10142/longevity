@@ -22,23 +22,16 @@ the thing should be built the way it is — surfaced in a zoom-out review of the
 whole plan against the Lifestyle Academy mission. None is an engineering bug; each
 could sink the product regardless of how well the engine works.
 
-### E1. Content rights — the product is largely one creator's copyrighted work. **(largest unaddressed risk)**
+### E1. Content rights — SHELVED for now (Paul, 2026-07-23).
 
-The docs flag *image* licensing (spec §10) but are silent on the far bigger
-exposure: the corpus is Peter Attia's podcast transcripts, and the product
-**commercially resells derived works** from them — at target scale, ~200 episodes
-of largely one creator's copyrighted material, reorganized and rewritten. Whether
-dedup-and-rewrite is transformative enough to be defensible, or requires a
-license/permission, is a legal question, not a technical one, and it dwarfs the
-image note. Paul already deferred the coined phrase "Centenarian Decathlon" for
-copyright — so IP awareness exists at the phrase level, but not at the corpus
-level.
-
-**The line:** building on this for *validation* is fine; **selling** is the
-trigger. Before the product is sold it needs a real answer — a license, explicit
-permission, a defensible transformation/fair-use position, or a shift to sources
-that permit commercial reuse. This is a Paul-and-a-lawyer question, flagged here
-so it is not discovered after the full build is paid for.
+The corpus is largely one creator's copyrighted transcripts, and reselling
+derived works commercially would be a real legal question (bigger than the image
+note in spec §10). **Paul's call: not a concern now** — the product is *internal /
+educational* (to teach himself and other physicians), not a commercial entity.
+Left recorded, not deleted: **selling is the trigger.** If this ever becomes a
+sold product, revisit before launch — a license, explicit permission, a
+defensible transformation position, or commercial-reuse-friendly sources. Until
+then, no action.
 
 ### E2. No customer-validation checkpoint — heavy build before any physician reacts.
 
@@ -55,30 +48,28 @@ physicians and ask the only question that matters — *would you trust and use
 this?* — **before** the full build. Cheap insurance on the largest single spend,
 and the most mission-aligned reading of "prove on a little."
 
-### E3. "Many sources" is really "mostly Attia" — which breaks the consensus logic.
+### E3. Authority = named guest experts, not source repetition (resolved 2026-07-23).
 
-The pitch is "deduplicate many overlapping sources into one source of truth." At
-target scale the corpus is ~200 episodes of predominantly **one voice**. Two
-consequences the design doesn't yet account for:
+Original concern: the corpus is predominantly one *voice* (Attia), so deriving the
+consensus dimension from `source_count` would measure him repeating himself, not
+field agreement — labelling a claim "established" because one person said it ten
+times. **Resolved by Paul's clarification:** each episode's *guest* is the domain
+expert (Turek, Allison, Hooven…), and Attia is the interviewer. So:
 
-- **Consensus is mis-defined.** `ARCHITECTURE.md` §"Consensus/contested" derives
-  the consensus dimension partly from `source_count` / "multi-source agreement."
-  When the sources are all Attia, high `source_count` measures *him repeating
-  himself across episodes*, not field agreement — so a claim could be labelled
-  "established" on the strength of one person saying it ten times. For a physician
-  product that is exactly backwards.
-- **The credibility bridge is the weakest-built component.** What makes a
-  podcast-derived claim credible to a physician is the *primary-literature
-  reference* behind it — and reference resolution currently works ~5% of the time
-  (`BACKLOG.md` P2). The one component that earns physician trust is the least
-  functional one.
+- **Authority comes from the credentialed guest expert**, modelled as a
+  first-class credibility layer (spec §5.5), and **`source_count` is retired as an
+  authority signal.** "Established" is gated on credentialed-expert support +
+  `authority_tier` + primary references — never on repetition.
+- **The corpus will diversify** beyond Attia (Paul adding other sources), further
+  weakening any single-voice effect.
+- **Still true and still the weakest link:** the primary-literature reference is
+  what ultimately earns physician trust, and resolution works ~5% today
+  (`BACKLOG.md` P2). Fixing it is a prerequisite for the consensus feature to mean
+  anything — already in the sequence.
 
-**Recommendation:** until the corpus genuinely diversifies, "established" must be
-gated on **primary-reference support and `authority_tier`**, not on `source_count`
-— and single-voice claims should read as "Attia's framework," not "consensus."
-Fix reference resolution (already in Phase 0/Stage 1) is a prerequisite for the
-consensus feature to mean anything. This reframes, not blocks, the v3.1 consensus
-design; it should be revised before that feature is built.
+Net: revise the v3.1 consensus design to key off experts + references, not
+`source_count`, before that feature is built (ARCHITECTURE.md §Consensus is
+annotated to match).
 
 ---
 
@@ -293,6 +284,17 @@ the merge-prompt fix's effect is *measurable*, not assumed:
 5. **The two independent fixes**, any time in Phase 0: `catch { return 1 }` →
    `null` (spec §8); verify the doc reconciliations (A1/A3/A4) still hold in-repo.
 
+**Phase 0.5 — reshape the taxonomy to the 12-branch frontier tree** (before any
+re-tagging, so claims file into the new tree). Target and mapping in the
+[[proposed-taxonomy]] memory: 7 pillars (Exercise, Nutrition, Sleep, Meds &
+Supplements, Cognition, Mental & Emotional Health, Reducing Risks) + Chronic
+Disease, Reproductive & Hormonal Health, Healthy Aging, Research & Evidence,
+Public Health & Policy. Two structural splits (Mental Health & Psychology →
+Cognition + Mental & Emotional; Risks → Reducing Risks + Chronic Disease) and one
+rename (Sexual & Reproductive Health → Reproductive & Hormonal Health). Same
+mechanics as the 2026-07-22 reshape: edit `scripts/seedSpine.ts` SPINE → dry-run →
+apply → archive retired branches with `merged_into_id`. Must precede Phase 2 tagging.
+
 **Phase 1 — re-process the seed corpus ONCE (resolves B1).**
 
 Corrected 2026-07-22 after checking the data: of the 5 seed sources, **only the
@@ -351,16 +353,23 @@ recover, and the article never had any. So Phase 1 splits:
 - Prefer in-article sub-sectioning over topic split (B3); retune the split
   trigger to distinctness.
 
-**⛳ Checkpoint before Phase 4 — validate with a real physician (E2).** Phase 3
-yields the first gate-passing v4 clinician articles. Put 2–3 of them in front of
-practicing physicians and ask "would you trust and use this?" *before* spending
-$2–5k on the full build. A "no" here is worth far more than a polished library
-nobody asked for. Also settle the E1 content-rights question before selling.
+**⛳ Checkpoint before Phase 4 — Paul's explicit gate (2026-07-23).** Between
+Phase 3 and Phase 4, **stop and do two things before spending tokens on the full
+build:**
+1. **Build the cost infrastructure first** (Paul's instruction): the levers in §C
+   are not "apply later" — they are built *here*, before the run. Batch API path
+   (C1), two-tier adjudication (C3), audit-on-Haiku (C2, if not already), prompt
+   caching (C4), and a **spend cap** (B-series gap). Reduce the per-run cost
+   *before* running it at scale.
+2. **Validate the product** (E2): Paul is the reviewing physician; look at the
+   first gate-passing v4 clinician articles + protocols and confirm they're worth
+   scaling. A "no" here is worth more than a polished library nobody wanted.
 
-**Phase 4 — scale out (only after the checkpoint).**
+**Phase 4 — scale out (only after the gate).**
 - Upgrade to Vercel Pro (B5) — precondition for breadth.
-- Ingest Exercise/Sleep/Nutrition breadth; two-tier adjudication (C3) live.
+- Ingest breadth — **pillar-driven** (Exercise, Nutrition, Sleep, Cognition,
+  etc.), diversifying beyond Attia; two-tier adjudication (C3) live.
 - The one budgeted full build, Batch API (C1). Cross-linking + novelty buckets
   (spec §9) as the review-and-proof layer.
-- Consensus labelling (v3.1) — gate "established" on primary-reference support +
-  `authority_tier`, **not** `source_count` (E3), since the corpus is one voice.
+- Consensus labelling (v3.1) — gate "established" on credentialed-expert support
+  (spec §5.5) + primary references, **not** `source_count` (E3).

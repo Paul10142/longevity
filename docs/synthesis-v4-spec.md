@@ -65,6 +65,22 @@ where nothing repeats and every statement traces to source. The model's licence
 is to organize, order, and connect claims into readable prose. Its prohibition
 is to add any fact, number, mechanism, or conclusion that is not in a claim.
 
+**Audience & register (set 2026-07-23).** The reader is a physician who wants to
+practice **frontier / cutting-edge medicine** — medically trained, but *new to
+this domain*. So the clinician article **teaches the domain**: assume full general
+clinical knowledge, but explain domain-specific concepts, frameworks, and
+vocabulary (the glossary, §5.3, covers domain terms — not basic medicine). This is
+broader than "lifestyle medicine": every topic the sources cover is in scope,
+including the reproductive/hormonal material, which is **fully central**, not
+adjacent. The job to be done: *get me current and tell me what to do, without
+listening to thousands of hours.*
+
+**Protocol-led delivery.** For a busy adopting physician the hero deliverable is
+the **protocol** — the actionable "what to do" (targets, dosing, monitoring,
+contraindications, "discuss with patient" caveats). The full clinician reference
+is depth-on-demand, one click away for the "why." The protocol is the front door,
+not an appendix. It obeys every no-new-information rule the reference does (§10).
+
 Two metrics already in the schema define this exactly:
 
 - **coverage = 1.0** — every approved claim for the topic appears in the article.
@@ -220,6 +236,29 @@ proposal flow with the review UI (§7); seed lazily as topics need terms.
   (`[R1]`) are shown.
 - **Admin/review** sees the `synthesis` sentences highlighted, every sentence's
   `claim_ids` on hover, and the coverage/groundedness scores.
+
+### 5.5 Experts as a credibility layer (set 2026-07-23)
+
+The sources are interviews with rotating **guest experts** — the domain
+authority per episode (Paul Turek on fertility, David Allison on protein, Carole
+Hooven on testosterone), with Attia as interviewer. These experts are what earns
+physician trust, and this **replaces `source_count` as the authority signal** (a
+count of one voice repeating himself is not authority; a named credentialed expert
+is — see `v4-build-risks-and-cost.md` §E3).
+
+Design:
+- **Experts are first-class entities** — `experts(name, credentials, specialty,
+  …)`, linked to the sources they appear in (a source's guest). `sources.authors`
+  already exists as the capture point; extraction/ingest records the guest.
+- **A claim inherits the experts of its member insights** (many-to-many, exactly
+  like `claim_members → sources`). After dedup a claim may carry several experts.
+- **Surfaced as a credibility layer, never narrated in prose** (Paul's decision —
+  keeps §5.1's no-source-narration rule intact). The article/section shows an
+  "Experts" byline (name + credentials); the Evidence panel shows which expert(s)
+  back each claim. Prose stays clean and self-contained; this scales when a claim
+  has many experts, where inline attribution ("X, Y, and Z note…") would not.
+- **Feeds `authority_tier` and the consensus dimension** — "established" is gated
+  on credentialed-expert support and primary references, not repetition.
 
 ## 6. Consolidation fidelity (hop 2)
 
@@ -481,12 +520,14 @@ consolidation time (§6) — without them, only bucket 1 is knowable.
 - **Patient article: deferred.** The rewrite targets the *clinician* article and
   the *protocol* (below). The patient view is rebuilt only after
   no-new-information is proven on those. Do not spend v4 effort on it.
-- **Protocol: in scope.** The concise "what to do" protocol is rewritten
-  *alongside* the clinician article (Paul, 2026-07-22), under the same
-  no-new-information rules and the same claim-gating — it reuses the clinician
-  engine and claim set, so the marginal cost is small and physicians reach for
-  it. `PROTOCOL_PROMPT` gets the same treatment as `CLINICIAN_SECTION_PROMPT`:
-  no invented steps, every recommendation traces to a claim.
+- **Protocol: in scope, and it is the hero deliverable** (Paul, 2026-07-23 —
+  see §2 "protocol-led"). The concise "what to do" protocol is the reader's front
+  door; the clinician reference is depth-on-demand behind it. Rewritten alongside
+  the clinician article under the same no-new-information rules and claim-gating —
+  it reuses the clinician engine and claim set. `PROTOCOL_PROMPT` gets the same
+  treatment as `CLINICIAN_SECTION_PROMPT`: no invented steps, every recommendation
+  traces to a claim, plus explicit safety framing (contraindications, "discuss
+  with patient") since a physician may act on it clinically.
 - **Migration stance: leave existing articles live until regenerated** (Paul,
   2026-07-22). The 55 old-engine articles stay on the site; each swaps to its v4
   version as it is rebuilt and passes the gate. No blank period, brief mix of old

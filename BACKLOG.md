@@ -66,17 +66,25 @@ Then Phase 1 begins with the **timestamp demonstration** on
 visible feature.
 
 **Decisions already made** (do not re-litigate; rationale in the spec / guiding
-doc): the seven principles (`ARCHITECTURE.md` top); merge only when materially
+doc): the seven principles (`ARCHITECTURE.md` top); **audience = physicians
+practicing frontier medicine, new to the domain — teach the domain** (spec §2);
+**protocol-led — the protocol is the front door, reference is depth-on-demand**
+(spec §2, §10); **experts (the guests) are a first-class credibility layer, not
+narrated in prose; `source_count` retired as the authority signal** (spec §5.5,
+E3); **taxonomy reshaped to 12 frontier branches — 7 pillars + Chronic Disease,
+Reproductive & Hormonal Health, Healthy Aging, Research & Evidence, Public Health
+& Policy** ([[proposed-taxonomy]], §D Phase 0.5); merge only when materially
 identical, near-duplicates linked not fused; claims gated before synthesis;
 hold-below-floor with manual approval (floor 0.85 + cap 2, **to be re-derived on
 sentence scores — spec §F5**); one unified review inbox, not four queues (§B4);
 fix reference resolution, include what resolves; delete the queued `update_topic`
-jobs; images in / licensing later; **protocol rewritten with the clinician
-article, patient deferred**; **existing articles left live until regenerated**;
-novelty % internal-only, reported as redundant/refinement/novel buckets; thin
-topics hidden from readers; **full-breadth launch (~40–60 leaves)**; manual
-editor edits **prose**; measured dedup accuracy from the start; transcript
-hygiene strips ads/intros/outros before extraction.
+jobs; images in / licensing later; **existing articles left live until
+regenerated**; novelty % internal-only, reported as redundant/refinement/novel
+buckets; thin topics hidden from readers; **full-breadth launch**; manual editor
+edits **prose**; measured dedup accuracy from the start; transcript hygiene strips
+ads/intros/outros before extraction; **content-rights (E1) shelved — internal/
+educational for now**; **build cost infrastructure before the Phase 4 token
+spend** (§D checkpoint).
 
 **Open items that still need Paul** (flag, don't guess — most earlier ones are
 now decided above):

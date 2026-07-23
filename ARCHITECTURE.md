@@ -20,6 +20,13 @@ disagreements, and returns one clean, trustworthy body of knowledge — a *haiku
 not an encyclopedia dump: nothing wasted, nothing invented, every word earned.
 The purpose is to teach physicians and, through them, make patients' lives better.
 
+**Who it's for (2026-07-23):** a physician who wants to practice **frontier /
+cutting-edge medicine** — medically trained, new to this domain, without time to
+listen to thousands of hours. The product teaches them the domain and hands them
+**protocols** to act on (the protocol is the front door; the reference is
+depth-on-demand). Authority comes from the named, credentialed **guest experts**
+behind the claims (see the v4 spec §5.5), not from any one voice's repetition.
+
 "Trustworthy" is the entire business. The moment a physician catches the tool
 asserting something untrue or uncheckable, they leave and tell their colleagues.
 Every engineering decision bends back to one question: *does this protect the
@@ -395,12 +402,12 @@ never silently lossy. The following is the canonical target agreed with Paul
   / contested**), **derived automatically** from `sources.authority_tier` +
   multi-source agreement (`source_count`) + contradictions (`claim_relations`,
   Phase 8). Paul can **override contested calls** in the admin.
-  - **⚠️ Revise before building (E3, `docs/v4-build-risks-and-cost.md`).** With a
-    corpus that is predominantly one voice (Attia), `source_count` measures
-    self-repetition across episodes, not field agreement — so "established" must be
-    gated on **primary-reference support + `authority_tier`**, not `source_count`.
-    Single-voice claims should read as "Attia's framework," not "consensus." This
-    depends on reference resolution working (currently ~5%).
+  - **⚠️ Revise before building (E3, resolved 2026-07-23).** Authority comes from
+    the credentialed **guest expert** behind each claim (v4 spec §5.5), not from
+    `source_count` (which would just measure one interviewer repeating himself).
+    Gate "established" on **credentialed-expert support + `authority_tier` +
+    primary-reference support** — `source_count` is retired as an authority signal.
+    Depends on reference resolution working (currently ~5%).
 - Articles state established knowledge plainly and flag contested points as "for
   discussion" — heterodox/debate content is never silently asserted as settled.
 
