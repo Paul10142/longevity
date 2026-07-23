@@ -261,6 +261,14 @@ Explicitly **not** flagged: hedged language (podcast speech is inherently
 hedged), and near-merge dose/population differences (§6 already keeps those
 *separate*, so there is nothing to adjudicate).
 
+**Tuning target for the existing corpus:** on the 5 processed sources (~1,000
+claims) the standalone test should fire on **~100–150 claims** — the clearest
+failures only (Paul's configuration budget, 2026-07-22). If a first pass flags
+many more, the test is too aggressive and should be tightened before Paul
+reviews, not after. This is the calibration reference: the same precision, held
+constant, is what keeps flagging at "a few hundred per 100 hours" as the corpus
+grows.
+
 ### 7.3 Review actions
 
 Paul edits **prose of a claim** (fix the standalone-clarity problem) or
@@ -296,18 +304,28 @@ existence as Paul works the queue.
   threshold the topic is **hidden from readers entirely** (Paul's decision), not
   stubbed. It still exists for tagging; nav must hide it too. As the corpus
   grows the topic crosses the threshold and an article is generated.
-- **Groundedness floor + absolute cap.** Ratio floor ≈ 0.85 *and* an absolute
-  cap of ~2 ungrounded sentences, so a long article cannot accumulate
-  unsupported assertions while passing on ratio. Below the gate the article is
-  **held for manual approval** (Paul approves via admin), not published.
+- **Groundedness floor = 0.85 ratio AND a hard cap of 2 ungrounded sentences**
+  (Paul, 2026-07-22). Both must pass. The ratio catches short bad articles; the
+  absolute cap stops a long article from accumulating unsupported sentences while
+  passing on ratio. Below either bar the article is **held for manual approval**,
+  not published. (For reference, this holds every current article except
+  Functional Aging.)
 - **Prerequisite bug — fix before any hold policy ships.** `scoreGroundedness`
   ends `catch { return 1 }` (`lib/synthesis.ts:355`) — a checker failure returns
   a *perfect* score. Under a hold policy that becomes auto-approve-on-error, the
   exact inversion of the gate. Return `null` on failure and treat null as
   "hold, unscored."
-- **Approval queue.** "Hold for manual approval" needs a queue and an
-  approve/edit/reject UI. Approving may include editing the article prose
-  (Paul's choice: the manual editor fixes prose). This UI does not exist yet.
+- **Approval queue — review by exception, not by re-reading.** A held article
+  takes Paul **straight to its flagged sentences** (the ungrounded ones, and the
+  `synthesis` inferences) with the cited claims shown beside each. He edits or
+  strikes those and approves; review time scales with the number of problems,
+  not article length — essential when articles run 300–600 claims. Approving may
+  include editing the prose (the manual editor fixes prose, per Paul). This UI
+  does not exist yet.
+- **Launch scope: full breadth.** At launch the library shows *every*
+  gate-passing topic (~40–60 leaves), thin ones hidden until they earn an
+  article (Paul, 2026-07-22). The product is the complete Attia-shaped reference,
+  not a handful of flagship articles.
 
 ## 9. Cross-linking (source ↔ claim ↔ article)
 
@@ -331,10 +349,20 @@ admin metric, not a reader one.
 
 ## 10. Non-goals and deferrals (explicit, so nobody "fixes" them)
 
-- **Patient article: deferred.** All of this rewrite targets the *clinician*
-  article — the product sold to physicians. The patient view is rebuilt only
-  after no-new-information is proven on the clinician article. Do not spend Stage
-  2 effort on it.
+- **Patient article: deferred.** The rewrite targets the *clinician* article and
+  the *protocol* (below). The patient view is rebuilt only after
+  no-new-information is proven on those. Do not spend v4 effort on it.
+- **Protocol: in scope.** The concise "what to do" protocol is rewritten
+  *alongside* the clinician article (Paul, 2026-07-22), under the same
+  no-new-information rules and the same claim-gating — it reuses the clinician
+  engine and claim set, so the marginal cost is small and physicians reach for
+  it. `PROTOCOL_PROMPT` gets the same treatment as `CLINICIAN_SECTION_PROMPT`:
+  no invented steps, every recommendation traces to a claim.
+- **Migration stance: leave existing articles live until regenerated** (Paul,
+  2026-07-22). The 55 old-engine articles stay on the site; each swaps to its v4
+  version as it is rebuilt and passes the gate. No blank period, brief mix of old
+  and new quality — acceptable because the site is not yet sold. No retroactive
+  pull, no dual-render.
 - **Images: included, licensing later.** The `figure` block ships; image
   *sourcing/licensing* is deferred. Flagged as a rights exposure to settle
   before the product is sold, not before it is built.
@@ -359,9 +387,11 @@ it is green.
 4. **Claim review UI** (§7.3) — flagged queue, edit/approve/archive.
 5. **Sentence-level article schema + renderer** (§5.2) — the block types and
    `outlineToMarkdown` extension. Verify existing articles still render.
-6. **Synthesis rewrite** (§5.1) — new prompts, glossary injection, the gates
-   (§8). Re-generate the eval set; groundedness must rise and length must fall on
-   thin topics. **This is the payoff step; step 0 is what proves it worked.**
+6. **Synthesis rewrite** (§5.1) — new prompts for the clinician article **and the
+   protocol** (§10), glossary injection, the gates (§8). Re-generate the eval
+   set; groundedness must rise and length must fall on thin topics. Existing
+   articles stay live and swap over per topic as they pass (§10 migration
+   stance). **This is the payoff step; step 0 is what proves it worked.**
 7. **Glossary proposal + review** (§5.3).
 8. **Cross-linking read views** (§9).
 9. Only now consider ingesting breadth and the full build (`BACKLOG.md` Stage
