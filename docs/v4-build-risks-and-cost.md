@@ -296,8 +296,10 @@ consolidation** — fold the over-granular micro-topics (Sperm Chemotaxis,
 Blood-Testis Barrier, Bicycle Saddle Ergonomics…) into their general parent so
 they become article bullets, not nodes. Same mechanics as the 2026-07-22 reshape:
 edit `scripts/seedSpine.ts` SPINE → dry-run → apply → archive retired branches
-with `merged_into_id`. Must precede Phase 2 tagging. **Also fix the subtopic-
-creation gate first** (`BACKLOG.md` P2) or re-tagging re-fragments the tree.
+with `merged_into_id`. Must precede Phase 2 tagging. **Also bias the tagger prompt
+toward general topics first** (`BACKLOG.md` P2 — subtopics auto-create then land
+in an approve/deny queue; the generality bias is what keeps that queue short) or
+re-tagging re-fragments the tree.
 
 **Phase 1 — re-process the seed corpus ONCE (resolves B1).**
 

@@ -672,22 +672,32 @@ P3.6 item about thin branches being reader-visible — the nav is where a
 
 ## P2 — Data & pipeline
 
-### Subtopics are created with no granularity gate — the tree over-fragments
-`lib/taxonomy.ts:156` (`placeTopic`): when the tagger names any new subject under
-a valid parent, `createChildTopic` mints it **immediately — one claim is enough**,
-no threshold. The root level has a three-layer guard (prompt → code → DB); the
-child level has none. Result: 26 children under Reproductive Health, several
+### Subtopics over-fragment — bias the tagger to GENERAL topics + a review queue
+`lib/taxonomy.ts:156` (`placeTopic`) mints a child for any new subject the tagger
+names under a valid parent — one claim is enough, and the prompt doesn't push
+toward *general* names. Result: 26 children under Reproductive Health, several
 single-claim micro-topics (Sperm Chemotaxis, Blood-Testis Barrier, Bicycle Saddle
-Ergonomics). A one-claim subtopic can never pass the 10-claim article gate and
-just fragments the tree; the right home for a fine distinction is a bullet inside
-the parent's article (the B3 / F4 principle applied to creation).
+Ergonomics). A one-claim subtopic can't pass the 10-claim article gate and just
+fragments the tree.
 
-**Done when:** granular claims file under the parent by default; a new subtopic is
-created only deliberately — by a human, or by the maintenance pass when a cluster
-of ≥~8–10 clustered claims under a parent earns it (and thin subtopics fold back
-in). Mirrors the root guard one level down. Relates to the `discover_topics`
-splits-not-consolidates item and the taxonomy-maintenance job below. **Fix before
-the Phase 0.5 re-tag**, or re-tagging re-creates the sprawl.
+**Paul's model (2026-07-23): auto-create, don't block — then audit.** Ingestion
+must not stall waiting for approval (new sources bring new subjects). So:
+- **Roots stay human-only** (propose → approve). **Subtopics auto-create**, land
+  `reviewed_by_human = false`, and surface in a **review queue where Paul
+  approves or denies** (deny = fold claims into the parent, archive +
+  `merged_into_id`).
+- **The fix that makes this work is in the PROMPT, not a gate:** instruct the
+  tagger to propose **broad topics that hold many related claims** (e.g. "Male
+  Reproductive Physiology", never a single finding). With the generality bias,
+  auto-creation mostly yields good topics and the queue stays short. *Without it,
+  auto-create just moves the sprawl into a review backlog.* Fine distinctions
+  below a subtopic live as article bullets (B3 / F4).
+
+**Done when:** the tagger prompt biases hard toward general topics; auto-created
+subtopics carry `reviewed_by_human = false` and appear in an approve/deny queue;
+deny folds into the parent. Relates to `discover_topics` (splits-not-consolidates)
+and the taxonomy-maintenance job. **Do the prompt bias before the Phase 0.5
+re-tag**, or re-tagging re-creates the sprawl.
 
 ### Transcript hygiene — strip ads / intros / outros before extraction (trust filter)
 YouTube captions (and some pasted transcripts) carry cold-open hype clips,
