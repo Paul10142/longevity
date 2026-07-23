@@ -49,22 +49,43 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
   measurement harness) addresses the first; treat every `generate_topic`-style
   run as real money until a cap exists.
 
-**First task, concretely:** `docs/synthesis-v4-spec.md` §11 step 0 — the
-measurement harness (dedup-accuracy eval + article-quality eval set). It changes
-no behaviour, costs ~$5–10, and is the instrument every later step is judged
-against. Do not skip it to "make progress" — without it, Stage 2 is unfalsifiable.
+**First task, concretely — `v4-build-risks-and-cost.md` §D Phase 0, in order:**
+1. Fix the consolidation adjudication prompt (§A2) — a material dose/population/
+   threshold difference must yield DIFFERENT, not SAME. The single
+   highest-leverage change; everything consolidated afterward inherits it.
+2. Fix `scoreGroundedness`'s `catch { return 1 }` → `null` (spec §8).
+3. The doc reconciliations (§A1/A3/A4) are already applied in the repo — just
+   verify nothing re-introduced them.
+4. **Then** build the measurement harness (spec §6.1): dedup-accuracy eval +
+   article-quality eval set, with the audit moved to Haiku (§C2). It changes no
+   behaviour, costs ~$5–10, and is the instrument every later step is judged
+   against. Do not skip it — without it, the synthesis rewrite is unfalsifiable.
 
-**Decisions already made** (do not re-litigate; see spec for full rationale):
-hold-below-floor with manual approval; fix reference resolution and include what
-resolves; delete the queued `update_topic` jobs; images in now / licensing
-later; merge only when materially identical; claims gated before synthesis;
-patient article deferred; novelty % internal-only; thin topics hidden from
-readers; measured dedup accuracy from the start.
+Then Phase 1 begins with the **timestamp demonstration** on
+`youtube.com/watch?v=s-qapZuy0GY` (§D Phase 1 step 5) — Paul's chosen first
+visible feature.
 
-**Open questions that still need Paul** (flag, don't guess): the groundedness
-floor's exact value; where held articles live (queue UI); which sources to
-ingest next; launch library size; whether the manual editor edits prose only or
-claims too. Listed in "Before starting → Still open" below.
+**Decisions already made** (do not re-litigate; rationale in the spec / guiding
+doc): the seven principles (`ARCHITECTURE.md` top); merge only when materially
+identical, near-duplicates linked not fused; claims gated before synthesis;
+hold-below-floor with manual approval (floor 0.85 + cap 2, **to be re-derived on
+sentence scores — spec §F5**); one unified review inbox, not four queues (§B4);
+fix reference resolution, include what resolves; delete the queued `update_topic`
+jobs; images in / licensing later; **protocol rewritten with the clinician
+article, patient deferred**; **existing articles left live until regenerated**;
+novelty % internal-only, reported as redundant/refinement/novel buckets; thin
+topics hidden from readers; **full-breadth launch (~40–60 leaves)**; manual
+editor edits **prose**; measured dedup accuracy from the start; transcript
+hygiene strips ads/intros/outros before extraction.
+
+**Open items that still need Paul** (flag, don't guess — most earlier ones are
+now decided above):
+- The **final** groundedness floor + cap numbers, once the harness produces
+  sentence-level baselines (the 0.85/cap-2 are paragraph-era placeholders).
+- Validate the standalone-flag rubric on ~30 claims (spec §F6) — a hands-on
+  review task at Phase 2, not a blocker before it.
+- Which specific sources to ingest for breadth (Phase 4) — Paul wants the
+  existing corpus configured first regardless.
 
 ---
 
