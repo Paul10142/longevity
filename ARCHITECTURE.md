@@ -395,6 +395,12 @@ never silently lossy. The following is the canonical target agreed with Paul
   / contested**), **derived automatically** from `sources.authority_tier` +
   multi-source agreement (`source_count`) + contradictions (`claim_relations`,
   Phase 8). Paul can **override contested calls** in the admin.
+  - **⚠️ Revise before building (E3, `docs/v4-build-risks-and-cost.md`).** With a
+    corpus that is predominantly one voice (Attia), `source_count` measures
+    self-repetition across episodes, not field agreement — so "established" must be
+    gated on **primary-reference support + `authority_tier`**, not `source_count`.
+    Single-voice claims should read as "Attia's framework," not "consensus." This
+    depends on reference resolution working (currently ~5%).
 - Articles state established knowledge plainly and flag contested points as "for
   discussion" — heterodox/debate content is never silently asserted as settled.
 

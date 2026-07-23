@@ -9,7 +9,76 @@ specific file/line or a measured number, not a hunch.
 Three things it does: (A) names where the docs now contradict each other and the
 code, (B) lists the edge cases and failure modes that could sink the plan, ranked,
 (C) ranks the cost levers — including three the current cost model misses. It ends
-(D) with a revised build sequence that resolves the ordering traps.
+(D) with a revised build sequence that resolves the ordering traps, and (E) names
+three **strategic risks that sit above the build** — the ones that decide whether
+the whole venture works, which the rest of this doc set is silent on.
+
+---
+
+## E. Strategic risks above the build (added 2026-07-22)
+
+The A–D findings are about building the thing right. These three are about whether
+the thing should be built the way it is — surfaced in a zoom-out review of the
+whole plan against the Lifestyle Academy mission. None is an engineering bug; each
+could sink the product regardless of how well the engine works.
+
+### E1. Content rights — the product is largely one creator's copyrighted work. **(largest unaddressed risk)**
+
+The docs flag *image* licensing (spec §10) but are silent on the far bigger
+exposure: the corpus is Peter Attia's podcast transcripts, and the product
+**commercially resells derived works** from them — at target scale, ~200 episodes
+of largely one creator's copyrighted material, reorganized and rewritten. Whether
+dedup-and-rewrite is transformative enough to be defensible, or requires a
+license/permission, is a legal question, not a technical one, and it dwarfs the
+image note. Paul already deferred the coined phrase "Centenarian Decathlon" for
+copyright — so IP awareness exists at the phrase level, but not at the corpus
+level.
+
+**The line:** building on this for *validation* is fine; **selling** is the
+trigger. Before the product is sold it needs a real answer — a license, explicit
+permission, a defensible transformation/fair-use position, or a shift to sources
+that permit commercial reuse. This is a Paul-and-a-lawyer question, flagged here
+so it is not discovered after the full build is paid for.
+
+### E2. No customer-validation checkpoint — heavy build before any physician reacts.
+
+Principle 4 ("prove on a little") is currently interpreted only as *proving the
+engine* (the measurement harness). It does not yet mean *proving the product*: no
+step puts real clinician articles in front of a real physician before Phase 4's
+$2–5k full build. The entire plan builds the engine, then scales, on the
+assumption that a claim-complete deduplicated reference is what a physician will
+pay for — an assumption never tested with a buyer.
+
+**Recommended checkpoint (added to §D):** after Phase 3 produces the first handful
+of gate-passing v4 clinician articles, put them in front of 2–3 practicing
+physicians and ask the only question that matters — *would you trust and use
+this?* — **before** the full build. Cheap insurance on the largest single spend,
+and the most mission-aligned reading of "prove on a little."
+
+### E3. "Many sources" is really "mostly Attia" — which breaks the consensus logic.
+
+The pitch is "deduplicate many overlapping sources into one source of truth." At
+target scale the corpus is ~200 episodes of predominantly **one voice**. Two
+consequences the design doesn't yet account for:
+
+- **Consensus is mis-defined.** `ARCHITECTURE.md` §"Consensus/contested" derives
+  the consensus dimension partly from `source_count` / "multi-source agreement."
+  When the sources are all Attia, high `source_count` measures *him repeating
+  himself across episodes*, not field agreement — so a claim could be labelled
+  "established" on the strength of one person saying it ten times. For a physician
+  product that is exactly backwards.
+- **The credibility bridge is the weakest-built component.** What makes a
+  podcast-derived claim credible to a physician is the *primary-literature
+  reference* behind it — and reference resolution currently works ~5% of the time
+  (`BACKLOG.md` P2). The one component that earns physician trust is the least
+  functional one.
+
+**Recommendation:** until the corpus genuinely diversifies, "established" must be
+gated on **primary-reference support and `authority_tier`**, not on `source_count`
+— and single-voice claims should read as "Attia's framework," not "consensus."
+Fix reference resolution (already in Phase 0/Stage 1) is a prerequisite for the
+consensus feature to mean anything. This reframes, not blocks, the v3.1 consensus
+design; it should be revised before that feature is built.
 
 ---
 
@@ -282,8 +351,16 @@ recover, and the article never had any. So Phase 1 splits:
 - Prefer in-article sub-sectioning over topic split (B3); retune the split
   trigger to distinctness.
 
-**Phase 4 — scale out (only now).**
+**⛳ Checkpoint before Phase 4 — validate with a real physician (E2).** Phase 3
+yields the first gate-passing v4 clinician articles. Put 2–3 of them in front of
+practicing physicians and ask "would you trust and use this?" *before* spending
+$2–5k on the full build. A "no" here is worth far more than a polished library
+nobody asked for. Also settle the E1 content-rights question before selling.
+
+**Phase 4 — scale out (only after the checkpoint).**
 - Upgrade to Vercel Pro (B5) — precondition for breadth.
 - Ingest Exercise/Sleep/Nutrition breadth; two-tier adjudication (C3) live.
 - The one budgeted full build, Batch API (C1). Cross-linking + novelty buckets
   (spec §9) as the review-and-proof layer.
+- Consensus labelling (v3.1) — gate "established" on primary-reference support +
+  `authority_tier`, **not** `source_count` (E3), since the corpus is one voice.
