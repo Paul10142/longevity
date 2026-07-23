@@ -10,8 +10,8 @@ remains the enduring design doc; this spec folds into it once the work lands.
 ## For reviewers — read this first
 
 If you have one hour, read this section, then §2 (the thesis), §4 (the risk that
-can sink it), and §9 (build order). The three decisions where an outside eye is
-most valuable:
+can sink it), and §11 (build units; order lives in the guiding doc's §D). The
+three decisions where an outside eye is most valuable:
 
 1. **Dedup fidelity (§4, §6, §7.2 rule 2).** The engine's core job is merging
    ~46k raw insights into ~20k claims. Merge too eagerly and you silently average
@@ -368,10 +368,17 @@ aggregate; rule 2 flags individual survivors for a human.
 
 ### 7.4 Existing corpus
 
-The 1,013 current claims predate this workflow. **Bulk-approve them**, then run
-the flag rules retroactively to surface the subset that needs eyes. This
-configures the platform on existing sources (Paul's stated near-term goal)
-without blocking on a full manual pass.
+The current claims predate this workflow. **Bulk-approve them**, then run the flag
+rules retroactively to surface the subset that needs eyes. This configures the
+platform on existing sources (Paul's stated near-term goal) without blocking on a
+full manual pass.
+
+**Order matters (do not bulk-approve too early).** Phase 1 re-consolidates the
+corpus under the fixed merge prompt *first*, which changes the claim set — strict
+merging splits some of today's ~1,013 into more, distinct claims. Bulk-approval
+therefore runs in **Phase 2, on the re-consolidated set**, never on today's
+claims. Approving first and re-consolidating after would throw the approvals
+away — the same trap as reviewing before re-extraction.
 
 ### 7.5 Late conflict
 
@@ -404,9 +411,10 @@ existence as Paul works the queue.
     **paragraph** granularity; the rewrite scores **sentences** (§5.2), a
     stricter distribution with many more, smaller units — so "0.85 of sentences"
     and "2 ungrounded sentences" are not the same bars as their paragraph
-    namesakes. Build step 0 produces sentence-level baselines on the eval set;
-    set the real floor and cap from that distribution before wiring the gate
-    (step 6). Do not ship 0.85/cap-2 unexamined onto sentence scores. The *policy*
+    namesakes. The Phase 0 measurement harness (§6.1) produces sentence-level
+    baselines; set the real floor and cap from that distribution before the Phase 3
+    synthesis rewrite wires the gate. Do not ship 0.85/cap-2 unexamined onto
+    sentence scores. The *policy*
     (two gates, hold below either) is fixed; the *values* are pending measurement.
 - **Prerequisite bug — fix before any hold policy ships.** `scoreGroundedness`
   ends `catch { return 1 }` (`lib/synthesis.ts:355`) — a checker failure returns
@@ -490,46 +498,63 @@ consolidation time (§6) — without them, only bucket 1 is knowable.
 - **Definitions beyond the glossary, evidence grading, contradiction queue UI,
   what's-new delta:** all later stages, tracked in `BACKLOG.md`.
 
-## 11. Build order (what the execution agent does, in sequence)
+## 11. Build units (what each step builds — order lives in §D)
 
-Each step is independently verifiable. Do not start a step until the one before
-it is green.
+> **The ordered sequence is [`v4-build-risks-and-cost.md`](v4-build-risks-and-cost.md)
+> §D, and it is the single authority on order.** This section is the *inventory*
+> of build units grouped by §D's phases, describing what each unit produces and
+> which spec section specifies it. It intentionally mirrors §D's phases so the two
+> documents cannot drift into two competing orders. If you find them disagreeing,
+> §D wins and this section is the bug.
 
-> **Sequencing note.** [`v4-build-risks-and-cost.md`](v4-build-risks-and-cost.md)
-> §D is the authority on *order* — it interleaves two things this list omits:
-> the adjudication-prompt fix (must precede any re-consolidation) and the
-> `start_ms` re-extraction (must precede claim review, or the review is thrown
-> away). The steps below are correct on *what each builds*; follow §D for *when*.
+**Phase 0 — corrections & instrument.**
+- **Fix the consolidation adjudication prompt** (`v4-build-risks-and-cost.md` §A2):
+  a material dose/population/threshold difference → DIFFERENT, not SAME. *Not
+  optional and not last* — everything consolidated afterward inherits it, so it
+  precedes any re-consolidation. (This unit lives only in §D/§A2; it is the one
+  the old numbered list here used to omit.)
+- **Fix the groundedness bug** (§8, `catch → null`). Tiny; unblocks the hold policy.
+- **Verify the doc reconciliations** (§A1/A3/A4) are still applied in the repo.
+- **Measurement harness** (§6.1): dedup-accuracy eval + false-merge metric, and a
+  fixed ~5-topic article eval set with current groundedness/coverage/length
+  recorded — including **sentence-level baselines** used to set the real
+  groundedness floor (§8). No behaviour change; ~$5–10. Move the audit to Haiku
+  (`§C2`) while here.
 
-0. **Measurement harness first.** (a) Dedup-accuracy eval set + false-merge
-   metric (§6.1). (b) A fixed article eval set of ~5 topics with current
-   groundedness/coverage/length recorded. *This is the instrument for
-   everything below.* No behaviour change; ~$5–10 to run.
-1. **Fix the groundedness bug** (§8, `catch → null`). Tiny, unblocks the hold
-   policy, safe to ship alone.
-2. **Claim status lifecycle + bulk-approve existing** (§7.1, §7.4). Migration +
-   backfill. Synthesis reads `approved` only. Add the `near_duplicate`
-   claim-to-claim link table here (§6, §9.1) — small, and steps 3 and 8 both
-   depend on it.
-3. **Flagging** (§7.2) — the **four** rules, run over the existing corpus, output
-   into the review queue. Rule 2 (merge-fidelity) needs the consolidation-time
-   signal from §6; on the existing corpus, compute it retroactively by comparing
-   each merged claim's canonical statement against its member `direct_quote`s.
-4. **Claim review UI** (§7.3) — flagged queue with the **source-fidelity view**
-   (member insights + verbatim quotes beside the canonical statement);
-   edit / approve / archive, plus **split** and **narrow** for merge-fidelity
-   flags.
-5. **Sentence-level article schema + renderer** (§5.2) — the block types and
-   `outlineToMarkdown` extension. Verify existing articles still render.
-6. **Synthesis rewrite** (§5.1) — new prompts for the clinician article **and the
-   protocol** (§10), glossary injection, the gates (§8). Re-generate the eval
-   set; groundedness must rise and length must fall on thin topics. Existing
-   articles stay live and swap over per topic as they pass (§10 migration
-   stance). **This is the payoff step; step 0 is what proves it worked.**
-7. **Glossary proposal + review** (§5.3).
-8. **Cross-linking read views** (§9).
-9. Only now consider ingesting breadth and the full build (`BACKLOG.md` Stage
-   3+).
+**Phase 1 — re-process the seed corpus once** (resolves the review-wipe trap).
+- **Timestamp demonstration + transcript hygiene** on the one YouTube source
+  (`s-qapZuy0GY`): preserve timed segments → chunk/insight `start_ms` → Evidence
+  deep-link; strip ads/intros/outros before chunking. Re-extract → re-consolidate
+  that source under the new prompt. (Detail: `v4-build-risks-and-cost.md` §D Phase 1.)
+- **Re-consolidate the other four sources** under the new adjudication prompt (no
+  re-extraction — no timing to gain), harness watching false-merge rate.
+
+**Phase 2 — the claim gate** (on the re-consolidated corpus, not the old one).
+- **Claim status lifecycle + `near_duplicate` link table** (§7.1, §6, §9.1), then
+  **bulk-approve** the re-consolidated claims (§7.4). Synthesis reads `approved`
+  only.
+- **Flagging** (§7.2) — the four rules over the corpus. Rule 2 (merge-fidelity)
+  computes retroactively by comparing each merged claim's canonical statement
+  against its member `direct_quote`s.
+- **One unified review inbox** (`§B4`), not four queues — the flagged queue with
+  the **source-fidelity view** (member insights + quotes beside the canonical),
+  edit / approve / archive / **split** / **narrow**. Validate the standalone
+  rubric on ~30 claims (§7.2) here.
+
+**Phase 3 — synthesis rewrite.**
+- **Sentence-level block schema + renderer** (§5.2); extend `outlineToMarkdown`;
+  verify existing articles still render.
+- **Rewrite clinician + protocol prompts** (§5.1, §10), glossary injection (§5.3),
+  the gates (§8) with the floor re-derived on sentence baselines; **per-section
+  audit** (`§B6`); prompt-cache shared prompts (`§C4`). Re-generate the eval set —
+  groundedness must rise and length fall on thin topics. Existing articles stay
+  live and swap per topic as they pass (§10). **The payoff step; the harness is
+  what proves it worked.**
+- **Prefer in-article sub-sectioning over topic split** (`§B3`).
+
+**Phase 4 — scale out** (only now): Vercel Pro (`§B5`), breadth ingest with
+two-tier adjudication (`§C3`), the one budgeted full build on Batch API (`§C1`),
+and the cross-linking + novelty-bucket read views (§9) as the proof layer.
 
 ## 12. How this changes `BACKLOG.md`
 
@@ -541,4 +566,4 @@ it is green.
 - P3.5 novelty % → §9 (internal-only). Consensus/contested and contradiction
   queue inherit the `flagged` machinery from §7.
 - The groundedness items in P1 → §8. The `catch{return 1}` bug is new here and
-  is build step 1.
+  is a Phase 0 correction (§D).

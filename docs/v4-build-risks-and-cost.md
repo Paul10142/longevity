@@ -129,7 +129,7 @@ was designed in isolation. At 200-podcast scale this is four inboxes to check.
 
 **Action:** unify into **one review inbox** with typed items (merge / clarity /
 fidelity / contradiction / new-topic), one queue to work top-down. Cheap if done
-before the v4 review UI is built (spec step 4); expensive to retrofit after.
+before the v4 review UI is built (spec §7.3 / §D Phase 2); expensive to retrofit after.
 
 ### B5. Vercel Hobby throttles the breadth ingest to a crawl. **(precondition)**
 
@@ -208,14 +208,21 @@ Rationale: **do the cheap high-leverage corrections first, capture `start_ms`
 before any review so review isn't thrown away, and gate the breadth ingest on
 Pro.**
 
-**Phase 0 — corrections & instrument (cheap, unblocks everything).**
-1. Fix the adjudication prompt (A2) — material-difference → DIFFERENT. The single
-   highest-leverage change; everything consolidated after inherits it.
-2. Fix `catch { return 1 }` → `null` (spec §8). Tiny, unblocks the hold policy.
-3. Reconcile the docs (A1, A3, A4) — annotate §v3.1, fix the model line and cost
-   model. Prevents the agent following superseded instructions.
-4. Build the measurement harness (spec §6.1, §11 step 0): dedup-accuracy +
-   article eval set. Move the audit to Haiku (C2) while touching it.
+**Phase 0 — corrections & instrument (cheap, unblocks everything).** Ordered so
+the merge-prompt fix's effect is *measurable*, not assumed:
+1. **Labelled ground-truth eval set** (spec §6.1): Paul labels a sample of the
+   consolidator's merge decisions (SAME/DIFFERENT). This is the ruler, and it must
+   exist before the prompt changes.
+2. **Baseline the current adjudication prompt** against that set — record today's
+   false-merge rate.
+3. **Fix the adjudication prompt** (A2) — material difference → DIFFERENT — and
+   re-measure. The single highest-leverage change; the before/after on the same
+   eval set proves it helped. Everything consolidated afterward inherits it.
+4. **Finish the harness** (spec §6.1): the article eval set (~5 topics, current
+   groundedness/coverage/length + sentence-level baselines), audit moved to Haiku
+   (C2).
+5. **The two independent fixes**, any time in Phase 0: `catch { return 1 }` →
+   `null` (spec §8); verify the doc reconciliations (A1/A3/A4) still hold in-repo.
 
 **Phase 1 — re-process the seed corpus ONCE (resolves B1).**
 
@@ -224,26 +231,27 @@ one YouTube video can gain timestamps.** The other four are *manually-pasted*
 plain-text transcripts (`transcript_origin = 'manual'`) with no timing to
 recover, and the article never had any. So Phase 1 splits:
 
-5. **Timestamp demonstration — the one YouTube source.** "Dr. Peter Attia —
-   NON-NEGOTIABLES" (`youtube.com/watch?v=s-qapZuy0GY`). The path, end to end:
-   - **Stop discarding the timing.** The YouTube Transcript API already returns
-     each segment as `{ text, start, duration }`; our fetch route
-     (`app/api/admin/sources/fetch-youtube-transcript/route.ts:109-111`) currently
-     maps to `segment.text` and joins, throwing `start`/`duration` away. Preserve
-     the timed segments.
-   - **Carry the clock through.** Chunking assigns each chunk a `start_ms`/`end_ms`
-     from its segments (the `chunks` columns already exist); extraction copies the
-     chunk's `start_ms` onto each `raw_insight` (that column exists too).
-   - **Deep-link at the reader.** An Evidence citation renders
-     `source.url + &t=<seconds>` — one click from a claim to the moment in the
-     video. This is the visible proof.
-   - Re-extract → re-consolidate *this source only*, under the new merge prompt.
-   - **Transcript hygiene is part of this step, not optional** (see box below).
-6. **The other four sources: re-consolidate, do not re-extract.** They gain
-   nothing from re-extraction (no timing), so keep their existing `raw_insights`
-   and only re-run consolidation under the *new* adjudication prompt (step 1),
-   with the dedup-accuracy harness watching false-merge rate. First real test of
-   the fidelity rule; do it before human review so review lands on shipping claims.
+- **Timestamp demonstration — the one YouTube source.** "Dr. Peter Attia —
+  NON-NEGOTIABLES" (`youtube.com/watch?v=s-qapZuy0GY`). The path, end to end:
+  - **Stop discarding the timing.** The YouTube Transcript API already returns
+    each segment as `{ text, start, duration }`; our fetch route
+    (`app/api/admin/sources/fetch-youtube-transcript/route.ts:109-111`) currently
+    maps to `segment.text` and joins, throwing `start`/`duration` away. Preserve
+    the timed segments.
+  - **Carry the clock through.** Chunking assigns each chunk a `start_ms`/`end_ms`
+    from its segments (the `chunks` columns already exist); extraction copies the
+    chunk's `start_ms` onto each `raw_insight` (that column exists too).
+  - **Deep-link at the reader.** An Evidence citation renders
+    `source.url + &t=<seconds>` — one click from a claim to the moment in the
+    video. This is the visible proof.
+  - Re-extract → re-consolidate *this source only*, under the new merge prompt.
+  - **Transcript hygiene is part of this step, not optional** (see box below).
+- **The other four sources: re-consolidate, do not re-extract.** They gain
+  nothing from re-extraction (no timing), so keep their existing `raw_insights`
+  and only re-run consolidation under the *new* adjudication prompt (fixed in
+  Phase 0), with the dedup-accuracy harness watching false-merge rate. First real
+  test of the fidelity rule; do it before human review so review lands on shipping
+  claims.
 
 > **Transcript hygiene — a trust filter, not tidiness (permanent ingestion rule).**
 > YouTube captions carry cold-open hype clips, **sponsor reads/ad breaks**, and
@@ -258,26 +266,24 @@ recover, and the article never had any. So Phase 1 splits:
 > silently. Build it with the timestamp step, since both touch ingestion, and it
 > applies to all future uploads Paul does directly.
 
-**Phase 2 — the claim gate (spec steps 2–4, now on stable claims).**
-7. Claim status lifecycle + bulk-approve + `near_duplicate` link table.
-8. Flagging (four rules incl. merge-fidelity) over the re-consolidated corpus.
-9. **One** unified review inbox (B4), not four queues. Validate the standalone
-   rubric on ~30 claims (spec F6) here.
+**Phase 2 — the claim gate (spec §7, now on the re-consolidated claims).**
+- Claim status lifecycle + `near_duplicate` link table, then **bulk-approve** the
+  re-consolidated claims — this runs here, *after* Phase 1 re-consolidation, never
+  on today's claims (spec §7.4).
+- Flagging (four rules incl. merge-fidelity) over the re-consolidated corpus.
+- **One** unified review inbox (B4), not four queues. Validate the standalone
+  rubric on ~30 claims (spec §7.2) here.
 
-**Phase 3 — synthesis rewrite (spec steps 5–7).**
-10. Sentence-level block schema + renderer; per-section audit (B6).
-11. Rewrite clinician + protocol prompts (length-follows-evidence, glossary-only,
-    no source narration); re-derive the floor on sentence scores (spec F5);
-    prompt-cache the shared prompts (C4).
-12. Prefer in-article sub-sectioning over topic split (B3); retune the split
-    trigger to distinctness.
+**Phase 3 — synthesis rewrite (spec §5, §8, §10).**
+- Sentence-level block schema + renderer; per-section audit (B6).
+- Rewrite clinician + protocol prompts (length-follows-evidence, glossary-only,
+  no source narration); re-derive the floor on sentence scores (spec F5);
+  prompt-cache the shared prompts (C4).
+- Prefer in-article sub-sectioning over topic split (B3); retune the split
+  trigger to distinctness.
 
 **Phase 4 — scale out (only now).**
-13. Upgrade to Vercel Pro (B5) — precondition for breadth.
-14. Ingest Exercise/Sleep/Nutrition breadth; two-tier adjudication (C3) live.
-15. The one budgeted full build, Batch API (C1). Cross-linking + novelty buckets
-    (spec §9) as the review-and-proof layer.
-
-**The first move remains the measurement harness (Phase 0 step 4)** — but Phase 0
-steps 1–3 are near-free corrections that should ride in the same pass, because
-each one is currently steering the build wrong.
+- Upgrade to Vercel Pro (B5) — precondition for breadth.
+- Ingest Exercise/Sleep/Nutrition breadth; two-tier adjudication (C3) live.
+- The one budgeted full build, Batch API (C1). Cross-linking + novelty buckets
+  (spec §9) as the review-and-proof layer.

@@ -155,8 +155,8 @@ without becoming a wall of assertions.
 ## F5 — The 0.85 floor was derived from paragraph data; the rewrite scores sentences. — ✅ RESOLVED in spec 2026-07-22
 
 **Resolution applied:** §8 now marks 0.85/cap-2 as paragraph-era placeholders to
-be re-derived from sentence-level baselines (build step 0) before the gate is
-wired (step 6). Policy fixed, values pending measurement. Original finding below.
+be re-derived from sentence-level baselines (the Phase 0 harness) before the gate is
+wired (Phase 3 synthesis rewrite). Policy fixed, values pending measurement. Original finding below.
 
 ---
 

@@ -45,8 +45,8 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
   counts before and after.** A concurrent seed once split the live spine.
 - `raw_insights` are immutable. Long work goes through the `jobs` queue with
   checkpoints, never inline in a request handler.
-- There is **no test harness and no spend cap yet** — build step 0 (the
-  measurement harness) addresses the first; treat every `generate_topic`-style
+- There is **no test harness and no spend cap yet** — the Phase 0 measurement
+  harness (spec §6.1) addresses the first; treat every `generate_topic`-style
   run as real money until a cap exists.
 
 **First task, concretely — `v4-build-risks-and-cost.md` §D Phase 0, in order:**
@@ -62,7 +62,7 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
    against. Do not skip it — without it, the synthesis rewrite is unfalsifiable.
 
 Then Phase 1 begins with the **timestamp demonstration** on
-`youtube.com/watch?v=s-qapZuy0GY` (§D Phase 1 step 5) — Paul's chosen first
+`youtube.com/watch?v=s-qapZuy0GY` (§D Phase 1) — Paul's chosen first
 visible feature.
 
 **Decisions already made** (do not re-litigate; rationale in the spec / guiding
@@ -342,7 +342,7 @@ paying the build cost ($2–5k at target scale) twice.
 What the spec covers, so this map stays honest:
 
 - The measurement harness — dedup accuracy + article eval set — **built first**
-  (spec §6.1, §11 step 0). Paul's requirement: prove the engine, don't trust it.
+  (spec §6.1). Paul's requirement: prove the engine, don't trust it.
 - The no-new-information rewrite: length follows evidence, not a word target;
   sentence-level attribution; glossary-only definitions; no source narration
   (spec §5). Absorbs walkthrough items A1 (source narration) and A2 (block
@@ -690,7 +690,7 @@ Getting timestamps is *stopping* a discard, not new integration.
 `raw_insights.start_ms` set → Evidence citation deep-links `url + &t=<sec>`.
 First proof on `youtube.com/watch?v=s-qapZuy0GY` (the one seed source that can get
 timestamps — the other four are manual plain-text transcripts). See
-`docs/v4-build-risks-and-cost.md` §D Phase 1 step 5.
+`docs/v4-build-risks-and-cost.md` §D Phase 1.
 
 ### Verify the topic-merge fix against real data
 `ebe3697` changed the `merge` action in `app/api/admin/topics/[id]/route.ts` to

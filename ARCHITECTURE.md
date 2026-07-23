@@ -42,7 +42,7 @@ each design rule elsewhere in this document serves one of them.
 4. **Prove it on a little, then pour in the ocean.** One excellent, verifiable
    topic teaches — and protects the brand — more than fifty shaky ones. Measure
    the engine on today's sources before ingesting 200. *Accepted tradeoff:*
-   slower start, far faster to a sellable product. (→ v4 spec §11 step 0.)
+   slower start, far faster to a sellable product. (→ v4 spec §6.1, the harness.)
 5. **Build for the physician first; give the patient the same truth in plainer
    words.** The patient view is a translation of verified clinician content,
    never a looser separate thing. *Accepted tradeoff:* patients wait; they never
