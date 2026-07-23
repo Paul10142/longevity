@@ -217,12 +217,46 @@ Pro.**
 4. Build the measurement harness (spec §6.1, §11 step 0): dedup-accuracy +
    article eval set. Move the audit to Haiku (C2) while touching it.
 
-**Phase 1 — re-extract the seed corpus ONCE (resolves B1).**
-5. Re-extract the 5 sources to capture `start_ms` (+ char offsets), batched (C1).
-6. Re-consolidate under the *new* adjudication prompt (step 1), with the
-   dedup-accuracy harness watching false-merge rate. This is the first real test
-   of the fidelity rule — do it before any human review, so review lands on the
-   claims that will actually ship.
+**Phase 1 — re-process the seed corpus ONCE (resolves B1).**
+
+Corrected 2026-07-22 after checking the data: of the 5 seed sources, **only the
+one YouTube video can gain timestamps.** The other four are *manually-pasted*
+plain-text transcripts (`transcript_origin = 'manual'`) with no timing to
+recover, and the article never had any. So Phase 1 splits:
+
+5. **Timestamp demonstration — the one YouTube source.** "Dr. Peter Attia —
+   NON-NEGOTIABLES" (`youtube.com/watch?v=s-qapZuy0GY`). The path, end to end:
+   - **Stop discarding the timing.** The YouTube Transcript API already returns
+     each segment as `{ text, start, duration }`; our fetch route
+     (`app/api/admin/sources/fetch-youtube-transcript/route.ts:109-111`) currently
+     maps to `segment.text` and joins, throwing `start`/`duration` away. Preserve
+     the timed segments.
+   - **Carry the clock through.** Chunking assigns each chunk a `start_ms`/`end_ms`
+     from its segments (the `chunks` columns already exist); extraction copies the
+     chunk's `start_ms` onto each `raw_insight` (that column exists too).
+   - **Deep-link at the reader.** An Evidence citation renders
+     `source.url + &t=<seconds>` — one click from a claim to the moment in the
+     video. This is the visible proof.
+   - Re-extract → re-consolidate *this source only*, under the new merge prompt.
+   - **Transcript hygiene is part of this step, not optional** (see box below).
+6. **The other four sources: re-consolidate, do not re-extract.** They gain
+   nothing from re-extraction (no timing), so keep their existing `raw_insights`
+   and only re-run consolidation under the *new* adjudication prompt (step 1),
+   with the dedup-accuracy harness watching false-merge rate. First real test of
+   the fidelity rule; do it before human review so review lands on shipping claims.
+
+> **Transcript hygiene — a trust filter, not tidiness (permanent ingestion rule).**
+> YouTube captions carry cold-open hype clips, **sponsor reads/ad breaks**, and
+> subscribe/outro segments. Extraction cannot tell a sponsor read
+> ("brought to you by AG1, which supports gut health") from a clinical statement,
+> so left in, an ad becomes a *claim* and pollutes the one source of truth with
+> advertising presented as medical guidance — a direct principle-1 violation.
+> **Every ingested transcript (paste or YouTube) must pass a hygiene step that
+> strips intro/outro/sponsor/ad segments before chunking.** Likely a cheap
+> per-transcript LLM pass (Haiku) that marks and removes non-content spans;
+> conservative — when unsure, keep, and surface for review rather than delete
+> silently. Build it with the timestamp step, since both touch ingestion, and it
+> applies to all future uploads Paul does directly.
 
 **Phase 2 — the claim gate (spec steps 2–4, now on stable claims).**
 7. Claim status lifecycle + bulk-approve + `near_duplicate` link table.

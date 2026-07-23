@@ -643,6 +643,34 @@ P3.6 item about thin branches being reader-visible — the nav is where a
 
 ## P2 — Data & pipeline
 
+### Transcript hygiene — strip ads / intros / outros before extraction (trust filter)
+YouTube captions (and some pasted transcripts) carry cold-open hype clips,
+**sponsor reads / ad breaks**, and subscribe/outro segments. Extraction cannot
+distinguish a sponsor read ("brought to you by AG1, which supports gut health")
+from a clinical statement, so an ad becomes an extracted **claim** and is
+deduplicated into the one source of truth as if it were medical guidance — a
+direct violation of principle 1 (the machine adds no substance; here the *source*
+smuggles in non-substance). Raised by Paul 2026-07-22 re: future direct uploads.
+
+**Done when:** every ingested transcript passes a hygiene pass (likely a cheap
+Haiku call) that removes intro/outro/sponsor/ad spans before chunking —
+conservative (when unsure, keep and surface, never silently delete). Applies to
+all future uploads, not just YouTube. Build it with the timestamp work (both
+touch ingestion). See `docs/v4-build-risks-and-cost.md` §D Phase 1.
+
+### Timestamp capture — the YouTube timing is fetched, then discarded
+`app/api/admin/sources/fetch-youtube-transcript/route.ts:109-111` receives each
+caption segment as `{ text, start, duration }` and maps to `segment.text`,
+throwing the timing away. So `raw_insights.start_ms` is null everywhere and the
+one-click "jump to the moment in the video" deep-link has nothing behind it.
+Getting timestamps is *stopping* a discard, not new integration.
+
+**Done when:** timed segments are preserved → chunk `start_ms`/`end_ms` set →
+`raw_insights.start_ms` set → Evidence citation deep-links `url + &t=<sec>`.
+First proof on `youtube.com/watch?v=s-qapZuy0GY` (the one seed source that can get
+timestamps — the other four are manual plain-text transcripts). See
+`docs/v4-build-risks-and-cost.md` §D Phase 1 step 5.
+
 ### Verify the topic-merge fix against real data
 `ebe3697` changed the `merge` action in `app/api/admin/topics/[id]/route.ts` to
 drain claim links in batches and delete only the ids it just moved. Previously
