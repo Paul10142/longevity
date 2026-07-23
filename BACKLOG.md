@@ -7,6 +7,58 @@ act on without re-deriving them.
 
 `ARCHITECTURE.md` remains the authoritative design doc; this file is a to-do
 list, not a spec. Items already specced there are linked rather than restated.
+The v4 synthesis rewrite has its own buildable spec at
+[`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md) — Stage 2 below points
+there.
+
+---
+
+## ▶ START HERE — execution entry point
+
+**For the agent picking this up in a fresh conversation.** This file is the
+work queue; work it top-down by stage. The rule of the project is in one line:
+**the system is a de-duplication and assembly engine — it contributes syntax,
+never substance. Every statement traces to a claim; every claim traces to a
+source.**
+
+Before writing code:
+
+1. **Read [`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md) end to end.**
+   It is the design for the central rewrite and it supersedes Stage 2 here.
+2. **Read `ARCHITECTURE.md`** for the enduring data model and invariants, and
+   `CLAUDE.md` for commands and conventions.
+3. **Do the work in `docs/synthesis-v4-spec.md` §11 order**, which is the
+   canonical sequence. The Stages below are the map; §11 is the turn-by-turn.
+
+Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
+
+- Run `npm run build` before considering any step done.
+- DB schema changes are numbered SQL in `supabase/migrations_v2/`, applied via
+  the Supabase SQL Editor / MCP — there is no local psql.
+- Anything touching `topics` or `claims` at scale: **dry-run first, verify
+  counts before and after.** A concurrent seed once split the live spine.
+- `raw_insights` are immutable. Long work goes through the `jobs` queue with
+  checkpoints, never inline in a request handler.
+- There is **no test harness and no spend cap yet** — build step 0 (the
+  measurement harness) addresses the first; treat every `generate_topic`-style
+  run as real money until a cap exists.
+
+**First task, concretely:** `docs/synthesis-v4-spec.md` §11 step 0 — the
+measurement harness (dedup-accuracy eval + article-quality eval set). It changes
+no behaviour, costs ~$5–10, and is the instrument every later step is judged
+against. Do not skip it to "make progress" — without it, Stage 2 is unfalsifiable.
+
+**Decisions already made** (do not re-litigate; see spec for full rationale):
+hold-below-floor with manual approval; fix reference resolution and include what
+resolves; delete the queued `update_topic` jobs; images in now / licensing
+later; merge only when materially identical; claims gated before synthesis;
+patient article deferred; novelty % internal-only; thin topics hidden from
+readers; measured dedup accuracy from the start.
+
+**Open questions that still need Paul** (flag, don't guess): the groundedness
+floor's exact value; where held articles live (queue UI); which sources to
+ingest next; launch library size; whether the manual editor edits prose only or
+claims too. Listed in "Before starting → Still open" below.
 
 ---
 
@@ -252,23 +304,30 @@ would otherwise mass-produce the same defects at ~$400–600.
    `processing`, and the 5 queued `update_topic` jobs (decide: run or drop).
    → P2
 
-### Stage 2 — Fix what the article *is*, before mass-producing it
+### Stage 2 — The de-duplication engine rewrite → see the spec
 
-The 2026-07-21 walkthrough moved this stage ahead of corpus work. Every item is
-a property of **each generated article**, so the full build multiplies it by
-100+. Regenerating afterwards means paying $400–600 twice.
+**This stage is fully specced in [`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md).**
+Build it in that document's §11 order. The summary of *why* it is here and ahead
+of corpus work: every item is a property of **each generated article**, so the
+full build multiplies any defect by ~50 topics. Regenerating afterwards means
+paying the build cost ($2–5k at target scale) twice.
 
-0. **First, build the instrument** — fix an eval set of ~5 topics and record
-   their current groundedness, coverage, and length. Without it, every change
-   below is judged by eye. ~$5/run. → "Before starting"
-5. **Stop narrating sources in prose** ("as the source said"). One prompt rule.
-   → P1.5 A1
-6. **Give articles a block schema** (bullets, sub-heads, callouts, figures).
-   The current `Paragraph { text }` model cannot express any of it, so this
-   blocks the "make it engaging" work entirely. → P1.5 A2
-7. **Give the patient article its own outline pass** — today it is a
-   paragraph-for-paragraph translation of the clinician one and structurally
-   cannot differ. → P1.5 A3
+What the spec covers, so this map stays honest:
+
+- The measurement harness — dedup accuracy + article eval set — **built first**
+  (spec §6.1, §11 step 0). Paul's requirement: prove the engine, don't trust it.
+- The no-new-information rewrite: length follows evidence, not a word target;
+  sentence-level attribution; glossary-only definitions; no source narration
+  (spec §5). Absorbs walkthrough items A1 (source narration) and A2 (block
+  schema).
+- Consolidation fidelity — merge only when materially identical (spec §6).
+- Claims gated **before** synthesis via a flag/quarantine/approve lifecycle
+  (spec §7). This is the architectural inversion that makes the rest tractable.
+- The gates: min-claims, groundedness floor + absolute cap, the
+  `catch{return 1}` bug fix, thin topics hidden (spec §8).
+
+Deferred out of this stage (spec §10): the patient article (walkthrough A3) —
+rebuilt only after no-new-information is proven on the clinician article.
 
 ### Stage 3 — Make the corpus worth building from
 
@@ -677,10 +736,20 @@ so no single batch ever saw enough of them to cluster. It never proposed
 Less urgent now that the spine constrains where anything can land, and that
 `placeTopic` routes new roots to the approval queue rather than creating them.
 
+**Reconciled 2026-07-22 against the Attia crawl (see spec §4):** the target
+taxonomy is now known to be *bounded and curated* — ~40–60 leaf topics matching
+Attia's own site structure, which the spine already mirrors. So topic
+*discovery* is no longer a growth engine; it is at most an occasional
+"did we miss a cross-cutting theme like Supplements?" audit. The real scale
+pressure moved **inside** the topic: ~300–600 claims per leaf, which is a
+sectioning-and-synthesis problem (spec §5), not a discovery problem. Downgrade
+accordingly — this is a periodic audit, not a pipeline stage that runs on every
+ingest.
+
 **Done when:** clustering runs corpus-wide over `claims.embedding`, ignoring
-current topic membership, so thin cross-cutting themes surface. Costs no new
-embedding spend — every claim is already embedded; only creating a topic
-embeds anything new.
+current topic membership, so thin cross-cutting themes surface — run as a manual
+audit, not automatically. Costs no new embedding spend — every claim is already
+embedded; only creating a topic embeds anything new.
 
 ### Taxonomy maintenance job (task #8)
 A scheduled pass that proposes split / merge / re-parent moves from claim
@@ -827,10 +896,18 @@ inconsistent filing.
 
 ### The full library build has not been run
 The taxonomy is now settled (10 curated roots, 0 legacy), which was the
-precondition. Measured cost is ~$1/topic, ~$400–600 for a full build; see
-`ARCHITECTURE.md` "Cost model". Nothing triggers it automatically —
-`stale_topics()` deliberately returns only topics that *already* have an
-article, so an ingest can never kick off a library-wide build.
+precondition. Nothing triggers it automatically — `stale_topics()` deliberately
+returns only topics that *already* have an article, so an ingest can never kick
+off a library-wide build.
+
+**Cost, corrected 2026-07-22 (spec §4).** The ~$1/topic, ~$400–600 figure was
+for today's 133 topics on the *current* synthesis. At target scale (~200
+podcasts, ~20k claims, ~40–60 dense leaf topics) the full build is more like
+**$2,000–5,000**, and the Batch API discount (P3.5) stops being optional. But
+**do not run the full build before the v4 rewrite ships** — building on the
+current padding-prone synthesis produces $2–5k of articles that must then be
+regenerated. Sequence is: v4 rewrite (spec) → ingest breadth → one budgeted
+build. This supersedes any earlier "$400–600" figure in this file.
 
 ---
 

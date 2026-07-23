@@ -1,11 +1,14 @@
 # Knowledge Engine v2 — Architecture
 
 **Status:** v2 shipped to `main`; v3 evidence layer, v3.1 comprehensiveness and
-v3.2 incremental updates all shipped (2026-07-21/22). What remains is the B2B
-product layer on top — novelty %, consensus/contested, contradiction queue.
-Outstanding work and its running order live in `BACKLOG.md`; this file is the
-design spec, not a to-do list. Supersedes the archived v1 reports in
-`docs/archive/`.
+v3.2 incremental updates all shipped (2026-07-21/22). The next major work is the
+**v4 de-duplication-engine rewrite** — recasting synthesis so it contributes
+syntax, never substance, with claims gated before synthesis. That has its own
+buildable spec at [`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md);
+it folds into this document once built. Beyond it sits the B2B product layer —
+novelty %, consensus/contested, contradiction queue. Outstanding work and its
+running order live in `BACKLOG.md`; this file is the design spec, not a to-do
+list. Supersedes the archived v1 reports in `docs/archive/`.
 
 ## Purpose
 
