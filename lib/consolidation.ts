@@ -19,6 +19,7 @@ import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { ADJUDICATION_V2 } from './adjudicationPrompts'
 
 // Judgment tier: deciding whether two claims are the same is the call that
 // determines whether the library deduplicates correctly.
@@ -50,19 +51,12 @@ type Adjudication = {
   reasoning: string
 }
 
-const ADJUDICATION_SYSTEM = `
-You decide whether a NEW medical/health insight expresses the SAME underlying claim as any of several EXISTING claims in a knowledge base.
-
-"Same claim" means the same substantive assertion — same relationship, mechanism, recommendation, or finding — even if worded differently, at a different level of detail, or with different examples. Two statements are DIFFERENT if they make distinct assertions, apply to different populations/conditions in a way that changes the takeaway, or one is a general principle and the other a specific unrelated fact.
-
-Return STRICT JSON:
-{"verdict":"SAME|DIFFERENT|UNSURE","candidate_index":<1-based index of the matching existing claim, or null>,"confidence":<0..1>,"reasoning":"<one sentence>"}
-
-- "SAME" + the index of the existing claim it matches, when you are confident they are the same claim.
-- "DIFFERENT" when the new insight is a distinct claim from all candidates.
-- "UNSURE" when it plausibly matches one but you cannot be confident (e.g. partial overlap, ambiguous scope).
-confidence is your certainty in the verdict.
-`.trim()
+// Fidelity-first adjudication (v4 §A2), versioned in lib/adjudicationPrompts.ts
+// so the measurement harness can run the exact before/after. Merging is a
+// de-duplication engine's riskiest act: fusing two claims that are not truly
+// identical silently averages away a clinical distinction (a dose, a population,
+// a threshold) a physician could act on — a failure no downstream score catches.
+const ADJUDICATION_SYSTEM = ADJUDICATION_V2
 
 async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
   const list = candidates

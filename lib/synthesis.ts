@@ -18,7 +18,7 @@
  */
 
 import { supabaseAdmin } from './supabaseServer'
-import { claudeJson, CLAUDE_MODEL, type Effort } from './llm'
+import { claudeJson, CLAUDE_MODEL, CLAUDE_BULK_MODEL, type Effort } from './llm'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 
 // Effectively uncapped at current scale; pagination of topic_claims() is the
@@ -327,9 +327,17 @@ async function translatePatientSection(topicName: string, section: Section): Pro
 /**
  * Groundedness gate: check that every factual assertion in each paragraph is
  * supported by that paragraph's cited claims. Returns the fraction of grounded
- * paragraphs (1.0 = fully grounded). One batched cheap-model call.
+ * paragraphs (1.0 = fully grounded), or `null` when the checker itself failed.
+ *
+ * The audit is mechanical verification, not prose, so it runs on the Haiku bulk
+ * tier (v4 §C2) rather than Opus — ~5× cheaper with no prose-quality impact.
+ *
+ * A checker failure returns `null`, never 1 (v4 spec §8). Under the hold policy
+ * that ships later, returning a *perfect* score on error would be an
+ * auto-approve-on-error — the exact inversion of the gate. `null` means
+ * "unscored" and must be treated by callers as hold-worthy, not as passing.
  */
-async function scoreGroundedness(outline: Outline, claimById: Map<string, string>): Promise<number> {
+async function scoreGroundedness(outline: Outline, claimById: Map<string, string>): Promise<number | null> {
   const paras = (outline.sections ?? []).flatMap(s => s.paragraphs ?? [])
   if (paras.length === 0) return 1
 
@@ -341,18 +349,17 @@ async function scoreGroundedness(outline: Outline, claimById: Map<string, string
     .join('\n\n')
 
   try {
-    // The audit is a genuine judgment call — keep real reasoning here.
+    // Haiku (bulk tier) — mechanical verification, no adaptive-thinking effort.
     const res = await claudeJson<{ ungrounded?: number[] }>(
       'You audit a physician reference for groundedness. For each numbered paragraph, decide if EVERY factual/clinical assertion is supported by its listed supporting claims. Ignore pure transitions, framing, or general connective prose. Return STRICT JSON {"ungrounded":[<indices of paragraphs containing an assertion NOT supported by their claims>]}.',
       items,
       2000,
-      CLAUDE_MODEL,
-      'medium'
+      CLAUDE_BULK_MODEL
     )
     const count = Array.isArray(res.ungrounded) ? res.ungrounded.length : 0
     return Math.max(0, 1 - count / paras.length)
   } catch {
-    return 1 // don't block on checker failure
+    return null // checker failed → unscored; callers treat null as hold-worthy
   }
 }
 
@@ -424,7 +431,9 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
 
     const clinician: Outline = { title: topic.name, sections, references: enrich.references }
     const groundedness = await scoreGroundedness(clinician, new Map(clinClaims.map(c => [c.id, c.canonical_statement])))
-    if (groundedness < 0.7) {
+    if (groundedness === null) {
+      console.warn(`[synthesis] groundedness UNSCORED (checker failed) for topic ${topic.name} — treat as hold-worthy`)
+    } else if (groundedness < 0.7) {
       console.warn(`[synthesis] low groundedness ${groundedness.toFixed(2)} for topic ${topic.name}`)
     }
     const clinVer = await nextVersion('topic_articles', topicId, 'clinician')
@@ -463,7 +472,7 @@ export async function generateTopicContent(topicId: string): Promise<{ claims: n
 
     await finishRun(runId, {
       topic: topic.name, claims: clinClaims.length, sections: sections.length,
-      coverage: Number(coverage.toFixed(3)), groundedness: Number(groundedness.toFixed(3)),
+      coverage: Number(coverage.toFixed(3)), groundedness: groundedness === null ? null : Number(groundedness.toFixed(3)),
       references: enrich.references.length,
     })
     return { claims: clinClaims.length, coverage }

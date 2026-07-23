@@ -51,3 +51,9 @@ next-env.d.ts
 
 
 backups/
+
+# Measurement harness — generated outputs (keep README + committed gold set)
+eval/dedup-eval-pairs.json
+eval/dedup-run-*.json
+eval/article-eval-baseline.json
+eval/article-sentence-baseline.json

@@ -11,7 +11,9 @@
     "devtools": "react-devtools",
     "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts",
     "seed-spine": "tsx --env-file=.env.local scripts/seedSpine.ts",
-    "regen": "tsx --env-file=.env.local scripts/regen.ts"
+    "regen": "tsx --env-file=.env.local scripts/regen.ts",
+    "eval:dedup": "tsx --env-file=.env.local scripts/evalDedup.ts",
+    "eval:articles": "tsx --env-file=.env.local scripts/evalArticles.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
