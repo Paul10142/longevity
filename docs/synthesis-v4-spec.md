@@ -495,6 +495,12 @@ consolidation time (§6) — without them, only bucket 1 is knowable.
 Each step is independently verifiable. Do not start a step until the one before
 it is green.
 
+> **Sequencing note.** [`v4-build-risks-and-cost.md`](v4-build-risks-and-cost.md)
+> §D is the authority on *order* — it interleaves two things this list omits:
+> the adjudication-prompt fix (must precede any re-consolidation) and the
+> `start_ms` re-extraction (must precede claim review, or the review is thrown
+> away). The steps below are correct on *what each builds*; follow §D for *when*.
+
 0. **Measurement harness first.** (a) Dedup-accuracy eval set + false-merge
    metric (§6.1). (b) A fixed article eval set of ~5 topics with current
    groundedness/coverage/length recorded. *This is the instrument for

@@ -25,10 +25,16 @@ Before writing code:
 
 1. **Read [`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md) end to end.**
    It is the design for the central rewrite and it supersedes Stage 2 here.
-2. **Read `ARCHITECTURE.md`** for the enduring data model and invariants, and
+2. **Read [`docs/v4-build-risks-and-cost.md`](docs/v4-build-risks-and-cost.md).**
+   It is the **sequencing authority** — edge cases, cost levers, and a revised
+   build order (§D) that resolves ordering traps the spec's §11 doesn't (chiefly:
+   re-extract for `start_ms` *before* claim review, or the review is thrown away).
+   Where §D and the spec's §11 differ, **§D wins on order**; the spec wins on
+   what each step builds.
+3. **Read `ARCHITECTURE.md`** for the enduring data model and invariants, and
    `CLAUDE.md` for commands and conventions.
-3. **Do the work in `docs/synthesis-v4-spec.md` §11 order**, which is the
-   canonical sequence. The Stages below are the map; §11 is the turn-by-turn.
+4. **Follow `v4-build-risks-and-cost.md` §D** as the turn-by-turn sequence, using
+   the spec for the detail of each step. The Stages below are the high-level map.
 
 Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
 

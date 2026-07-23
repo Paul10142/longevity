@@ -197,7 +197,14 @@ which `app/api/worker/tick/route.ts` already assumes):
 ### Consolidation thresholds
 
 - ANN similarity floor for candidates: **0.80** (below → automatic new claim).
-- Adjudicator (gpt-5-mini) verdict SAME with confidence ≥ **0.85** → auto-attach.
+- Adjudicator (**Opus 4.8**, `CLAUDE_JUDGMENT_MODEL` — `lib/consolidation.ts`;
+  the earlier "gpt-5-mini" note was stale) verdict SAME with confidence ≥ **0.85**
+  → auto-attach. **v4 note:** the adjudication prompt currently treats "different
+  level of detail" as SAME (`lib/consolidation.ts:56`), which causes the
+  nuance-destroying merge the v4 spec forbids — see
+  [`docs/v4-build-risks-and-cost.md`](docs/v4-build-risks-and-cost.md) §A2. The
+  prompt must be retuned so a material dose/population/threshold difference →
+  DIFFERENT.
 - UNSURE / low-confidence SAME → create claim provisionally + `merge_reviews`
   row. Accept in the review UI collapses the two claims; reject keeps both.
   Nothing blocks the pipeline on human review.
@@ -295,6 +302,14 @@ reserved for Phase 8). `extract_source` fans out to both consolidation and
 reference extraction.
 
 ## v3.1 — physician-grade comprehensiveness (SHIPPED 2026-07-21)
+
+> **⚠️ Superseded in part by the v4 spec (2026-07-22).** The "exhaustive /
+> no word limit / no source cap" framing below is exactly what the v4 rewrite
+> identifies as the *cause* of padding on thin topics. v4 keeps **claim-complete**
+> (cover every claim, coverage = 1.0) but deletes **prose-maximal** (write
+> exhaustively). Read [`docs/synthesis-v4-spec.md`](docs/synthesis-v4-spec.md)
+> §2/§5.1 as authoritative wherever it conflicts with this section. The rest of
+> v3.1 (novelty, consensus, timestamped provenance, claim review) still stands.
 
 The product goal: a **B2B knowledge product sold to lifestyle-medicine
 physicians**. Clinicians rely on it, so it must be detailed, trustworthy, and
@@ -462,6 +477,15 @@ Legacy v1 modules (`autotag`, `conceptDiscovery`, `pipeline`, `topicNarrative`,
 operate on the dropped `concepts` table and are inert pending deletion.
 
 ## Cost model (measured, July 2026)
+
+> **⚠️ Updated for target scale (2026-07-22).** The $400–600 figure below is for
+> 133 topics on the *pre-v4* synthesis. At target scale (~200 podcasts, ~20k
+> claims, ~40–60 dense leaves) the full build is **~$2–5k**, and two costs this
+> model omits become material: **consolidation is ~46k Opus adjudications** (not
+> "trivial ingestion"), and v4 adds a per-article semantic audit. See
+> [`docs/v4-build-risks-and-cost.md`](docs/v4-build-risks-and-cost.md) §A4/§C for
+> the corrected model and the three cost levers this section misses (audit on
+> Haiku, two-tier adjudication, prompt caching the adjudicator).
 
 Measured on real runs, so future decisions start from evidence rather than guesses.
 
