@@ -12,7 +12,16 @@ length follows evidence) is right. These are the places where it is optimistic.
 
 ---
 
-## F1 — The review gate is at the wrong layer to catch the worst failure. **(most severe)**
+## F1 — The review gate is at the wrong layer to catch the worst failure. **(most severe)** — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** spec §6 now emits a merge-fidelity signal per merged
+claim, §7.2 adds rule 2 (merge-fidelity flag), §7.3 adds the source-fidelity
+review view (member insights + verbatim quotes beside the canonical statement)
+with split/narrow/confirm actions. The gate now catches an unfaithful-but-clear
+merge. Original finding below for the record.
+
+---
+
 
 **The claim.** The spec names consolidation (hop 2) the riskiest, least-policed
 step (§3): merging insights can produce a canonical statement none of the
@@ -71,7 +80,16 @@ a cheap structural check.
 
 ---
 
-## F3 — Conservative merging fights the product's headline metric.
+## F3 — Conservative merging fights the product's headline metric. — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** spec §6 now records a `near_duplicate` link when a merge
+is blocked by a material difference, and §9.1 redefines novelty into three
+buckets — redundant / refinement / novel — so the dedup engine's real work
+(exact merges *plus* linked refinements) is counted, not just exact merges.
+Original finding below for the record.
+
+---
+
 
 **The tension.** §6 says merge only when *materially identical*; different dose /
 population / caveat blocks the merge. Correct for fidelity. But the marquee B2B
@@ -201,8 +219,14 @@ count-before/count-after check.
 
 ## Net
 
-The spec is buildable as written. The one change I'd make *before* starting is to
-**widen the claim-review gate from standalone-clarity to merge-fidelity (F1)** —
-that's the difference between catching the failure the product exists to prevent
-and shipping it invisibly. F2, F4, F5 are "state the rule precisely so the
-builder doesn't guess." F3, F7 are product-framing calls to make with eyes open.
+**F1 and F3 are now resolved in the spec** (merge-fidelity gate + honest novelty
+buckets). The spec is buildable as written. Remaining open items for the external
+review to weigh: **F2** (don't over-claim that attribution makes the audit cheap
+— it doesn't) and **F4/F5** (state the coverage-vs-readability rule and re-derive
+the floor for sentence granularity) are "make the rule precise so the builder
+doesn't guess"; **F7** (admin-only synthesis marks) is a product-framing call
+Paul has made with eyes open, reversible via a stored toggle; **F8** (production
+blast radius) is a build-discipline item the harness and dry-run rules cover.
+
+Status: F1 ✅, F3 ✅, F2/F4/F5/F6 open-precise, F7 accepted-with-mitigation,
+F8 process.

@@ -13,12 +13,16 @@ If you have one hour, read this section, then §2 (the thesis), §4 (the risk th
 can sink it), and §9 (build order). The three decisions where an outside eye is
 most valuable:
 
-1. **Dedup fidelity (§4, §6).** The engine's core job is merging ~46k raw
-   insights into ~20k claims. Merge too eagerly and you silently average away
-   clinically material differences (dose, population, caveat) — a failure no
-   quality score detects, because the prose faithfully reflects a claim that
-   quietly lost the nuance. Is the "merge only when materially identical" rule
-   the right call, and is it enforceable?
+1. **Dedup fidelity (§4, §6, §7.2 rule 2).** The engine's core job is merging
+   ~46k raw insights into ~20k claims. Merge too eagerly and you silently average
+   away clinically material differences (dose, population, caveat) — a failure no
+   *article* score detects, because the prose faithfully reflects a claim that
+   quietly lost the nuance. The spec now guards this at the claim layer: a
+   merge-fidelity flag (§7.2 rule 2) plus a source-fidelity review view (§7.3),
+   backed by the dedup-accuracy harness (§6.1). **Is that guard at the right
+   layer, and does the merge rule undercut the "we deduplicate for you" story
+   (§9.1)?** These are the two questions where an outside domain expert is most
+   valuable.
 2. **Is "no new information" actually achievable (§5)?** The whole product rests
    on the model contributing *syntax, never substance*. We enforce it with
    sentence-level attribution + a groundedness gate. Is that sufficient, or is
@@ -200,6 +204,25 @@ The engine's core, and the least-tested component. Rules:
 - **The canonical statement must stay traceable.** When insights do merge, the
   canonical statement may not introduce specifics none of its members carried.
   Prefer the most precise member's phrasing over a generated blend.
+- **Every merge is auditable at review time (F1 fix, 2026-07-22).** A bad merge
+  reads perfectly standalone — it is fluent and clear while misrepresenting what
+  its sources support — so clarity checks are blind to it. Consolidation must
+  therefore emit, for each merged claim, a **merge-fidelity signal**: does the
+  canonical statement assert a range, population, dose, or qualifier that **no
+  single member insight carried**? (The protein case: members "1.6 g/kg for most
+  adults" and "2.2 g/kg for older adults" → canonical "1.6–2.2 g/kg" invents a
+  range neither member stated and erases the population split.) When it does, the
+  claim is auto-flagged for merge-fidelity review (§7.2 rule 4). This is the
+  cheap automated half of the merge-fidelity gate; the human half is the
+  review-time view in §7.3.
+- **Near-duplicates are linked, not lost (F3 fix, 2026-07-22).** When two insights
+  are close but blocked from merging by a material difference, record the
+  relationship (a `near_duplicate` claim-to-claim link) rather than leaving them
+  as unrelated claims. Two reasons: it preserves the "these are variants of one
+  idea" structure a reader needs, and it is the substrate for an honest novelty
+  metric (§9) — the engine's real dedup work includes consolidated-but-linked
+  near-duplicates, not only exact merges. Without capturing the link at
+  consolidation time, that work is invisible and novelty % under-reports it.
 
 ### 6.1 Measured dedup accuracy — built first, non-negotiable
 
@@ -242,24 +265,32 @@ claim minimum.
 ### 7.2 What auto-flags a claim (tuned narrow — high precision)
 
 Paul's sustainable review budget is **a few hundred per 100 hours ingested**, so
-flagging fires rarely and is right when it does. Three rules only:
+flagging fires rarely and is right when it does. Four rules:
 
 1. **Fails the standalone test.** A physician reading only that sentence could
    not evaluate or act on it: dangling reference ("it improves outcomes" —
    what is "it"?), missing population/dose where one is clearly implied, or
    context that lived in the transcript and didn't survive extraction. **This is
-   the keystone rule** — an unclear claim is the upstream cause of ungrounded
-   prose. If a claim can't stand alone, the model must supply the missing
-   context when it writes, and *that is the padding, one hop earlier than anyone
-   was looking.* Fixing claims here is what makes §5 hold.
-2. **Direct contradiction** between two claims. Low volume, high stakes; feeds
+   the keystone clarity rule** — an unclear claim is the upstream cause of
+   ungrounded prose. If a claim can't stand alone, the model must supply the
+   missing context when it writes, and *that is the padding, one hop earlier than
+   anyone was looking.* Fixing claims here is what makes §5 hold.
+2. **Fails merge-fidelity** (F1 fix). The canonical statement asserts a range,
+   dose, population, threshold, or qualifier that no single member insight
+   carried — i.e. the merge invented specificity or blended distinct cases (§6).
+   **This is the keystone fidelity rule, and it is distinct from rule 1:** a bad
+   merge is perfectly clear yet unfaithful, so clarity review would wave it
+   through. This rule is what stops the failure the whole product exists to
+   prevent — averaging away a clinical distinction — from shipping invisibly.
+3. **Direct contradiction** between two claims. Low volume, high stakes; feeds
    consensus/contested labelling.
-3. **Orphan / weak topic fit** — attached to no topic, or below the tagging
+4. **Orphan / weak topic fit** — attached to no topic, or below the tagging
    threshold. Cheap to review; surfaces taxonomy gaps.
 
 Explicitly **not** flagged: hedged language (podcast speech is inherently
-hedged), and near-merge dose/population differences (§6 already keeps those
-*separate*, so there is nothing to adjudicate).
+hedged), and near-duplicates that were correctly *kept separate and linked*
+(§6) — those are the engine working, not a problem to adjudicate. Rule 2 fires
+on the opposite case: things that were wrongly *fused*.
 
 **Tuning target for the existing corpus:** on the 5 processed sources (~1,000
 claims) the standalone test should fire on **~100–150 claims** — the clearest
@@ -271,10 +302,30 @@ grows.
 
 ### 7.3 Review actions
 
-Paul edits **prose of a claim** (fix the standalone-clarity problem) or
-approves / archives it. Editing claims happens *only* while flagged, and flagged
-claims are invisible to articles — so **there is never a case of editing a claim
-an article already depends on.** The cascade problem is designed out.
+Paul edits **prose of a claim** or approves / archives it. Editing claims happens
+*only* while flagged, and flagged claims are invisible to articles — so **there
+is never a case of editing a claim an article already depends on.** The cascade
+problem is designed out.
+
+**The review view must show source fidelity, not just the claim (F1 fix).**
+Reviewing a merged claim against only its canonical statement is what let a bad
+merge pass. So the review UI shows, beside the canonical statement, **every
+member insight and its `direct_quote`** (the verbatim source words, already
+captured at extraction). The question Paul answers is therefore *"does this
+faithfully represent these sources?"* — not merely *"is this clear?"* For a
+merge-fidelity flag (rule 2) his resolution options are: **split** the claim back
+into the distinct cases it wrongly fused, **narrow** the canonical statement to
+what the members actually support, or **confirm** the merge if the signal was a
+false positive. Splitting produces two linked claims (the §6 near-duplicate
+link), preserving the distinction the merge had erased.
+
+**Review volume note.** Rule 2 adds flags on top of the clarity rule, but on the
+existing corpus the false-merge rate is expected low (today's dedup is only 5.5%,
+so few merges exist to be wrong). It grows in importance as dedup rises with
+corpus overlap — which is exactly when the dedup-accuracy harness (§6.1) should
+be catching systematic over-merging *before* it reaches the human queue. The two
+are the same gate at different altitudes: §6.1 measures the merge engine in
+aggregate; rule 2 flags individual survivors for a human.
 
 ### 7.4 Existing corpus
 
@@ -343,9 +394,32 @@ source ─▶ its raw_insights ─▶ claim_members ─▶ claims ─▶ claim's
 - **Article (admin):** each sentence reveals its supporting claims and their
   sources.
 
-Per-source novelty % (the dedup proof) is computed here and is **internal-facing
-only** (Paul's decision) — it advertises how redundant a source was, which is an
-admin metric, not a reader one.
+### 9.1 Per-source novelty % — the dedup proof, defined honestly (F3 fix)
+
+Computed here, **internal-facing only** (Paul's decision) — it advertises how
+redundant a source was, an admin metric, not a reader one.
+
+**The definition matters, because the naïve one under-reports the engine's
+work.** Counting only insights that *exactly merged* into an existing claim
+misses everything §6 deliberately keeps separate-but-linked. Under the strict
+merge rule most overlap does **not** exact-merge (a differing dose blocks it), so
+a naïve novelty % would call nearly every insight "new" and make the dedup engine
+look like it barely dedupes — the opposite of the truth.
+
+So novelty classifies each of a source's insights into three buckets, and only
+the third is "new":
+
+1. **Redundant** — exact-merged into an existing claim (added nothing).
+2. **Refinement** — kept as a distinct claim but linked as a `near_duplicate` of
+   existing material (§6): a new dose, population, or caveat on a known idea.
+   This is the engine's real value and must count as *partially* redundant, not
+   new.
+3. **Novel** — no merge and no near-duplicate link: genuinely new ground.
+
+Report all three (e.g. "of 230 insights: 40% redundant, 35% refinements, 25%
+novel"). The headline "N% new" is bucket 3; the dedup-engine story is buckets
+1+2 combined. This depends on the near-duplicate links being captured at
+consolidation time (§6) — without them, only bucket 1 is knowable.
 
 ## 10. Non-goals and deferrals (explicit, so nobody "fixes" them)
 
@@ -381,10 +455,17 @@ it is green.
 1. **Fix the groundedness bug** (§8, `catch → null`). Tiny, unblocks the hold
    policy, safe to ship alone.
 2. **Claim status lifecycle + bulk-approve existing** (§7.1, §7.4). Migration +
-   backfill. Synthesis reads `approved` only.
-3. **Flagging** (§7.2) — the three rules, run over the existing corpus, output
-   into the review queue.
-4. **Claim review UI** (§7.3) — flagged queue, edit/approve/archive.
+   backfill. Synthesis reads `approved` only. Add the `near_duplicate`
+   claim-to-claim link table here (§6, §9.1) — small, and steps 3 and 8 both
+   depend on it.
+3. **Flagging** (§7.2) — the **four** rules, run over the existing corpus, output
+   into the review queue. Rule 2 (merge-fidelity) needs the consolidation-time
+   signal from §6; on the existing corpus, compute it retroactively by comparing
+   each merged claim's canonical statement against its member `direct_quote`s.
+4. **Claim review UI** (§7.3) — flagged queue with the **source-fidelity view**
+   (member insights + verbatim quotes beside the canonical statement);
+   edit / approve / archive, plus **split** and **narrow** for merge-fidelity
+   flags.
 5. **Sentence-level article schema + renderer** (§5.2) — the block types and
    `outlineToMarkdown` extension. Verify existing articles still render.
 6. **Synthesis rewrite** (§5.1) — new prompts for the clinician article **and the
