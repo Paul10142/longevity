@@ -25,14 +25,20 @@ most valuable:
    valuable.
 2. **Is "no new information" actually achievable (§5)?** The whole product rests
    on the model contributing *syntax, never substance*. We enforce it with
-   sentence-level attribution + a groundedness gate. Is that sufficient, or is
-   there a leak we haven't seen?
-3. **The cost of sentence-level attribution (§5, §7).** It makes the audit
-   mechanical and unlocks source→sentence cross-linking, but it raises
-   generation cost and complexity. Worth it, or is paragraph-level plus a
-   stricter auditor good enough?
+   sentence-level attribution *plus a semantic groundedness audit* — attribution
+   alone is gameable (§5.2 caveat), so the audit stays an LLM pass, not a cheap
+   structural check. Is that sufficient, or is there a leak we haven't seen?
+3. **Cost and value of sentence-level attribution (§5, §7).** It buys a tighter
+   audit unit and source→sentence cross-linking — *not* a cheaper audit — at the
+   cost of generation complexity. Worth it, or is paragraph-level plus a stricter
+   auditor good enough?
 
-Everything else is downstream of these three.
+Everything else is downstream of these three. Findings F1–F8 from the
+[red-team review](synthesis-v4-review-notes.md) are folded into the spec: F1/F3
+changed the design (merge-fidelity gate, honest novelty); F2/F4/F5/F6 tightened
+specific rules (semantic audit, grouped-coverage + readability ceiling,
+re-derive the floor for sentence scores, anchor flagging to a validated rubric);
+F7/F8 are an accepted product call and a build-discipline item.
 
 ---
 
@@ -118,11 +124,26 @@ any (hop 3). Build and measurement effort concentrates there.
 Replace the "EXHAUSTIVE / no word limit" prompt language with:
 
 - **Cover every assigned claim exactly once. Add nothing else.** Length follows
-  from claim count.
+  from claim count. **"Covered" means the claim's substance appears — grouped
+  representation counts** (F4 fix): one well-formed sentence citing five
+  `claim_ids` covers all five, provided each claim's substance is actually
+  present in it, not just one. The coverage metric already works this way (it
+  counts distinct claim_ids present), so grouping is the intended pressure-release
+  for large topics, not a loophole.
+- **Readability ceiling, separate from coverage** (F4 fix). Coverage says nothing
+  may be dropped; it does not stop an article becoming a wall of assertions. So a
+  section carrying more than ~15–20 claims must **sub-section** rather than emit a
+  flat list. Length stays a function of evidence; structure keeps it readable.
+  This is the concrete answer to "engaging" at 300–600 claims — depth via nesting,
+  not compression.
 - **Every declarative sentence is either sourced or connective.** A sourced
   sentence carries the `claim_ids` it draws from. A connective sentence (pure
   transition, framing, "Two mechanisms are relevant here:") carries none and
-  asserts no fact. There is no third category.
+  asserts no fact. There is no third category. **A `connective` sentence that
+  smuggles in an assertion is a groundedness failure** (F2 fix) — the audit must
+  check connective sentences assert nothing, not just that sourced sentences
+  cite. Mislabelling an assertion as connective to dodge the citation requirement
+  is the one hole this schema could otherwise leave open.
 - **Bridging inference is allowed, must cite, and is marked.** When the model
   connects two claims into a conclusion neither states outright (claim A:
   "testosterone raises hematocrit"; claim B: "elevated hematocrit raises
@@ -140,7 +161,8 @@ Replace the "EXHAUSTIVE / no word limit" prompt language with:
 ### 5.2 Data model — sentence-level attribution
 
 Today a paragraph is `{ id, text, claim_ids }`. Replace with typed sentences so
-attribution and the audit are mechanical:
+attribution is explicit and the audit is *anchored* (not free — see the caveat
+below):
 
 ```ts
 type Sentence =
@@ -158,14 +180,24 @@ type Section = { id: string; title: string; blocks: Block[] }
 ```
 
 This one change delivers four things at once:
-1. **Mechanical audit.** Groundedness becomes "does every `sourced`/`synthesis`
-   sentence cite valid claim_ids, and does the auditor confirm the assertion is
-   supported?" — not a whole-paragraph judgement call.
+1. **A finer audit unit.** Groundedness moves from whole-paragraph to
+   per-sentence, so one loose clause no longer condemns a paragraph and the score
+   is less coarse.
 2. **The block schema Paul asked for** (bullets, callouts, key-takeaways,
    tables, figures) — the current flat-paragraph model cannot express any of it.
-3. **Source → sentence cross-linking** (§8) falls out for free.
+3. **Source → sentence cross-linking** (§9) falls out for free.
 4. **`synthesis` marking** is captured structurally, so it can be surfaced in
    admin review and hidden from readers per Paul's decision.
+
+**Caveat — attribution does not make the audit free** (F2 fix). The structural
+check ("does every non-connective sentence carry claim_ids?") is necessary but
+weak: the model writes the sentence *and* assigns its ids, so it can attach
+plausible ids to an unsupported sentence, or type an assertion `connective` to
+skip citing. The real audit therefore stays a **semantic LLM pass** that (a)
+confirms each `sourced`/`synthesis` sentence is actually supported by its cited
+claims and (b) confirms each `connective` sentence asserts nothing. Budget it as
+a per-article pass, not a cheap structural gate. What attribution buys is a
+*tighter unit* and the cross-linking — not a cheaper check.
 
 `outlineToMarkdown` is the single render choke point (the public site renders
 `body_markdown`, not `outline`, so no migration and no dual-render path is
@@ -292,13 +324,20 @@ hedged), and near-duplicates that were correctly *kept separate and linked*
 (§6) — those are the engine working, not a problem to adjudicate. Rule 2 fires
 on the opposite case: things that were wrongly *fused*.
 
-**Tuning target for the existing corpus:** on the 5 processed sources (~1,000
-claims) the standalone test should fire on **~100–150 claims** — the clearest
-failures only (Paul's configuration budget, 2026-07-22). If a first pass flags
-many more, the test is too aggressive and should be tightened before Paul
-reviews, not after. This is the calibration reference: the same precision, held
-constant, is what keeps flagging at "a few hundred per 100 hours" as the corpus
-grows.
+**Calibration — anchor to a definition, then observe the count; do not tune to
+hit a number** (F6 fix). The standalone test is defined by a *rubric*, not a
+target: flag a claim when a physician would need information not in the claim to
+act on it — specifically a **missing dose, population, threshold, or referent**
+(the "what is 'it'?" case), not merely "could be phrased better." Paul validates
+the rubric on a labelled sample of ~30 claims (agree/disagree with each flag);
+the rubric is adjusted until his agreement is high. *Then* it runs, and whatever
+count results is the count. On the existing ~1,000 claims that is expected to
+land near Paul's ~100–150 review budget — but if the validated rubric yields far
+more, the response is to **tighten the rubric's definition and re-validate**, not
+to raise an arbitrary cutoff to hit the budget. Tuning to a number gives you "the
+12% least-clear claims," which won't generalize as the corpus's clarity
+distribution shifts; anchoring to a validated definition does. Run it
+incrementally per new source, not corpus-wide each time.
 
 ### 7.3 Review actions
 
@@ -359,8 +398,16 @@ existence as Paul works the queue.
   (Paul, 2026-07-22). Both must pass. The ratio catches short bad articles; the
   absolute cap stops a long article from accumulating unsupported sentences while
   passing on ratio. Below either bar the article is **held for manual approval**,
-  not published. (For reference, this holds every current article except
-  Functional Aging.)
+  not published.
+  - **These numbers are paragraph-era placeholders and must be re-derived
+    (F5 fix).** They were read off the *current* articles, which score at
+    **paragraph** granularity; the rewrite scores **sentences** (§5.2), a
+    stricter distribution with many more, smaller units — so "0.85 of sentences"
+    and "2 ungrounded sentences" are not the same bars as their paragraph
+    namesakes. Build step 0 produces sentence-level baselines on the eval set;
+    set the real floor and cap from that distribution before wiring the gate
+    (step 6). Do not ship 0.85/cap-2 unexamined onto sentence scores. The *policy*
+    (two gates, hold below either) is fixed; the *values* are pending measurement.
 - **Prerequisite bug — fix before any hold policy ships.** `scoreGroundedness`
   ends `catch { return 1 }` (`lib/synthesis.ts:355`) — a checker failure returns
   a *perfect* score. Under a hold policy that becomes auto-approve-on-error, the

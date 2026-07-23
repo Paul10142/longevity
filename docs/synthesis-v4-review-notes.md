@@ -53,7 +53,15 @@ human half. **The standalone test alone is insufficient** — add a flag rule:
 
 ---
 
-## F2 — Sentence-level attribution does *not* make the audit mechanical.
+## F2 — Sentence-level attribution does *not* make the audit mechanical. — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** §5.2 now carries an explicit caveat that attribution is a
+tighter unit, not a cheaper check; the groundedness audit stays a semantic LLM
+pass that also verifies `connective` sentences assert nothing (§5.1). The "makes
+the audit mechanical" claim is removed. Original finding below.
+
+---
+
 
 **The claim.** §5.2 says typing each sentence `sourced | synthesis | connective`
 with `claim_ids` makes groundedness "mechanical rather than an LLM judgement."
@@ -110,7 +118,15 @@ so lower stakes, but the definition affects how §6 is tuned).
 
 ---
 
-## F4 — "Cover every claim exactly once" can produce a complete but unreadable article.
+## F4 — "Cover every claim exactly once" can produce a complete but unreadable article. — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** §5.1 now defines "covered" as substance-present including
+grouped representation (N claims → one sentence citing all N, each represented),
+and adds a readability ceiling (~15–20 claims per section triggers sub-sectioning)
+separate from coverage. Original finding below.
+
+---
+
 
 **The scenario.** A 500-claim topic, under "cover every claim exactly once, add
 nothing," yields ~500 assertions. That is not padding — every sentence traces to
@@ -136,7 +152,14 @@ without becoming a wall of assertions.
 
 ---
 
-## F5 — The 0.85 floor was derived from paragraph data; the rewrite scores sentences.
+## F5 — The 0.85 floor was derived from paragraph data; the rewrite scores sentences. — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** §8 now marks 0.85/cap-2 as paragraph-era placeholders to
+be re-derived from sentence-level baselines (build step 0) before the gate is
+wired (step 6). Policy fixed, values pending measurement. Original finding below.
+
+---
+
 
 **The inconsistency.** §8 sets the floor at 0.85 and a cap of 2 ungrounded
 units. Those numbers were read off the *current* articles, which are scored at
@@ -154,7 +177,16 @@ holds the wrong things.
 
 ---
 
-## F6 — The standalone test is calibrated to a target flag count, which isn't a principled threshold.
+## F6 — The standalone test is calibrated to a target flag count, which isn't a principled threshold. — ✅ RESOLVED in spec 2026-07-22
+
+**Resolution applied:** §7.2 now anchors the flag to a rubric (missing dose /
+population / threshold / referent) validated by Paul on a ~30-claim sample, then
+*observes* the resulting count rather than tuning to hit ~100–150; if the
+validated rubric overshoots, tighten the definition and re-validate. Original
+finding below.
+
+---
+
 
 **The concern.** §7.2 tunes the standalone test to fire on ~100–150 of the
 existing ~1,000 claims. Fitting a subjective LLM judgement to a desired *count*
@@ -219,14 +251,22 @@ count-before/count-after check.
 
 ## Net
 
-**F1 and F3 are now resolved in the spec** (merge-fidelity gate + honest novelty
-buckets). The spec is buildable as written. Remaining open items for the external
-review to weigh: **F2** (don't over-claim that attribution makes the audit cheap
-— it doesn't) and **F4/F5** (state the coverage-vs-readability rule and re-derive
-the floor for sentence granularity) are "make the rule precise so the builder
-doesn't guess"; **F7** (admin-only synthesis marks) is a product-framing call
-Paul has made with eyes open, reversible via a stored toggle; **F8** (production
-blast radius) is a build-discipline item the harness and dry-run rules cover.
+**F1–F6 are now resolved in the spec.** F1/F3 changed the design (merge-fidelity
+gate, honest novelty buckets); F2/F4/F5/F6 tightened specific rules (semantic
+audit, grouped-coverage + readability ceiling, re-derive the floor for sentence
+scores, rubric-anchored flagging). The spec is buildable as written.
 
-Status: F1 ✅, F3 ✅, F2/F4/F5/F6 open-precise, F7 accepted-with-mitigation,
-F8 process.
+Two findings are intentionally *not* "resolved" because they are not spec bugs:
+
+- **F7** (admin-only synthesis marks) — a product-framing call Paul has made with
+  eyes open. Reversible via a stored toggle if it bites. Left for the external
+  team to weigh, not to silently overwrite.
+- **F8** (everything builds against production) — a build-discipline item, not a
+  design flaw. Covered by the harness (build step 0) and the `CLAUDE.md`
+  dry-run-and-verify rule; the claim-status migration is the one to gate behind a
+  count-before/after check.
+
+Status: F1 ✅ F2 ✅ F3 ✅ F4 ✅ F5 ✅ F6 ✅ · F7 accepted-with-mitigation ·
+F8 process. **The two questions still worth an external expert's time** are the
+ones in the spec's "For reviewers" §1: is the merge-fidelity guard at the right
+layer, and does the strict merge rule undercut the dedup story?
