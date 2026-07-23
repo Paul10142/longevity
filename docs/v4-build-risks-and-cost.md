@@ -356,6 +356,13 @@ recover, and the article never had any. So Phase 1 splits:
 - Rewrite clinician + protocol prompts (length-follows-evidence, glossary-only,
   no source narration); re-derive the floor on sentence scores (spec F5);
   prompt-cache the shared prompts (C4).
+- **Protocol-led delivery** (spec §2, §10): the protocol is the reader's front
+  door, the reference is depth-on-demand. Reorder the read-side surfaces.
+- **Experts credibility layer** (spec §5.5): `experts` table + claim↔expert
+  links (derived from member insights' source guests); the guest is captured at
+  ingest/extraction (`sources.authors` is the hook — do the capture back in
+  Phase 1's re-extraction and for all future ingests); surface as an article
+  byline + in the Evidence panel; retire `source_count` as the authority signal.
 - Prefer in-article sub-sectioning over topic split (B3); retune the split
   trigger to distinctness.
 
