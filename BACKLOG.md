@@ -672,6 +672,23 @@ P3.6 item about thin branches being reader-visible — the nav is where a
 
 ## P2 — Data & pipeline
 
+### Subtopics are created with no granularity gate — the tree over-fragments
+`lib/taxonomy.ts:156` (`placeTopic`): when the tagger names any new subject under
+a valid parent, `createChildTopic` mints it **immediately — one claim is enough**,
+no threshold. The root level has a three-layer guard (prompt → code → DB); the
+child level has none. Result: 26 children under Reproductive Health, several
+single-claim micro-topics (Sperm Chemotaxis, Blood-Testis Barrier, Bicycle Saddle
+Ergonomics). A one-claim subtopic can never pass the 10-claim article gate and
+just fragments the tree; the right home for a fine distinction is a bullet inside
+the parent's article (the B3 / F4 principle applied to creation).
+
+**Done when:** granular claims file under the parent by default; a new subtopic is
+created only deliberately — by a human, or by the maintenance pass when a cluster
+of ≥~8–10 clustered claims under a parent earns it (and thin subtopics fold back
+in). Mirrors the root guard one level down. Relates to the `discover_topics`
+splits-not-consolidates item and the taxonomy-maintenance job below. **Fix before
+the Phase 0.5 re-tag**, or re-tagging re-creates the sprawl.
+
 ### Transcript hygiene — strip ads / intros / outros before extraction (trust filter)
 YouTube captions (and some pasted transcripts) carry cold-open hype clips,
 **sponsor reads / ad breaks**, and subscribe/outro segments. Extraction cannot

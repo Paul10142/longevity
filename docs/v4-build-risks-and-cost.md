@@ -284,16 +284,20 @@ the merge-prompt fix's effect is *measurable*, not assumed:
 5. **The two independent fixes**, any time in Phase 0: `catch { return 1 }` →
    `null` (spec §8); verify the doc reconciliations (A1/A3/A4) still hold in-repo.
 
-**Phase 0.5 — reshape the taxonomy to the 12-branch frontier tree** (before any
+**Phase 0.5 — reshape the taxonomy to the 10-branch frontier tree** (before any
 re-tagging, so claims file into the new tree). Target and mapping in the
-[[proposed-taxonomy]] memory: 7 pillars (Exercise, Nutrition, Sleep, Meds &
-Supplements, Cognition, Mental & Emotional Health, Reducing Risks) + Chronic
-Disease, Reproductive & Hormonal Health, Healthy Aging, Research & Evidence,
-Public Health & Policy. Two structural splits (Mental Health & Psychology →
-Cognition + Mental & Emotional; Risks → Reducing Risks + Chronic Disease) and one
-rename (Sexual & Reproductive Health → Reproductive & Hormonal Health). Same
-mechanics as the 2026-07-22 reshape: edit `scripts/seedSpine.ts` SPINE → dry-run →
-apply → archive retired branches with `merged_into_id`. Must precede Phase 2 tagging.
+proposed-taxonomy memory: **6 pillars** (Exercise, Nutrition, Sleep, Meds &
+Supplements, Mental Health & Cognition, Reducing Risks) + **4 clinical/context**
+(Reproductive & Hormonal Health, Healthy Aging, Research & Evidence, Public Health
+& Policy). Mostly renames (Mental Health & Psychology → Mental Health & Cognition;
+Risks → Reducing Risks, with the chronic diseases as its sub-branches; Sexual &
+Reproductive Health → Reproductive & Hormonal Health). **Plus subtopic
+consolidation** — fold the over-granular micro-topics (Sperm Chemotaxis,
+Blood-Testis Barrier, Bicycle Saddle Ergonomics…) into their general parent so
+they become article bullets, not nodes. Same mechanics as the 2026-07-22 reshape:
+edit `scripts/seedSpine.ts` SPINE → dry-run → apply → archive retired branches
+with `merged_into_id`. Must precede Phase 2 tagging. **Also fix the subtopic-
+creation gate first** (`BACKLOG.md` P2) or re-tagging re-fragments the tree.
 
 **Phase 1 — re-process the seed corpus ONCE (resolves B1).**
 
