@@ -144,26 +144,41 @@ async function extract(): Promise<void> {
 // ── run (LLM) ───────────────────────────────────────────────
 const PROMPT: Record<PromptVersion, string> = { v1: ADJUDICATION_V1, v2: ADJUDICATION_V2 }
 
-async function adjudicatePair(promptText: string, pair: EvalPair): Promise<RunResult> {
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+/** A result is a genuine adjudication (not a swallowed transient failure). The
+ *  `claude-code` backend spawns a `claude` CLI subprocess per call; firing ~90 in
+ *  a tight loop transiently throttles the subscription, and the CLI exits non-zero.
+ *  That is not a DIFFERENT verdict — it is a missing measurement, so we never let
+ *  it masquerade as a split. */
+const isReal = (r: RunResult | undefined): r is RunResult => Boolean(r && !r.reasoning.startsWith('error:'))
+
+/** Adjudicate one pair, retrying transient CLI/parse failures with exponential
+ *  backoff. Only after the last attempt do we record the error result. */
+async function adjudicatePair(promptText: string, pair: EvalPair, retries = 5): Promise<RunResult> {
   const candidate = `1. ${pair.candidate_statement}${pair.candidate_context ? ` (${pair.candidate_context})` : ''}`
-  try {
-    const parsed = await claudeJson<{ verdict?: string; candidate_index?: number | null; confidence?: number; reasoning?: string }>(
-      promptText,
-      `NEW insight:\n${pair.new_statement}\n\nEXISTING claims:\n${candidate}`,
-      2000,
-      CLAUDE_JUDGMENT_MODEL
-    )
-    const verdict: Verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
-    return {
-      id: pair.id,
-      verdict,
-      candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,
-      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
-      reasoning: parsed.reasoning ?? '',
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) await sleep(Math.min(2000 * 2 ** (attempt - 1), 30_000)) // 2s,4s,8s,16s,30s
+    try {
+      const parsed = await claudeJson<{ verdict?: string; candidate_index?: number | null; confidence?: number; reasoning?: string }>(
+        promptText,
+        `NEW insight:\n${pair.new_statement}\n\nEXISTING claims:\n${candidate}`,
+        2000,
+        CLAUDE_JUDGMENT_MODEL
+      )
+      const verdict: Verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
+      return {
+        id: pair.id,
+        verdict,
+        candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+        reasoning: parsed.reasoning ?? '',
+      }
+    } catch (err) {
+      lastErr = err
     }
-  } catch (err) {
-    return { id: pair.id, verdict: 'DIFFERENT', confidence: 0, candidate_index: null, reasoning: `error: ${err instanceof Error ? err.message : err}` }
   }
+  return { id: pair.id, verdict: 'DIFFERENT', confidence: 0, candidate_index: null, reasoning: `error: ${lastErr instanceof Error ? lastErr.message : lastErr}` }
 }
 
 async function run(version: PromptVersion, limit?: number): Promise<void> {
@@ -171,14 +186,23 @@ async function run(version: PromptVersion, limit?: number): Promise<void> {
   if (!existsSync(PAIRS_FILE)) throw new Error(`${PAIRS_FILE} missing — run \`extract\` first`)
   let pairs = readJson<EvalPair[]>(PAIRS_FILE)
   if (limit) pairs = pairs.slice(0, limit)
-  const results: RunResult[] = []
-  for (let i = 0; i < pairs.length; i++) {
-    results.push(await adjudicatePair(PROMPT[version], pairs[i]))
-    if ((i + 1) % 10 === 0 || i === pairs.length - 1) console.log(`  ${version}: ${i + 1}/${pairs.length}`)
+
+  // Resume: keep prior REAL adjudications, re-run only missing/errored pairs, so
+  // a throttled batch is repaired without re-hammering the calls that succeeded.
+  const prior = existsSync(runFile(version)) ? new Map(readJson<RunResult[]>(runFile(version)).map(r => [r.id, r])) : new Map<string, RunResult>()
+  const results: RunResult[] = pairs.map(p => prior.get(p.id) ?? { id: p.id, verdict: 'DIFFERENT', confidence: 0, candidate_index: null, reasoning: 'error: pending' })
+  const todo = pairs.map((p, i) => ({ p, i })).filter(({ p }) => !isReal(prior.get(p.id)))
+  console.log(`  ${version}: ${pairs.length - todo.length}/${pairs.length} already done; adjudicating ${todo.length}`)
+
+  let done = 0
+  for (const { p, i } of todo) {
+    results[i] = await adjudicatePair(PROMPT[version], p)
+    if (++done % 10 === 0 || done === todo.length) console.log(`  ${version}: +${done}/${todo.length}`)
     writeJson(runFile(version), results) // checkpoint each step — CLI calls are slow
   }
   const same = results.filter(r => r.verdict === 'SAME').length
-  console.log(`Ran ${version} on ${results.length} pair(s): ${same} SAME, ${results.length - same} not-SAME → ${runFile(version)}`)
+  const errored = results.filter(r => !isReal(r)).length
+  console.log(`Ran ${version} on ${results.length} pair(s): ${same} SAME, ${results.length - same} not-SAME${errored ? `, ${errored} STILL ERRORED` : ''} → ${runFile(version)}`)
 }
 
 // ── score ───────────────────────────────────────────────────
@@ -201,13 +225,19 @@ function pct(x: number): string {
 }
 
 function scorePrompt(label: string, results: RunResult[], gold: Map<string, GoldLabel>): void {
+  // Drop rows whose adjudication errored out (transient CLI failure). Counting
+  // them as DIFFERENT would fabricate splits and wreck recall/κ — an errored pair
+  // is a missing measurement, not a verdict.
+  const errored = results.filter(r => r.reasoning.startsWith('error:')).length
   const rows = results
+    .filter(r => !r.reasoning.startsWith('error:'))
     .map(r => ({ r, g: gold.get(r.id) }))
     .filter((x): x is { r: RunResult; g: GoldLabel } => Boolean(x.g))
   if (rows.length === 0) {
     console.log(`\n[${label}] no labelled pairs to score.`)
     return
   }
+  if (errored) console.log(`\n[${label}] NOTE: ${errored} pair(s) errored and were excluded — re-run \`run\` to repair.`)
   const provisional = rows.some(x => !x.g.confirmed)
   const saidSame = (r: RunResult) => r.verdict === 'SAME'
   const goldSame = (g: GoldLabel) => g.label === 'SAME'
