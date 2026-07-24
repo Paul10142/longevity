@@ -132,7 +132,54 @@ batched: 5× `npm run pipeline -- extract <id>`, then one
 `SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`. The queue is durable — if the
 drain dies, re-running `work` resumes from the checkpoints.
 
+**Three more defects, found by the parallel track (spec §6.2 extraction eval).**
+Building `scripts/evalExtraction.ts` paid for itself before it ran a single LLM
+call — its zero-cost `verify` command, plus the failure it led to:
+
+- **27% of stored `direct_quote`s did not appear in their chunk**, and the old
+  code stored them anyway with null offsets. The Evidence panel shows that field
+  to a clinician as the source's own words, so this was the system presenting
+  unverifiable text as a citation. Not fabrications: 89% *started* in the chunk
+  and 41% carried ellipses — the model stitching two non-contiguous spans, which
+  the extraction prompt explicitly forbids. `resolveQuote()` now keeps only what
+  is verbatim (exact → normalised → all-fragments-verbatim → longest verbatim
+  prefix ≥40 chars → drop). Measured before landing: 0 regressions on 152 located
+  quotes; of 58 unlocated, 34 recovered whole, 8 as a prefix, 16 dropped.
+  Newly-extracted sources now locate **100%**.
+- **The CLI was loading this repo's own `CLAUDE.md` into every pipeline call.**
+  `claude` discovers `CLAUDE.md` by walking up from its cwd, and the pipeline
+  shelled out from inside the repo — so the model answered as a *project
+  assistant*: a chunk opening "Hey everyone, welcome to the podcast…" came back
+  as *"What would you like me to do with this podcast transcript? Given the
+  project context (v4 phase 1 is re-extracting older sources)…"*. It surfaced
+  now because the Phase 1 BACKLOG edits above made that auto-loaded context
+  richer — the model quoted the plan back. **This is the "CLI intermittently
+  returns prose" the retry comments blame; the retries were treating the
+  symptom.** `--append-system-prompt` appends and never outranked it; only `cwd`
+  does, so `claudeCodeText` now runs from `tmpdir()`. Consequence to respect:
+  pipeline prompts must be fully self-contained.
+- **That failure was SILENT, which is the worse bug.** `extractFromChunk`
+  returned `[]` after exhausting retries — indistinguishable from a chunk with
+  nothing in it — so the loop advanced its checkpoint and would have completed
+  the source as `succeeded` and empty. 26 of 54 chunks of the Protein Debate
+  were burned this way. It now **throws**, so the job fails loudly and the queue
+  retries with the checkpoint intact (the rule `adjudicate()` already follows).
+  Related: a fresh `extractSource` run now clears the source's prior insights and
+  reconciles claims — `pipeline extract` does that before enqueuing, but a job
+  restarted from a *reset* checkpoint never goes through that path and would
+  append a second copy of every insight.
+
+**Watching the run:** `npm run pipeline -- progress [--watch]` — per-source
+chunks / insights / consolidated, observed throughput, and an ETA. Reads only
+tables, so polling it costs nothing and never competes with the drain for the
+CLI.
+
 **Open for Paul (raised, not decided):**
+- **Two sources still carry old-resolver quotes**: the YouTube video (86.4%
+  located) and the protein article (59.4%). They extracted cleanly, so they were
+  not reset. `raw_insights` are immutable, so the only fix is re-extraction
+  (37 chunks, ~30 min + re-consolidation). Worth it for uniformity on the
+  provenance axis, but it is churn on work already reported done — Paul's call.
 - **Claim ids changed corpus-wide.** Re-extraction mints new `raw_insights` and
   therefore new claims, so the `claim_ids` stored in existing `topic_articles`
   blocks now dangle. The articles' prose is unaffected (it is stored text) and
