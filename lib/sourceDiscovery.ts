@@ -92,22 +92,42 @@ export async function fetchChannelVideos(
   return out
 }
 
-/** Recent posts from the site RSS — podcast episodes and written articles mixed. */
-export async function fetchSiteFeed(limit = 25): Promise<DiscoveredArticle[]> {
-  const xml = await fetchText(ATTIA_SITE_FEED)
+/**
+ * Posts from the site RSS — podcast episodes and written articles mixed.
+ *
+ * The feed paginates (`?paged=N`, ~10 items a page), which is the only way to
+ * reach the back catalogue: the channel's Atom feed caps at ~15 recent uploads,
+ * so without paging here the library could only ever ingest whatever shipped
+ * this month.
+ */
+export async function fetchSiteFeed(limit = 25, pages = 1): Promise<DiscoveredArticle[]> {
   const out: DiscoveredArticle[] = []
-  for (const item of xml.split('<item>').slice(1)) {
-    const rawTitle = item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)?.[1]
-    const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim()
-    const published = item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1] ?? null
-    if (!rawTitle || !link) continue
-    let date: string | null = null
-    if (published) {
-      const d = new Date(published)
-      if (!isNaN(d.getTime())) date = d.toISOString().slice(0, 10)
+  const seen = new Set<string>()
+  for (let page = 1; page <= pages && out.length < limit; page++) {
+    const url = page === 1 ? ATTIA_SITE_FEED : `${ATTIA_SITE_FEED}?paged=${page}`
+    let xml: string
+    try {
+      xml = await fetchText(url)
+    } catch {
+      break // past the last page
     }
-    out.push({ title: decodeEntities(rawTitle), link, published: date })
-    if (out.length >= limit) break
+    let addedThisPage = 0
+    for (const item of xml.split('<item>').slice(1)) {
+      const rawTitle = item.match(/<title>(?:<!\[CDATA\[)?([\s\S]*?)(?:\]\]>)?<\/title>/)?.[1]
+      const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim()
+      const published = item.match(/<pubDate>([^<]+)<\/pubDate>/)?.[1] ?? null
+      if (!rawTitle || !link || seen.has(link)) continue
+      seen.add(link)
+      let date: string | null = null
+      if (published) {
+        const d = new Date(published)
+        if (!isNaN(d.getTime())) date = d.toISOString().slice(0, 10)
+      }
+      out.push({ title: decodeEntities(rawTitle), link, published: date })
+      addedThisPage++
+      if (out.length >= limit) break
+    }
+    if (addedThisPage === 0) break // no new items — stop rather than loop
   }
   return out
 }
@@ -142,8 +162,8 @@ export type DiscoveredEpisode = DiscoveredArticle & { videoId: string | null; ep
  *
  * One page fetch per episode, so callers should keep `limit` modest.
  */
-export async function discoverEpisodes(limit = 10): Promise<DiscoveredEpisode[]> {
-  const posts = await fetchSiteFeed(40)
+export async function discoverEpisodes(limit = 10, pages = 4): Promise<DiscoveredEpisode[]> {
+  const posts = await fetchSiteFeed(limit * 8, pages)
   const numbered = posts.filter(p => /^#\d+/.test(p.title)).slice(0, limit)
   const out: DiscoveredEpisode[] = []
   for (const p of numbered) {
@@ -204,19 +224,29 @@ export type FetchedTranscript = {
  * `transcript` field — `extractApiSegments` handles that, and this must keep
  * going through it rather than reaching into the payload directly.
  */
-export async function fetchTimedTranscript(videoId: string): Promise<FetchedTranscript> {
+export async function fetchTimedTranscript(videoId: string, retries = 4): Promise<FetchedTranscript> {
   const token = process.env.YOUTUBE_TRANSCRIPT_API_TOKEN
   if (!token) throw new Error('YOUTUBE_TRANSCRIPT_API_TOKEN is not set')
 
-  const res = await fetch('https://www.youtube-transcript.io/api/transcripts', {
-    method: 'POST',
-    headers: { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids: [videoId] }),
-  })
-  if (res.status === 429) {
-    const retry = Number(res.headers.get('Retry-After') ?? 10)
-    throw new Error(`rate limited by transcript API; retry after ${retry}s`)
+  // The API rate-limits hard on a batch ingest — a 30-video run hit 429 after
+  // the sixth call. It sends a Retry-After, so honour it rather than failing the
+  // whole batch; without this, ingesting a channel gives up almost immediately.
+  let res: Response | null = null
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    res = await fetch('https://www.youtube-transcript.io/api/transcripts', {
+      method: 'POST',
+      headers: { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids: [videoId] }),
+    })
+    if (res.status !== 429) break
+    if (attempt === retries) {
+      throw new Error(`rate limited by transcript API after ${retries + 1} attempts`)
+    }
+    // Retry-After, with a growing floor so a burst of 429s backs off properly.
+    const wait = Math.max(Number(res.headers.get('Retry-After') ?? 10), 5 * (attempt + 1))
+    await new Promise(r => setTimeout(r, wait * 1000))
   }
+  if (!res) throw new Error('transcript API: no response')
   if (!res.ok) {
     const body = await res.text()
     throw new Error(`transcript API ${res.status}: ${body.slice(0, 200)}`)

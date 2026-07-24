@@ -248,6 +248,12 @@ async function main() {
       const { extractYouTubeVideoId } = await import('../lib/youtubeUtils')
 
       const targets = process.argv.slice(3).filter(a => !a.startsWith('--'))
+      // Reject promo clips by transcript length. The channel is mostly 2-minute
+      // cuts from full episodes; those add no knowledge the episode lacks and
+      // leave consolidation to dedup them against it. A full episode runs ~90k
+      // chars, a clip ~5k, so the split is unambiguous. --min-chars 0 disables.
+      const minCharsFlag = process.argv.indexOf('--min-chars')
+      const minChars = minCharsFlag > -1 ? Number(process.argv[minCharsFlag + 1]) : 20_000
       // The SITE feed titles carry the guest reliably (`… | Gayatri Devi, M.D.`);
       // the YouTube title often drops it. Resolve once and prefer it, so the
       // experts layer (spec §5.5) gets its names at ingest rather than needing a
@@ -274,6 +280,10 @@ async function main() {
         }
         try {
           const t = await fetchTimedTranscript(videoId)
+          if (t.transcript.length < minChars) {
+            console.log(`  · ${videoId}: skipped — ${t.transcript.length.toLocaleString()} chars, below --min-chars ${minChars.toLocaleString()} (promo clip)`)
+            continue
+          }
           const siteTitle = episodeByVideo.get(videoId)
           const title = siteTitle ?? t.title ?? `YouTube ${videoId}`
           const guests = parseGuests(siteTitle ?? t.title ?? '')
