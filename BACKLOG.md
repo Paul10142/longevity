@@ -82,16 +82,26 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
 still carry v1-era claims. Make it uniform before Phase 2.
 
 **NEXT STEPS (the forward plan):**
-1. **Finish Phase 1 — re-consolidate under V3, with `SKIP_SYNTHESIS_FANOUT=1`**
-   (consolidate + tag, NO article regen) and enrich OFF; watch the harness
-   false-merge rate. Two parts, one command drains both:
-   `SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`
-   - The **YouTube source is 75/110 consolidated** — a `consolidate_source` job is
-     already **queued** to finish it on the hardened code (I stopped the old-code
-     drain mid-run to avoid a silent-split adjudicator + premature regen).
-   - Then re-consolidate the **4 manual sources** (pasted transcripts —
-     re-consolidate, do NOT re-extract; no timing to recover) so the corpus is
-     uniform. Do NOT generate articles yet.
+1. **Finish Phase 1 — make the corpus uniform under V3.** Everything below runs
+   with `SKIP_SYNTHESIS_FANOUT=1` (consolidate + tag, NO article regen) and enrich
+   OFF; watch the harness false-merge rate; do NOT generate articles yet. Two parts:
+   - **a. Finish the YouTube source** (`e24fe6c5`, 75/110 consolidated — a
+     `consolidate_source` job is already **queued**; I stopped the old-code drain
+     mid-run to avoid the silent-split adjudicator + premature regen):
+     `SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`
+   - **b. Re-process the 4 older sources under V3.** ⚠ They are **already 100%
+     consolidated under v1**, so `consolidateSource` (which only touches
+     un-consolidated insights) skips them — there is **no "re-consolidate only"
+     command**. The existing path is to **re-extract**: `npm run pipeline -- extract
+     <id>` deletes that source's insights and rebuilds → re-consolidates under V3.
+     This is now a mild *improvement*, not waste — re-extraction applies transcript
+     hygiene + the JSON-retry. **(Supersedes the earlier "do not re-extract" note,
+     which predated those fixes.)** Building a non-destructive re-consolidate path
+     is optional. The four: `1ae3e21b` (Longevity 101), `d82e9534` (Protein Debate),
+     `debd5a41` (Male fertility), `3ce3f8a0` (Testosterone). `d32c0fc8` (Protein
+     quantity) has **0 insights** — it was never extracted; give it a first
+     extraction too. For each: `npm run pipeline -- extract <id>`, then
+     `SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`.
    *(Optional after: an enrich sweep with `ENRICH_MERGE=1` as a separate pass.)*
 2. **Phase 0.5 check** — verify/finish the frontier taxonomy reshape + tagger
    generality bias before any re-tagging (`lib/taxonomy.ts` has partial generality
