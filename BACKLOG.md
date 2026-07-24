@@ -80,15 +80,24 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
 
 ### ✅ PHASE 1 COMPLETE — 2026-07-24. Read this block first.
 
-**The corpus is uniform under V3.** All six original sources re-extracted and
-re-consolidated end to end, verified on every invariant that mattered:
+**The corpus is uniform under V3, and two new timestamped episodes are in it.**
+Eight sources processed end to end (six rebuilt, two newly ingested), verified on
+every invariant:
 
 | check | result |
 |---|---|
-| insights consolidated | **925 / 925** |
+| sources processed / registered | **8 / 18** |
+| insights consolidated | **1310 / 1310** |
 | v1-era claims surviving | **0** |
 | insights belonging to two claims | **0** |
-| active claims | 853 |
+| `direct_quote`s located verbatim | **1169 / 1169 (100%)** |
+| insights carrying `start_ms` | **493** |
+| merge-fidelity flags (invented specificity) | **0** |
+| active claims | 1199 |
+
+The 141 insights with no quote at all are the resolver correctly declining to
+store one it could not verify — the prompt permits null when no single span
+supports the insight.
 
 **V3 gold-set score (the live engine, 92 pairs).** `npx tsx
 scripts/evalDedup.ts run v3 && … score`:
