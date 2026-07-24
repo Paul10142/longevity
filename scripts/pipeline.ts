@@ -17,6 +17,12 @@
  *   status               Print queue + library counts and exit
  *   progress [--watch]   Per-source rebuild progress, throughput and ETA
  *                        (DB only — safe to poll while a drain is running)
+ *   sources [--limit N]  List ingestable sources from the Attia YouTube channel
+ *                        feed + site RSS, marking what is already in the library
+ *   ingest <id|url> …    Register YouTube source(s) WITH timing (start_ms
+ *                        deep-links). Does NOT queue extraction — breadth ingest
+ *                        is Phase 4 and gated on the cost checkpoint, so spend
+ *                        stays a separate, deliberate `extract` step.
  *
  * Examples:
  *   npm run pipeline -- status
@@ -193,6 +199,118 @@ async function main() {
       await status()
       return
 
+    case 'sources': {
+      // Show what is available to ingest, and what is already in the library.
+      const { fetchChannelVideos, fetchSiteFeed } = await import('../lib/sourceDiscovery')
+      const limit = arg === '--limit' ? Number(process.argv[4]) || 15 : 15
+
+      const { data: existing } = await db.from('sources').select('external_id, url, title')
+      const haveIds = new Set(
+        ((existing ?? []) as { external_id: string | null; url: string | null }[])
+          .flatMap(s => [s.external_id, s.url?.match(/[?&]v=([a-zA-Z0-9_-]{11})/)?.[1]])
+          .filter(Boolean) as string[]
+      )
+
+      const videos = await fetchChannelVideos(undefined, limit)
+      console.log(`\nYOUTUBE CHANNEL — ${videos.length} recent upload(s)\n`)
+      for (const v of videos) {
+        const mark = haveIds.has(v.videoId) ? '✓ in library' : '  new'
+        console.log(`  ${mark}  ${v.videoId}  ${v.published ?? '          '}  ${v.title.slice(0, 62)}`)
+      }
+
+      // Full episodes are the high-value ingest target — the channel feed is
+      // mostly short promo clips cut from them, which add little but dedup work.
+      const { discoverEpisodes } = await import('../lib/sourceDiscovery')
+      const episodes = await discoverEpisodes(limit)
+      console.log(`\nFULL EPISODES (site feed → resolved YouTube video)\n`)
+      for (const e of episodes) {
+        const mark = e.videoId && haveIds.has(e.videoId) ? '✓ in library' : e.videoId ? '  new' : '  no video'
+        console.log(`  ${mark}  ${(e.videoId ?? '—').padEnd(12)} ${e.published ?? '          '}  ${e.title.slice(0, 56)}`)
+      }
+
+      const posts = await fetchSiteFeed(limit)
+      console.log(`\nSITE FEED — ${posts.length} recent post(s)\n`)
+      for (const p of posts) {
+        console.log(`  ${p.published ?? '          '}  ${p.title.slice(0, 68)}`)
+      }
+      console.log(`\nIngest one with:  npm run pipeline -- ingest <videoId|url>`)
+      console.log(`Ingest registers the source only — extraction stays a separate, deliberate step.\n`)
+      return
+    }
+
+    case 'ingest': {
+      // Register a YouTube source WITH its timing, but do not queue extraction.
+      // Deliberate: breadth ingest is Phase 4 in the sequencing authority and is
+      // gated on the cost checkpoint, so adding a source must never silently
+      // start spending on extraction + adjudication.
+      if (!arg) throw new Error('usage: npm run pipeline -- ingest <videoId|youtubeUrl> [more…]')
+      const { fetchTimedTranscript, discoverEpisodes, parseGuests } = await import('../lib/sourceDiscovery')
+      const { extractYouTubeVideoId } = await import('../lib/youtubeUtils')
+
+      const targets = process.argv.slice(3).filter(a => !a.startsWith('--'))
+      // The SITE feed titles carry the guest reliably (`… | Gayatri Devi, M.D.`);
+      // the YouTube title often drops it. Resolve once and prefer it, so the
+      // experts layer (spec §5.5) gets its names at ingest rather than needing a
+      // re-ingest later.
+      const episodeByVideo = new Map<string, string>()
+      try {
+        for (const e of await discoverEpisodes(20)) {
+          if (e.videoId) episodeByVideo.set(e.videoId, e.title)
+        }
+      } catch {
+        // Feed unreachable — fall back to the YouTube title. Not fatal.
+      }
+      for (const target of targets) {
+        const videoId = extractYouTubeVideoId(target) ?? target
+        if (!/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+          console.log(`  ✗ ${target}: not a YouTube video id or URL`)
+          continue
+        }
+        const { data: dupe } = await db
+          .from('sources').select('id, title').eq('external_id', videoId).maybeSingle()
+        if (dupe) {
+          console.log(`  · ${videoId}: already ingested — ${(dupe as { title: string }).title.slice(0, 50)}`)
+          continue
+        }
+        try {
+          const t = await fetchTimedTranscript(videoId)
+          const siteTitle = episodeByVideo.get(videoId)
+          const title = siteTitle ?? t.title ?? `YouTube ${videoId}`
+          const guests = parseGuests(siteTitle ?? t.title ?? '')
+          const { data: inserted, error } = await db.from('sources').insert({
+            type: 'video',
+            title,
+            authors: ['Dr. Peter Attia', ...guests],
+            date: t.date,
+            url: t.url,
+            external_id: videoId,
+            transcript: t.transcript,
+            timed_transcript: t.segments,
+            media_type: 'video',
+            media_url: t.url,
+            transcript_origin: 'other', // youtube-transcript.io captions
+            // 'medium', not 'high': these are auto-generated captions, so they
+            // carry mis-transcriptions (drug names and numbers especially) that a
+            // human-checked transcript would not. Transcript hygiene strips ads
+            // and intros, but it cannot fix a misheard dose.
+            transcript_quality: 'medium',
+            authority_tier: 'expert',
+            processing_status: 'pending',
+          }).select('id').single()
+          if (error) throw new Error(error.message)
+          console.log(
+            `  ✓ ${videoId}: ${title.slice(0, 46)} — ` +
+            `${t.transcript.length.toLocaleString()} chars, ${t.segments.length} timed segment(s)` +
+            `${guests.length ? `, guest(s): ${guests.join(', ')}` : ''} → ${(inserted as { id: string }).id}`
+          )
+        } catch (err) {
+          console.log(`  ✗ ${videoId}: ${err instanceof Error ? err.message : err}`)
+        }
+      }
+      console.log(`\nRegistered as 'pending'. To process one: npm run pipeline -- extract <source_id>\n`)
+      return
+    }
+
     case 'progress': {
       // `--watch` redraws until interrupted — the drain is a multi-hour run and
       // this is the window onto it.
@@ -288,7 +406,7 @@ async function main() {
     }
 
     default:
-      console.log('usage: npm run pipeline -- <work|extract <source_id>|discover|sweep|status|progress [--watch]>')
+      console.log('usage: npm run pipeline -- <work|extract <source_id>|ingest <videoId…>|sources|discover|sweep|status|progress [--watch]>')
       process.exit(1)
   }
 }
