@@ -118,6 +118,28 @@ to settle before it is ever switched on, since enrich rewrites canonical text.
 **Corpus grew from 6 sources to 18** (see the ingest section below): 12 further
 full Attia episodes registered with complete per-caption timing, all `pending`.
 
+**Quote provenance is now clean corpus-wide: 1141/1141 quotes located, 0
+unverified stored** (was 27% unverifiable-but-stored that morning). The two
+old-resolver sources were re-extracted to close it.
+
+#### ⏸ Deferred jobs — release these when you pick the work back up
+
+Three job types were pushed out (`run_after` +8–12h) so a finite window went to
+extraction and consolidation rather than secondary passes. **They are not lost —
+they are queued and will fire on their own once `run_after` passes.** To release
+them deliberately:
+
+```sql
+-- release everything that was deferred
+update jobs set run_after = now() where status='queued' and run_after > now();
+```
+
+- `tag_claims` — **keep deferred until the taxonomy reshape lands** (below), or
+  ~450 claims get filed into a tree that is about to be replaced.
+- `extract_references` / `resolve_references` — safe to release any time. Each
+  runs a second full pass over every chunk, roughly doubling a source's cost,
+  which is why they were not competing with consolidation.
+
 ### ⏱ PHASE 1 EXECUTION LOG — 2026-07-24 (supersedes the "NEXT STEPS 1" plan below)
 
 **Step (a) — YouTube source: DONE.** `e24fe6c5` is **110/110 consolidated,
