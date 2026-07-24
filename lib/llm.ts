@@ -19,6 +19,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
+import { tmpdir } from 'node:os'
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
 export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-4-8'
@@ -70,7 +71,26 @@ function extractJson(s: string): string {
 
 /** Run a prompt through the local `claude` CLI on the developer's subscription.
  *  The CLI takes `--effort`, so subscription runs cap reasoning the same way
- *  API runs do. */
+ *  API runs do.
+ *
+ *  **Runs from a neutral directory on purpose.** The CLI discovers `CLAUDE.md`
+ *  by walking up from its working directory, so invoking it inside this repo
+ *  loaded THIS PROJECT'S agent instructions into every pipeline call. The model
+ *  then answered as a project assistant instead of an extractor — a real 2026-07-24
+ *  failure, where transcript chunks that open conversationally ("Hey everyone,
+ *  welcome to the podcast…") came back as *"What would you like me to do with
+ *  this podcast transcript? Given the project context (v4 phase 1 is
+ *  re-extracting older sources)…"*. `claudeJson` then threw, `extractFromChunk`
+ *  retried, gave up, and returned zero insights — 26 chunks of a source
+ *  advanced their checkpoint having extracted nothing, silently. This is also
+ *  the "CLI intermittently returns prose" that the retry comments blame; the
+ *  retries were treating the symptom. `--append-system-prompt` appends, so it
+ *  never outranked the project context — only cwd does.
+ *
+ *  Consequence to respect: the pipeline's prompts must be fully self-contained,
+ *  because the CLI now gets no repo context at all. That is the correct posture
+ *  for a bulk data-processing call.
+ */
 function claudeCodeText(
   system: string,
   user: string,
@@ -86,7 +106,7 @@ function claudeCodeText(
         ...(effort ? ['--effort', effort] : []),
         '--append-system-prompt', system,
       ],
-      { maxBuffer: 64 * 1024 * 1024, timeout: 600_000 },
+      { maxBuffer: 64 * 1024 * 1024, timeout: 600_000, cwd: tmpdir() },
       (err, stdout, stderr) => {
         if (err) {
           reject(new Error(`claude CLI failed (${model}): ${stderr || err.message}`))

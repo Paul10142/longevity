@@ -333,9 +333,19 @@ async function extractFromChunk(content: string, label: string): Promise<Extract
     }
   }
   if (!parsed) {
-    console.warn(`[extract ${label}] extraction failed after retries:`, lastErr instanceof Error ? lastErr.message : lastErr)
-    return []
+    // A failed call is NOT an empty chunk. Returning [] here let the caller
+    // advance its checkpoint and mark the source succeeded having extracted
+    // nothing — on 2026-07-24 that silently burned 26 of 54 chunks of a source,
+    // and the only visible symptom was insights_created stuck at 0. Throw, so
+    // the job fails loudly and the queue retries it with its checkpoint intact.
+    // (Same rule as adjudicate(): a transport failure is a missing measurement,
+    // never a verdict.)
+    throw new Error(
+      `[extract ${label}] extraction failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+    )
   }
+  // A well-formed response with no insights is a legitimate outcome — some
+  // chunks really are pure banter. That is the ONE case that returns empty.
   if (!Array.isArray(parsed.insights)) return []
 
   return parsed.insights
@@ -419,8 +429,24 @@ export async function extractSource(
     if (runErr || !run) throw new Error(`Failed to create pipeline run: ${runErr?.message}`)
     runId = run.id as string
 
-    // Fresh run: clear any prior chunks + reset the source's derived state.
+    // Fresh run: clear any prior chunks + insights, and reset the source's
+    // derived state.
+    //
+    // The insight delete matters when a PARTIAL extraction is restarted from
+    // scratch (its checkpoint reset, e.g. after the job was drained mid-source).
+    // `scripts/pipeline.ts extract` clears insights before enqueuing, but a job
+    // re-run from an empty checkpoint never went through that path — it would
+    // append a second copy of every chunk's insights to the ones already there.
+    // Guarded by the fresh-run branch, so a RESUME (which has a checkpoint)
+    // never deletes the work it is resuming.
     await db().from('chunks').delete().eq('source_id', sourceId)
+    const { error: riErr } = await db().from('raw_insights').delete().eq('source_id', sourceId)
+    if (riErr) throw new Error(`Failed to clear prior insights for ${sourceId}: ${riErr.message}`)
+    // That delete cascaded claim_members away, so claims seeded from this source
+    // are now stale or memberless (migration 012 — same reason pipeline.ts calls
+    // this right after its own delete).
+    const { error: rcErr } = await db().rpc('reconcile_claim_membership')
+    if (rcErr) throw new Error(`Failed to reconcile claims for ${sourceId}: ${rcErr.message}`)
     await db().from('sources').update({ processing_status: 'processing', processing_error: null }).eq('id', sourceId)
   }
 
