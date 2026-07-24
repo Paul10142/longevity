@@ -1,0 +1,242 @@
+[
+  {
+    "id": "extract:99d0742f-4e9f-4e60-beab-a36afa2dacf3",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Each element—engineered for palatability via sugar and fat, resulting calorie density, and being overeaten/hard to eat in moderation—traces directly to the chunk."
+  },
+  {
+    "id": "extract:14e56481-0377-429e-8fc7-9c7d359ae2e5",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk explicitly states drying, homogenization, and pasteurization as forms of processing and that 'almost everything we eat is processed,' fully supporting the insight's claim that processing is not a clean binary."
+  },
+  {
+    "id": "extract:085d5a27-4bb3-40d3-83ec-b1d9dca5660e",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's core claim—that ultra-processed food lumps mechanistically distinct products together (meal replacement shakes, sugary drinks, chocolate, TPN) making the broad category unhelpful—traces directly to the cited quote, and the extension toward analyzing specific things is supported by the chunk's 'I think we want to talk about the things.'"
+  },
+  {
+    "id": "extract:d6f0f966-b05d-4d7a-b182-7bcc11a12c31",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims—short-term help, diminishing effect over time, dependence on framing, and need for more study—all trace to the chunk's statements about telling people to avoid ultra-processed foods and sugar-sweetened beverages."
+  },
+  {
+    "id": "extract:ba316cb6-2d5f-4607-9496-66ded5a6b116",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims — mix of deliberate marketing, philosophical/anti-industry bents, and consumer ignorance ('education gaps') conflating positioning with molecular reality — all trace directly to the chunk's statements about marketing shenanigans, marketing of ideas by people with philosophical bents, and ignorance of what fructose/glucose are."
+  },
+  {
+    "id": "extract:7c91a202-0f28-47fc-93ae-4f13a1a5cb08",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk explicitly states refluxing blood \"comes back down to the testicle, pulls around it like a hot bath is warmer,\" and attributes falling sperm counts to this, so the heating mechanism and impaired sperm production trace directly to the source."
+  },
+  {
+    "id": "extract:aeae9968-5dbd-4b22-ac24-28ec98c48558",
+    "verdict": "ADDED_DETAIL",
+    "offending": "1 in 7–10 men",
+    "reasoning": "The chunk's speaker was uncertain about the denominator, saying \"out of 10 men or seven men, one had it,\" and the extractor's own cited quote reduces this to \"only one of them had it\" without a specified range, so presenting a clean \"1 in 7–10\" incidence ratio and framing it as tissue-level \"testicular tropism\" data adds precision beyond what the source supported—though this is a borderline call since the numbers do trace loosely to the chunk."
+  },
+  {
+    "id": "extract:7a3755bf-28d4-41a8-a9be-6fe7a8c2ebd3",
+    "verdict": "ADDED_DETAIL",
+    "offending": "hypothalamic-pituitary-testicular axis suppression",
+    "reasoning": "The chunk says sperm production is brain-driven via negative feedback, but the insight adds the specific named axis and framing (secondary hormonal insufficiency, CNS signaling) that the chunk never states."
+  },
+  {
+    "id": "extract:36ba4b3a-83f8-46a5-8977-9225328f3ecf",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The five causes named in the insight—collection error/'first sample syndrome', low testosterone, absent vas deferens, obstruction, and ejaculatory duct issue—all trace to the chunk's garbled but recoverable list of five causes for low volume."
+  },
+  {
+    "id": "extract:64dd3667-2c05-460f-8abd-9bd61e2dc70a",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Every parameter listed (volume, count/concentration, motility with forward progression, morphology, liquefaction/agglutination/viscosity, round cells as pus or immature germ cells) traces directly to the chunk, which explicitly enumerates each."
+  },
+  {
+    "id": "extract:7f31e741-a28a-477c-ac73-930dcc266797",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Both the leucine/anabolic-resistance claim and the 20s-vs-50s/60s statement trace directly to the cited chunk text."
+  },
+  {
+    "id": "extract:c27f478e-f759-41d3-9ba6-7503739cb99c",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims—resistance exercise amplifies MPS per given protein, inactivity causes anabolic resistance, and protein and activity are synergistic with protein alone being insufficient—all trace directly to the chunk's statements."
+  },
+  {
+    "id": "extract:0d8a5614-4cf3-4b31-a5c4-1b31d7e1c857",
+    "verdict": "ADDED_DETAIL",
+    "offending": "evidence-based practice target",
+    "reasoning": "The chunk presents 2.2 g/kg/day (~1 g/lb) as the authors' own practice aim, not as an \"evidence-based\" target, so labeling it evidence-based adds a characterization the source does not make."
+  },
+  {
+    "id": "extract:10dae46b-0e3e-4176-acf9-896c925501a2",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states requirements depend on sex, body weight, lean body mass, and activity level; that minimally active people need the lower end (1.0 g/kg/d); and that moderate/intense activity warrants 1.2–2.2 g/kg/d for muscle growth—all traceable to the source."
+  },
+  {
+    "id": "extract:8ed98c4c-aa73-4b15-b88a-285c0a5d1b0f",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Every element—lack of a protein storage depot, the fat/adipose and carbohydrate/glycogen contrast, and oxidation of excess amino acids for fuel—is directly stated in the chunk."
+  },
+  {
+    "id": "extract:e74f5012-818f-45ca-b288-e82c41162742",
+    "verdict": "ADDED_DETAIL",
+    "offending": "suggesting a common pathophysiological pathway between neurodegenerative and cerebrovascular disease",
+    "reasoning": "The chunk states only that risk factors overlap between Alzheimer's and stroke; it never asserts a shared pathophysiological pathway/mechanism, which the insight adds."
+  },
+  {
+    "id": "extract:04142c71-575e-4c35-9351-fa134043fc82",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk's Q&A confirms amyloid/biomarkers generally can't differentiate the sexes while presentation (e.g. depression) clearly differs, which the insight faithfully compresses."
+  },
+  {
+    "id": "extract:bd05a496-489c-4e3a-8cae-3021fe62275a",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's numbers (6% men, 10–12% women), the APOE3/E3 wild-type genotype, and the no-significant-family-history qualifier all trace directly to the chunk, and 'approximately' preserves the speaker's hedge."
+  },
+  {
+    "id": "extract:15232d0b-42fe-41ff-ad26-361b0db517dc",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk explicitly states aducanumab improves the biomarker but doesn't improve the disease and gives the analogy of a drug lowering LDL cholesterol without preventing heart attacks; the insight's generalization to the antibody class is supported by the chunk's framing of the monoclonal antibody discussion."
+  },
+  {
+    "id": "extract:9b050d7f-4e19-4aac-9c4e-69b0fdcf6a2e",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states the speaker finds TMS particularly helps people with language problems, which the insight faithfully conveys, and the hedge about individual variation adds no unsupported specific claim."
+  },
+  {
+    "id": "extract:bd5e220d-87e8-4736-80a1-78fbb0085dfb",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states adenomyosis is up to 20-30%, more prevalent than endometriosis at ~10% of reproductive-age women, and calls it the 'missed disease,' all of which the insight faithfully captures."
+  },
+  {
+    "id": "extract:1e5d6735-3c85-4ab1-b56b-ab0227e57cb6",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Every load-bearing element—TIA/tissue injury and repair, endometrial invasion breaching the junctional zone between endometrium and myometrium, cysts/echogenic buds, increased uterine volume, and softening—traces directly to the chunk."
+  },
+  {
+    "id": "extract:86722c83-a930-4432-a34a-60b5a95c34db",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states the uterus is adjacent/immediately close to the rectum, mentions lesions in the septum, and defines dyschezia as pain during bowel movements caused by endometriosis, so all load-bearing elements trace to the source."
+  },
+  {
+    "id": "extract:bbd5b2e5-8da5-469e-8e93-7533831852a0",
+    "verdict": "ADDED_DETAIL",
+    "offending": "and require no intervention",
+    "reasoning": "The chunk states fibroids are mostly asymptomatic but never claims they require no intervention, which is an added assertion the source does not support."
+  },
+  {
+    "id": "extract:99df862b-7652-441c-b1e2-715b721b6264",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states diagnosing an adolescent or young woman earlier can avoid 40% of lesions or disease burden, which the insight faithfully restates including the 40% figure and population."
+  },
+  {
+    "id": "extract:c88eb72e-0523-4b4d-8e7f-73162e0e8230",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The fourth horseman spectrum (hyperinsulinemia, insulin resistance, NAFLD, NASH, T2D), its absence from death certificates, and the doubled risk of dying from the other three horsemen (atherosclerosis, cancer, neurodegenerative disease) all trace directly to the chunk."
+  },
+  {
+    "id": "extract:4cdfb0dd-ad81-4044-b9ac-6219197518b7",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's core claim traces directly to the cited quote ('excess glucose is toxic to small vessels excess insulin is toxic to large blood vessels'), and 'microvasculature/macrovasculature' and the vascular-complication implication are faithful paraphrase, not added specifics."
+  },
+  {
+    "id": "extract:24fe68ee-6795-471e-a481-1aa683b52864",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk states inactive subjects are needed to find this pathology and that even inactive people in their early 20s could already be in that state, which supports the insight's claims about inactivity and early-onset hyperinsulinemia."
+  },
+  {
+    "id": "extract:d4bc04f2-ae14-4290-960c-bbf2a49c55cf",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Every load-bearing element—~50g glucose/day, brain requiring 5-6× that, ketones offsetting ~half the brain's demand, and remaining glucose coming from glycerol via gluconeogenesis rather than diet—traces directly to the chunk with no added specifics or dropped qualifiers."
+  },
+  {
+    "id": "extract:411eb1f2-50dc-40db-aa9d-f02bcd0b17a7",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Every element—low-carb individuals, ~3-day carb refeeding before OGTT, normalization/true insulin sensitivity and glucose disposal, and misleading paradoxical insulin resistance—traces directly to the chunk."
+  },
+  {
+    "id": "extract:d818fbed-c7af-418e-9c0f-20a81ff74434",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Both vectors (lifespan as objective/discrete/alive-or-dead, healthspan as more complicated) and the point that lifespan says nothing about quality of life trace directly to the chunk."
+  },
+  {
+    "id": "extract:8999d7c8-cf6d-483c-a4ca-88a4dd9bd331",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "Both claims—that quality of life can be sapped while technically alive across physical/cognitive/emotional dimensions, and that longevity should preserve function beyond lifespan—trace directly to the chunk's statements."
+  },
+  {
+    "id": "extract:75b77d58-a92f-4c35-a85f-8819ea06af40",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's core claim—transition from fluid intelligence in youth to crystallized experiential intelligence in older age with preserved ability to contribute—traces directly to the cited quote, and the fluid/crystallized labels plus \"processing speed\" and \"problem solving\" descriptors are all present in the chunk."
+  },
+  {
+    "id": "extract:693731a6-319d-400f-aceb-c09a1dfc34a5",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The chunk explicitly frames longevity as living longer while preserving healthspan and states that the implicit desire behind wanting to live longer is to function as someone much younger, both of which the insight faithfully captures."
+  },
+  {
+    "id": "extract:1721c8f0-0d9e-4efc-bb85-1fb56d89169e",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight faithfully captures the chunk's point that clinicians must clarify a patient's personal definition of longevity before proceeding, since definitions vary across lifespan, healthspan, and emotional wellbeing—all elements the chunk explicitly discusses."
+  },
+  {
+    "id": "extract:bd640c19-16ad-47b4-ac73-ab524b72c1cf",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims—adaptive function, learning place in the hierarchy, physical capability, and when to be threatening versus when to signal submission/subordination—all trace directly to the chunk's statements about play fighting."
+  },
+  {
+    "id": "extract:8bbaf2fa-68fb-4abd-808f-7aeb94a69498",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims about honey requiring effort, small quantities, and subsequent energy expenditure trace to the cited quote, and the modern-mismatch framing is explicitly supported by the chunk's statements about mismatch, easy access to chocolate bars, and reduced physical activity."
+  },
+  {
+    "id": "extract:e1104748-f516-4273-89f7-4851f7af7b0a",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's core claim—that testosterone responds to vicarious sports participation—traces directly to the chunk's statement 'their testosterone is responding also to even vicarious participation in sports,' with only rewording and elaboration that stays within scope."
+  },
+  {
+    "id": "extract:0f2ea277-e652-4107-b814-e56905b1148a",
+    "verdict": "FAITHFUL",
+    "offending": "",
+    "reasoning": "The insight's claims—women can be competitive/aggressive, lower physical competitiveness on average—all trace to the chunk; the within-sex variability point is a reasonable rendering of the doubled 'On average' emphasis rather than an added specific."
+  },
+  {
+    "id": "extract:0a12494d-3f9e-4eb1-bf5f-abf45c6db146",
+    "verdict": "ADDED_DETAIL",
+    "offending": "establish boundaries, and learn physical self-regulation",
+    "reasoning": "The chunk only says children need to \"work their stuff out\" during positive rough play, but the insight adds specific developmental mechanisms (conflict negotiation, boundary-setting, physical self-regulation, \"critical skills\") that the source never states."
+  }
+]

@@ -131,6 +131,50 @@ full Attia episodes registered with complete per-caption timing, all `pending`.
 unverified stored** (was 27% unverifiable-but-stored that morning). The two
 old-resolver sources were re-extracted to close it.
 
+#### 🔴 EXTRACTION INVENTS SUBSTANCE — measured 2026-07-24, needs Paul
+
+**`npm run eval:extraction run` over a 40-insight stratified sample: a 15%
+INVENTION RATE.** Six insights assert something their source chunk does not
+support. Dropped qualifiers: 0. Unresolved references: 0. So the failure is not
+omission — **it is addition**, which is the exact principle-1 violation the
+product exists to prevent.
+
+Two were verified by hand against the chunk text, and both hold up:
+
+| the insight says | the chunk actually says |
+|---|---|
+| fibroids "…most remain asymptomatic **and require no intervention**" | *"Up to 70 or 80% of women will have one fibroid. Mostly asymptomatic."* — no management claim whatsoever |
+| 2.2 g/kg/day, "with … as an **evidence-based practice target**" | the article presents 2.2 g/kg/day as **the authors' own practice aim** |
+
+The first fabricates a clinical management directive. The second upgrades "what
+we do" into "evidence-based", misstating evidence strength — the precise thing a
+clinician reading a reference would act on differently. Others in the sample:
+naming a specific "hypothalamic-pituitary-testicular axis" where the source said
+only that sperm production is brain-driven; inferring "a common
+pathophysiological pathway" where the source said risk factors overlap.
+
+**Three things follow, and they matter for sequencing:**
+
+1. **The dedup engine is not the problem.** Merge-fidelity flags: 0. V3 recall:
+   100%. The corpus is leaking substance *upstream of consolidation*, exactly the
+   "second, unmeasured axis" Paul named on 2026-07-23 — now measured.
+2. **Neither implemented flag rule catches this.** `merge_fidelity` is
+   numeric-only and these are mostly prose assertions; `standalone` won't fire
+   because **these read perfectly clearly** — that is what makes them dangerous.
+   §7.2's four rules may need a fifth: extraction fidelity, judged per insight
+   against its chunk. That is ~1 LLM call per insight, so it is a real cost
+   decision, not a free add.
+3. **Ingesting more sources multiplies this.** 10 episodes sit `pending`; at 15%
+   they would add roughly 400 unsupported assertions. **This is why they were left
+   unextracted** — the gate should be Paul's call now that there is a number.
+
+Caveat, stated plainly: this is the **judge's** rate, not yet certified against
+Paul's own rulings (there is no extraction gold set). §7.2's discipline applies —
+validate the rubric on a labelled sample before trusting the count. But the two
+hand-verified cases suggest it is not merely over-flagging.
+
+Artifacts: `eval/extraction-eval-pairs.json`, `eval/extraction-run.json`.
+
 #### ⏸ Deferred jobs — release these when you pick the work back up
 
 Three job types were pushed out (`run_after` +8–12h) so a finite window went to
