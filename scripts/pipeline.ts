@@ -17,6 +17,8 @@
  *   status               Print queue + library counts and exit
  *   progress [--watch]   Per-source rebuild progress, throughput and ETA
  *                        (DB only — safe to poll while a drain is running)
+ *   novelty              Per-source novel / refinement / redundant breakdown
+ *                        (spec §9 — the engine's dedup value made visible)
  *   sources [--limit N]  List ingestable sources from the Attia YouTube channel
  *                        feed + site RSS, marking what is already in the library
  *   ingest <id|url> …    Register YouTube source(s) WITH timing (start_ms
@@ -198,6 +200,67 @@ async function main() {
     case 'status':
       await status()
       return
+
+    case 'novelty': {
+      // Novelty report (spec §9): the engine's dedup value, made visible.
+      // Per source, classify each of its insights into three buckets:
+      //   redundant  — merged into a claim it did not seed (added nothing new)
+      //   refinement — seeded a claim that is near_duplicate-linked to existing
+      //                material (a new dose/population/caveat on a known idea —
+      //                the engine's REAL value, counted as partially redundant)
+      //   novel      — seeded a claim with no such link (genuinely new ground)
+      // The headline "% new" is the novel bucket; the dedup story is redundant +
+      // refinement. Read-only, no LLM.
+      const [insRows, memRows, linkRows, srcRes] = await Promise.all([
+        selectAllPaged<{ id: string; source_id: string }>(
+          (f, t) => db.from('raw_insights').select('id, source_id').order('created_at', { ascending: true }).range(f, t)
+        ),
+        selectAllPaged<{ raw_insight_id: string; claim_id: string; matched_by: string }>(
+          (f, t) => db.from('claim_members').select('raw_insight_id, claim_id, matched_by').order('created_at', { ascending: true }).range(f, t)
+        ),
+        selectAllPaged<{ claim_id: string; related_claim_id: string }>(
+          (f, t) => db.from('claim_links').select('claim_id, related_claim_id').eq('kind', 'near_duplicate').order('claim_id', { ascending: true }).range(f, t)
+        ),
+        db.from('sources').select('id, title').order('created_at'),
+      ])
+      const srcRows = (srcRes.data ?? []) as { id: string; title: string }[]
+      const memByInsight = new Map(memRows.map(m => [m.raw_insight_id, m]))
+      const linkedClaims = new Set<string>()
+      for (const l of linkRows) { linkedClaims.add(l.claim_id); linkedClaims.add(l.related_claim_id) }
+      const titleById = new Map(srcRows.map(s => [s.id, s.title]))
+
+      type Bucket = { redundant: number; refinement: number; novel: number; unconsolidated: number }
+      const bySource = new Map<string, Bucket>()
+      for (const ins of insRows) {
+        const b = bySource.get(ins.source_id) ?? { redundant: 0, refinement: 0, novel: 0, unconsolidated: 0 }
+        const m = memByInsight.get(ins.id)
+        if (!m) b.unconsolidated++
+        else if (m.matched_by !== 'seed') b.redundant++       // merged into an existing claim
+        else if (linkedClaims.has(m.claim_id)) b.refinement++ // seeded, but a variant of known material
+        else b.novel++                                        // seeded new ground
+        bySource.set(ins.source_id, b)
+      }
+
+      const pct = (n: number, d: number) => (d ? `${Math.round((n / d) * 100)}%` : '—')
+      console.log(`\nNOVELTY — what each source ADDED to the library (spec §9)\n`)
+      console.log(`  ${'source'.padEnd(36)}${'total'.padEnd(8)}${'novel'.padEnd(9)}${'refine'.padEnd(9)}${'redund'.padEnd(9)}`)
+      const tot: Bucket = { redundant: 0, refinement: 0, novel: 0, unconsolidated: 0 }
+      for (const [sid, b] of bySource) {
+        const total = b.redundant + b.refinement + b.novel + b.unconsolidated
+        if (total === 0) continue
+        tot.redundant += b.redundant; tot.refinement += b.refinement; tot.novel += b.novel; tot.unconsolidated += b.unconsolidated
+        const title = (titleById.get(sid) ?? sid).slice(0, 34)
+        console.log(`  ${title.padEnd(36)}${String(total).padEnd(8)}${pct(b.novel, total).padEnd(9)}${pct(b.refinement, total).padEnd(9)}${pct(b.redundant, total).padEnd(9)}`)
+      }
+      const gt = tot.redundant + tot.refinement + tot.novel + tot.unconsolidated
+      console.log(`\n  ${'CORPUS'.padEnd(36)}${String(gt).padEnd(8)}${pct(tot.novel, gt).padEnd(9)}${pct(tot.refinement, gt).padEnd(9)}${pct(tot.redundant, gt).padEnd(9)}`)
+      console.log(`\n  novel ${tot.novel} · refinement ${tot.refinement} · redundant ${tot.redundant}` +
+        (tot.unconsolidated ? ` · ${tot.unconsolidated} not yet consolidated` : ''))
+      console.log(`  Refinement + redundant = ${pct(tot.refinement + tot.redundant, gt)} is the engine's dedup work;`)
+      console.log(`  novel = ${pct(tot.novel, gt)} is genuinely new ground. (Refinement grows as near-duplicate`)
+      console.log(`  links accrue — only sources consolidated AFTER 2026-07-24 carry them.)\n`)
+      return
+    }
 
     case 'sources': {
       // Show what is available to ingest, and what is already in the library.
