@@ -15,6 +15,8 @@
  *   discover             Queue a topic-discovery pass
  *   sweep                Queue a claim-dedup sweep
  *   status               Print queue + library counts and exit
+ *   progress [--watch]   Per-source rebuild progress, throughput and ETA
+ *                        (DB only — safe to poll while a drain is running)
  *
  * Examples:
  *   npm run pipeline -- status
@@ -61,10 +63,141 @@ async function main() {
     for (const [k, v] of entries) console.log(`  ${k.padEnd(28)} ${v}`)
   }
 
+  /**
+   * Per-source view of a corpus rebuild, with observed throughput and an ETA.
+   *
+   * `status` answers "is anything queued"; this answers "how far along is the
+   * run, and when does it land" — the question a multi-hour re-extraction
+   * actually raises. Reads only tables (no LLM), so it is safe to poll while the
+   * drain is running and costs nothing.
+   */
+  async function progress() {
+    const WINDOW_MIN = 15 // throughput window; long enough to survive one slow chunk
+    const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString()
+
+    const [srcRes, chunkRes, insightRes, memberRes, jobRes] = await Promise.all([
+      db.from('sources').select('id, title, processing_status').order('created_at'),
+      db.from('chunks').select('source_id').range(0, 49_999),
+      db.from('raw_insights').select('id, source_id, created_at').range(0, 49_999),
+      db.from('claim_members').select('raw_insight_id, created_at').range(0, 49_999),
+      db.from('jobs').select('type, status, payload, progress').in('status', ['queued', 'running']),
+    ])
+
+    type Src = { id: string; title: string; processing_status: string | null }
+    type Insight = { id: string; source_id: string; created_at: string }
+    type Member = { raw_insight_id: string; created_at: string }
+    type QJob = { type: string; status: string; payload: Record<string, unknown>; progress: Record<string, unknown> }
+
+    const sources = (srcRes.data ?? []) as Src[]
+    const insights = (insightRes.data ?? []) as Insight[]
+    const members = (memberRes.data ?? []) as Member[]
+    const jobs = (jobRes.data ?? []) as QJob[]
+
+    const chunkTotal = new Map<string, number>()
+    for (const c of (chunkRes.data ?? []) as { source_id: string }[]) {
+      chunkTotal.set(c.source_id, (chunkTotal.get(c.source_id) ?? 0) + 1)
+    }
+    const sourceOfInsight = new Map(insights.map(i => [i.id, i.source_id]))
+    const memberSet = new Set(members.map(m => m.raw_insight_id))
+
+    // In-flight chunk position comes from the extract job's checkpoint — the
+    // chunks table only tells us the total. Only an *extract_source* job means
+    // extraction is outstanding; a queued consolidate job for the same source
+    // does not (that source is already fully extracted).
+    const chunkDone = new Map<string, number>()
+    const extracting = new Set<string>()
+    for (const j of jobs) {
+      if (j.type !== 'extract_source') continue
+      const sid = j.payload?.source_id as string | undefined
+      if (!sid) continue
+      extracting.add(sid)
+      chunkDone.set(sid, Number(j.progress?.chunk_index ?? 0))
+    }
+
+    const perSource = sources.map(s => {
+      const mine = insights.filter(i => i.source_id === s.id)
+      const total = chunkTotal.get(s.id) ?? 0
+      const consolidated = mine.filter(i => memberSet.has(i.id)).length
+      return {
+        title: s.title.length > 34 ? `${s.title.slice(0, 33)}…` : s.title,
+        chunks: extracting.has(s.id) ? `${chunkDone.get(s.id) ?? 0}/${total}` : `${total}/${total}`,
+        extracted: mine.length,
+        consolidated,
+        done: !extracting.has(s.id) && mine.length > 0 && consolidated === mine.length,
+      }
+    })
+
+    console.log(`\nCORPUS REBUILD — ${new Date().toISOString().slice(11, 19)}Z\n`)
+    console.log(`  ${'source'.padEnd(35)}${'chunks'.padEnd(10)}${'insights'.padEnd(10)}consolidated`)
+    for (const r of perSource) {
+      console.log(
+        `  ${r.title.padEnd(35)}${r.chunks.padEnd(10)}${String(r.extracted).padEnd(10)}` +
+        `${r.consolidated}/${r.extracted}${r.done ? '  ✓' : ''}`
+      )
+    }
+
+    // Observed throughput over the window — the only honest basis for an ETA,
+    // since chunk cost varies with transcript density and the CLI throttles.
+    const extractedRecently = insights.filter(i => i.created_at >= since).length
+    const adjudicatedRecently = members.filter(m => m.created_at >= since).length
+    const insightsPerMin = extractedRecently / WINDOW_MIN
+    const adjPerMin = adjudicatedRecently / WINDOW_MIN
+
+    const chunksLeft = sources.reduce(
+      (n, s) => (extracting.has(s.id) ? n + Math.max(0, (chunkTotal.get(s.id) ?? 0) - (chunkDone.get(s.id) ?? 0)) : n),
+      0
+    )
+    // Insights a remaining chunk will add, measured over the sources this run has
+    // ALREADY finished extracting. Counting every insight against only the
+    // in-flight job's chunk index inflates the yield several-fold.
+    let doneInsights = 0
+    let doneChunks = 0
+    for (const s of sources) {
+      if (extracting.has(s.id)) continue
+      const n = insights.filter(i => i.source_id === s.id).length
+      if (n === 0) continue
+      doneInsights += n
+      doneChunks += chunkTotal.get(s.id) ?? 0
+    }
+    const yieldPerChunk = doneChunks > 0 ? doneInsights / doneChunks : 4
+    const pendingNow = insights.filter(i => !memberSet.has(i.id)).length
+    const toAdjudicate = pendingNow + Math.round(chunksLeft * yieldPerChunk)
+
+    // Fallbacks so the ETA survives a phase that has not started yet: extraction
+    // and consolidation alternate, so one of the two rates is usually 0.
+    const OBSERVED_INSIGHTS_PER_MIN = 4.3 // this run, 2026-07-24
+    const OBSERVED_ADJ_PER_MIN = 5.5      // ~11s per adjudication via the claude CLI
+    const exRate = insightsPerMin > 0 ? insightsPerMin : OBSERVED_INSIGHTS_PER_MIN
+    const adjRate = adjPerMin > 0 ? adjPerMin : OBSERVED_ADJ_PER_MIN
+    const estimated = insightsPerMin === 0 || adjPerMin === 0 ? '  (one phase idle — partly from prior rates)' : ''
+
+    const running = jobs.filter(j => j.status === 'running').map(j => j.type)
+    console.log(`\n  in flight   ${running.length ? running.join(', ') : 'nothing running'} · ${jobs.length} job(s) open`)
+    console.log(`  throughput  ${insightsPerMin.toFixed(1)} insights/min extracted · ${adjPerMin.toFixed(1)} adjudications/min`)
+    console.log(`  remaining   ~${chunksLeft} chunk(s) to extract, ~${toAdjudicate} insight(s) to adjudicate`)
+    const eta = (chunksLeft * yieldPerChunk) / exRate + toAdjudicate / adjRate
+    console.log(`  eta         ~${Math.floor(eta / 60)}h ${Math.round(eta % 60)}m${estimated}`)
+    console.log()
+  }
+
   switch (command) {
     case 'status':
       await status()
       return
+
+    case 'progress': {
+      // `--watch` redraws until interrupted — the drain is a multi-hour run and
+      // this is the window onto it.
+      if (arg !== '--watch') {
+        await progress()
+        return
+      }
+      for (;;) {
+        process.stdout.write('\x1b[2J\x1b[H')
+        await progress()
+        await new Promise(r => setTimeout(r, 30_000))
+      }
+    }
 
     case 'extract': {
       if (!arg) throw new Error('usage: npm run pipeline -- extract <source_id>')
@@ -147,7 +280,7 @@ async function main() {
     }
 
     default:
-      console.log('usage: npm run pipeline -- <work|extract <source_id>|discover|sweep|status>')
+      console.log('usage: npm run pipeline -- <work|extract <source_id>|discover|sweep|status|progress [--watch]>')
       process.exit(1)
   }
 }
