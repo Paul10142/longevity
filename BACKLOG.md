@@ -131,6 +131,34 @@ full Attia episodes registered with complete per-caption timing, all `pending`.
 unverified stored** (was 27% unverifiable-but-stored that morning). The two
 old-resolver sources were re-extracted to close it.
 
+#### 🧰 Built while Paul was away (2026-07-24 PM) — deliverables & their state
+
+- **5th flag rule `extraction_fidelity`** (migration 014 applied, `lib/extractionFidelity.ts`,
+  `scripts/flagClaims.ts fidelity`). Judges each claim's seed member against its
+  chunk; shares the exact judge with the §6.2 eval so they can't drift. **Cost is
+  the constraint: ~1 LLM call/claim at ~50s, so a full sweep is ~16h — not the
+  design.** §7.2 wants it per new source: `flagClaims fidelity --source <id>`.
+  Never run alongside a drain (two CLI consumers throttle). Validated on 12
+  claims, 0 false flags; NOT swept corpus-wide.
+- **Manual review lane**: `flagClaims flag <claim_id> "note"` /
+  `flagClaims resolve <flag_id> <resolution>`. The surface for working the
+  unsupported-assertion queue until the mobile inbox (§B4) exists.
+- **Dedup gold-label review worksheet (interactive):**
+  https://claude.ai/code/artifact/65be336b-8a3e-4642-b2c9-06ceb325fbae — the 57
+  unconfirmed labels, each with both statements + the v3 verdict/enrich chip.
+  Rule merge / enrich / keep-separate; rulings persist locally and **Export** gives
+  JSON to paste back (merges into `eval/dedup-goldset.json` as `confirmed:true`).
+  v3 flags enrich on 29 of the 57 — the concrete cases behind the 64%-vs-33%
+  question.
+- **#374 swapped to the timestamped YouTube upload.** The manual paste
+  (`3ce3f8a0`, no timing) was deleted and reconciled (167 claims retired, 0
+  memberless left); the YouTube version (`4a4425ae`, 3651 timed segments) is
+  queued for extraction. #374's claims will now carry `start_ms` deep-links like
+  the rest.
+- **Extracting 4 sources now** (single worker, supervised): YT #374 + Building
+  strength (Exercise), #380 Seed oils (guest Layne Norton, Nutrition), #373
+  Thyroid (hormones) — pillar-spread per §D. Near-duplicate capture on.
+
 #### 🔴 EXTRACTION INVENTS SUBSTANCE — measured 2026-07-24, needs Paul
 
 **`npm run eval:extraction run` over a 40-insight stratified sample: a 15%
