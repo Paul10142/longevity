@@ -1,9 +1,15 @@
 import { NextRequest, NextResponse } from "next/server"
+import { normalizeYouTubeSegments, extractApiSegments } from "@/lib/transcriptSegments"
 
 /**
  * API route to fetch YouTube video transcript and metadata
  * POST /api/admin/youtube-transcript
  * Body: { videoId: string }
+ *
+ * Returns the flat transcript text AND the timed caption segments
+ * ({ text, start_ms, end_ms }) so the ingest path can persist per-segment
+ * timing on `sources.timed_transcript` and later deep-link claims to the
+ * exact moment in the video. Previously the timing was parsed and discarded.
  */
 export async function POST(request: NextRequest) {
   try {
@@ -174,9 +180,19 @@ export async function POST(request: NextRequest) {
       duration: videoData.duration || null,
     }
 
+    // Preserve the timing. The timed captions live at `tracks[0].transcript`
+    // (start/dur as string seconds), NOT the top-level field the text parser
+    // above walks — so pull segments via the shape-aware extractor, then
+    // normalise to { text, start_ms, end_ms }. Empty when the video has no
+    // per-caption timing. (`segments` above is retained only for the flat-text
+    // join and the debug log.)
+    void segments
+    const timedSegments = normalizeYouTubeSegments(extractApiSegments(videoData))
+
     return NextResponse.json({
       success: true,
       transcript: transcriptText,
+      segments: timedSegments,
       metadata,
     })
   } catch (error) {

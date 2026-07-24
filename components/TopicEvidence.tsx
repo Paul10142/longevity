@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { youtubeTimestampUrl } from "@/lib/youtubeUtils"
 
 type Claim = {
   id: string
@@ -100,9 +101,25 @@ function ClaimRow({ claim }: { claim: Claim }) {
                   ) : (
                     <span>Unknown source</span>
                   )}
-                  <span className="ml-2 opacity-70">
-                    {formatMs(m.start_ms) ?? m.locator}
-                  </span>
+                  {(() => {
+                    // Deep-link to the moment in the video only when the source
+                    // is a YouTube URL AND this insight carries a start_ms.
+                    const label = formatMs(m.start_ms) ?? m.locator
+                    const deepLink = youtubeTimestampUrl(m.source?.url, m.start_ms)
+                    return deepLink ? (
+                      <a
+                        href={deepLink}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="ml-2 opacity-70 hover:opacity-100 hover:underline"
+                        title="Jump to this moment in the video"
+                      >
+                        {label} ↗
+                      </a>
+                    ) : (
+                      <span className="ml-2 opacity-70">{label}</span>
+                    )
+                  })()}
                 </div>
                 {m.direct_quote ? (
                   <blockquote className="mt-1 border-l-2 border-muted-foreground/30 pl-2 italic">“{m.direct_quote}”</blockquote>

@@ -13,6 +13,14 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
+import { stripNonContent } from './transcriptHygiene'
+import {
+  normalizeYouTubeSegments,
+  buildTranscriptFromSegments,
+  computeChunkTimings,
+  type TimedSegment,
+  type ChunkTiming,
+} from './transcriptSegments'
 import type { EvidenceType, Confidence, Actionability, Audience, InsightType, InsightQualifiers } from './types'
 
 // Bulk tier: one call per transcript chunk, so this is the pipeline's
@@ -202,16 +210,29 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 
 // ── LLM extraction for one chunk ────────────────────────────
 async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
-  let parsed: { insights?: ExtractedInsight[] }
-  try {
-    parsed = await claudeJson<{ insights?: ExtractedInsight[] }>(
-      EXTRACTION_SYSTEM_PROMPT,
-      `Text to analyze:\n${content}`,
-      8000,
-      EXTRACTION_MODEL
-    )
-  } catch (err) {
-    console.warn(`[extract ${label}] extraction failed:`, err instanceof Error ? err.message : err)
+  // Retry transient failures: the claude-code CLI intermittently prefixes prose
+  // ("Extracted the following…") so `claudeJson` throws a parse error. Swallowing
+  // that as 0 insights silently drops a whole chunk's content, so retry a few
+  // times with backoff before giving up (same exclude-only-after-retries pattern
+  // as the eval harnesses).
+  let parsed: { insights?: ExtractedInsight[] } | null = null
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
+    try {
+      parsed = await claudeJson<{ insights?: ExtractedInsight[] }>(
+        EXTRACTION_SYSTEM_PROMPT,
+        `Text to analyze:\n${content}`,
+        8000,
+        EXTRACTION_MODEL
+      )
+      break
+    } catch (err) {
+      lastErr = err
+    }
+  }
+  if (!parsed) {
+    console.warn(`[extract ${label}] extraction failed after retries:`, lastErr instanceof Error ? lastErr.message : lastErr)
     return []
   }
   if (!Array.isArray(parsed.insights)) return []
@@ -255,16 +276,36 @@ export async function extractSource(
 ): Promise<{ done: boolean; checkpoint: ExtractCheckpoint; runId: string }> {
   const started = Date.now()
 
-  // Load transcript
-  const { data: source, error: srcErr } = await db()
-    .from('sources')
-    .select('id, transcript')
-    .eq('id', sourceId)
-    .single()
-  if (srcErr || !source) throw new Error(`Source ${sourceId} not found: ${srcErr?.message}`)
+  // Load transcript + timed segments. Select timed_transcript defensively so
+  // extraction still runs if migration 010 has not been applied yet (the column
+  // is then absent → we fall back to a select without it and no timing).
+  type SourceRow = { id: string; transcript: string | null; timed_transcript?: unknown }
+  let source: SourceRow
+  {
+    const withTiming = await db()
+      .from('sources')
+      .select('id, transcript, timed_transcript')
+      .eq('id', sourceId)
+      .single()
+    if (withTiming.error && /timed_transcript/.test(withTiming.error.message || '')) {
+      const fallback = await db()
+        .from('sources')
+        .select('id, transcript')
+        .eq('id', sourceId)
+        .single()
+      if (fallback.error || !fallback.data) throw new Error(`Source ${sourceId} not found: ${fallback.error?.message}`)
+      source = fallback.data as SourceRow
+    } else if (withTiming.error || !withTiming.data) {
+      throw new Error(`Source ${sourceId} not found: ${withTiming.error?.message}`)
+    } else {
+      source = withTiming.data as SourceRow
+    }
+  }
   if (!source.transcript || source.transcript.trim().length === 0) {
     throw new Error(`Source ${sourceId} has no transcript`)
   }
+  const transcript: string = source.transcript
+  const timedTranscript: unknown = source.timed_transcript
 
   // Resume or start a run
   let runId: string = (checkpoint as { run_id?: string })?.run_id ?? ''
@@ -283,22 +324,54 @@ export async function extractSource(
   }
 
   try {
-  // Rebuild chunks deterministically (cheap, in-memory) so we can map an
-  // index → content on any invocation without persisting chunk text first.
-  const chunkTexts = splitIntoChunks(source.transcript)
-  const total = chunkTexts.length
+  // Chunk texts, per-chunk timing, and chunk ids — resolved identically for a
+  // fresh run and a resume so extraction is deterministic across ticks.
+  //
+  //  - FRESH (no chunks yet): run transcript hygiene ONCE (strip ads/intros/
+  //    outros before chunking), chunk the cleaned text, map each chunk onto the
+  //    timed segments (start_ms/end_ms), and persist chunk rows carrying both
+  //    content and timing.
+  //  - RESUME (chunks exist): read the persisted content + timing back. Hygiene
+  //    is an LLM pass and must not re-run on every tick — persisting its result
+  //    through the chunk rows keeps the pipeline stable and cheap.
+  const chunkTexts: string[] = []
+  const chunkTimings: (ChunkTiming | null)[] = []
+  const chunkIdByIndex = new Map<number, string>()
 
-  // Persist chunk rows once (first invocation only).
   const { count: existingChunks } = await db()
     .from('chunks')
     .select('id', { count: 'exact', head: true })
     .eq('source_id', sourceId)
-  const chunkIdByIndex = new Map<number, string>()
+
   if (!existingChunks) {
-    const rows = chunkTexts.map((content, i) => ({
+    // Timed segments (empty for manual/pasted transcripts → no timing, which is
+    // exactly how the four manual seed sources must behave).
+    const segments: TimedSegment[] = normalizeYouTubeSegments(timedTranscript)
+    // When we have segments, chunk the transcript rebuilt from them so char
+    // offsets line up exactly with the segment index; otherwise chunk the stored
+    // transcript as before.
+    const rawText = segments.length > 0 ? buildTranscriptFromSegments(segments) : transcript
+
+    // Transcript hygiene — permanent ingestion rule. Conservative; keeps text
+    // when unsure and surfaces removed spans for review.
+    const { cleaned, removed } = await stripNonContent(rawText)
+    if (removed.length > 0) {
+      console.warn(
+        `[extract ${sourceId}] hygiene removed ${removed.length} non-content span(s):`,
+        removed.map(r => `${r.kind}: "${r.preview.slice(0, 60)}"`)
+      )
+    }
+
+    const texts = splitIntoChunks(cleaned)
+    const timings = computeChunkTimings(texts, segments)
+    for (let i = 0; i < texts.length; i++) { chunkTexts.push(texts[i]); chunkTimings.push(timings[i]) }
+
+    const rows = texts.map((content, i) => ({
       source_id: sourceId,
       locator: `seg-${String(i + 1).padStart(3, '0')}`,
       content,
+      start_ms: timings[i]?.start_ms ?? null,
+      end_ms: timings[i]?.end_ms ?? null,
     }))
     const { data: inserted, error: chunkErr } = await db().from('chunks').insert(rows).select('id, locator')
     if (chunkErr) throw new Error(`Failed to insert chunks: ${chunkErr.message}`)
@@ -307,12 +380,27 @@ export async function extractSource(
       chunkIdByIndex.set(idx, c.id)
     }
   } else {
-    const { data: chunkRows } = await db().from('chunks').select('id, locator').eq('source_id', sourceId)
+    const { data: chunkRows } = await db()
+      .from('chunks')
+      .select('id, locator, content, start_ms, end_ms')
+      .eq('source_id', sourceId)
+    const byIdx = new Map<number, { id: string; content: string; start_ms: number | null; end_ms: number | null }>()
     for (const c of chunkRows ?? []) {
       const idx = parseInt(c.locator.replace('seg-', ''), 10) - 1
       chunkIdByIndex.set(idx, c.id)
+      byIdx.set(idx, c as { id: string; content: string; start_ms: number | null; end_ms: number | null })
+    }
+    const total = byIdx.size
+    for (let i = 0; i < total; i++) {
+      const row = byIdx.get(i)
+      chunkTexts.push(row?.content ?? '')
+      chunkTimings.push(
+        row && row.start_ms != null && row.end_ms != null ? { start_ms: row.start_ms, end_ms: row.end_ms } : null
+      )
     }
   }
+
+  const total = chunkTexts.length
 
   let cp: ExtractCheckpoint = {
     chunk_index: checkpoint?.chunk_index ?? 0,
@@ -335,6 +423,7 @@ export async function extractSource(
 
     if (extracted.length > 0) {
       const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
+      const timing = chunkTimings[idx]
       const rows = extracted.map((ins, i) => {
         // Locate the verbatim quote within the chunk to store char offsets
         // (only when it matches exactly — the prompt requires an exact copy).
@@ -344,6 +433,11 @@ export async function extractSource(
         chunk_id: chunkIdByIndex.get(idx) ?? null,
         run_id: runId,
         locator,
+        // Carry the clock through: every insight inherits its chunk's timing so
+        // an Evidence citation can deep-link to the moment in the video. Null for
+        // sources without timed segments (the manual-paste transcripts).
+        start_ms: timing?.start_ms ?? null,
+        end_ms: timing?.end_ms ?? null,
         statement: ins.statement,
         context_note: ins.context_note ?? null,
         direct_quote: at >= 0 ? ins.direct_quote : (ins.direct_quote ?? null),

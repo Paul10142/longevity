@@ -48,3 +48,22 @@ export function extractYouTubeVideoId(url: string): string | null {
 export function isValidYouTubeUrl(url: string): boolean {
   return extractYouTubeVideoId(url) !== null
 }
+
+/**
+ * Build a "jump to the moment" YouTube deep-link from a source URL and a
+ * millisecond offset. Returns null unless BOTH the URL is a YouTube URL and a
+ * numeric `start_ms` is present — the two conditions the Evidence deep-link
+ * requires. Seconds are floored from `start_ms`; the `t` param is appended with
+ * `&` when the URL already has a query (e.g. `?v=...`) and `?` otherwise.
+ */
+export function youtubeTimestampUrl(
+  url: string | null | undefined,
+  start_ms: number | null | undefined
+): string | null {
+  if (!url || typeof url !== 'string') return null
+  if (start_ms == null || !Number.isFinite(start_ms)) return null
+  if (!isValidYouTubeUrl(url)) return null
+  const seconds = Math.max(0, Math.floor(start_ms / 1000))
+  const sep = url.includes('?') ? '&' : '?'
+  return `${url}${sep}t=${seconds}`
+}

@@ -191,6 +191,9 @@ export type Source = {
   media_duration_sec: number | null
   transcript_origin: TranscriptOrigin
   transcript: string | null
+  // Timed caption segments for sources that carry timing (e.g. YouTube).
+  // NULL for manual/pasted transcripts. See migration 010 + lib/transcriptSegments.
+  timed_transcript: { text: string; start_ms: number; end_ms: number }[] | null
   processing_status: ProcessingStatus
   last_processed_at: string | null
   processing_error: string | null

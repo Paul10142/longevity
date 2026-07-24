@@ -38,6 +38,9 @@ export default function NewSourcePage() {
     date: "",
     url: "",
     transcript: "",
+    // Timed caption segments (YouTube only); persisted to sources.timed_transcript
+    // so extraction can stamp chunk/insight start_ms and the reader can deep-link.
+    segments: [] as { text: string; start_ms: number; end_ms: number }[],
   })
   const [newAuthor, setNewAuthor] = useState("")
   const [selectedFile, setSelectedFile] = useState<File | null>(null)
@@ -179,6 +182,8 @@ export default function NewSourcePage() {
       // Auto-populate form fields with metadata
       const updates: Partial<typeof formData> = {
         transcript: data.transcript,
+        // Preserve the timing fetched alongside the transcript.
+        segments: Array.isArray(data.segments) ? data.segments : [],
       }
 
       // Update title if available and not already set
@@ -565,6 +570,7 @@ export default function NewSourcePage() {
                       setTranscriptSource("paste")
                       setSelectedFile(null)
                       setYoutubeUrl("")
+                      setFormData((f) => ({ ...f, segments: [] }))
                     }}
                   >
                     Paste Text
@@ -574,7 +580,7 @@ export default function NewSourcePage() {
                     variant={transcriptSource === "file" ? "default" : "outline"}
                     onClick={() => {
                       setTranscriptSource("file")
-                      setFormData({ ...formData, transcript: "" })
+                      setFormData({ ...formData, transcript: "", segments: [] })
                       setYoutubeUrl("")
                     }}
                   >
@@ -586,7 +592,7 @@ export default function NewSourcePage() {
                     onClick={() => {
                       setTranscriptSource("youtube")
                       setSelectedFile(null)
-                      setFormData({ ...formData, transcript: "" })
+                      setFormData({ ...formData, transcript: "", segments: [] })
                     }}
                   >
                     <Youtube className="h-4 w-4 mr-2" />

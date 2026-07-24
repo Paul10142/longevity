@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { extractTextFromFile } from "@/lib/fileExtraction"
 import { enqueueJob, pingWorker } from "@/lib/jobs"
+import { normalizeYouTubeSegments, type TimedSegment } from "@/lib/transcriptSegments"
 
 /**
  * Create a source and enqueue extraction.
@@ -27,6 +28,9 @@ export async function POST(request: NextRequest) {
     let date: string | null
     let url: string | null
     let transcript: string
+    // Timed caption segments (YouTube JSON path only); persisted to
+    // sources.timed_transcript so extraction can carry the clock through.
+    let segments: TimedSegment[] = []
 
     if (contentType.includes("multipart/form-data")) {
       const formData = await request.formData()
@@ -73,6 +77,15 @@ export async function POST(request: NextRequest) {
       date = body.date || null
       url = body.url || null
       transcript = body.transcript
+      // Accept already-normalised { text, start_ms, end_ms } segments, and also
+      // tolerate raw { text, start, duration } if a caller sends those.
+      segments = Array.isArray(body.segments)
+        ? (body.segments as unknown[]).every(
+            (s) => s && typeof s === "object" && "start_ms" in (s as object)
+          )
+          ? (body.segments as TimedSegment[])
+          : normalizeYouTubeSegments(body.segments)
+        : []
 
       if (!type || !title || !transcript) {
         return NextResponse.json(
@@ -87,23 +100,38 @@ export async function POST(request: NextRequest) {
     const authorityTier =
       type === "article" ? "peer_reviewed" : type === "book" ? "expert" : "expert"
 
-    const { data: source, error: insertError } = await supabaseAdmin
+    const baseRow = {
+      type,
+      title,
+      authors: authors || [],
+      date: date || null,
+      url: url || null,
+      transcript_quality: "high",
+      transcript,
+      authority_tier: authorityTier,
+      processing_status: "pending",
+      processing_error: null,
+      last_processed_at: null,
+    }
+    const rowWithTiming =
+      segments.length > 0 ? { ...baseRow, timed_transcript: segments } : baseRow
+
+    let { data: source, error: insertError } = await supabaseAdmin
       .from("sources")
-      .insert({
-        type,
-        title,
-        authors: authors || [],
-        date: date || null,
-        url: url || null,
-        transcript_quality: "high",
-        transcript,
-        authority_tier: authorityTier,
-        processing_status: "pending",
-        processing_error: null,
-        last_processed_at: null,
-      })
+      .insert(rowWithTiming)
       .select("id")
       .single()
+
+    // Degrade gracefully if migration 010 (sources.timed_transcript) is not yet
+    // applied: retry without the column so source creation never breaks.
+    if (insertError && segments.length > 0 && /timed_transcript/.test(insertError.message || "")) {
+      console.warn("[sources] timed_transcript column absent; storing source without timing")
+      ;({ data: source, error: insertError } = await supabaseAdmin
+        .from("sources")
+        .insert(baseRow)
+        .select("id")
+        .single())
+    }
 
     if (insertError || !source) {
       console.error("Error inserting source:", insertError)

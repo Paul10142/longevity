@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { extractYouTubeVideoId } from "@/lib/youtubeUtils"
+import { normalizeYouTubeSegments, extractApiSegments, type TimedSegment } from "@/lib/transcriptSegments"
 
 /**
  * Fetch YouTube transcript and metadata from YouTube Transcript API
@@ -98,18 +99,24 @@ export async function POST(request: NextRequest) {
     }
 
     const videoData = data[0]
-    if (!videoData || !videoData.transcript || !Array.isArray(videoData.transcript)) {
+    const rawSegments = extractApiSegments(videoData)
+    const flatText = typeof videoData?.text === 'string' ? videoData.text.trim() : ''
+    if (rawSegments.length === 0 && !flatText) {
       return NextResponse.json(
         { error: "Invalid transcript data format" },
         { status: 500 }
       )
     }
 
-    // Combine transcript segments into full text
-    const transcriptText = videoData.transcript
-      .map((segment: { text: string }) => segment.text)
-      .join(" ")
-      .trim()
+    // Preserve the timing instead of discarding it. The timed captions live at
+    // `tracks[0].transcript` (start/dur as string seconds), not a top-level
+    // `transcript` field — pull them via the shape-aware extractor and normalise
+    // to { text, start_ms, end_ms }.
+    const timedSegments: TimedSegment[] = normalizeYouTubeSegments(rawSegments)
+
+    // Flat text: prefer the API's own flat transcript; else rebuild from segments
+    // (single-space join, matching the extraction-time segment order).
+    const transcriptText = flatText || timedSegments.map(s => s.text).join(" ").trim()
 
     if (!transcriptText) {
       return NextResponse.json(
@@ -122,12 +129,14 @@ export async function POST(request: NextRequest) {
     // The API may return additional fields like title, date, etc.
     const result: {
       transcript: string
+      segments: TimedSegment[]
       title?: string
       date?: string
       url: string
       videoId: string
     } = {
       transcript: transcriptText,
+      segments: timedSegments,
       url: url,
       videoId: videoId,
     }
