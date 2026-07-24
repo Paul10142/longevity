@@ -39,20 +39,16 @@ process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
-import { claudeJson, CLAUDE_JUDGMENT_MODEL } from '../lib/llm'
+// The judge is shared with the live flag rule (lib/extractionFidelity.ts) so the
+// number validated here and the rule that runs the corpus are the same judge.
+import { judgeFidelity, type FidelityVerdict } from '../lib/extractionFidelity'
 
 const EVAL_DIR = 'eval'
 const PAIRS_FILE = `${EVAL_DIR}/extraction-eval-pairs.json`
 const GOLDSET_FILE = `${EVAL_DIR}/extraction-goldset.json`
 const RUN_FILE = `${EVAL_DIR}/extraction-run.json`
 
-/** The judge's verdict space, one per failure mode in spec §6.2. */
-type Verdict =
-  | 'FAITHFUL'            // every load-bearing element traces to the chunk
-  | 'ADDED_DETAIL'        // asserts something the chunk does not support (principle 1)
-  | 'DROPPED_QUALIFIER'   // omits a stated qualifier that changes applicability
-  | 'UNRESOLVED_REFERENCE'// depends on a referent this chunk never defines
-  | 'UNSURE'
+type Verdict = FidelityVerdict
 
 /** One insight to judge, with the chunk it was extracted from. Self-contained:
  *  the chunk text is embedded, so the file stays scoreable after a re-extraction
@@ -220,53 +216,16 @@ async function sample(n: number): Promise<void> {
 }
 
 // ── run (LLM) ───────────────────────────────────────────────
-const JUDGE_SYSTEM = `
-You audit whether a one-sentence INSIGHT faithfully represents the TRANSCRIPT CHUNK it was extracted from.
-
-You are checking FAITHFULNESS TO WHAT THE SOURCE SAID — not medical correctness, not completeness. A statement can be medically incomplete and still faithful. A statement can be medically true and still UNFAITHFUL, if the chunk did not say it.
-
-Return exactly one verdict:
-
-- "ADDED_DETAIL" — the insight asserts a specific the chunk does not support: a number, dose, population, mechanism, or named entity that is absent from the chunk, OR a claim the chunk only gestures at. Being TRUE does not excuse it. This is the most serious verdict; look for it first.
-- "DROPPED_QUALIFIER" — the chunk stated a qualifier that limits when the claim holds (population, dose, duration, comorbidity, "in athletes", "after age 50", "on a low-carb diet") and the insight states the claim without it, so it reads as more general than the source made it.
-- "UNRESOLVED_REFERENCE" — the insight depends on something this chunk never defines ("that protocol", "this rebalancing", "the second mechanism"), because extraction sees one chunk at a time and the referent was established elsewhere.
-- "FAITHFUL" — every load-bearing element traces to the chunk, and no stated qualifier was lost.
-- "UNSURE" — the chunk is too garbled or the call is genuinely too close.
-
-Ignore: paraphrasing, reordering, compression, and dropped conversational filler. Rewording is the job. Only flag changes that alter what a clinician would DO with the statement.
-
-Return ONLY JSON:
-{"verdict":"FAITHFUL|ADDED_DETAIL|DROPPED_QUALIFIER|UNRESOLVED_REFERENCE|UNSURE","offending":"the exact phrase at fault, or empty when FAITHFUL","reasoning":"one sentence"}
-`.trim()
-
-const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** An errored judgement is a MISSING measurement, never a verdict — counting it
  *  as FAITHFUL would flatter the engine, and as a failure would libel it. */
 const isReal = (r: RunResult | undefined): r is RunResult => Boolean(r && !r.reasoning.startsWith('error:'))
 
-async function judge(item: EvalItem, retries = 5): Promise<RunResult> {
-  const user = [
-    `TRANSCRIPT CHUNK:\n${item.chunk_text}`,
-    `\nINSIGHT:\n${item.statement}`,
-    item.context_note ? `\nCONTEXT NOTE:\n${item.context_note}` : '',
-    item.direct_quote ? `\nQUOTE THE EXTRACTOR CITED:\n${item.direct_quote}` : '',
-  ].join('\n')
-
-  let lastErr: unknown
-  for (let attempt = 0; attempt <= retries; attempt++) {
-    if (attempt > 0) await sleep(Math.min(2000 * 2 ** (attempt - 1), 30_000))
-    try {
-      const parsed = await claudeJson<{ verdict?: string; offending?: string; reasoning?: string }>(
-        JUDGE_SYSTEM, user, 1200, CLAUDE_JUDGMENT_MODEL
-      )
-      const allowed: Verdict[] = ['FAITHFUL', 'ADDED_DETAIL', 'DROPPED_QUALIFIER', 'UNRESOLVED_REFERENCE', 'UNSURE']
-      const verdict = allowed.includes(parsed.verdict as Verdict) ? (parsed.verdict as Verdict) : 'UNSURE'
-      return { id: item.id, verdict, offending: parsed.offending ?? '', reasoning: parsed.reasoning ?? '' }
-    } catch (err) {
-      lastErr = err
-    }
-  }
-  return { id: item.id, verdict: 'UNSURE', offending: '', reasoning: `error: ${lastErr instanceof Error ? lastErr.message : lastErr}` }
+async function judge(item: EvalItem): Promise<RunResult> {
+  const r = await judgeFidelity(item.statement, item.chunk_text, {
+    contextNote: item.context_note,
+    directQuote: item.direct_quote,
+  })
+  return { id: item.id, verdict: r.verdict, offending: r.offending, reasoning: r.reasoning }
 }
 
 async function run(limit?: number): Promise<void> {

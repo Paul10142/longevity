@@ -181,13 +181,147 @@ async function report(): Promise<void> {
   console.log()
 }
 
+// ── extraction_fidelity (LLM, spec §6.2) ────────────────────
+/**
+ * Flag a CLAIM when any of its member insights asserts something its source
+ * chunk does not support. The fidelity failure is at the insight level, but the
+ * gate acts on claims (they are what synthesis reads), so a claim is flagged if
+ * ANY member is judged unfaithful, and the offending member + span travels on
+ * the flag so review needs no re-derivation.
+ *
+ * ~1 LLM call per member insight, so it is bounded, resumable (skips claims
+ * already flagged), and must NOT run alongside a pipeline drain — two heavy CLI
+ * consumers throttle each other.
+ */
+async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?: string): Promise<void> {
+  const db = await loadDb()
+  const { selectAllPaged } = await import('../lib/pagination')
+  const { judgeFidelity, isRealFidelity, isViolation } = await import('../lib/extractionFidelity')
+
+  // COST: ~one LLM call per claim (~50s each via the local CLI), so a full-corpus
+  // sweep of ~1200 claims is ~16 hours — NOT how this is meant to run. §7.2 is
+  // explicit: run it incrementally per NEW source. `--source <id>` scopes it to
+  // one source's claims (the intended path); `--limit N` bounds an ad-hoc run.
+  // Never run this alongside a pipeline drain — two heavy CLI consumers throttle.
+  //
+  // One representative (seed) member per claim keeps it one call per CLAIM, not
+  // per member: a claim's members are near-paraphrases of one idea, so the seed
+  // is a fair proxy for whether extraction invented substance.
+  let claims: { id: string }[]
+  if (sourceId) {
+    // Claims that have at least one member insight from this source.
+    const memberClaims = await selectAllPaged<{ claim_id: string }>(
+      (from, to) => db
+        .from('claim_members')
+        .select('claim_id, raw_insights!inner(source_id)')
+        .eq('raw_insights.source_id', sourceId)
+        .order('claim_id', { ascending: true })
+        .range(from, to)
+    )
+    const ids = Array.from(new Set(memberClaims.map(m => m.claim_id)))
+    claims = ids.map(id => ({ id }))
+  } else {
+    claims = await selectAllPaged<{ id: string }>(
+      (from, to) => db.from('claims').select('id').eq('status', 'active').order('created_at', { ascending: true }).range(from, to)
+    )
+  }
+  // Resume: skip claims already carrying this flag. (A FAITHFUL claim carries no
+  // flag, so it is re-judged on a later run — acceptable for the incremental
+  // per-source path, where each run covers only one source's claims once.)
+  const existing = await selectAllPaged<{ claim_id: string }>(
+    (from, to) => db.from('claim_flags').select('claim_id').eq('rule', 'extraction_fidelity').order('claim_id', { ascending: true }).range(from, to)
+  )
+  const flagged = new Set(existing.map(e => e.claim_id))
+  let todo = claims.filter(c => !flagged.has(c.id))
+  const outsideLimit = limit && todo.length > limit ? todo.length - limit : 0
+  if (limit) todo = todo.slice(0, limit)
+  console.log(`extraction_fidelity: judging ${todo.length} claim(s)${sourceId ? ` from source ${sourceId.slice(0, 8)}` : ''}${outsideLimit ? ` (${outsideLimit} more beyond --limit)` : ''}…`)
+
+  let flags = 0, checked = 0
+  for (const c of todo) {
+    // Seed member + its chunk.
+    const { data: mem } = await db
+      .from('claim_members')
+      .select('matched_by, raw_insights(statement, context_note, direct_quote, chunks(content))')
+      .eq('claim_id', c.id)
+      .order('matched_by', { ascending: true }) // 'auto' < 'human' < 'seed'; take seed if present below
+    type M = { matched_by: string; raw_insights: { statement: string; context_note: string | null; direct_quote: string | null; chunks: { content: string } | null } | null }
+    const members = (mem ?? []) as M[]
+    const seed = members.find(m => m.matched_by === 'seed') ?? members[0]
+    const chunk = seed?.raw_insights?.chunks?.content
+    if (!seed?.raw_insights || !chunk) continue // manual sources may lack a chunk link
+
+    const v = await judgeFidelity(seed.raw_insights.statement, chunk, {
+      contextNote: seed.raw_insights.context_note,
+      directQuote: seed.raw_insights.direct_quote,
+    })
+    checked++
+    if (!isRealFidelity({ verdict: v.verdict, offending: v.offending, reasoning: v.reasoning })) continue
+    if (!isViolation(v.verdict)) continue
+    flags++
+    if (dryRun) {
+      console.log(`  ⚑ ${c.id}  ${v.verdict}  «${v.offending.slice(0, 60)}»  ${v.reasoning.slice(0, 70)}`)
+    } else {
+      await raise(db, c.id, 'extraction_fidelity',
+        `${v.verdict}: ${v.reasoning}`,
+        { verdict: v.verdict, offending: v.offending, statement: seed.raw_insights.statement })
+    }
+    if ((checked % 25) === 0) console.log(`  …${checked} checked, ${flags} flagged`)
+  }
+  console.log(`extraction_fidelity: ${flags} flag(s) over ${checked} claim(s) checked${dryRun ? ' (dry run)' : ''}`)
+}
+
+// ── manual review lane ──────────────────────────────────────
+async function manualFlag(claimId: string, note: string): Promise<void> {
+  const db = await loadDb()
+  const { data: claim } = await db.from('claims').select('id').eq('id', claimId).maybeSingle()
+  if (!claim) throw new Error(`no claim ${claimId}`)
+  const { error } = await db
+    .from('claim_flags')
+    .upsert({ claim_id: claimId, rule: 'manual', detail: note || 'flagged for review' }, { onConflict: 'claim_id,rule', ignoreDuplicates: false })
+  if (error) throw new Error(error.message)
+  console.log(`Flagged ${claimId} (manual): ${note || '(no note)'}`)
+}
+
+async function resolveFlag(flagId: string, resolution: string): Promise<void> {
+  const db = await loadDb()
+  const allowed = ['approved', 'edited', 'split', 'narrowed', 'archived', 'false_positive', 'reworded']
+  if (!allowed.includes(resolution)) throw new Error(`resolution must be one of: ${allowed.join(', ')}`)
+  const { data, error } = await db
+    .from('claim_flags')
+    .update({ resolved_at: new Date().toISOString(), resolution })
+    .eq('id', flagId)
+    .select('claim_id, rule')
+    .maybeSingle()
+  if (error) throw new Error(error.message)
+  if (!data) throw new Error(`no flag ${flagId}`)
+  console.log(`Resolved flag ${flagId} (${(data as { rule: string }).rule}) → ${resolution}`)
+}
+
 async function main() {
-  const [cmd, flag] = process.argv.slice(2)
+  const [cmd, a, b] = process.argv.slice(2)
   switch (cmd) {
-    case 'run': await run(flag === '--dry-run'); return
+    case 'run': await run(a === '--dry-run'); return
+    case 'fidelity': {
+      // fidelity [--dry-run] [--limit N] [--source <id>]
+      const args = process.argv.slice(3)
+      const dry = args.includes('--dry-run')
+      const li = args.indexOf('--limit')
+      const si = args.indexOf('--source')
+      await runFidelity(li > -1 ? Number(args[li + 1]) : undefined, dry, si > -1 ? args[si + 1] : undefined)
+      return
+    }
     case 'report': await report(); return
+    case 'flag': {
+      if (!a) throw new Error('usage: flag <claim_id> "<note>"')
+      await manualFlag(a, b ?? ''); return
+    }
+    case 'resolve': {
+      if (!a || !b) throw new Error('usage: resolve <flag_id> <approved|edited|split|narrowed|archived|false_positive|reworded>')
+      await resolveFlag(a, b); return
+    }
     default:
-      console.log('usage: npx tsx --env-file=.env.local scripts/flagClaims.ts <run [--dry-run]|report>')
+      console.log('usage: npx tsx --env-file=.env.local scripts/flagClaims.ts <run [--dry-run]|fidelity [--dry-run] [--limit N]|report|flag <claim_id> "note"|resolve <flag_id> <resolution>>')
       process.exit(1)
   }
 }
