@@ -33,14 +33,18 @@ const EVAL_DIR = 'eval'
 const BASELINE_FILE = `${EVAL_DIR}/article-eval-baseline.json`
 const SENTENCE_FILE = `${EVAL_DIR}/article-sentence-baseline.json`
 
-// The fixed eval set — chosen to span the groundedness range. These are topic
-// NAMES; `snapshot` resolves each to its latest clinician article.
+// The fixed eval set — chosen to span the groundedness range AND both quality
+// tiers (thin v1 articles + dense coverage-gated regenerated ones), weighted
+// near where the floor will sit (~0.8). Verified against the live DB 2026-07-23;
+// stored paragraph-groundedness in comments. These are topic NAMES; `snapshot`
+// resolves each to its latest clinician article.
 const EVAL_TOPICS = [
-  'AMPK Signaling',       // ~0.40 — thin claims, worst groundedness
-  'Cognitive Aging',      // ~0.60
-  'Sleep & Cognition',    // ~0.67
-  'Sleep',                // ~0.70
-  'Functional Aging',     // ~0.86 — best, for the top of the range
+  'AMPK Signaling',              // 0.40 — thin claims, worst groundedness (v1, 4.2k chars)
+  'Cognitive Aging',             // 0.60 — thin (v1, 10k)
+  'Sleep',                       // 0.70 — thin (v1, 4.7k)
+  'Mental Health & Psychology',  // 0.79 — mid, denser (v1, 13.5k)
+  'Healthspan Measurement',      // 0.83 — upper-mid, near the likely floor (v1, 13.3k)
+  'Protein Intake',              // 0.97 — flagship regenerated, claim-complete (v2, 39.4k)
 ]
 
 type Paragraph = { id: string; text: string; claim_ids: string[] }
@@ -100,11 +104,36 @@ function splitSentences(text: string): string[] {
   return text.replace(/\s+/g, ' ').match(/[^.!?]+[.!?]+|\S[^.!?]*$/g)?.map(s => s.trim()).filter(Boolean) ?? []
 }
 
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/** Audit one paragraph's sentences, retrying transient CLI/parse failures with
+ *  exponential backoff (the claude-code backend throttles under load — same bias
+ *  the dedup harness had). Returns the ungrounded count, or null if it never
+ *  succeeded, so the caller can EXCLUDE-and-REPORT rather than silently biasing
+ *  the ratio by pretending a dropped paragraph was fully grounded. */
+async function auditParagraph(support: string[], sentences: string[], retries = 5): Promise<number | null> {
+  const items = sentences.map((t, i) => `[${i}] ${t}`).join('\n')
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    if (attempt > 0) await sleep(Math.min(2000 * 2 ** (attempt - 1), 30_000)) // 2s,4s,8s,16s,30s
+    try {
+      const res = await claudeJson<{ ungrounded?: number[] }>(
+        'You audit a physician reference at the SENTENCE level. For each numbered sentence, decide if EVERY factual/clinical assertion it makes is supported by the SUPPORTING CLAIMS. A pure transition/framing sentence that asserts no fact is grounded. Return STRICT JSON {"ungrounded":[<indices of sentences making an assertion NOT supported by the claims>]}.',
+        `SUPPORTING CLAIMS:\n${support.join('\n') || '(none cited)'}\n\nSENTENCES:\n${items}`,
+        1500,
+        CLAUDE_BULK_MODEL
+      )
+      return Array.isArray(res.ungrounded) ? res.ungrounded.filter(i => i >= 0 && i < sentences.length).length : 0
+    } catch { /* retry */ }
+  }
+  return null
+}
+
 /** Audit one article at sentence granularity: each declarative sentence is
- *  checked against the claims cited by its paragraph. Returns the ungrounded
- *  count and total, so the sentence-level ratio can be compared to the stored
- *  paragraph-level score. */
-async function auditSentences(sb: Awaited<ReturnType<typeof db>>, outline: Outline): Promise<{ total: number; ungrounded: number }> {
+ *  checked against the claims cited by its paragraph. Returns ungrounded/total
+ *  over SUCCESSFULLY-audited sentences, plus the count of sentences that errored
+ *  out after retries — so a throttled run reports its own untrustworthiness
+ *  instead of silently deflating the ratio. */
+async function auditSentences(sb: Awaited<ReturnType<typeof db>>, outline: Outline): Promise<{ total: number; ungrounded: number; erroredSentences: number; erroredParagraphs: number }> {
   // Gather claim statements cited across the article.
   const ids = Array.from(new Set(outline.sections.flatMap(s => s.paragraphs.flatMap(p => p.claim_ids ?? []))))
   const stmt = new Map<string, string>()
@@ -113,45 +142,50 @@ async function auditSentences(sb: Awaited<ReturnType<typeof db>>, outline: Outli
     for (const c of (data ?? []) as { id: string; canonical_statement: string }[]) stmt.set(c.id, c.canonical_statement)
   }
 
-  let total = 0, ungrounded = 0
+  let total = 0, ungrounded = 0, erroredSentences = 0, erroredParagraphs = 0
   for (const s of outline.sections) {
     for (const p of s.paragraphs ?? []) {
       const sentences = splitSentences(p.text)
       if (sentences.length === 0) continue
-      const support = (p.claim_ids ?? []).map(id => stmt.get(id)).filter(Boolean)
-      const items = sentences.map((t, i) => `[${i}] ${t}`).join('\n')
-      total += sentences.length
-      try {
-        const res = await claudeJson<{ ungrounded?: number[] }>(
-          'You audit a physician reference at the SENTENCE level. For each numbered sentence, decide if EVERY factual/clinical assertion it makes is supported by the SUPPORTING CLAIMS. A pure transition/framing sentence that asserts no fact is grounded. Return STRICT JSON {"ungrounded":[<indices of sentences making an assertion NOT supported by the claims>]}.',
-          `SUPPORTING CLAIMS:\n${support.join('\n') || '(none cited)'}\n\nSENTENCES:\n${items}`,
-          1500,
-          CLAUDE_BULK_MODEL
-        )
-        ungrounded += Array.isArray(res.ungrounded) ? res.ungrounded.filter(i => i >= 0 && i < sentences.length).length : 0
-      } catch {
-        // skip a failed paragraph audit rather than bias the ratio
-        total -= sentences.length
+      const support = (p.claim_ids ?? []).map(id => stmt.get(id)).filter((x): x is string => Boolean(x))
+      const bad = await auditParagraph(support, sentences)
+      if (bad === null) {
+        // Errored after retries: a MISSING measurement, not a grounded paragraph.
+        // Exclude from the ratio and report it, never fold it in either direction.
+        erroredParagraphs += 1
+        erroredSentences += sentences.length
+        continue
       }
+      total += sentences.length
+      ungrounded += bad
     }
   }
-  return { total, ungrounded }
+  return { total, ungrounded, erroredSentences, erroredParagraphs }
 }
 
 async function sentences(limit?: number): Promise<void> {
   const sb = await db()
   const names = limit ? EVAL_TOPICS.slice(0, limit) : EVAL_TOPICS
   const out = []
+  let anyErrored = 0
   for (const name of names) {
     const a = await loadArticle(sb, name)
     if (!a?.outline) { console.warn(`  ! no article: ${name}`); continue }
-    const { total, ungrounded } = await auditSentences(sb, a.outline as Outline)
+    const { total, ungrounded, erroredSentences, erroredParagraphs } = await auditSentences(sb, a.outline as Outline)
+    anyErrored += erroredParagraphs
     const ratio = total ? 1 - ungrounded / total : 1
-    out.push({ name: a.name, sentences: total, ungrounded, sentence_groundedness: Number(ratio.toFixed(3)), stored_paragraph_groundedness: a.groundedness_score })
-    console.log(`  ${a.name}: sentence g=${ratio.toFixed(3)} (${ungrounded}/${total} ungrounded)  vs stored paragraph g=${a.groundedness_score ?? '—'}`)
+    out.push({
+      name: a.name, sentences: total, ungrounded,
+      sentence_groundedness: Number(ratio.toFixed(3)),
+      stored_paragraph_groundedness: a.groundedness_score,
+      errored_paragraphs: erroredParagraphs, errored_sentences: erroredSentences,
+    })
+    const errNote = erroredParagraphs ? `  [${erroredParagraphs} para / ${erroredSentences} sent ERRORED, excluded]` : ''
+    console.log(`  ${a.name}: sentence g=${ratio.toFixed(3)} (${ungrounded}/${total} ungrounded)  vs stored paragraph g=${a.groundedness_score ?? '—'}${errNote}`)
     writeJson(SENTENCE_FILE, { captured_at: new Date().toISOString(), topics: out })
   }
   console.log(`\nWrote ${out.length} sentence baseline(s) → ${SENTENCE_FILE}`)
+  if (anyErrored) console.log(`⚠︎ ${anyErrored} paragraph(s) errored after retries and were EXCLUDED — re-run to repair before trusting the distribution.`)
   console.log('Use this distribution to set the real sentence-level floor + cap before Phase 3 (spec §8/F5).')
 }
 

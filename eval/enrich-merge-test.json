@@ -1,0 +1,518 @@
+[
+  {
+    "id": "merge:3343462b-3dd6-4305-998f-550a6d6da648",
+    "prior": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality—improving lifespan without addressing healthspan can extend time lived with poor health; healthspan is conceptually and practically more complex to define and measure.",
+    "canonical": "Lifespan is a discrete, objective endpoint (alive vs. dead) that conveys nothing about functional quality; healthspan is continuous (analog, not an on/off state), subjective, and more complex to define and measure—a 'vector' that determines quality of life and is meaningfully separable from lifespan when planning interventions for aging. Improving lifespan without addressing healthspan can extend time lived with poor health.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried."
+  },
+  {
+    "id": "merge:11ca63fa-721c-4eb4-9905-67024f8be69f",
+    "prior": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.",
+    "canonical": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks (fetal concentrations estimated at ~400–600 ng/dL, substantially lower than the ~1200 ng/dL of male puberty), then falling at birth; a postnatal surge (the \"mini-puberty\") follows, peaking at about 3 months of age. Testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Each side adds distinct detail (NEW fetal concentrations; CAND transcription mechanism). A full fact holds both — enrich."
+  },
+  {
+    "id": "merge:8c50f1e5-8fc8-4528-a2a0-533432b1d93a",
+    "prior": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.",
+    "canonical": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects and may further influence early sexual-differentiated development.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried."
+  },
+  {
+    "id": "merge:8f4e764d-7acf-4dd7-8786-e318b9edf979",
+    "prior": "Testosterone replacement in men has established clinical benefits for bone density, frailty, and many subjective symptoms, and is commonly regarded in clinical practice as an effective therapeutic option when indicated—though patient selection and monitoring remain important.",
+    "canonical": "Testosterone replacement in men is generally safe and has established clinical benefits for bone density, frailty, and subjective quality-of-life measures; it is commonly regarded in clinical practice as an effective therapeutic option when indicated. Common historical concerns regarding prostate cancer and heart disease have not shown clear increases, though an edge-case risk of hypertension should be monitored and managed; patient selection and ongoing monitoring remain important.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW adds the hypertension caveat + \"prostate/heart not increased\" — material safety content CAND lacks."
+  },
+  {
+    "id": "merge:c2cbaf96-2108-4b6a-9d73-65e8f5c51054",
+    "prior": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet.",
+    "canonical": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet. In primate studies, caloric restriction was associated with increased longevity when the control diet supplied roughly 28–29% of calories from sucrose, but did not increase lifespan in a parallel study using a diet resembling wild intake.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Nested: NEW a concrete datum (~28-29% sucrose control diet), CAND the general principle. Same fact at two resolutions — enrich, don't fuse-and-bury."
+  },
+  {
+    "id": "merge:1347752c-d717-4358-96e9-02e8c6d39e10",
+    "prior": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet.",
+    "canonical": "The longevity benefit of caloric restriction likely depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the baseline diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet; moreover, restricting calories on an unhealthy, ultra-processed high-calorie diet produces a much larger longevity signal than restricting the same caloric amount on a high-quality whole-foods diet, and severe calorie reduction on an otherwise nutritious diet could reduce longevity if it causes loss of critical macronutrients (e.g., protein) or lean mass.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW adds a distinct caveat: severe restriction on a nutritious diet can REDUCE longevity via protein/lean-mass loss."
+  },
+  {
+    "id": "merge:f1cd64b2-c8ee-48b7-8647-1d99d459a688",
+    "prior": "Peak cardiorespiratory fitness (VO2max) shows the strongest epidemiologic association with longevity—higher VO2max is linked to lower all-cause mortality more than most other single risk markers.",
+    "canonical": "Peak cardiorespiratory fitness (VO2max) shows the strongest epidemiologic association with longevity—higher VO2max is linked to lower all-cause mortality more than most other single risk markers. Low VO2max is one of the strongest predictors of all-cause mortality in cohort data; extreme comparisons show very large effect sizes (bottom 25th percentile vs top 2%: hazard ratio ≈ 5; bottom 25th percentile vs 50–75th percentile: hazard ratio ≈ 2.75).",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Nested: CAND general 'VO2max strongest predictor'; NEW adds hazard ratios (HR~5, ~2.75). Paul voted SAME, but today's SAME buries the HRs — recorded as enrich."
+  },
+  {
+    "id": "merge:6855f05a-e920-4ba2-af19-ca5680d436d1",
+    "prior": "For optimizing VO2‑max adaptations, use intervals lasting about 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus.",
+    "canonical": "For optimizing VO2‑max adaptations, use intervals lasting 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; recovery time serves as a practical intensity gauge—if you can recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard; very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Distinct actionable protocols (3-4 min recovery-gauged vs 3-8 min 1:1). Keep separate; not a fuse."
+  },
+  {
+    "id": "merge:75c363aa-6880-4bf6-a0b8-8e54b86a540a",
+    "prior": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹.",
+    "canonical": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹. You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain longevity benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Distinct claims: a ceiling ('don't need 80-90') vs a target ('top 2.5% ~52'). Keep separate."
+  },
+  {
+    "id": "merge:ff7c81a9-97ee-4381-8b7c-cff2da8e0611",
+    "prior": "Sperm dimensions: the rounded pre‑tail spermatid is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), and the flagellar tail adds substantial length — about a 35‑micron tail — producing a very small but highly engineered motile cell.",
+    "canonical": "Sperm are extremely compact, highly specialized cells: the rounded pre-tail spermatid head is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), while the flagellar tail adds substantial length—about 35 microns—with the midpiece containing microtubules and mitochondria; roughly 300 genes are dedicated to motility, reflecting a design optimized for streamlined propulsion and energy efficiency.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Nested: NEW richer (~300 motility genes + midpiece) than CAND (dimensions only). Enrich so the extra detail is not buried."
+  },
+  {
+    "id": "merge:bae9c3ee-9ff6-4e55-b91a-69dd39a5de09",
+    "prior": "Sperm undergo a ~10-day maturation and epigenetic modification phase in the epididymis (the collecting duct after the testicle); only a subset of produced sperm complete this transit—roughly one in four by production count—before ejaculation.",
+    "canonical": "Sperm spend about two weeks in the epididymis—a long (~35-foot when stretched) collecting duct after the testicle—undergoing a ~10-day maturation and epigenetic modification phase involving post-translational/post-transcriptional modifications (including exchange via epididymosomal vesicles). Only a subset of produced sperm complete this transit—roughly one in four by production count—before ejaculation. Because the epididymis is vulnerable to infection, disruptions here can affect fertility.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Conflicting timeframe: ~2 weeks vs ~10 days epididymal maturation. Keep separate; candidate for contradiction review."
+  },
+  {
+    "id": "merge:c5dd94f9-041d-4675-84a7-5623ba8b1440",
+    "prior": "Absence of the vas deferens is strongly linked to mutations in the CFTR gene on chromosome 7; there are many CFTR variants (on the order of hundreds to low thousands), and both people with full cystic fibrosis and some CFTR carriers can present with absent vas deferens without other CF symptoms.",
+    "canonical": "Congenital bilateral absence of the vas deferens (CBAVD) is strongly associated with CFTR mutations on chromosome 7, of which there are many variants (on the order of hundreds to low thousands); both people with full cystic fibrosis and some CFTR carriers can present with absent vas deferens without other CF symptoms, and men with CBAVD have a high probability of being CF carriers and should receive genetic testing and counseling.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW adds the actionable \"genetic testing/counselling\" recommendation; CAND carries chr7/variant-count detail — complementary, one fact."
+  },
+  {
+    "id": "merge:0a553c4f-3f4b-4567-8272-51a07cbc94fc",
+    "prior": "Immune‑privileged sites such as the testis can harbor replication‑competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity.",
+    "canonical": "Immune-privileged sites such as the testis can harbor replication-competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity; low viral loads confined to these sites can be sufficient for sexual transmission even in the absence of symptoms or detectable systemic viremia.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW adds a distinct threshold claim (even LOW viral loads suffice for transmission); CAND has the \"many months\" persistence."
+  },
+  {
+    "id": "merge:ae54cccb-81d8-4e1b-ab55-912374f45bcb",
+    "prior": "Sperm morphology reference cutoffs are partly a constructed standard: strict criteria (Kruger-style interpretation) accept surprisingly low percentages of 'normal' forms (e.g., around 4% normal) as compatible with fertility, reflecting how morphology thresholds were defined rather than an absolute biological truth.",
+    "canonical": "Sperm morphology reference cutoffs are partly a constructed standard developed through cohort-style correlation between sperm shape and IVF outcomes; strict criteria (Kruger-style interpretation) accept a commonly cited threshold of around 4% normal forms as compatible with fertility, though morphology below this has been associated with poorer IVF success in the original work, reflecting how morphology thresholds were defined rather than an absolute biological truth.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Opposing interpretation of the same 4% morphology cutoff: NEW \"below 4% -> poorer IVF\" vs CAND \"4% is a constructed low bar compatible with fertility\"."
+  },
+  {
+    "id": "merge:75af1430-9701-4fbe-9061-dbf5d1612ad1",
+    "prior": "Aromatase inhibitors work by blocking the conversion (aromatization) of testosterone into estradiol; suppressing this pathway in men can lower estradiol and thereby impact mood and body composition.",
+    "canonical": "Aromatase inhibitors work by blocking the conversion (aromatization) of testosterone into estradiol; suppressing this pathway in men can lower estradiol and thereby impact mood and body composition; they are used clinically and by athletes to lower estradiol when suppression of estrogen is desired, but requires clinical oversight rather than casual use.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Distinct aspects: NEW clinical use + need for oversight; CAND the aromatization mechanism + mood/body-composition effects."
+  },
+  {
+    "id": "merge:04ceed8f-2519-4901-b3d6-d4cb67afac26",
+    "prior": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis and may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+    "canonical": "Exogenous testosterone suppresses spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis, typically causing profound impairment—approximately a 95% chance of not producing sperm—while the patient remains on therapy; prolonged use in young men (example cited: ~3 years in the 20s) can result in substantial and potentially permanent reductions in fertility, making it a poor choice for men who want to preserve fertility.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW carries a number CAND lacks: ~95% azoospermia while on exogenous testosterone."
+  },
+  {
+    "id": "merge:19d18b85-c659-4889-a165-9acb7e8363fa",
+    "prior": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis and may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+    "canonical": "Exogenous testosterone (injection, topical, or oral) suppresses spermatogenesis by suppressing hypothalamic-pituitary signals via negative feedback on the hypothalamic-pituitary-gonadal axis; testicular sperm production is usually shut down after a few months and may significantly impair fertility — prolonged use in young men (example: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": false,
+      "dropped": [
+        "commonly"
+      ]
+    },
+    "error": null,
+    "rationale": "NEW carries a timeframe CAND lacks: suppression after a few months of any exogenous testosterone."
+  },
+  {
+    "id": "merge:ef4eb37b-3a80-4b98-9aee-d80f47892172",
+    "prior": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis and may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+    "canonical": "Exogenous testosterone can suppress spermatogenesis and impair endogenous testosterone production via negative feedback on the hypothalamic–pituitary–gonadal axis, producing persistent suppression of testicular function; prolonged use in young men (example cited: ~3 years in the 20s) may significantly impair fertility with substantial and potentially permanent reductions; recovery may be incomplete after decades of use.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW carries a duration CAND lacks: persistent suppression / incomplete recovery after decades of use."
+  },
+  {
+    "id": "merge:a6635a16-a19b-444f-aa19-cba736262d66",
+    "prior": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.",
+    "canonical": "Sustained very-high-intensity exercise (example study: ~2 hours/day of exercise above 80% VO2max for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Same study, NEW vague vs CAND with effect sizes (-40% sperm, -50% T). Clean enrich into one fact carrying the numbers."
+  },
+  {
+    "id": "merge:c76890b1-ec8c-42cf-aa8e-dd323c09b4f3",
+    "prior": "Observational data link competitive cycling with lower sperm counts and abnormal sperm morphology, but these findings are limited by confounding (extreme training loads, possible drug use, lack of appropriate controls).",
+    "canonical": "Observational data linking cycling to lower male fertility is confounded: studies of elite cyclists show low sperm counts and abnormal sperm morphology, which may reflect extreme training loads, possible drug use, and lack of appropriate controls; studies of everyday commuting cyclists show equal or better fertility than average—so cycling per se is not clearly causative without considering healthy-user bias and other confounders.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW adds the commuter-cyclist contrast + healthy-user bias — a distinct data point CAND lacks."
+  },
+  {
+    "id": "merge:3bfb9396-6303-42d7-b361-51302541990e",
+    "prior": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility.",
+    "canonical": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable and potentially reversible cause of male infertility, accounting for roughly 40% of clinically relevant cases; by contrast, hormonal causes account for about 10–15% and genetic causes are less modifiable.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Nested: CAND 'varicocele most common modifiable'; NEW adds the ~40% / 10-15% breakdown. Enrich to keep the proportions."
+  },
+  {
+    "id": "merge:dc9b459c-dc01-4e62-9f64-e8f7ab3a31df",
+    "prior": "Y‑chromosome microdeletions are a relatively common genetic cause of azoospermia or severe oligospermia; deletions typically affect specific regions on the long arm, often produce no outward physical phenotype, and stem from the Y chromosome’s palindromic ('hall of mirrors') structure that predisposes it to self‑recombination errors during meiosis.",
+    "canonical": "Y-chromosome microdeletions, which stem from the Y chromosome's palindromic ('hall of mirrors') structure that predisposes it to self-recombination errors during meiosis, are a relatively common genetic cause of azoospermia or severe oligospermia; the deletions typically affect specific regions on the long arm that contain genes essential for spermatogenesis, are often associated with sperm counts below about 5 million/mL, and often produce no outward physical phenotype.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW carries a threshold CAND lacks: Y-microdeletions often <5 million/mL; CAND has the palindromic-structure mechanism."
+  },
+  {
+    "id": "merge:2c439820-32e5-4927-b9d0-a73fba910c2f",
+    "prior": "A disproportionate fraction of age‑related de novo mutations from sperm affect neurodevelopmental pathways, making advanced paternal age a clear risk factor for neurodevelopmental disorders such as autism.",
+    "canonical": "Increasing paternal age is associated with a higher rate of de novo mutations in offspring, with a disproportionate fraction of these mutations affecting neurodevelopmental pathways, making advanced paternal age a clear risk factor for neurodevelopmental disorders including autism, dyslexia, bipolar disorder, and other neurodevelopmental conditions.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW names additional conditions CAND lacks (dyslexia, bipolar) beyond autism for paternal-age de novo mutations."
+  },
+  {
+    "id": "merge:d9ff7101-cf0f-472e-9f75-5a211fbb5bb3",
+    "prior": "Men who will undergo chemotherapy should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options; fertility‑preservation programs often offer sample storage and financial assistance for limited periods.",
+    "canonical": "Men undergoing gonadotoxic treatments (e.g., chemotherapy) should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options. A substantial fraction may have impaired spermatogenesis afterward; clinicians report roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF. Fertility-preservation programs often offer sample storage and financial assistance for limited periods.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "NEW carries an outcome number CAND lacks: ~half of gonadotoxic-tx patients have impaired sperm, often needing IVF."
+  },
+  {
+    "id": "merge:e866d367-5b19-4f3e-bbf0-965a05b85569",
+    "prior": "Semen quality predicts long-term health: in a large Danish cohort (≈74,000 men followed up to 50 years), men with normal semen quality had about a three-year longer average survival (all-cause) than men with low sperm counts, suggesting semen parameters can serve as a biomarker of overall health.",
+    "canonical": "Semen quality predicts long-term health: in a large Danish cohort (≈74,000 men followed up to 50 years), men with normal semen quality had about a three-year longer average survival (all-cause) than men with low sperm counts, suggesting semen parameters can serve as a biomarker for future morbidity and mortality risk.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": false,
+      "b_preserved": true,
+      "dropped": [
+        "overall health"
+      ]
+    },
+    "error": null,
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried."
+  },
+  {
+    "id": "merge:fc1be7cf-6f70-4066-b582-df5117a901f7",
+    "prior": "The RDA for protein (0.8 g/kg/day) represents the minimum to maintain nitrogen balance, but it is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk—especially in older adults who have anabolic resistance.",
+    "canonical": "The RDA for protein (0.8 g/kg/day), historically derived from nitrogen-balance studies, represents a level compatible with maintaining nitrogen balance but is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk—particularly in older adults with anabolic resistance. This corresponds to approximately 60–65 g/day for an 82 kg person.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Both keep \"nitrogen balance\"; NEW adds an 82 kg -> ~60-65 g/day worked example, CAND adds the older-adult anabolic-resistance population."
+  },
+  {
+    "id": "merge:5083b292-0b7a-4d85-83d5-6bdde1f3ebf3",
+    "prior": "Aim to distribute daily protein intake across 3–5 meals of roughly 30–60 g each to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal.",
+    "canonical": "Distribute daily protein intake across 3–5 meals of roughly 30–60 g each (3–4 times per day, with approximately 30 g as a practical recommendation) to maximize muscle protein synthesis (MPS) rather than concentrating most protein in a single meal.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Different per-meal protein targets (~30 g x3-4 vs 30-60 g x3-5) — a dose difference; keep separate per the fidelity rule."
+  },
+  {
+    "id": "merge:ce027b73-8eac-4b61-b4c8-8e4c1a489d0b",
+    "prior": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—whereas parallel-group designs avoid that specific problem.",
+    "canonical": "Crossover trial designs in nutrition are vulnerable to carryover effects—when an effect of diet A persists into the period when a participant receives diet B. This occurs because interventions can produce durable physiological changes that persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline. Parallel-group designs avoid this specific problem.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried."
+  },
+  {
+    "id": "merge:5de62a2a-be89-4ae3-aa6f-5eb7cdb00768",
+    "prior": "Operational motives—such as throughput and feasibility—are common reasons to choose a crossover design in addition to statistical power; crossovers can improve study throughput when recruitment or per-subject resources are limited.",
+    "canonical": "Crossover designs are chosen for operational motives—such as throughput and feasibility—in addition to statistical power. They increase statistical power through within-subject comparisons (e.g., paired Student t-tests), allowing studies to use far fewer subjects and substantially lower cost. They improve study throughput when recruitment or per-subject resources are limited, and are especially useful when outcome measurement is expensive or logistically constrained (for example, metabolic chamber studies).",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": true,
+      "dropped": []
+    },
+    "error": null,
+    "rationale": "Two distinct rationales for crossover (statistical power vs throughput). Keep separate."
+  },
+  {
+    "id": "merge:1bfb4651-cc60-428b-b62a-7b9d59ae7ec2",
+    "prior": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds.",
+    "canonical": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance. Optimal intake for these goals—including preventing age-related muscle loss—is likely higher than the RDA. Expert-recommended target intakes are approximately 1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to approximately 2.0 g/kg/day. These considerations should be kept distinct from the deficiency-prevention threshold the RDA represents.",
+    "changed": true,
+    "rejected": false,
+    "invented": [],
+    "missing_a": [],
+    "missing_b": [],
+    "judge": {
+      "a_preserved": true,
+      "b_preserved": false,
+      "dropped": [
+        "RDA designed for basic survival (source B specifies 'basic survival'; merged claim uses 'prevent deficiency' instead)"
+      ]
+    },
+    "error": null,
+    "rationale": "Nested: CAND general 'RDA insufficient'; NEW adds doses (1.2-1.6, up to 2.0 g/kg). Canonical dose-specificity — enrich, never fuse-and-average."
+  }
+]

@@ -2,645 +2,783 @@
   {
     "id": "merge:3343462b-3dd6-4305-998f-550a6d6da648",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "ENRICH",
+    "desired_operation": "enrich"
   },
   {
     "id": "merge:fbf2c28f-36cf-4b66-aecf-311cf1552700",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:aa31df33-3e32-4e65-839a-ec1ebfa375ee",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:80cd5c83-e0ae-4abb-a195-6b701fbef090",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:74fb6f18-e43c-4a5d-b26a-411883856c72",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:bc22e39f-442f-445e-a59b-30aab5c280af",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:091e532c-ec5e-4f9b-ace3-a898bb2a270b",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:76f67031-fc45-463b-96d0-6e6367e22613",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:7864e723-ebf9-4753-87b7-b0dd8938815d",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:6f609fa7-b4c5-4f3b-ac27-1bd3f1eb7a23",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:9835ef56-bc5b-4490-a1b0-2779fcb26202",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:e593b93e-75ed-4dbc-bacb-bd5faef5ea1a",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:05a6fa55-6bf1-4294-a70f-e8ad45ab4ef3",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:92714200-3137-4d56-809f-7c1c57c5341c",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:2a322129-93e1-47b1-a861-4ef3df5f81ed",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:b75d7694-665f-4361-9dcd-6b9dc3005dcd",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:11ca63fa-721c-4eb4-9905-67024f8be69f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "SAME core timeline (fetal peak 15–20 wk, mini-puberty ~3 mo); NEW's fetal-concentration estimate (~400–600 vs ~1200 ng/dL) is a non-conflicting aside. BORDERLINE."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Each side adds distinct detail (NEW fetal concentrations; CAND transcription mechanism). A full fact holds both — enrich.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:8c50f1e5-8fc8-4528-a2a0-533432b1d93a",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "ENRICH",
+    "desired_operation": "enrich"
   },
   {
     "id": "merge:f3fdfc43-e39f-438c-bee3-d612de59d7a8",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:d19cf6bd-c688-4173-97cf-57dcca3d8763",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "SAME",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:3deeb4e6-09cc-44bf-acbc-b2308a39aa18",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:760376b4-7e53-47de-97e5-0fe5ea9422ea",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:a9a1a207-0ac6-4aee-a0e4-8af2e53893ea",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:11bf8990-1d21-4135-a184-167728758ce9",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:b08bfbb4-49b3-4c83-be28-e4b4f7a8a48f",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:5d1c6d07-54e6-4066-9faf-f492c39998c2",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:18a11b44-ea7a-46f4-9156-3d9afdd3a90e",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:8f4e764d-7acf-4dd7-8786-e318b9edf979",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW adds the hypertension caveat + \"prostate/heart not increased\" — material safety content CAND lacks.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:bfcc65d3-61ae-42a3-9b4c-bb8f22928eda",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:60eed702-9b77-4702-891d-becd0d2dbea5",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:c2cbaf96-2108-4b6a-9d73-65e8f5c51054",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "NEW is a specific datum (control diet ~28–29% sucrose by calories); CAND is the general principle that CR benefit depends on baseline diet quality. Concrete evidentiary figure vs general principle."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Nested: NEW a concrete datum (~28-29% sucrose control diet), CAND the general principle. Same fact at two resolutions — enrich, don't fuse-and-bury.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:1347752c-d717-4358-96e9-02e8c6d39e10",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW adds a distinct caveat: severe restriction on a nutritious diet can REDUCE longevity via protein/lean-mass loss.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:90b6cc6e-3557-4522-bdcf-a345bb6cf49d",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ba92c9ff-ca5d-475b-bc5d-43304363bde3",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "SAME recommendation (refeed carbs before OGTT in low-carb-adapted people); CAND's \"~3 days\" is added precision, no conflict."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:f1cd64b2-c8ee-48b7-8647-1d99d459a688",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "NEW carries specific effect sizes (hazard ratio ≈5 bottom-25th vs top-2%; ≈2.75 vs 50–75th); CAND is the general \"VO2max is the strongest predictor of mortality\". Specific magnitudes vs general association."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Nested: CAND general 'VO2max strongest predictor'; NEW adds hazard ratios (HR~5, ~2.75). Paul voted SAME, but today's SAME buries the HRs — recorded as enrich.",
+    "paul_vote": "SAME",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:6855f05a-e920-4ba2-af19-ca5680d436d1",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Different interval prescriptions: NEW = 3–4 min intervals gauged by recovery time (<4 min too easy, ~10 min too hard); CAND = 3–8 min near-max at ~1:1 work:rest. Distinct actionable content."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Distinct actionable protocols (3-4 min recovery-gauged vs 3-8 min 1:1). Keep separate; not a fuse.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:75c363aa-6880-4bf6-a0b8-8e54b86a540a",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Different claims: NEW says elite VO2max (80s–90s) is unnecessary; CAND says benefit concentrates in the top ~2.5% (~52 ml/kg/min for a 50-yr-old). A ceiling claim vs a target with a different number."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Distinct claims: a ceiling ('don't need 80-90') vs a target ('top 2.5% ~52'). Keep separate.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:f2a367a4-6555-454a-9495-b8b88813c061",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ae9ef578-2e0c-4c8c-b8d4-281367ab503f",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:3cf0fbe0-49fe-4528-b848-adb297306b3f",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:4f48d38a-142b-484f-bb88-02714e316c74",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "SAME",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:28b80a61-5860-4169-932e-e7fb118d45a1",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "SAME sperm-attrition claim; CAND's ~100 at the tube sits inside NEW's 100–500 range."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "SAME",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ff7c81a9-97ee-4381-8b7c-cff2da8e0611",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "SAME \"sperm is a tiny, highly specialised cell\" claim; matching dimensions (few-µm head, 35-µm tail). NEW's ~300 motility genes is elaboration of the same claim. BORDERLINE."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Nested: NEW richer (~300 motility genes + midpiece) than CAND (dimensions only). Enrich so the extra detail is not buried.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:bae9c3ee-9ff6-4e55-b91a-69dd39a5de09",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Different timeframe for epididymal maturation: NEW ~2 weeks (35-foot tubule); CAND ~10 days with ~1-in-4 transit attrition. Material timeframe/quantity difference."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Conflicting timeframe: ~2 weeks vs ~10 days epididymal maturation. Keep separate; candidate for contradiction review.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:2d90e55e-461e-4305-9975-dd75d9db2345",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:50fe5b5a-2c7d-4fd7-a0ed-f8be68014fc6",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:4904035a-4989-433f-b870-29dc4ebe62d3",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:01eb7cce-7e31-4153-9984-3672baad44d1",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:c5dd94f9-041d-4675-84a7-5623ba8b1440",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW adds the actionable \"genetic testing/counselling\" recommendation; CAND carries chr7/variant-count detail — complementary, one fact.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:0a553c4f-3f4b-4567-8272-51a07cbc94fc",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW adds a distinct threshold claim (even LOW viral loads suffice for transmission); CAND has the \"many months\" persistence.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:b9478a7b-6970-4df6-a00b-9d9a0d7a6223",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ae54cccb-81d8-4e1b-ab55-912374f45bcb",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Opposing interpretation of the same 4% morphology cutoff: NEW \"below 4% -> poorer IVF\" vs CAND \"4% is a constructed low bar compatible with fertility\".",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:36b2ed27-e192-46b0-93d9-7484ee08d2fb",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:5bebc03e-82e0-4110-9bb7-2cc2e7004014",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:75af1430-9701-4fbe-9061-dbf5d1612ad1",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Distinct aspects: NEW clinical use + need for oversight; CAND the aromatization mechanism + mood/body-composition effects.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:3e62626a-05ad-4210-9297-4bece20a0a69",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:62611a9c-86f1-4798-bf9f-31c5fa35e035",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "SAME",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:04ceed8f-2519-4901-b3d6-d4cb67afac26",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW carries a number CAND lacks: ~95% azoospermia while on exogenous testosterone.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:19d18b85-c659-4889-a165-9acb7e8363fa",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW carries a timeframe CAND lacks: suppression after a few months of any exogenous testosterone.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:01c7c180-b455-49e5-89b3-a7e6a3b0f14a",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "SAME",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ef4eb37b-3a80-4b98-9aee-d80f47892172",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW carries a duration CAND lacks: persistent suppression / incomplete recovery after decades of use.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:de16cc8e-895e-472f-a262-ea382a875e57",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:bc8cb67d-aa8d-4b81-af3d-01b3b0d89125",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:281f0b59-b93c-45fc-9d9f-19024b64f274",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:82f5bb38-d953-4bc1-ba88-8f0714352962",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:a6635a16-a19b-444f-aa19-cba736262d66",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "SAME study/claim (extreme exercise ~2 hr/day high intensity suppresses fertility); CAND adds the −40%/−50% effect sizes NEW omits — non-conflicting. BORDERLINE."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Same study, NEW vague vs CAND with effect sizes (-40% sperm, -50% T). Clean enrich into one fact carrying the numbers.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:c76890b1-ec8c-42cf-aa8e-dd323c09b4f3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW adds the commuter-cyclist contrast + healthy-user bias — a distinct data point CAND lacks.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:3bfb9396-6303-42d7-b361-51302541990e",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "NEW gives a quantitative cause breakdown (varicocele ~40%, hormonal ~10–15%, genetics less modifiable); CAND only states varicocele is the most common modifiable cause. NEW bundles specific proportions across multiple causes the general ranking lacks."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Nested: CAND 'varicocele most common modifiable'; NEW adds the ~40% / 10-15% breakdown. Enrich to keep the proportions.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:dc9b459c-dc01-4e62-9f64-e8f7ab3a31df",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW carries a threshold CAND lacks: Y-microdeletions often <5 million/mL; CAND has the palindromic-structure mechanism.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:2c439820-32e5-4927-b9d0-a73fba910c2f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW names additional conditions CAND lacks (dyslexia, bipolar) beyond autism for paternal-age de novo mutations.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:d9ff7101-cf0f-472e-9f75-5a211fbb5bb3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "NEW carries an outcome number CAND lacks: ~half of gonadotoxic-tx patients have impaired sperm, often needing IVF.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:e866d367-5b19-4f3e-bbf0-965a05b85569",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "ENRICH",
+    "desired_operation": "enrich"
   },
   {
     "id": "merge:fc1be7cf-6f70-4066-b582-df5117a901f7",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Both keep \"nitrogen balance\"; NEW adds an 82 kg -> ~60-65 g/day worked example, CAND adds the older-adult anabolic-resistance population.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:5083b292-0b7a-4d85-83d5-6bdde1f3ebf3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Different per-meal protein targets (~30 g x3-4 vs 30-60 g x3-5) — a dose difference; keep separate per the fidelity rule.",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:ba1ba658-0d72-4495-9496-cf307a1e7136",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:0cfc7943-c1ec-45a1-a260-eb16047f97a4",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:ce027b73-8eac-4b61-b4c8-8e4c1a489d0b",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "paul_verdict": "ENRICH",
+    "desired_operation": "enrich"
   },
   {
     "id": "merge:5de62a2a-be89-4ae3-aa6f-5eb7cdb00768",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Different rationale for crossover designs: NEW = statistical power (within-subject t-test, fewer subjects, lower cost); CAND = throughput/feasibility, explicitly framed as separate from the power argument. Two distinct claims."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Two distinct rationales for crossover (statistical power vs throughput). Keep separate.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:88d3c91d-ccc6-4789-ad09-2763ac8ded16",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:1bfb4651-cc60-428b-b62a-7b9d59ae7ec2",
-    "label": "DIFFERENT",
-    "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "NEW carries specific protein doses (1.2–1.6 g/kg minimum, up to ~2.0); CAND is the general principle that optimal protein exceeds the RDA. The canonical dose-specificity split — merging averages away the numbers."
+    "label": "SAME",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": "Nested: CAND general 'RDA insufficient'; NEW adds doses (1.2-1.6, up to 2.0 g/kg). Canonical dose-specificity — enrich, never fuse-and-average.",
+    "paul_vote": "COMBINE",
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:207deb4c-17d6-4351-bb2e-2e472b6a7021",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:866a4db6-4707-4cd8-9a2e-9f6f44a4182f",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:361c6ee5-0165-43b9-8f99-0d8df6009ff1",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:b6999dd7-8b2d-4c9f-bf98-cb525a12c415",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:75bd8707-26c8-4721-af22-685835bbebec",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:9a382d9e-2102-4530-9ba6-3f10b06e3538",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:3db25969-e2fe-42ff-83ad-88367a8e0e20",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:4db4bfec-ac85-45e1-b90c-3fbf0715b40e",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:36eb81df-280b-4bfc-8ec4-32cf0542d38b",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:fab2816f-28ea-4a6b-be42-cdff17d5a1f2",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:d7583238-9929-449d-a08d-5347d8d74b4c",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   },
   {
     "id": "merge:dc32a7c8-2c7f-404b-9718-f930d6b8351b",
     "label": "SAME",
     "confirmed": false,
-    "labeled_by": "claude",
-    "rationale": "Materially identical assertion at the same specificity — same relationship/mechanism/finding, same population and scope; wording differs, substance does not."
+    "labeled_by": "claude-strict",
+    "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
+    "desired_operation": "plain"
   }
 ]
