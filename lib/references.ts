@@ -17,6 +17,7 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { selectAllPaged } from './pagination'
 
 // Bulk tier: scanning every chunk for citation mentions.
 const REFERENCE_MODEL = CLAUDE_BULK_MODEL
@@ -97,13 +98,16 @@ export async function extractReferences(
   const runId = await startOrResumeRun('extract', sourceId, checkpoint?.run_id, { stage: 'references' })
 
   try {
-  const { data: chunks, error } = await db()
-    .from('chunks')
-    .select('id, locator, content')
-    .eq('source_id', sourceId)
-    .order('locator', { ascending: true })
-  if (error) throw new Error(`Failed to load chunks: ${error.message}`)
-  const rows = (chunks ?? []) as { id: string; locator: string; content: string }[]
+  // Paged — a long transcript can exceed the 1000-row server cap on its own,
+  // and a truncated read would silently skip reference extraction for its tail.
+  const rows = await selectAllPaged<{ id: string; locator: string; content: string }>(
+    (from, to) => db()
+      .from('chunks')
+      .select('id, locator, content')
+      .eq('source_id', sourceId)
+      .order('locator', { ascending: true })
+      .range(from, to)
+  )
 
   let cp: ExtractRefCheckpoint = {
     chunk_index: checkpoint?.chunk_index ?? 0,

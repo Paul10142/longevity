@@ -21,6 +21,7 @@ import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
+import { selectAllPaged } from './pagination'
 
 // Judgment tier: deciding whether two claims are the same is the call that
 // determines whether the library deduplicates correctly.
@@ -316,20 +317,15 @@ export async function sweepClaims(
   // 1000 claims and never look at the newest, which are exactly the ones a
   // freshly-consolidated source just created.
   type SweepClaim = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
-  const claims: SweepClaim[] = []
-  const PAGE = 500
-  for (let from = 0; ; from += PAGE) {
-    const { data: page, error } = await db()
+  const claims = await selectAllPaged<SweepClaim>(
+    (from, to) => db()
       .from('claims')
       .select('id, canonical_statement, context_note, embedding')
       .eq('status', 'active')
       .order('created_at', { ascending: true })
-      .range(from, from + PAGE - 1)
-    if (error) throw new Error(`Failed to load claims for sweep: ${error.message}`)
-    const rows = (page ?? []) as SweepClaim[]
-    claims.push(...rows)
-    if (rows.length < PAGE) break
-  }
+      .range(from, to),
+    500 // embeddings are 1536 floats each — keep the page small
+  )
   const merged = new Set<string>()
   let processed = 0
 
@@ -406,13 +402,18 @@ export async function consolidateSource(
   const runId = await startOrResumeRun('consolidate', sourceId, checkpoint?.run_id)
 
   try {
-  // Unconsolidated raw insights for this source (no membership yet), oldest first.
-  const { data: rawRows, error } = await db()
-    .from('raw_insights')
-    .select('*')
-    .eq('source_id', sourceId)
-    .order('created_at', { ascending: true })
-  if (error) throw new Error(`Failed to load raw insights: ${error.message}`)
+  // Unconsolidated raw insights for this source (no membership yet), oldest
+  // first. Paged: a long transcript can exceed the 1000-row server cap on its
+  // own, and a truncated read here would leave that source's tail permanently
+  // unconsolidated — invisibly, since the job would report done.
+  const allRows = await selectAllPaged<RawInsight>(
+    (from, to) => db()
+      .from('raw_insights')
+      .select('*')
+      .eq('source_id', sourceId)
+      .order('created_at', { ascending: true })
+      .range(from, to)
+  )
 
   // Which of THIS source's insights already have a membership, looked up in
   // batches. A single unpaginated `from('claim_members').select(...)` is capped
@@ -421,7 +422,6 @@ export async function consolidateSource(
   // pending, were re-adjudicated (a judgment call each), and could be attached
   // to a SECOND claim — one insight's provenance split across two claims, both
   // counting it. Scoping to this source also keeps the lookup O(source).
-  const allRows = (rawRows ?? []) as RawInsight[]
   const memberSet = new Set<string>()
   for (let i = 0; i < allRows.length; i += 200) {
     const ids = allRows.slice(i, i + 200).map(r => r.id)

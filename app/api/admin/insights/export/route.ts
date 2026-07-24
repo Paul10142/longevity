@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { selectAllPaged } from '@/lib/pagination'
 
 /**
  * Export raw insights with their source context for offline review.
@@ -25,31 +26,37 @@ export async function GET(request: NextRequest) {
     const limit = Math.min(parseInt(searchParams.get('limit') || '1000', 10) || 1000, 10000)
     const includeChunks = searchParams.get('includeChunks') === 'true'
 
-    let query = supabaseAdmin
-      .from('raw_insights')
-      .select(`
-        id, source_id, chunk_id, locator, start_ms, end_ms,
-        statement, context_note, direct_quote,
-        evidence_type, confidence, importance, actionability,
-        primary_audience, insight_type, qualifiers, created_at,
-        sources ( id, title, type, authors, date )
-      `)
-      .order('created_at', { ascending: false })
-      .limit(limit)
-
-    if (sourceId) query = query.eq('source_id', sourceId)
-
-    const { data: rows, error } = await query
-    if (error) throw new Error(`Failed to fetch raw insights: ${error.message}`)
-    const insights = rows || []
+    // Paged: `?limit=` advertises up to 10000, but PostgREST caps any single
+    // response at 1000 rows — so the old single query silently handed back 1000
+    // and called it a complete export. Page until the requested limit is met.
+    const insights = await selectAllPaged<any>(
+      (from, to) => {
+        let query = supabaseAdmin!
+          .from('raw_insights')
+          .select(`
+            id, source_id, chunk_id, locator, start_ms, end_ms,
+            statement, context_note, direct_quote,
+            evidence_type, confidence, importance, actionability,
+            primary_audience, insight_type, qualifiers, created_at,
+            sources ( id, title, type, authors, date )
+          `)
+          .order('created_at', { ascending: false })
+          .range(from, Math.min(to, limit - 1))
+        if (sourceId) query = query.eq('source_id', sourceId)
+        return query as never
+      }
+    )
 
     // Claim membership: which canonical claim each raw insight rolled up into.
+    // Batched by id — an `.in()` over more than ~1000 insights would hit the
+    // same cap on the way back.
     const claimByInsightId = new Map<string, { id: string; statement: string; sourceCount: number }>()
-    if (insights.length > 0) {
+    for (let i = 0; i < insights.length; i += 500) {
+      const batch = insights.slice(i, i + 500).map((x: any) => x.id)
       const { data: members } = await supabaseAdmin
         .from('claim_members')
         .select('raw_insight_id, claims ( id, canonical_statement, source_count )')
-        .in('raw_insight_id', insights.map((i: any) => i.id))
+        .in('raw_insight_id', batch)
       members?.forEach((m: any) => {
         if (m.claims?.id) {
           claimByInsightId.set(m.raw_insight_id, {

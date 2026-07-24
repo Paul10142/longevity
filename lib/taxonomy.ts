@@ -28,6 +28,7 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding, generateEmbeddingsBatch } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { selectAllPaged } from './pagination'
 
 // Judgment tier: topic placement shapes the whole taxonomy, so a bad call here
 // compounds across every claim filed under it.
@@ -473,15 +474,23 @@ export async function discoverTopics(
       .map(t => `- ${t.name}${t.parent_id ? ` (under ${nameById.get(t.parent_id) ?? '?'})` : ''} — ${t.claim_count} claims`)
       .join('\n')
 
-    // Pool 1: claims with no topic at all.
-    const { data: linkRows } = await db().from('claim_topics').select('claim_id').range(0, 49999)
-    const linked = new Set((linkRows ?? []).map((l: { claim_id: string }) => l.claim_id))
-    const { data: allClaims } = await db()
-      .from('claims')
-      .select('id, canonical_statement')
-      .eq('status', 'active')
-      .range(0, 49999)
-    const orphans = ((allClaims ?? []) as { id: string; canonical_statement: string }[])
+    // Pool 1: claims with no topic at all. Both reads must be COMPLETE — this is
+    // a set difference, so a truncated left side invents orphans that are
+    // actually tagged. `.range(0, 49999)` does NOT lift the 1000-row server cap
+    // (it silently returns 1000), which is why these page properly.
+    const linkRows = await selectAllPaged<{ claim_id: string }>(
+      (from, to) => db().from('claim_topics').select('claim_id').order('claim_id', { ascending: true }).range(from, to)
+    )
+    const linked = new Set(linkRows.map(l => l.claim_id))
+    const allClaims = await selectAllPaged<{ id: string; canonical_statement: string }>(
+      (from, to) => db()
+        .from('claims')
+        .select('id, canonical_statement')
+        .eq('status', 'active')
+        .order('created_at', { ascending: true })
+        .range(from, to)
+    )
+    const orphans = allClaims
       .filter(c => !linked.has(c.id))
       .slice(0, DISCOVERY_SAMPLE)
 

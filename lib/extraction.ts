@@ -14,6 +14,7 @@ import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
 import { stripNonContent } from './transcriptHygiene'
+import { selectAllPaged } from './pagination'
 import {
   normalizeYouTubeSegments,
   buildTranscriptFromSegments,
@@ -507,12 +508,19 @@ export async function extractSource(
       chunkIdByIndex.set(idx, c.id)
     }
   } else {
-    const { data: chunkRows } = await db()
-      .from('chunks')
-      .select('id, locator, content, start_ms, end_ms')
-      .eq('source_id', sourceId)
+    // Paged: a long transcript can exceed the 1000-row server cap on its own,
+    // and a truncated read on RESUME would silently shorten the source — the
+    // job would then report `total_chunks` lower than reality and finish early.
+    const chunkRows = await selectAllPaged<{ id: string; locator: string; content: string; start_ms: number | null; end_ms: number | null }>(
+      (from, to) => db()
+        .from('chunks')
+        .select('id, locator, content, start_ms, end_ms')
+        .eq('source_id', sourceId)
+        .order('locator', { ascending: true })
+        .range(from, to)
+    )
     const byIdx = new Map<number, { id: string; content: string; start_ms: number | null; end_ms: number | null }>()
-    for (const c of chunkRows ?? []) {
+    for (const c of chunkRows) {
       const idx = parseInt(c.locator.replace('seg-', ''), 10) - 1
       chunkIdByIndex.set(idx, c.id)
       byIdx.set(idx, c as { id: string; content: string; start_ms: number | null; end_ms: number | null })

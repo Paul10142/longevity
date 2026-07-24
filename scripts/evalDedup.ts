@@ -117,15 +117,26 @@ async function extract(force = false): Promise<void> {
   if (!supabaseAdmin) throw new Error('Supabase not configured — need .env.local')
   const db = supabaseAdmin
 
-  // Auto-merged members + the claim they were folded into.
-  const { data: merges, error } = await db
-    .from('claim_members')
-    .select('raw_insight_id, claim_id, match_confidence, matched_by, raw_insights(statement, direct_quote), claims(canonical_statement, context_note)')
-    .eq('matched_by', 'auto')
-  if (error) throw new Error(`load merges: ${error.message}`)
+  // Auto-merged members + the claim they were folded into. Paged — the whole
+  // point is to sample EVERY merge the consolidator made, and the 1000-row
+  // server cap would quietly cut the eval off at the oldest thousand.
+  const { selectAllPaged } = await import('../lib/pagination')
+  type MergeRow = {
+    raw_insight_id: string; claim_id: string; match_confidence: number | null
+    raw_insights: { statement: string; direct_quote: string | null } | null
+    claims: { canonical_statement: string; context_note: string | null } | null
+  }
+  const merges = await selectAllPaged<MergeRow>(
+    (from, to) => db
+      .from('claim_members')
+      .select('raw_insight_id, claim_id, match_confidence, matched_by, raw_insights(statement, direct_quote), claims(canonical_statement, context_note)')
+      .eq('matched_by', 'auto')
+      .order('created_at', { ascending: true })
+      .range(from, to) as never
+  )
 
   // One representative seed quote per claim (the member the claim was seeded from).
-  const claimIds = Array.from(new Set((merges ?? []).map((m: { claim_id: string }) => m.claim_id)))
+  const claimIds = Array.from(new Set(merges.map(m => m.claim_id)))
   const seedQuoteByClaim = new Map<string, string | null>()
   for (let i = 0; i < claimIds.length; i += 200) {
     const batch = claimIds.slice(i, i + 200)
@@ -139,11 +150,7 @@ async function extract(force = false): Promise<void> {
     }
   }
 
-  const pairs: EvalPair[] = (merges ?? []).map((m: {
-    raw_insight_id: string; claim_id: string; match_confidence: number | null
-    raw_insights: { statement: string; direct_quote: string | null } | null
-    claims: { canonical_statement: string; context_note: string | null } | null
-  }) => ({
+  const pairs: EvalPair[] = merges.map(m => ({
     id: `merge:${m.raw_insight_id}`,
     kind: 'merge',
     new_statement: m.raw_insights?.statement ?? '',

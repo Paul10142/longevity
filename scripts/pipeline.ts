@@ -36,6 +36,7 @@ async function main() {
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
+  const { selectAllPaged } = await import('../lib/pagination')
 
   if (!supabaseAdmin) {
     console.error('Supabase not configured — check NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SECRET_KEY in .env.local')
@@ -75,26 +76,33 @@ async function main() {
     const WINDOW_MIN = 15 // throughput window; long enough to survive one slow chunk
     const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString()
 
-    const [srcRes, chunkRes, insightRes, memberRes, jobRes] = await Promise.all([
-      db.from('sources').select('id, title, processing_status').order('created_at'),
-      db.from('chunks').select('source_id').range(0, 49_999),
-      db.from('raw_insights').select('id, source_id, created_at').range(0, 49_999),
-      db.from('claim_members').select('raw_insight_id, created_at').range(0, 49_999),
-      db.from('jobs').select('type, status, payload, progress').in('status', ['queued', 'running']),
-    ])
-
     type Src = { id: string; title: string; processing_status: string | null }
     type Insight = { id: string; source_id: string; created_at: string }
     type Member = { raw_insight_id: string; created_at: string }
     type QJob = { type: string; status: string; payload: Record<string, unknown>; progress: Record<string, unknown> }
 
+    // Every one of these grows with the corpus and is used for counting, so all
+    // of them page. `.range(0, 49_999)` does NOT lift the 1000-row server cap —
+    // it silently returns 1000, which would under-report the run's own progress.
+    const [srcRes, chunks, insights, members, jobRes] = await Promise.all([
+      db.from('sources').select('id, title, processing_status').order('created_at'),
+      selectAllPaged<{ source_id: string }>(
+        (f, t) => db.from('chunks').select('source_id').order('id', { ascending: true }).range(f, t)
+      ),
+      selectAllPaged<Insight>(
+        (f, t) => db.from('raw_insights').select('id, source_id, created_at').order('created_at', { ascending: true }).range(f, t)
+      ),
+      selectAllPaged<Member>(
+        (f, t) => db.from('claim_members').select('raw_insight_id, created_at').order('created_at', { ascending: true }).range(f, t)
+      ),
+      db.from('jobs').select('type, status, payload, progress').in('status', ['queued', 'running']),
+    ])
+
     const sources = (srcRes.data ?? []) as Src[]
-    const insights = (insightRes.data ?? []) as Insight[]
-    const members = (memberRes.data ?? []) as Member[]
     const jobs = (jobRes.data ?? []) as QJob[]
 
     const chunkTotal = new Map<string, number>()
-    for (const c of (chunkRes.data ?? []) as { source_id: string }[]) {
+    for (const c of chunks) {
       chunkTotal.set(c.source_id, (chunkTotal.get(c.source_id) ?? 0) + 1)
     }
     const sourceOfInsight = new Map(insights.map(i => [i.id, i.source_id]))
