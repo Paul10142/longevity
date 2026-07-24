@@ -79,11 +79,47 @@ export type ReferenceMention = {
 }
 
 // Canonical deduplicated knowledge unit; the public-facing atom.
+/**
+ * Claim lifecycle. The v4 gate (spec §7.1) adds `approved | flagged | archived |
+ * merged` alongside the pre-v4 values; migration 013 widens the CHECK but
+ * migrates no rows, so both vocabularies are live until the switchover. Only
+ * `approved` (eventually) is visible to synthesis — a `flagged` claim is
+ * quarantined and invisible until Paul resolves it.
+ */
+export type ClaimStatus =
+  | 'active' | 'merged_into' | 'retired'          // pre-v4, still what the corpus uses
+  | 'approved' | 'flagged' | 'archived' | 'merged' // v4 claim gate
+
+/** The four narrow auto-flag rules (spec §7.2). */
+export type ClaimFlagRule = 'standalone' | 'merge_fidelity' | 'contradiction' | 'orphan_topic'
+
+export type ClaimFlag = {
+  id: string
+  claim_id: string
+  rule: ClaimFlagRule
+  detail: string | null
+  evidence: Record<string, unknown> | null
+  created_at: string
+  resolved_at: string | null
+  resolution: 'approved' | 'edited' | 'split' | 'narrowed' | 'archived' | 'false_positive' | null
+}
+
+/** Claim-to-claim relationship. Stored with the smaller uuid first, since the
+ *  relationship is symmetric and two rows would double-count it (spec §6, §9). */
+export type ClaimLink = {
+  claim_id: string
+  related_claim_id: string
+  kind: 'near_duplicate' | 'contradicts' | 'refines'
+  similarity: number | null
+  note: string | null
+  created_at: string
+}
+
 export type Claim = {
   id: string
   canonical_statement: string
   context_note: string | null
-  status: 'active' | 'merged_into' | 'retired'
+  status: ClaimStatus
   merged_into_id: string | null
   best_evidence_type: EvidenceType | null
   max_importance: 1 | 2 | 3 | null
