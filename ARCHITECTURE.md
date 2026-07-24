@@ -108,7 +108,7 @@ running jobs with old `locked_at` heartbeats get reclaimed).
 
 | Stage | Job type | What it does |
 |---|---|---|
-| Ingest | — (API route) | Create source + transcript (paste / YouTube / file), enqueue extract |
+| Ingest | — (API route, or `pipeline ingest`) | Create source + transcript (paste / YouTube / file). The CLI path (`lib/sourceDiscovery.ts`) discovers from the channel Atom feed + site RSS and stores **timed** captions in `sources.timed_transcript`, which is what lets an Evidence citation deep-link to the moment. It deliberately does **not** enqueue extract — breadth ingest is Phase 4 and gated on the cost checkpoint |
 | Extract | `extract_source` | Chunk transcript, per-chunk LLM extraction → `raw_insights` + embeddings (batched, inline). Checkpoint = chunk index |
 | Consolidate | `consolidate_source` | Per raw insight: ANN over `claims.embedding` (`match_claims` RPC) → LLM adjudication SAME/DIFFERENT/UNSURE → attach member, create claim, or create provisionally + queue `merge_reviews` |
 | Sweep | `claim_sweep` | Periodic claim-vs-claim ANN pass to catch accumulated near-duplicates |
@@ -253,15 +253,44 @@ which `app/api/worker/tick/route.ts` already assumes):
 - ANN similarity floor for candidates: **0.80** (below → automatic new claim).
 - Adjudicator (**Opus 4.8**, `CLAUDE_JUDGMENT_MODEL` — `lib/consolidation.ts`;
   the earlier "gpt-5-mini" note was stale) verdict SAME with confidence ≥ **0.85**
-  → auto-attach. **v4 note:** the adjudication prompt currently treats "different
-  level of detail" as SAME (`lib/consolidation.ts:56`), which causes the
-  nuance-destroying merge the v4 spec forbids — see
-  [`docs/v4-build-risks-and-cost.md`](docs/v4-build-risks-and-cost.md) §A2. The
-  prompt must be retuned so a material dose/population/threshold difference →
-  DIFFERENT.
+  → auto-attach.
+- **The prompt is `ADJUDICATION_V3` — enrich-merge (live since 2026-07-24).**
+  ⚠ The note that previously stood here — "retune so a material
+  dose/population/threshold difference → DIFFERENT" — was **reversed by Paul on
+  2026-07-23** after he ruled the full 92-pair gold set. He merged all 92 and kept
+  none separate, so the strict-split prompt (v2) was withdrawn: it split pairs he
+  wanted merged and scored 59.8% recall. The failure was never over-merging, it
+  was **lossy** merging — `attachMember` keeps the seed's canonical and buries the
+  more precise member. Hence V3: merge liberally (same fact at any level of detail
+  → SAME), flag `enrich` when the new member carries detail the canonical lacks,
+  and keep separate ONLY on genuine contradiction. Do not re-tighten this without
+  re-reading `BACKLOG.md` "Dedup calibration".
+- **Enrich execution is OFF by default** (`ENRICH_MERGE=1` to enable). V3 flags
+  enrich on 64% of merges against Paul's 33%, so it over-flags relative to his
+  standard — settle that before switching it on, since enrich rewrites canonicals.
+- **Near-duplicates are linked, not lost.** A DIFFERENT verdict on an ANN-paired
+  candidate writes a `claim_links` row (`near_duplicate`). Under V3 a split means
+  a genuine material difference, so the pair are variants of one idea — and the
+  §9 novelty metric can only distinguish "refinement" from "novel" if that link
+  exists.
 - UNSURE / low-confidence SAME → create claim provisionally + `merge_reviews`
   row. Accept in the review UI collapses the two claims; reject keeps both.
   Nothing blocks the pipeline on human review.
+
+### Reading the corpus at scale — the 1000-row rule
+
+**PostgREST caps every response at 1000 rows (`db-max-rows`), and asking for a
+larger range does NOT lift it** — `.range(0, 49_999)` returns exactly 1000, with
+no error and no truncation flag. Any read whose result grows with the corpus must
+therefore go through `selectAllPaged` (`lib/pagination.ts`), which walks `.range()`
+until a short page.
+
+This is not hypothetical: it silently broke consolidation twice on 2026-07-24.
+The membership set truncated at 1023 rows, so already-consolidated insights looked
+pending and were re-adjudicated — and a re-judgement landing on a different claim
+would have put one insight in two claims. It matters most where a full read feeds
+a **set difference** (which claims lack a topic? which insights lack a member?),
+because a truncated side does not merely lose rows, it invents conclusions.
 
 ## Taxonomy durability & maintenance
 
