@@ -13,10 +13,13 @@
  *   extract                 Pull the consolidator's actual merge decisions from
  *                           the DB into eval/dedup-eval-pairs.json. Needs
  *                           .env.local (Supabase). This is the only DB command.
- *   run <v1|v2> [--limit N] Re-adjudicate every pair with the chosen prompt via
+ *   run <v1|v2|v3> [--limit N]
+ *                           Re-adjudicate every pair with the chosen prompt via
  *                           the LLM, writing eval/dedup-run-<v>.json. Needs the
  *                           LLM backend (LLM_BACKEND=claude-code uses the local
- *                           `claude` CLI and no API key). No DB.
+ *                           `claude` CLI and no API key). No DB. **v3 is the
+ *                           prompt the live consolidator runs** — score it to
+ *                           watch the engine that is actually filling the corpus.
  *   score                   Join the runs + gold set and print the metrics:
  *                           false-merge rate (baseline v1 vs fixed v2), recall,
  *                           judge-vs-human agreement (κ), and the auto-accept
@@ -31,14 +34,17 @@
 import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'node:fs'
 import { dirname } from 'node:path'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from '../lib/llm'
-import { ADJUDICATION_V1, ADJUDICATION_V2 } from '../lib/adjudicationPrompts'
+import { ADJUDICATION_V1, ADJUDICATION_V2, ADJUDICATION_V3 } from '../lib/adjudicationPrompts'
 
 const EVAL_DIR = 'eval'
 const PAIRS_FILE = `${EVAL_DIR}/dedup-eval-pairs.json`
 const GOLDSET_FILE = `${EVAL_DIR}/dedup-goldset.json`
 const runFile = (v: PromptVersion) => `${EVAL_DIR}/dedup-run-${v}.json`
 
-type PromptVersion = 'v1' | 'v2'
+// v3 = ADJUDICATION_V3, the enrich-merge prompt the live consolidator uses
+// (lib/consolidation.ts). Keeping it measurable on the same gold set is the only
+// way the corpus-wide re-consolidation can be watched rather than assumed.
+type PromptVersion = 'v1' | 'v2' | 'v3'
 type Verdict = 'SAME' | 'DIFFERENT' | 'UNSURE'
 type Label = 'SAME' | 'DIFFERENT'
 
@@ -73,6 +79,9 @@ type RunResult = {
   candidate_index: number | null
   confidence: number
   reasoning: string
+  // v3 only: the merged claim's canonical must be rewritten to carry this
+  // insight's extra detail. Absent for v1/v2, which have no such flag.
+  enrich?: boolean
 }
 
 // ── io helpers ──────────────────────────────────────────────
@@ -90,7 +99,19 @@ function writeJson(path: string, data: unknown): void {
  *  judged SAME as its claim's seed. We emit each as a pair to be re-judged and
  *  labelled. (DIFFERENT decisions aren't persisted, so recall pairs are
  *  reconstructed by ANN over the seeds — a follow-up; merges are the headline.) */
-async function extract(): Promise<void> {
+async function extract(force = false): Promise<void> {
+  // Pair ids are `merge:<raw_insight_id>`, and the gold labels key off them. A
+  // re-extraction of a source mints new insight ids, so re-running this against
+  // the rebuilt corpus writes a pairs file that no gold label matches — silently
+  // discarding Paul's 92 rulings as the benchmark. The existing pairs file is
+  // self-contained (it embeds both statements), so it stays runnable after the
+  // DB rows are gone: keep it unless a new labelling pass is genuinely intended.
+  if (!force && existsSync(PAIRS_FILE) && existsSync(GOLDSET_FILE)) {
+    throw new Error(
+      `${PAIRS_FILE} already exists alongside a gold set — overwriting it would orphan the labels in ${GOLDSET_FILE}.\n` +
+      `Pass --force only when starting a deliberate new labelling pass (and re-label afterwards).`
+    )
+  }
   process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   if (!supabaseAdmin) throw new Error('Supabase not configured — need .env.local')
@@ -142,7 +163,7 @@ async function extract(): Promise<void> {
 }
 
 // ── run (LLM) ───────────────────────────────────────────────
-const PROMPT: Record<PromptVersion, string> = { v1: ADJUDICATION_V1, v2: ADJUDICATION_V2 }
+const PROMPT: Record<PromptVersion, string> = { v1: ADJUDICATION_V1, v2: ADJUDICATION_V2, v3: ADJUDICATION_V3 }
 
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
 /** A result is a genuine adjudication (not a swallowed transient failure). The
@@ -160,7 +181,7 @@ async function adjudicatePair(promptText: string, pair: EvalPair, retries = 5): 
   for (let attempt = 0; attempt <= retries; attempt++) {
     if (attempt > 0) await sleep(Math.min(2000 * 2 ** (attempt - 1), 30_000)) // 2s,4s,8s,16s,30s
     try {
-      const parsed = await claudeJson<{ verdict?: string; candidate_index?: number | null; confidence?: number; reasoning?: string }>(
+      const parsed = await claudeJson<{ verdict?: string; candidate_index?: number | null; confidence?: number; reasoning?: string; enrich?: boolean }>(
         promptText,
         `NEW insight:\n${pair.new_statement}\n\nEXISTING claims:\n${candidate}`,
         2000,
@@ -173,6 +194,8 @@ async function adjudicatePair(promptText: string, pair: EvalPair, retries = 5): 
         candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,
         confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
         reasoning: parsed.reasoning ?? '',
+        // Mirrors lib/consolidation.ts: only honoured on SAME, only when set.
+        enrich: verdict === 'SAME' && parsed.enrich === true,
       }
     } catch (err) {
       lastErr = err
@@ -257,6 +280,16 @@ function scorePrompt(label: string, results: RunResult[], gold: Map<string, Gold
   console.log(`  recall on merges:   ${pct(recall)}  (${caughtMerges.length}/${goldSameRows.length} true-SAME pairs merged)`)
   console.log(`  judge↔human κ:      ${Number.isFinite(kappa) ? kappa.toFixed(2) : 'n/a'}`)
 
+  // v3 only: how often the merge is flagged lossy (canonical must be rewritten
+  // to carry the new member's detail). Paul ruled 30/92 of the gold set enrich,
+  // so a v3 rate far below that means enrich-merge is under-firing and detail
+  // is still being buried by attachMember.
+  const enrichable = mergesMade.filter(x => x.r.enrich !== undefined)
+  if (enrichable.length) {
+    const flagged = enrichable.filter(x => x.r.enrich).length
+    console.log(`  enrich flagged:     ${flagged}/${mergesMade.length} merges  (${pct(flagged / mergesMade.length)})`)
+  }
+
   // Auto-accept threshold: the confidence above which SAME verdicts are never
   // wrong on this gold set — the band the engine can merge unattended (§C3).
   const sameByConf = mergesMade.map(x => ({ conf: x.r.confidence, wrong: !goldSame(x.g) })).sort((a, b) => b.conf - a.conf)
@@ -287,8 +320,10 @@ function score(): void {
 
   const v1 = existsSync(runFile('v1')) ? readJson<RunResult[]>(runFile('v1')) : null
   const v2 = existsSync(runFile('v2')) ? readJson<RunResult[]>(runFile('v2')) : null
-  if (v1) scorePrompt('v1 — current (baseline)', v1, gold)
-  if (v2) scorePrompt('v2 — fixed (§A2)', v2, gold)
+  const v3 = existsSync(runFile('v3')) ? readJson<RunResult[]>(runFile('v3')) : null
+  if (v1) scorePrompt('v1 — original (baseline)', v1, gold)
+  if (v2) scorePrompt('v2 — strict-split (withdrawn)', v2, gold)
+  if (v3) scorePrompt('v3 — enrich-merge (LIVE ENGINE)', v3, gold)
 
   // Before/after flips: the merges the fix splits (v1 SAME → v2 DIFFERENT).
   if (v1 && v2) {
@@ -308,14 +343,14 @@ async function main() {
   const [cmd, arg, flag, flagVal] = process.argv.slice(2)
   const limit = flag === '--limit' ? Number(flagVal) : undefined
   switch (cmd) {
-    case 'extract': await extract(); return
+    case 'extract': await extract(arg === '--force'); return
     case 'run': {
-      if (arg !== 'v1' && arg !== 'v2') throw new Error('usage: run <v1|v2> [--limit N]')
+      if (arg !== 'v1' && arg !== 'v2' && arg !== 'v3') throw new Error('usage: run <v1|v2|v3> [--limit N]')
       await run(arg, limit); return
     }
     case 'score': score(); return
     default:
-      console.log('usage: npx tsx scripts/evalDedup.ts <extract|run v1|run v2|score>')
+      console.log('usage: npx tsx scripts/evalDedup.ts <extract|run v1|run v2|run v3|score>')
       process.exit(1)
   }
 }

@@ -311,14 +311,25 @@ export async function sweepClaims(
   const started = Date.now()
   const SWEEP_THRESHOLD = 0.86 // stricter than ingestion — these are claim-vs-claim
 
-  const { data: claimsData, error } = await db()
-    .from('claims')
-    .select('id, canonical_statement, context_note, embedding')
-    .eq('status', 'active')
-    .order('created_at', { ascending: true })
-  if (error) throw new Error(`Failed to load claims for sweep: ${error.message}`)
-
-  const claims = (claimsData ?? []) as { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }[]
+  // Paged: PostgREST caps an unpaginated select at 1000 rows, and an active
+  // corpus passes that quickly — an unpaged read would sweep only the oldest
+  // 1000 claims and never look at the newest, which are exactly the ones a
+  // freshly-consolidated source just created.
+  type SweepClaim = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
+  const claims: SweepClaim[] = []
+  const PAGE = 500
+  for (let from = 0; ; from += PAGE) {
+    const { data: page, error } = await db()
+      .from('claims')
+      .select('id, canonical_statement, context_note, embedding')
+      .eq('status', 'active')
+      .order('created_at', { ascending: true })
+      .range(from, from + PAGE - 1)
+    if (error) throw new Error(`Failed to load claims for sweep: ${error.message}`)
+    const rows = (page ?? []) as SweepClaim[]
+    claims.push(...rows)
+    if (rows.length < PAGE) break
+  }
   const merged = new Set<string>()
   let processed = 0
 
@@ -403,17 +414,31 @@ export async function consolidateSource(
     .order('created_at', { ascending: true })
   if (error) throw new Error(`Failed to load raw insights: ${error.message}`)
 
-  const { data: existingMembers } = await db()
-    .from('claim_members')
-    .select('raw_insight_id')
-  const memberSet = new Set((existingMembers ?? []).map((m: { raw_insight_id: string }) => m.raw_insight_id))
+  // Which of THIS source's insights already have a membership, looked up in
+  // batches. A single unpaginated `from('claim_members').select(...)` is capped
+  // by PostgREST at 1000 rows (db-max-rows), so once the corpus passed 1000
+  // memberships the set silently lost its tail: consolidated insights looked
+  // pending, were re-adjudicated (a judgment call each), and could be attached
+  // to a SECOND claim — one insight's provenance split across two claims, both
+  // counting it. Scoping to this source also keeps the lookup O(source).
+  const allRows = (rawRows ?? []) as RawInsight[]
+  const memberSet = new Set<string>()
+  for (let i = 0; i < allRows.length; i += 200) {
+    const ids = allRows.slice(i, i + 200).map(r => r.id)
+    const { data: memberRows, error: memErr } = await db()
+      .from('claim_members')
+      .select('raw_insight_id')
+      .in('raw_insight_id', ids)
+    if (memErr) throw new Error(`Failed to load existing memberships: ${memErr.message}`)
+    for (const m of (memberRows ?? []) as { raw_insight_id: string }[]) memberSet.add(m.raw_insight_id)
+  }
 
   // `pending` is *already* filtered to raw insights without a membership, so
   // it naturally shrinks across resumes. We therefore always iterate from 0 —
   // using the checkpoint index here would skip the tail on resume (the list is
   // shorter than it was when the checkpoint was written). `processed` is a
   // cumulative counter for progress display only.
-  const pending = (rawRows ?? []).filter((r: RawInsight) => !memberSet.has(r.id)) as RawInsight[]
+  const pending = allRows.filter(r => !memberSet.has(r.id))
 
   let cp: ConsolidateCheckpoint = {
     processed: checkpoint?.processed ?? 0,

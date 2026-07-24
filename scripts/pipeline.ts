@@ -73,6 +73,20 @@ async function main() {
         .delete()
         .eq('source_id', arg)
       if (error) throw new Error(`Failed to clear prior insights: ${error.message}`)
+      // `claim_members.raw_insight_id` is ON DELETE CASCADE, so that delete just
+      // stripped this source's members off every claim they belonged to. Nothing
+      // recomputes those claims: a fully-emptied one stays `active` with a stale
+      // member_count and remains a live `match_claims` candidate, so the
+      // re-extracted insights would merge back into a ghost claim whose canonical
+      // came from the discarded run — and `topic_claims` would keep serving it.
+      // A partly-emptied one stays correctly active but over-reports its
+      // corroboration. Reconcile both (migration 012); nothing is deleted.
+      const { data: reconciled, error: reconcileErr } = await db.rpc('reconcile_claim_membership')
+      if (reconcileErr) throw new Error(`Failed to reconcile claim membership: ${reconcileErr.message}`)
+      const { recounted = 0, retired = 0 } = (reconciled ?? {}) as { recounted?: number; retired?: number }
+      if (recounted || retired) {
+        console.log(`Reconciled claims after the delete: ${retired} retired (no members left), ${recounted} recounted.`)
+      }
       await db.from('sources').update({ processing_status: 'pending', processing_error: null }).eq('id', arg)
       await enqueueJob('extract_source', { source_id: arg })
       console.log(`Queued extract_source for ${arg}. Run: npm run pipeline -- work`)

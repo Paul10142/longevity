@@ -78,8 +78,75 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
   `tracks[0].transcript`, not `videoData.transcript`). Migrations **009 (enriched_at)
   and 010 (timed_transcript) APPLIED**. Stuck source `d32c0fc8` reset to `pending`.
 
-**Corpus is MIXED right now:** the YouTube source is on V3; the 4 manual sources
-still carry v1-era claims. Make it uniform before Phase 2.
+### ⏱ PHASE 1 EXECUTION LOG — 2026-07-24 (supersedes the "NEXT STEPS 1" plan below)
+
+**Step (a) — YouTube source: DONE.** `e24fe6c5` is **110/110 consolidated,
+110/110 timestamped, 0 untagged**. Three defects were found and fixed on the way
+(all in the commits after `41e529d`):
+
+- **The 1000-row cap — the one that matters.** `consolidateSource` built its
+  "already a member" set with an unpaginated
+  `from('claim_members').select('raw_insight_id')`. **PostgREST caps that at 1000
+  rows** (`db-max-rows`) and the table held 1023, so the tail was invisible:
+  consolidated insights looked pending and were re-adjudicated (one judgment call
+  each — the job reported `total: 267` against 35 genuinely-pending insights), and
+  because `attachMember`'s upsert only no-ops on the *same* claim, a re-judgement
+  landing on a different claim would have made one insight a member of **two**
+  claims — provenance split, both counting it. Verified 0 dual memberships, so
+  nothing was corrupted. Fixed: membership is looked up per-source in batches of
+  200. **`sweepClaims` had the identical bug** (it loads all active claims
+  unpaginated) — now paged; at 1000+ active claims it would have swept only the
+  oldest and never the newest, i.e. exactly what a fresh source just created.
+- **Cascade orphans.** `claim_members.raw_insight_id` is `ON DELETE CASCADE`, so
+  `pipeline extract` (which deletes the source's `raw_insights` first) silently
+  strips members off every claim seeded from it. Nothing recomputed them: **129
+  such claims were already live** from the earlier YouTube re-extractions —
+  `status='active'`, `member_count: 1`, still ANN candidates, so V3 insights were
+  merging back into ghosts of a *discarded* extraction. Migration **012**
+  (`reconcile_claim_membership()`, supersedes 011) recounts partly-emptied claims
+  and retires fully-emptied ones; `scripts/pipeline.ts extract` now calls it right
+  after the delete. Retire, never delete — ids survive, so published articles
+  still resolve, and it is reversible.
+- **The harness could not measure the live engine.** `evalDedup` only knew
+  `v1`/`v2`; the consolidator runs **V3**. Added `run v3` (+ the `enrich` flag and
+  an enrich-rate line in `score`). Also: `extract` now **refuses** to overwrite the
+  pairs file while a gold set exists — pair ids are `merge:<raw_insight_id>`, so
+  re-extracting after a corpus rebuild would have written pairs no label matches,
+  silently discarding Paul's 92 rulings. `eval/README.md` still documented the
+  *withdrawn* strict-split labelling rule; corrected to the enrich-merge rule.
+
+**Step (b) — the other 5 sources: IN FLIGHT.** All 5 extractions were queued
+**back-to-back before draining**, rather than the per-source `extract` → `work`
+loop written below. Reason: consolidation is seeded in order, so with the loop
+each source's fresh V3 insights would merge into *v1-era claims* of the sources
+not yet re-extracted, and those claims then survive retirement carrying a v1
+canonical. Measured, not assumed: after step (a) **28 of the 104 surviving claims
+(27%) held a v1-era canonical** backed only by new YouTube insights. Those 28 had
+their members detached and were retired, and a `consolidate_source` for the
+YouTube source was re-queued so the 30 freed insights get re-adjudicated in-band
+(no hand-written canonicals — the engine decides). Starting state for the run:
+**76 active claims, 0 v1-era survivors, 110 raw insights.**
+
+Same commands as below, same flags (`SKIP_SYNTHESIS_FANOUT=1`, enrich OFF), just
+batched: 5× `npm run pipeline -- extract <id>`, then one
+`SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`. The queue is durable — if the
+drain dies, re-running `work` resumes from the checkpoints.
+
+**Open for Paul (raised, not decided):**
+- **Claim ids changed corpus-wide.** Re-extraction mints new `raw_insights` and
+  therefore new claims, so the `claim_ids` stored in existing `topic_articles`
+  blocks now dangle. The articles' prose is unaffected (it is stored text) and
+  Phase 3 regenerates them, but any Evidence panel that resolves those ids will
+  come up empty until then. Inherent to the agreed re-extract decision — flagging
+  it because it is reader-visible on a live site, not to reopen it.
+- **The tagger created a new topic during step (a).** Phase 0.5's taxonomy
+  reshape has not run yet, so this pass files claims into the pre-reshape tree and
+  will need re-tagging after. Expected per the ordering below; just don't be
+  surprised by drift in the topic list.
+- Latent, NOT fixed (Phase 3 territory, `lib/synthesis.ts`): the same 1000-row cap
+  applies to the `topic_claims` RPC (called with `p_limit: 2000`) and to
+  `enrichClinician`'s `.in('claim_id', …)`. Harmless today — the largest topic has
+  **91** claims — but §B3 projects 300–600/topic, and members exceed claims.
 
 **NEXT STEPS (the forward plan):**
 1. **Finish Phase 1 — make the corpus uniform under V3.** Everything below runs

@@ -15,10 +15,18 @@ article score can catch. So the headline metric is the **false-merge rate**.
 ```
 npm run eval:dedup extract        # DB → eval/dedup-eval-pairs.json (needs .env.local)
 # → label the pairs into eval/dedup-goldset.json (ground truth; see below)
-npx tsx scripts/evalDedup.ts run v1   # baseline: current prompt (no DB; LLM only)
-npx tsx scripts/evalDedup.ts run v2   # fixed prompt (§A2)
-npx tsx scripts/evalDedup.ts score    # false-merge rate v1 vs v2, recall, κ, threshold
+npx tsx scripts/evalDedup.ts run v1   # original prompt (no DB; LLM only)
+npx tsx scripts/evalDedup.ts run v2   # strict-split prompt (§A2 — withdrawn, see below)
+npx tsx scripts/evalDedup.ts run v3   # enrich-merge prompt — WHAT THE ENGINE RUNS TODAY
+npx tsx scripts/evalDedup.ts score    # false-merge rate per prompt, recall, κ, threshold
 ```
+
+**`extract` refuses to overwrite an existing pairs file when a gold set is
+present.** Pair ids are `merge:<raw_insight_id>`, so re-extracting after a corpus
+re-extraction would write pairs no label matches — silently discarding the gold
+set as the benchmark. The checked-in pairs file embeds both statements, so it
+stays runnable after those DB rows are gone. Pass `--force` only to start a
+deliberate new labelling pass.
 
 `run` and `score` need no database — only the LLM backend
 (`LLM_BACKEND=claude-code` uses the local `claude` CLI, no API key). Only
@@ -27,9 +35,17 @@ npx tsx scripts/evalDedup.ts score    # false-merge rate v1 vs v2, recall, κ, t
 ### The gold set is a durable, checked-in asset
 
 `eval/dedup-goldset.json` is the human-labelled ground truth (Paul is the ruler —
-labels are grounded in the source `direct_quote`s and the merge rule: *merge only
-when materially identical; a dose/population/threshold/timeframe/caveat difference
-→ DIFFERENT*). Each entry:
+labels are grounded in the source `direct_quote`s).
+
+**The merge rule was reversed on 2026-07-23 — label to the current one.** The
+original rule was *merge only when materially identical; any dose / population /
+threshold / timeframe / caveat difference → DIFFERENT*. Ruling the full 92-pair
+set, Paul merged all 92 (30 of them `enrich`) and kept none separate. The rule
+now is: **the same fact at any level of detail is ONE claim; keep separate only
+on genuine contradiction or unrelatedness.** Nested specificity (a general
+statement plus the same principle with numbers) is a merge whose canonical must
+be rewritten to carry the precise member's phrasing — that is the `enrich` flag,
+and it is why v2 (which splits those) was withdrawn. Each entry:
 
 ```json
 { "id": "merge:<raw_insight_id>", "label": "SAME|DIFFERENT",
