@@ -105,6 +105,28 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
   }
 }
 
+/**
+ * Record that two claims are variants of one idea (spec §6, table from migration
+ * 013). Called when adjudication keeps a close pair SEPARATE — the split is
+ * correct, but the relationship is real and is otherwise thrown away.
+ *
+ * The pair is stored smaller-uuid-first because the relationship is symmetric:
+ * writing both directions would double-count every refinement in the §9 novelty
+ * tally. Never fatal — a missing link degrades a metric, it does not corrupt the
+ * corpus, so a failure here must not abort a source's consolidation.
+ */
+async function linkNearDuplicate(a: string, b: string, similarity: number | null): Promise<void> {
+  if (a === b) return
+  const [lo, hi] = a < b ? [a, b] : [b, a]
+  const { error } = await db()
+    .from('claim_links')
+    .upsert(
+      { claim_id: lo, related_claim_id: hi, kind: 'near_duplicate', similarity },
+      { onConflict: 'claim_id,related_claim_id,kind', ignoreDuplicates: true }
+    )
+  if (error) console.warn(`[consolidate] near-duplicate link failed (${lo}→${hi}): ${error.message}`)
+}
+
 /** Create a new claim seeded by a raw insight, and attach it as the seed member. */
 async function createClaimFromRaw(raw: RawInsight): Promise<string> {
   const { data: claim, error } = await db()
@@ -480,8 +502,16 @@ export async function consolidateSource(
       if (verdict.verdict === 'SAME' && verdict.confidence >= AUTO_MERGE_CONFIDENCE) {
         await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
       } else if (verdict.verdict === 'DIFFERENT') {
-        await createClaimFromRaw(raw)
+        const newClaimId = await createClaimFromRaw(raw)
         cp = { ...cp, claims_created: cp.claims_created + 1 }
+        // Kept separate, but they were close enough for ANN to pair them and the
+        // V3 prompt splits ONLY on genuine contradiction or a material
+        // difference — so this is a variant of an existing idea, not new ground.
+        // Record it (spec §6 "F3 fix"). Without the link the relationship is
+        // lost: a reader loses the "these are variants" structure, and the
+        // novelty metric (§9) can only ever see exact merges, under-reporting
+        // refinements — which are the engine's actual value.
+        await linkNearDuplicate(newClaimId, chosen.id, chosen.similarity)
       } else {
         // UNSURE, or SAME below the auto-merge bar → provisional claim + review.
         const newClaimId = await createClaimFromRaw(raw)
