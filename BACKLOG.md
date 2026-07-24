@@ -82,10 +82,16 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
 still carry v1-era claims. Make it uniform before Phase 2.
 
 **NEXT STEPS (the forward plan):**
-1. **Finish Phase 1 — re-consolidate the 4 manual sources under V3.** Run with
-   `SKIP_SYNTHESIS_FANOUT=1` (consolidate + tag, NO article regen) and enrich OFF;
-   watch the harness false-merge rate. These are pasted transcripts — re-consolidate,
-   do NOT re-extract (no timing to recover). Do NOT generate articles yet.
+1. **Finish Phase 1 — re-consolidate under V3, with `SKIP_SYNTHESIS_FANOUT=1`**
+   (consolidate + tag, NO article regen) and enrich OFF; watch the harness
+   false-merge rate. Two parts, one command drains both:
+   `SKIP_SYNTHESIS_FANOUT=1 npm run pipeline -- work`
+   - The **YouTube source is 75/110 consolidated** — a `consolidate_source` job is
+     already **queued** to finish it on the hardened code (I stopped the old-code
+     drain mid-run to avoid a silent-split adjudicator + premature regen).
+   - Then re-consolidate the **4 manual sources** (pasted transcripts —
+     re-consolidate, do NOT re-extract; no timing to recover) so the corpus is
+     uniform. Do NOT generate articles yet.
    *(Optional after: an enrich sweep with `ENRICH_MERGE=1` as a separate pass.)*
 2. **Phase 0.5 check** — verify/finish the frontier taxonomy reshape + tagger
    generality bias before any re-tagging (`lib/taxonomy.ts` has partial generality
