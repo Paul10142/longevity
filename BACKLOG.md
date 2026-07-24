@@ -78,6 +78,46 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
   `tracks[0].transcript`, not `videoData.transcript`). Migrations **009 (enriched_at)
   and 010 (timed_transcript) APPLIED**. Stuck source `d32c0fc8` reset to `pending`.
 
+### ✅ PHASE 1 COMPLETE — 2026-07-24. Read this block first.
+
+**The corpus is uniform under V3.** All six original sources re-extracted and
+re-consolidated end to end, verified on every invariant that mattered:
+
+| check | result |
+|---|---|
+| insights consolidated | **925 / 925** |
+| v1-era claims surviving | **0** |
+| insights belonging to two claims | **0** |
+| active claims | 853 |
+
+**V3 gold-set score (the live engine, 92 pairs).** `npx tsx
+scripts/evalDedup.ts run v3 && … score`:
+
+| prompt | merges | recall | false-merge |
+|---|---|---|---|
+| v1 — original | 87/92 | 94.6% | 0.0% |
+| v2 — strict-split (withdrawn) | 55/92 | 59.8% | 0.0% |
+| **v3 — enrich-merge (live)** | **92/92** | **100.0%** | **0.0%** |
+
+**Read those numbers honestly.** All 92 gold labels are `SAME` — Paul ruled merge
+on every pair and keep-separate on none. So the false-merge rate is **0 by
+construction for all three prompts**: there are no `DIFFERENT` labels to falsely
+merge against, and a prompt that merged everything would score identically. The
+gold set measures *recall* (does the engine wrongly split — V3 is perfect) and
+**cannot measure precision**. The reported `κ = 1.00` for v3 is likewise the
+degenerate branch of the Cohen's κ formula, not evidence of agreement: with both
+sides single-class the expected-agreement term is 1. This is the "SAME/DIFFERENT
+is degenerate for ANN pairs" note above, now demonstrated rather than argued —
+the eval must pivot to **merge-fidelity** to say anything about over-merging.
+
+**The one genuinely new signal: V3 flags `enrich` on 59/92 merges (64%), against
+Paul's 30/92 (33%).** It wants to rewrite canonicals about twice as often as his
+standard calls for. Inert today (`ENRICH_MERGE` is off), but this is the number
+to settle before it is ever switched on, since enrich rewrites canonical text.
+
+**Corpus grew from 6 sources to 18** (see the ingest section below): 12 further
+full Attia episodes registered with complete per-caption timing, all `pending`.
+
 ### ⏱ PHASE 1 EXECUTION LOG — 2026-07-24 (supersedes the "NEXT STEPS 1" plan below)
 
 **Step (a) — YouTube source: DONE.** `e24fe6c5` is **110/110 consolidated,
@@ -174,7 +214,71 @@ chunks / insights / consolidated, observed throughput, and an ETA. Reads only
 tables, so polling it costs nothing and never competes with the drain for the
 CLI.
 
+### 📥 Source ingestion — built 2026-07-24 (Paul's request, Phase 4 work pulled forward)
+
+```
+npm run pipeline -- sources [--limit N]   what is available vs already ingested
+npx tsx --env-file=.env.local scripts/pipeline.ts ingest <videoId|url> …
+```
+
+(Use `tsx` directly for multi-argument ingest — npm's `--` passthrough collapses
+the arguments into one. And note zsh does **not** word-split `$VAR`; use `${=VAR}`.)
+
+`ingest` registers a source with its per-caption timing and deliberately **does
+NOT queue extraction** — breadth ingest is Phase 4, gated on the cost checkpoint,
+so adding sources must never silently start spending. `extract` stays separate.
+
+**12 full episodes ingested, all `pending`**, 574–3853 timed segments each:
+#399 Alzheimer's (Gayatri Devi), #397 Endometriosis (Renato Tomioka), #396 Breast
+cancer screening, #395 Brain lipidology, #380 Seed oils (Layne Norton), #378
+Women's health, #377 Happiness, #375 Ketogenic diet, #373 Thyroid, Building
+strength & muscle, Cardiorespiratory training, Dietary fiber.
+
+Four things worth knowing before ingesting more:
+- **Reach is limited by a paywall.** Most episode *pages* on peterattiamd.com are
+  members-only and expose no video. The 12 above are all public YouTube uploads.
+  Nothing attempts to reach gated content.
+- **Clips vs episodes.** The channel is mostly 2-minute promo cuts; `--min-chars`
+  (default 20 000) rejects them. It skipped 14 clips (4.7k–18k chars) and kept 12
+  episodes (45k–143k) with no manual triage.
+- **The transcript API rate-limits** — honoured via Retry-After with a growing
+  floor, after a 30-video batch failed everything past the sixth call.
+- **One duplicate was caught and dropped**: the YouTube upload of #374 is the same
+  episode as an existing manual source. Two rows would inflate `source_count`,
+  which still feeds `topic_claims` scoring. Worth noting the YouTube version is
+  strictly better provenance (it has timing; the manual paste never will) —
+  **upgrading #374 to it is a deliberate re-extract, not something to do silently.**
+
+### 🧱 Phase 2 groundwork — landed 2026-07-24 (migration 013 APPLIED)
+
+Strictly additive: widens the `claims.status` CHECK to admit the v4 vocabulary
+(`approved | flagged | archived | merged`) alongside the existing values, and adds
+`claim_links` + `claim_flags` (spec §7.2, §6). **Migrates no rows and changes
+nothing about what synthesis reads.** The switchover — `active` → `approved` and
+teaching `topic_claims()`/`match_claims()` to serve only approved claims — is
+deliberately separate: it changes what every reader sees, and §7.4's ordering trap
+says bulk-approval runs on the re-consolidated set or the approvals are discarded.
+
+**Near-duplicate capture is now wired** (`linkNearDuplicate` in
+`lib/consolidation.ts`): when adjudication keeps a close pair separate — which
+under V3 happens only on genuine contradiction or a material difference — the
+relationship is recorded instead of discarded. Without it the §9 novelty metric
+can only see exact merges and reports refinements as novel ground.
+
 **Open for Paul (raised, not decided):**
+- **Phase 0.5 taxonomy reshape is BLOCKED on a doc conflict — this is the main
+  thing waiting on you.** §D says **10 branches** (6 pillars + 4); the "Decisions
+  already made" list above says **12** (7 pillars + 5, with Chronic Disease as its
+  own branch); [[proposed-taxonomy]] says chronic disease **nests under** Reducing
+  Risks. The 7th pillar is not derivable from any of them. A reshape rewrites live
+  topic structure and forces a re-tag, so it was not guessed at. **`tag_claims` is
+  deferred (`run_after` +12h, job `dc11c9d6`) so the ~450 untagged claims are NOT
+  filed into the pre-reshape tree** — release it after the reshape, or it wastes a
+  tagging pass.
+- **`enrich` over-flagging: V3 says 64%, Paul said 33%.** Settle before enabling
+  `ENRICH_MERGE=1`.
+- **Extracting the 12 new sources is ~17h of unbudgeted compute.** Left `pending`
+  on purpose — this is exactly the Phase 4 gate.
 - **Two sources still carry old-resolver quotes**: the YouTube video (86.4%
   located) and the protein article (59.4%). They extracted cleanly, so they were
   not reset. `raw_insights` are immutable, so the only fix is re-extraction
