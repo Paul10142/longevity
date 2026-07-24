@@ -19,6 +19,14 @@ import { supabaseAdmin } from './supabaseServer'
 // Overall budget for one worker invocation (Vercel maxDuration is 300s).
 const TICK_BUDGET_MS = 250_000
 
+// Spend guard: the expensive LLM-synthesis job types. A tick processes at most
+// MAX_SYNTHESIS_JOBS_PER_TICK of these before releasing the rest to the next
+// tick, so a runaway / library-wide queue can't drain unboundedly in one
+// invocation (the 51-stray-generate_topic scenario). Raise the env to build
+// deliberately at scale; the local drain (`pipeline work`) adds a total cap on top.
+const SYNTHESIS_JOB_TYPES = new Set(['generate_topic', 'update_topic'])
+const MAX_SYNTHESIS_JOBS_PER_TICK = Number(process.env.MAX_SYNTHESIS_JOBS_PER_TICK ?? 30)
+
 async function handleExtractSource(job: Job): Promise<void> {
   const sourceId = job.payload.source_id as string
   if (!sourceId) throw new Error('extract_source job missing source_id')
@@ -110,6 +118,14 @@ async function handleConsolidateSource(job: Job): Promise<void> {
  */
 async function enqueueStaleTopicUpdates(): Promise<void> {
   if (!supabaseAdmin) return
+  // Reprocessing guard: during a corpus re-consolidation we want to consolidate +
+  // tag WITHOUT regenerating articles under the current (pre-v4) synthesis — that
+  // output is thrown away by the Phase 3 rewrite. Set SKIP_SYNTHESIS_FANOUT=1 to
+  // re-consolidate the seed sources cleanly; unset for normal incremental ingest.
+  if (process.env.SKIP_SYNTHESIS_FANOUT === '1') {
+    console.log('[worker] synthesis fan-out skipped (SKIP_SYNTHESIS_FANOUT=1) — claims tagged, no article regen')
+    return
+  }
   const { data, error } = await supabaseAdmin.rpc('stale_topics')
   if (error) {
     console.error('[worker] stale_topics failed:', error.message)
@@ -201,16 +217,27 @@ async function runHandler(job: Job): Promise<void> {
   }
 }
 
-export type TickResult = { processed: number; budgetExhausted: boolean }
+export type TickResult = { processed: number; budgetExhausted: boolean; synthesisProcessed: number }
 
 /** Drain the queue until empty or the time budget is spent. */
 export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResult> {
   const started = Date.now()
   let processed = 0
+  let synthesisProcessed = 0
 
   while (Date.now() - started < budgetMs) {
     const job = await claimNextJob()
     if (!job) break
+
+    // Spend guard: once this tick has run its budget of expensive synthesis jobs,
+    // release the next one back to the queue and stop — it runs on a later tick.
+    if (SYNTHESIS_JOB_TYPES.has(job.type)) {
+      if (synthesisProcessed >= MAX_SYNTHESIS_JOBS_PER_TICK) {
+        await requeueJob(job.id, (job.progress as Record<string, unknown>) ?? {})
+        break
+      }
+      synthesisProcessed++
+    }
 
     try {
       await runHandler(job)
@@ -227,5 +254,5 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
     processed++
   }
 
-  return { processed, budgetExhausted: Date.now() - started >= budgetMs }
+  return { processed, budgetExhausted: Date.now() - started >= budgetMs, synthesisProcessed }
 }

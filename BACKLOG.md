@@ -49,21 +49,62 @@ Ground rules for this codebase (from `CLAUDE.md`, repeated because they bite):
   harness (spec §6.1) addresses the first; treat every `generate_topic`-style
   run as real money until a cap exists.
 
-**First task, concretely — `v4-build-risks-and-cost.md` §D Phase 0, in order:**
-1. Fix the consolidation adjudication prompt (§A2) — a material dose/population/
-   threshold difference must yield DIFFERENT, not SAME. The single
-   highest-leverage change; everything consolidated afterward inherits it.
-2. Fix `scoreGroundedness`'s `catch { return 1 }` → `null` (spec §8).
-3. The doc reconciliations (§A1/A3/A4) are already applied in the repo — just
-   verify nothing re-introduced them.
-4. **Then** build the measurement harness (spec §6.1): dedup-accuracy eval +
-   article-quality eval set, with the audit moved to Haiku (§C2). It changes no
-   behaviour, costs ~$5–10, and is the instrument every later step is judged
-   against. Do not skip it — without it, the synthesis rewrite is unfalsifiable.
+### ⏱ CURRENT STATE — 2026-07-24 (fresh window: read this first)
 
-Then Phase 1 begins with the **timestamp demonstration** on
-`youtube.com/watch?v=s-qapZuy0GY` (§D Phase 1) — Paul's chosen first
-visible feature.
+**Position: Phase 0 complete; Phase 1 in progress.** Roadmap artifact:
+`claude.ai/code/artifact/d9036a17-a8eb-4915-9229-4f9bae45f940`.
+
+**Done this session (all type-checked; see recent git log):**
+- **Phase 0 instrument** — dedup harness scored; gold set ruled by Paul (92 pairs,
+  `eval/dedup-goldset.json`, all SAME/merge, 30 `enrich`); article baselines in
+  `eval/article-*-baseline.json` (paragraph + sentence groundedness; sentence g is
+  0.30–0.78 on current prose — the floor gets re-derived from this in Phase 3).
+- **Enrich-merge + V3 adjudicator — BUILT & live.** `ADJUDICATION_V3`
+  (`lib/adjudicationPrompts.ts`): merge liberally (same fact at any detail → SAME),
+  emit an `enrich` flag, split ONLY on genuine contradiction. `lib/enrichMerge.ts`:
+  rewrite a claim's canonical to carry every member's detail (Haiku, fidelity guard
+  rejects invented numbers). Wired in `lib/consolidation.ts`. **Enrich execution is
+  OFF by default** — set `ENRICH_MERGE=1` to enable. Tested 30/30 (0 invented).
+- **Backbone hardening (the risk register).** `adjudicate()` retries JSON failures,
+  then returns UNSURE (surfaced) not a silent DIFFERENT split. `attachMember` and
+  `mergeClaims` are idempotent (no more duplicate-key aborts). `extractFromChunk`
+  retries. **Spend cap:** `MAX_SYNTHESIS_JOBS_PER_TICK` (30) + `MAX_SYNTHESIS_JOBS`
+  (50, in `pipeline work`) — a stray library build can't run unbounded.
+  **`SKIP_SYNTHESIS_FANOUT=1`** re-consolidates WITHOUT regenerating articles.
+- **Phase 1 timestamp demo — DONE for the YouTube source** (`e24fe6c5`, s-qapZuy0GY):
+  timing backfilled (`sources.timed_transcript`, 672 segments), re-extracted under
+  V3 with transcript hygiene, **110/110 insights carry `start_ms`**, Evidence
+  deep-links to `…&t=<sec>`. Caught + fixed the API-shape bug (segments live at
+  `tracks[0].transcript`, not `videoData.transcript`). Migrations **009 (enriched_at)
+  and 010 (timed_transcript) APPLIED**. Stuck source `d32c0fc8` reset to `pending`.
+
+**Corpus is MIXED right now:** the YouTube source is on V3; the 4 manual sources
+still carry v1-era claims. Make it uniform before Phase 2.
+
+**NEXT STEPS (the forward plan):**
+1. **Finish Phase 1 — re-consolidate the 4 manual sources under V3.** Run with
+   `SKIP_SYNTHESIS_FANOUT=1` (consolidate + tag, NO article regen) and enrich OFF;
+   watch the harness false-merge rate. These are pasted transcripts — re-consolidate,
+   do NOT re-extract (no timing to recover). Do NOT generate articles yet.
+   *(Optional after: an enrich sweep with `ENRICH_MERGE=1` as a separate pass.)*
+2. **Phase 0.5 check** — verify/finish the frontier taxonomy reshape + tagger
+   generality bias before any re-tagging (`lib/taxonomy.ts` has partial generality
+   logic; confirm against [[proposed-taxonomy]]).
+3. **Phase 2 — claim gate** (spec §7): status lifecycle, bulk-approve the
+   re-consolidated claims, flag rules, ONE unified review inbox (mobile-first,
+   three-way verdict — see below).
+4. **Phase 3 — synthesis rewrite** (spec §5, §8): sentence-block schema + renderer,
+   per-section audit, re-derive the floor from the sentence baseline, protocol-led,
+   experts layer, min-claims gate.
+5. **Checkpoint** — cost infra (two-tier adjudication §C3, Batch API §C1, prompt
+   caching §C4; spend cap partly done) + Paul reviews the first v4 articles.
+6. **Phase 4 — scale** (Vercel Pro, breadth ingest, full build, consensus labelling).
+
+**Framework:** a **sequential backbone** (DB-mutating, one step at a time, Paul-gated:
+steps 1→6) plus **parallel tracks** (code-only background agents, no DB mutation):
+extraction-fidelity eval (spec §6.2), sentence-block schema+renderer (Phase 3
+plumbing), review inbox UI (after the Phase 2 schema). Rule: agents build tools; the
+backbone runs the pipeline one step at a time.
 
 **Decisions already made** (do not re-litigate; rationale in the spec / guiding
 doc): the seven principles (`ARCHITECTURE.md` top); **audience = physicians
@@ -94,6 +135,42 @@ now decided above):
   review task at Phase 2, not a blocker before it.
 - Which specific sources to ingest for breadth (Phase 4) — Paul wants the
   existing corpus configured first regardless.
+- **Re-judge the 81 provisional-SAME dedup gold labels to Paul's standard**
+  (2026-07-23). Paul ruled the 11 contested pairs; the other 81 are still
+  `labeled_by:claude`/`confirmed:false` and are **too lenient by his rule** —
+  the v2 flip list shows "wrong splits" using the exact "adds a specific → keep
+  separate" reasoning Paul endorsed. So v2's 66.7% recall is an artefact of the
+  lenient gold, not a weakness. Next labelling pass: re-adjudicate the 81 (or at
+  least the ~27 v2 split) to the enrich/keep-separate rule, then the recall
+  number is trustworthy and the auto-accept threshold can be set for real.
+
+**Dedup calibration — decided 2026-07-23 (Paul ruled the gold set).**
+- **Enrich-merge is the deliverable — NOT v2 (reversed 2026-07-23).** Paul ruled
+  the full 92-pair set and confirmed: ENRICH = one merged claim whose canonical is
+  updated to carry both sides' detail, even when "basically the same". He ruled
+  MERGE on all 92 (30 enrich + 62 plain), keep-separate on none. The eval sampled
+  v1's own auto-merges, so this says **v1's merge decisions are sound** (false-merge
+  ~0 vs his standard); the failure is **lossy execution** (`attachMember` buries
+  the non-seed side). **v2's strict-split fix targeted the wrong failure** (it
+  splits pairs Paul wants merged; recall 59.8%) — withdrawn. Build **enrich-merge**
+  + a v3 adjudicator (merge liberally, flag enrich, keep-separate only on genuine
+  contradiction). SAME/DIFFERENT metric is degenerate for ANN pairs; pivot the eval
+  to **merge-fidelity** (does the merged canonical preserve every detail). **Do not
+  re-consolidate on v1 or v2 — wait for enrich-merge.** Gold: 92 `label:SAME`, 35
+  Paul-confirmed, 57 provisional.
+- **Enrich-merge is a required new operation** (spec §6, added). SAME/DIFFERENT
+  is too coarse; nested specificity (general + same-principle-with-numbers) must
+  become one claim carrying the precise member's phrasing, and today's
+  `attachMember` buries it (keeps the seed, not the precise member).
+- **Extraction fidelity is a second, unmeasured axis** (spec §6.2, added): the
+  paraphrase can drop conceptual qualifiers, and extraction is per-chunk so
+  cross-chunk references are lost. Build an extraction-fidelity eval alongside
+  the dedup one; do not add missing-but-true detail (principle 1) — that is the
+  reference layer's job.
+- **Mobile ruling artifact** (throwaway; graduates into the §B4 review inbox):
+  https://claude.ai/code/artifact/eef06e6d-9045-4ab3-9000-2edc6f3b8fde — the
+  review inbox must be **mobile-first** and support the **three-way verdict**
+  (different / same / enrich), not the current binary accept/reject.
 
 ---
 

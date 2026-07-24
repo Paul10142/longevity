@@ -294,6 +294,32 @@ The engine's core, and the least-tested component. Rules:
   metric (§9) — the engine's real dedup work includes consolidated-but-linked
   near-duplicates, not only exact merges. Without capturing the link at
   consolidation time, that work is invisible and novelty % under-reports it.
+- **Enrich-merge — the operation the binary lacks (Paul, confirmed 2026-07-23).**
+  Labelling the dedup gold set settled the engine's target. Paul's rule: two
+  related insights should become **one merged claim whose canonical is updated to
+  carry every detail from both** — *even when they are "basically the same"*, the
+  merge should still fold in the other side's information for clarity. Across the
+  whole 92-pair set he ruled **merge** everywhere (30 `enrich` + 62 `plain`) and
+  keep-separate **nowhere**. So:
+  - **The danger is not over-merging; it is *lossy* merging.** Merging
+    "1.6 g/kg for adults" + "2.2 g/kg for older adults" into "1.6–2.2 g/kg"
+    (averaging, population erased) is the F1 failure — but the fix Paul wants is
+    to merge *better*: canonical "1.6 g/kg (adults); 2.2 g/kg (older adults)",
+    preserving both. **Not** to keep them apart.
+  - **The code does not do this yet:** `attachMember` (`lib/consolidation.ts`)
+    keeps the **seed** claim's canonical and files the new insight underneath, so
+    any detail the new insight carried that the seed lacked is **buried** —
+    present in the Evidence drill-down, absent from the canonical the article is
+    written from. Enrich-merge = on a merge, rewrite the canonical to hold both
+    sides' detail (structured by population/dose where they differ; never a lossy
+    average, never invented specifics).
+  - **This supersedes the §A2 "split on any material difference" framing (v2).**
+    v2 prevented lossy merges by *refusing to merge*; Paul wants them prevented by
+    *merging well*. Same goal (never lose a distinction), opposite mechanism. The
+    adjudicator therefore needs a **v3** rule: merge when it is the same underlying
+    fact even at different detail, **flag `enrich`** when one side adds detail,
+    and keep separate **only** on genuine contradiction or unrelatedness.
+  - Gold set records merges as `label:SAME` + `desired_operation:"enrich"|"plain"`.
 
 ### 6.1 Measured dedup accuracy — built first, non-negotiable
 
@@ -310,6 +336,48 @@ build a **dedup-accuracy harness**:
   threshold; a false-merge regression blocks the change.
 - **Cost:** a few dollars per run. This is the instrument that makes every later
   consolidation change measurable instead of a matter of faith.
+
+**Finding, 2026-07-23 — the headline metric pivots.** The Phase-0 run labelled a
+92-pair sample of the consolidator's own auto-merges. Paul ruled **merge** on all
+92 (0 keep-separate) — so for high-similarity (ANN-matched) pairs the SAME/DIFFERENT
+question is near-degenerate ("almost always merge"), and false-merge rate collapses
+to ~0 for both prompts. That is itself the result: **v1's merge *decisions* are
+sound; the failure is lossy *execution* on the 30 `enrich` pairs.** So the eval's
+headline moves from *false-merge rate* (SAME vs DIFFERENT accuracy) to
+**merge-fidelity**: for each merge, does the resulting canonical preserve every
+dose / population / facet from both members, or bury/average one? The labelled set
+is the substrate — the 30 `enrich` pairs are ready-made fidelity test cases (merge
+them, check the canonical contains both sides). "Ship v2" is withdrawn: v2 splits
+pairs Paul wants merged (recall 59.8%); the deliverable is enrich-merge, not a
+stricter splitter.
+
+### 6.2 Extraction fidelity — the second axis (Paul, 2026-07-23)
+
+The §6.1 harness measures *merge* fidelity (did we wrongly fuse two claims). It
+does **not** measure *extraction* fidelity — whether `raw_insights.statement`
+(an LLM paraphrase of a transcript chunk) faithfully preserves the load-bearing
+content the source actually said. A claim can dedup perfectly and still misstate
+its source. Two failure modes are already visible:
+
+- **Dropped qualifiers.** The paraphrase can generalise away a load-bearing term
+  the source stated. (Guarded for *numbers* by the extraction prompt's "NUMERIC
+  DETAIL PRESERVATION" rule; **not** guarded for conceptual qualifiers.) Note the
+  boundary: if the source never said it (e.g. Attia never says "nitrogen balance"
+  behind the RDA claim), the system must **not** add it — that would be inventing
+  substance (principle 1). The fix for missing-but-true detail is the **reference
+  layer** (primary literature), never editing the paraphrase.
+- **Cross-chunk coreference loss.** Extraction runs one chunk at a time
+  (`extractFromChunk`, ~2400 chars, 200-char overlap) and the model sees only that
+  chunk — no running context. A reference resolved earlier in the source
+  ("that rebalancing", defined 6 chunks back) is invisible when a later chunk is
+  extracted, so the insight is dropped or under-specified. The prompt asks for
+  standalone insights but the model cannot supply context it cannot see.
+
+**Build:** an extraction-fidelity eval alongside §6.1 — Paul labels a sample of
+`statement` vs its `direct_quote`/chunk for *faithfulness to what the source
+said* (not medical completeness). Mitigations to weigh for the coreference gap
+(cost-traded): a rolling context header per chunk, larger chunks/overlap, or a
+coreference pass. Do not silently expand — measure first.
 
 ## 7. Claim review workflow — the human gate, moved upstream
 

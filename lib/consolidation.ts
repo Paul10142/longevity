@@ -19,7 +19,8 @@ import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
-import { ADJUDICATION_V2 } from './adjudicationPrompts'
+import { ADJUDICATION_V3 } from './adjudicationPrompts'
+import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 
 // Judgment tier: deciding whether two claims are the same is the call that
 // determines whether the library deduplicates correctly.
@@ -48,36 +49,58 @@ type Adjudication = {
   verdict: 'SAME' | 'DIFFERENT' | 'UNSURE'
   candidate_index: number | null // 1-based index into the candidate list, or null
   confidence: number
+  // True when the new insight carries detail the matched claim's canonical lacks,
+  // so the merge step rewrites the canonical to hold both sides (enrich-merge).
+  // Only meaningful when verdict === 'SAME'.
+  enrich: boolean
   reasoning: string
 }
 
-// Fidelity-first adjudication (v4 §A2), versioned in lib/adjudicationPrompts.ts
-// so the measurement harness can run the exact before/after. Merging is a
-// de-duplication engine's riskiest act: fusing two claims that are not truly
-// identical silently averages away a clinical distinction (a dose, a population,
-// a threshold) a physician could act on — a failure no downstream score catches.
-const ADJUDICATION_SYSTEM = ADJUDICATION_V2
+// Enrich-merge adjudication (V3), versioned in lib/adjudicationPrompts.ts so the
+// measurement harness can run the exact before/after. Paul confirmed the model
+// 2026-07-23: the engine merges liberally (same fact at any level of detail →
+// SAME) and keeps separate ONLY on genuine contradiction/unrelatedness; the
+// danger is not over-merging but *lossy* merging, fixed by rewriting the
+// canonical to carry every detail when `enrich` is flagged.
+const ADJUDICATION_SYSTEM = ADJUDICATION_V3
 
 async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
   const list = candidates
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
+  const user = `NEW insight:\n${rawStatement}\n\nEXISTING claims:\n${list}`
 
-  try {
-    const parsed = await claudeJson<Adjudication>(
-      ADJUDICATION_SYSTEM,
-      `NEW insight:\n${rawStatement}\n\nEXISTING claims:\n${list}`,
-      2000,
-      ADJUDICATION_MODEL
-    )
-    return {
-      verdict: parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT',
-      candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,
-      confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
-      reasoning: parsed.reasoning ?? '',
+  // Retry transient CLI/parse failures before giving up (the claude-code backend
+  // intermittently returns prose, so claudeJson throws). Swallowing that as a
+  // verdict corrupts the merge, so we retry with backoff first.
+  let lastErr: unknown
+  for (let attempt = 0; attempt <= 3; attempt++) {
+    if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
+    try {
+      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL)
+      const verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
+      return {
+        verdict,
+        candidate_index: typeof parsed.candidate_index === 'number' ? parsed.candidate_index : null,
+        confidence: typeof parsed.confidence === 'number' ? parsed.confidence : 0,
+        // Default enrich conservatively: only honour it on a SAME verdict, and only
+        // when the model set it true — a missing/false flag never triggers a rewrite.
+        enrich: verdict === 'SAME' && parsed.enrich === true,
+        reasoning: parsed.reasoning ?? '',
+      }
+    } catch (err) {
+      lastErr = err
     }
-  } catch {
-    return { verdict: 'DIFFERENT', candidate_index: null, confidence: 0, reasoning: 'unparseable model output' }
+  }
+  // Exhausted retries: a checker failure is NOT a confident verdict. Return UNSURE
+  // (consolidateSource then creates the claim AND queues a merge_review, surfacing
+  // it) rather than a silent DIFFERENT that fabricates a split from a transport error.
+  return {
+    verdict: 'UNSURE',
+    candidate_index: null,
+    confidence: 0,
+    enrich: false,
+    reasoning: `adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
   }
 }
 
@@ -113,21 +136,83 @@ async function createClaimFromRaw(raw: RawInsight): Promise<string> {
   return claim.id as string
 }
 
-/** Attach a raw insight to an existing claim and refresh that claim's aggregates. */
+/** Attach a raw insight to an existing claim and refresh that claim's aggregates.
+ *  When `enrich` is set AND enrich-merge is enabled (env `ENRICH_MERGE=1`), the
+ *  claim's canonical is then rewritten to fold in the new member's detail
+ *  (enrich-merge). Off by default so switching to the V3 adjudicator does not
+ *  silently start mutating canonicals — see the surfaced inline-vs-sweep decision. */
 async function attachMember(
   claimId: string,
   raw: RawInsight,
   confidence: number,
-  matchedBy: 'auto' | 'human'
+  matchedBy: 'auto' | 'human',
+  opts?: { enrich?: boolean }
 ): Promise<void> {
-  const { error: memErr } = await db().from('claim_members').insert({
+  // Idempotent: a resumed/retried consolidate_source run can re-adjudicate an
+  // insight already attached to this claim (the memberSet is loaded once per job
+  // run, so an attach from earlier in the SAME run isn't reflected). Re-attaching
+  // the identical (claim_id, raw_insight_id) is a genuine no-op, so DO NOTHING on
+  // conflict rather than letting one existing member abort the whole source's
+  // consolidation (the claim_members_pkey duplicate that stranded 48 insights).
+  const { error: memErr } = await db().from('claim_members').upsert({
     claim_id: claimId,
     raw_insight_id: raw.id,
     match_confidence: confidence,
     matched_by: matchedBy,
-  })
+  }, { onConflict: 'claim_id,raw_insight_id', ignoreDuplicates: true })
   if (memErr) throw new Error(`Failed to attach claim member: ${memErr.message}`)
   await recomputeAggregates(claimId)
+  if (opts?.enrich && ENRICH_MERGE_ENABLED) {
+    await enrichClaimCanonical(claimId)
+  }
+}
+
+/**
+ * Enrich-merge (DB wrapper): rewrite one claim's `canonical_statement` to carry
+ * every detail from its current members. Grounded in members only; the fidelity
+ * guard in `synthesizeEnrichedCanonical` rejects a rewrite that invents a specific
+ * no member carried, in which case the prior canonical is kept. Idempotent and
+ * re-runnable — safe to call from `attachMember` inline OR from a batched sweep.
+ * Returns the EnrichResult so a caller/sweep can log rejects for review.
+ *
+ * `claims.canonical_statement` is mutable; `raw_insights` are immutable and never
+ * touched here.
+ */
+export async function enrichClaimCanonical(claimId: string): Promise<EnrichResult> {
+  const { data: claim, error: claimErr } = await db()
+    .from('claims')
+    .select('canonical_statement')
+    .eq('id', claimId)
+    .single()
+  if (claimErr || !claim) throw new Error(`enrich: failed to load claim ${claimId}: ${claimErr?.message}`)
+
+  const { data: memberRows, error: memErr } = await db()
+    .from('claim_members')
+    .select('raw_insights(statement, direct_quote)')
+    .eq('claim_id', claimId)
+  if (memErr) throw new Error(`enrich: failed to load members: ${memErr.message}`)
+
+  type Row = { raw_insights: { statement: string; direct_quote: string | null } | null }
+  const members = (memberRows ?? []) as Row[]
+  const statements = members.map(m => m.raw_insights?.statement ?? '').filter(Boolean)
+  const quotes = members.map(m => m.raw_insights?.direct_quote ?? '').filter((q): q is string => Boolean(q))
+
+  // A single-member claim has nothing to fold in — its canonical already equals
+  // its only member. Only multi-member claims can bury a side.
+  if (statements.length <= 1) {
+    return { canonical: claim.canonical_statement, changed: false, rejected: false, invented: [], reason: 'single member' }
+  }
+
+  const result = await synthesizeEnrichedCanonical(claim.canonical_statement, statements, { memberQuotes: quotes })
+
+  if (result.changed) {
+    const { error: updErr } = await db()
+      .from('claims')
+      .update({ canonical_statement: result.canonical, needs_tagging: true })
+      .eq('id', claimId)
+    if (updErr) throw new Error(`enrich: failed to update canonical: ${updErr.message}`)
+  }
+  return result
 }
 
 /** Recompute a claim's rollups from its current members. */
@@ -178,6 +263,19 @@ export async function recomputeAggregates(claimId: string): Promise<void> {
 export async function mergeClaims(loserId: string, winnerId: string): Promise<void> {
   if (loserId === winnerId) return
 
+  // Move the loser's members onto the winner. A raw_insight that is already a
+  // member of the winner would collide on the (claim_id, raw_insight_id) PK and
+  // abort the whole merge, so first drop the loser's rows that already exist on
+  // the winner (they are redundant duplicates), then move the remainder.
+  const { data: winnerMembers, error: wmErr } = await db()
+    .from('claim_members').select('raw_insight_id').eq('claim_id', winnerId)
+  if (wmErr) throw new Error(`Failed to read winner members: ${wmErr.message}`)
+  const winnerIds = (winnerMembers ?? []).map((m: { raw_insight_id: string }) => m.raw_insight_id)
+  if (winnerIds.length > 0) {
+    const { error: dupErr } = await db()
+      .from('claim_members').delete().eq('claim_id', loserId).in('raw_insight_id', winnerIds)
+    if (dupErr) throw new Error(`Failed to drop duplicate members: ${dupErr.message}`)
+  }
   const { error: moveErr } = await db()
     .from('claim_members')
     .update({ claim_id: winnerId, matched_by: 'human' })
@@ -192,6 +290,11 @@ export async function mergeClaims(loserId: string, winnerId: string): Promise<vo
 
   await db().from('claims').update({ needs_tagging: true }).eq('id', winnerId)
   await recomputeAggregates(winnerId)
+  // The winner keeps its own canonical, so the loser's members' detail would be
+  // buried exactly as in attachMember. Fold it in when enrich-merge is enabled.
+  if (ENRICH_MERGE_ENABLED) {
+    await enrichClaimCanonical(winnerId)
+  }
 }
 
 /**
@@ -350,7 +453,7 @@ export async function consolidateSource(
           : candidates[0]
 
       if (verdict.verdict === 'SAME' && verdict.confidence >= AUTO_MERGE_CONFIDENCE) {
-        await attachMember(chosen.id, raw, verdict.confidence, 'auto')
+        await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
       } else if (verdict.verdict === 'DIFFERENT') {
         await createClaimFromRaw(raw)
         cp = { ...cp, claims_created: cp.claims_created + 1 }

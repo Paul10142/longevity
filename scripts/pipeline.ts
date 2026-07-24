@@ -109,13 +109,22 @@ async function main() {
       return
 
     case 'work': {
-      console.log(`Draining queue via ${process.env.LLM_BACKEND}…\n`)
+      // Spend guard: cap total expensive synthesis jobs across the whole drain so
+      // a stray library-wide queue can't run up $100s locally unasked. Overridable.
+      const maxSynth = Number(process.env.MAX_SYNTHESIS_JOBS ?? 50)
+      console.log(`Draining queue via ${process.env.LLM_BACKEND} (synthesis cap ${maxSynth})…\n`)
       let total = 0
+      let synth = 0
       for (;;) {
         // Long budget: unlike Vercel there is no invocation ceiling locally.
-        const { processed } = await runWorkerTick(15 * 60_000)
+        const { processed, synthesisProcessed } = await runWorkerTick(15 * 60_000)
         total += processed
+        synth += synthesisProcessed
         if (processed === 0) break
+        if (synth >= maxSynth) {
+          console.log(`\n⚠︎ Spend guard: stopped after ${synth} synthesis job(s) (MAX_SYNTHESIS_JOBS=${maxSynth}). Remaining stay queued — raise the env to continue a deliberate build.`)
+          break
+        }
         console.log(`  …${total} jobs processed`)
       }
       console.log(`\nDone — ${total} job${total === 1 ? '' : 's'} processed.\n`)
