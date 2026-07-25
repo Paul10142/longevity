@@ -10,7 +10,7 @@ export async function GET() {
   }
   const { data, error } = await supabaseAdmin
     .from("topics")
-    .select("id, name, slug, description, parent_id, created_by, reviewed_by_human, claim_count, created_at")
+    .select("id, name, slug, description, parent_id, created_by, reviewed_by_human, claim_count, created_at, is_spine")
     .eq("status", "active")
     .order("name", { ascending: true })
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
