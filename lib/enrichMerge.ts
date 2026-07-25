@@ -53,7 +53,7 @@ export const ENRICH_SYNTHESIS_SYSTEM = `
 You merge several MEMBER statements — all expressing ONE underlying medical claim — into a SINGLE canonical statement for a clinician knowledge base. Your ONLY job is faithful assembly of what the members already say; you contribute syntax, never substance.
 
 Rules (in priority order):
-1. Carry EVERY concrete detail that appears in ANY member: each number, dose, population, threshold, timeframe, caveat, mechanism, effect size, named condition, and recommendation. Losing a detail is the failure this step exists to prevent.
+1. Carry EVERY concrete detail that appears in ANY member: each number, dose, population, threshold, timeframe, caveat, mechanism, effect size, named condition, recommendation, AND — treat these as first-class, never optional — every PRACTICAL EXAMPLE, concrete illustration (a specific food, exercise, practice, protocol, or worked case), and applied nuance. Practical examples are what let a reader FRAME and APPLY the knowledge, so a merge that drops one has failed even if every number survived. Losing a detail is the failure this step exists to prevent.
 2. Add NOTHING no member states. Do not introduce a number, dose, population, threshold, or qualifier that is not present in a member. Do not estimate, round, or generalize.
 3. NEVER average or blend divergent specifics into a range. When members give different values for different populations or conditions, name EACH explicitly with its population/condition. Correct: "1.6 g/kg for adults; 2.2 g/kg for older adults". WRONG: "1.6-2.2 g/kg" (this erases the population split — the exact failure to avoid).
 4. Prefer the members' own words. Compose and stitch; do not paraphrase away specifics.
