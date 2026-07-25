@@ -178,6 +178,20 @@ re-tag. Two independent failures:
 - **The API key has no credit** — "credit balance is too low". Fix: add credits at
   the Anthropic console, only needed if you'd rather bill API than re-auth the CLI.
 
+**AUTO-RESUME IS ARMED (2026-07-25, Paul approved).** A background watcher polls
+the `claude` CLI every 3 min; the moment Paul re-authenticates it will, with no
+further action: (1) validate the extraction fix, (2) release the deferred re-tag +
+reference jobs, (3) drain them — re-filing the ~700 claims into the reshaped tree.
+It does NOT re-extract the corpus (a separate, larger call). If that watcher has
+died (session ended, machine slept), run these by hand after logging in:
+```bash
+# 1. validate the extraction fix
+npx tsx --env-file=.env.local scripts/testExtractionFix.ts
+# 2. release the deferred re-tag + reference jobs, then drain
+#    (releases anything with a future run_after, then processes it)
+npm run pipeline -- work            # after releasing; see the release one-liner in scratchpad/auto-resume.sh
+```
+
 Restore EITHER, then the deferred/queued AI work runs. What is waiting on it:
 - **Validate the extraction fix**: `npx tsx --env-file=.env.local
   scripts/testExtractionFix.ts` — re-runs the new prompt on the 6 chunks that
