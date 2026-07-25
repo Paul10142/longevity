@@ -55,13 +55,21 @@ Extract show-note–worthy insights from transcript chunks for a large, multi-so
 
 Your job is NOT to capture everything that was said. Your job is to extract only the ideas that would appear in polished show notes or an educational article. Prefer FEWER, HIGHER-VALUE, GENERALIZABLE insights over many small, conversational, or anecdotal ones.
 
+FAITHFULNESS (ABSOLUTE — this overrides every other instruction below)
+Every insight must be FULLY SUPPORTED by THIS chunk. You may rephrase, compress, and generalize the wording, but you may NOT add any information the chunk does not contain. This is a medical knowledge base; an insight that reaches beyond the source is worse than no insight at all.
+• Do NOT add a number, dose, threshold, percentage, timeframe, or population the chunk did not state.
+• Do NOT name a mechanism, pathway, condition, hormone axis, or entity the chunk only gestures at. ("Sperm production is brain-driven" does NOT license naming a specific hypothalamic-pituitary axis; "it overlaps with other conditions" does NOT license asserting a shared pathway.)
+• Do NOT add a recommendation, and do NOT state that something "requires", "needs", or "does not require" action unless the chunk says so. ("Mostly harmless" is NOT "requires no treatment.")
+• Do NOT upgrade the strength or certainty of a claim: "what we do in practice" is NOT "evidence-based"; "may/might/can" is NOT "does"; one example is NOT "typically"; a speaker's opinion is NOT a finding.
+When unsure whether the chunk supports a detail, LEAVE IT OUT. A plainer, fully-grounded insight always beats a richer one that adds something unsaid. If the source only implies or gestures at something, do not state it — missing-but-true detail is added later from primary references; your job is never to supply substance the source did not.
+
 PURPOSE (CRITICAL)
 The insights you produce will be merged with insights from thousands of other chunks and sources to form a unified knowledge base. Because they will be recombined across episodes, each insight must:
 • Stand alone without relying on the surrounding conversation.
 • Express generalizable, durable knowledge—NOT episode-specific details.
-• Capture mechanisms, principles, evolutionary logic, or explanatory frameworks.
-• Translate personal anecdotes into the *underlying principle* rather than retelling the story.
-• Include specific, practical examples (foods, practices, protocols) that help readers apply the insight.
+• Capture mechanisms, principles, evolutionary logic, or explanatory frameworks THAT THE SOURCE ACTUALLY STATES — never one you infer to fill a gap.
+• Translate personal anecdotes into the *underlying principle the speaker drew from them* rather than retelling the story — without adding a principle the speaker did not draw.
+• Include specific, practical examples (foods, practices, protocols) that help readers apply the insight, when the chunk provides them.
 • Avoid any dependency on host interactions, podcast structure, or context.
 
 STITCHABILITY (CRITICAL)
@@ -72,7 +80,7 @@ Write each insight so it can combine cleanly with insights from other chunks, ep
 • Emphasis on mechanisms, frameworks, and conceptual distinctions, supported by concrete examples when helpful.
 
 WHAT COUNTS AS A HIGH-VALUE INSIGHT
-Produce an insight ONLY if it is: conceptually important; generalizable beyond the transcript; mechanistic or explanatory; self-contained and clear; and non-obvious (avoid generic statements like "testosterone affects behavior"—extract the deeper takeaway).
+Produce an insight ONLY if it is: conceptually important; generalizable beyond the transcript; mechanistic or explanatory; self-contained and clear; and non-obvious (avoid generic statements like "testosterone affects behavior"—capture the specific point the speaker actually made, staying within what the chunk says).
 
 WHAT SHOULD NOT BECOME AN INSIGHT
 Never extract: host anecdotes, jokes, or personal reflections; biographical info about the guest; podcast logistics ("on this show we talk about…"); narrative transitions; one-off anecdotes that don't generalize; observations without mechanism; context-dependent statements; platitudes ("biology is complex").
@@ -311,7 +319,7 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 }
 
 // ── LLM extraction for one chunk ────────────────────────────
-async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
+export async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
   // Retry transient failures: the claude-code CLI intermittently prefixes prose
   // ("Extracted the following…") so `claudeJson` throws a parse error. Swallowing
   // that as 0 insights silently drops a whole chunk's content, so retry a few

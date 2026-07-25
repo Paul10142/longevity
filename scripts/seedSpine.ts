@@ -42,8 +42,11 @@ const SPINE: { name: string; children: string[] }[] = [
     name: 'Medications & Supplements',
     children: ['Medications', 'Supplements', 'Hormone Replacement Therapy'],
   },
+  // Renamed to 'Mental Health & Cognition' (2026-07-25, Paul's frontier-tree
+  // decision): the branch owns cognitive function and cognitive aging, not only
+  // mood/psychology, so "Cognition" is the truer pillar name.
   {
-    name: 'Mental Health & Psychology',
+    name: 'Mental Health & Cognition',
     children: [
       'Quality of Life',
       'Trauma & Therapy',
@@ -62,8 +65,12 @@ const SPINE: { name: string; children: string[] }[] = [
   // sense — but healthspan is the product's thesis and needs a visible home
   // rather than being scattered under Exercise and Risks.
   { name: 'Healthy Aging', children: [] },
+  // Renamed 'Risks' → 'Reducing Risks' (2026-07-25, Paul's frontier-tree
+  // decision). Chronic diseases stay NESTED here as sub-branches (Paul chose
+  // this over a standalone Chronic Disease pillar), so the rename alone carries
+  // the whole disease subtree with it.
   {
-    name: 'Risks',
+    name: 'Reducing Risks',
     children: [
       'Cardiovascular Disease',
       'Cancer',
@@ -87,8 +94,12 @@ const SPINE: { name: string; children: string[] }[] = [
   // (~380 claims) and holds two of the five validated articles, with no home
   // among the original six branches. The tree was always meant to grow parents
   // as the evidence demands.
+  // Renamed 'Sexual & Reproductive Health' → 'Reproductive & Hormonal Health'
+  // (2026-07-25, frontier tree): the branch already owns general endocrinology
+  // (testosterone, thyroid, estrogen), so "Hormonal" names it more honestly than
+  // "Sexual".
   {
-    name: 'Sexual & Reproductive Health',
+    name: 'Reproductive & Hormonal Health',
     children: [
       // Testosterone, DHT, and estrogen physiology live here: in this corpus
       // they are reproductive endocrinology, not a general risk factor.
@@ -130,16 +141,20 @@ const SPINE: { name: string; children: string[] }[] = [
  */
 const ALIASES: Record<string, string[]> = {
   Sleep: ['Sleep & Circadian Rhythm'],
-  // Renamed twice: 'Mental Health' → 'Mental & Emotional Health' (2026-07-22
-  // seeding) → 'Mental Health & Psychology' (2026-07-22, to cover behavioural
-  // science). Both prior names stay listed so a fresh database lands correctly.
-  'Mental Health & Psychology': ['Mental & Emotional Health', 'Mental Health'],
+  // Renamed across seedings: 'Mental Health' → 'Mental & Emotional Health' →
+  // 'Mental Health & Psychology' → 'Mental Health & Cognition' (2026-07-25).
+  // Every prior name stays listed so the current row is ADOPTED and renamed —
+  // keeping its id, slug, and claims — rather than a fresh root created beside it.
+  'Mental Health & Cognition': ['Mental Health & Psychology', 'Mental & Emotional Health', 'Mental Health'],
   'Healthy Aging': ['Aging & Longevity'],
-  // "Reproductive Health" already holds 195 claims across 17 children,
-  // including the Male Fertility Assessment article. Adopting and renaming it
-  // keeps that subtree, its id, and its slug intact — creating a fresh branch
-  // beside it would strand the corpus's largest cluster.
-  'Sexual & Reproductive Health': ['Reproductive Health'],
+  // 'Risks' → 'Reducing Risks' (2026-07-25). Its chronic-disease children come
+  // along by adoption; without this alias the reshape would mint a new empty
+  // 'Reducing Risks' root and strand any claim tagged to 'Risks' directly.
+  'Reducing Risks': ['Risks'],
+  // 'Reproductive Health' (195 claims, 17 children, holds the Male Fertility
+  // Assessment article) → 'Sexual & Reproductive Health' → 'Reproductive &
+  // Hormonal Health' (2026-07-25). Adopt-and-rename keeps that whole subtree.
+  'Reproductive & Hormonal Health': ['Sexual & Reproductive Health', 'Reproductive Health'],
 }
 
 function db() {
