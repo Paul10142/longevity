@@ -410,6 +410,16 @@ This taxonomy is deliberately SHALLOW and BROAD. A topic is a substantial area a
 clinician would browse to — not a fine-grained sub-distinction. Fine distinctions
 belong INSIDE an article as sections or bullets, never as their own topic.
 
+DEPTH CAP — the tree is at most THREE levels deep: pillar (e.g. Exercise) →
+topic (e.g. Cardiorespiratory Fitness) → at most ONE sub-level. NEVER propose
+anything that would create a fourth level, and prefer level 2 over level 3.
+
+FEWER IS BETTER — a reader (patient or clinician) finds information faster in a
+compact tree. Default to NOT proposing. Merging a claim into an existing topic
+almost always beats a new topic. A subject can be split later, once it has grown
+large; starting small and merging up is the intended direction, not fragmenting
+early. When two candidate topics are close, propose the ONE broader one.
+
 Rules:
 - MINIMUM SIZE: propose a topic ONLY when at least ~8 of the shown claims
   genuinely share that subject. A subject that would hold fewer than ~8 claims
