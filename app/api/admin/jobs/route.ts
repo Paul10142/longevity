@@ -19,7 +19,19 @@ export async function GET() {
     return NextResponse.json({ error: error.message }, { status: 500 })
   }
 
-  const rows = jobs ?? []
+  type JobRow = {
+    id: string
+    type: string
+    status: string
+    payload: Record<string, unknown> | null
+    progress: unknown
+    attempts: number
+    error: string | null
+    created_at: string
+    started_at: string | null
+    finished_at: string | null
+  }
+  const rows = (jobs ?? []) as JobRow[]
 
   // Resolve the human name each job acts on, so the panel can group/label by
   // source (or topic) instead of showing bare job types. Source/topic ids live
@@ -40,8 +52,12 @@ export async function GET() {
       ? supabaseAdmin.from("topics").select("id, name").in("id", [...topicIds])
       : Promise.resolve({ data: [] as { id: string; name: string }[] }),
   ])
-  const sourceTitle = new Map((sourcesRes.data ?? []).map((s) => [s.id, s.title]))
-  const topicName = new Map((topicsRes.data ?? []).map((t) => [t.id, t.name]))
+  const sourceTitle = new Map(
+    ((sourcesRes.data ?? []) as { id: string; title: string }[]).map((s) => [s.id, s.title])
+  )
+  const topicName = new Map(
+    ((topicsRes.data ?? []) as { id: string; name: string }[]).map((t) => [t.id, t.name])
+  )
 
   const enriched = rows.map((j) => {
     const p = (j.payload || {}) as Record<string, unknown>

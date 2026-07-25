@@ -120,11 +120,11 @@ export function Header() {
                       <span className={underlineClass} />
                     </Link>
                     <div
-                      className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 transition-[opacity,visibility] duration-150"
+                      className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 transition-[opacity,visibility] duration-150"
                       role="menu"
                     >
-                      <div className="rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-lg p-5 w-[640px] max-w-[calc(100vw-2rem)]">
-                        <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                      <div className="rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-lg p-5 w-[780px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] overflow-y-auto">
+                        <div className="grid grid-cols-3 gap-x-6 gap-y-5">
                           {pillars.map((p) => (
                             <div key={p.slug} className="min-w-0">
                               <Link

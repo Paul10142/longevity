@@ -79,7 +79,10 @@ function groupBySource(jobs: Job[]): { name: string; jobs: Job[] }[] {
   const order: string[] = []
   const map = new Map<string, Job[]>()
   for (const j of jobs) {
-    const key = j.target_name || GENERAL_GROUP
+    // A job tied to a source whose title didn't resolve (deleted/renamed source)
+    // is not corpus-wide — keep it out of the general bucket so that group stays
+    // meaningful.
+    const key = j.target_name || (j.source_id ? "Unknown source" : GENERAL_GROUP)
     if (!map.has(key)) {
       map.set(key, [])
       order.push(key)
