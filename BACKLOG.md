@@ -168,7 +168,39 @@ protein episodes — the near-duplicate capture working as intended. 7 sources
 remain `pending` (breadth ingest — Phase 4 gate). Reference extraction +
 `tag_claims` are deferred (the latter until the reshape).
 
-#### 🔴 EXTRACTION INVENTS SUBSTANCE — measured 2026-07-24, needs Paul
+#### ⛔ BLOCKER (2026-07-25): both AI backends are down — Paul must restore one
+
+All AI work is stopped until this is fixed. Nothing else can extract, judge, or
+re-tag. Two independent failures:
+- **The local `claude` CLI login expired** — "401 OAuth access token has expired".
+  Fix: run `claude` (or `/login`) in a terminal and sign in again. This restores
+  the subscription-billed path (the default, free against the plan).
+- **The API key has no credit** — "credit balance is too low". Fix: add credits at
+  the Anthropic console, only needed if you'd rather bill API than re-auth the CLI.
+
+Restore EITHER, then the deferred/queued AI work runs. What is waiting on it:
+- **Validate the extraction fix**: `npx tsx --env-file=.env.local
+  scripts/testExtractionFix.ts` — re-runs the new prompt on the 6 chunks that
+  over-reached; the fix is trusted only if invention drops toward 0. Until then
+  the new prompt is UNVALIDATED and no re-extraction should use it.
+- **Re-tag into the new tree**: release the deferred `tag_claims` (the reshape
+  renamed the branches; ~700 untagged claims still need filing).
+- Optional: re-extract the existing 11 sources under the validated prompt to clear
+  the ~15% over-reach from already-stored facts.
+
+#### ✅ DECIDED 2026-07-25 (Paul, plain-language Q&A)
+- **Extraction over-reach → fix the instructions.** Done in `lib/extraction.ts`
+  (absolute FAITHFULNESS rule); UNVALIDATED pending the backend fix above.
+- **Taxonomy → 6 pillars, chronic disease nested.** DONE — frontier tree live:
+  Exercise, Nutrition, Sleep, Medications & Supplements, Mental Health & Cognition,
+  Reducing Risks (diseases nested) + Reproductive & Hormonal Health, Healthy Aging,
+  Research & Evidence, Public Health & Policy. Re-tag pending the backend fix.
+- **Enrich 64% vs 33% → Paul reviews the worksheet first**, then we analyze his
+  rulings and decide whether to change the setting. Worksheet:
+  https://claude.ai/code/artifact/65be336b-8a3e-4642-b2c9-06ceb325fbae — export the
+  rulings and hand them back.
+
+#### 🔴 EXTRACTION INVENTS SUBSTANCE — measured 2026-07-24 (now being fixed, above)
 
 **`npm run eval:extraction run` over a 40-insight stratified sample: a 15%
 INVENTION RATE.** Six insights assert something their source chunk does not
