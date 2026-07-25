@@ -202,6 +202,19 @@ Restore EITHER, then the deferred/queued AI work runs. What is waiting on it:
 - Optional: re-extract the existing 11 sources under the validated prompt to clear
   the ~15% over-reach from already-stored facts.
 
+#### ⏭ AFTER RE-TAG: 930 claims want new mid-level branches (topic discovery)
+
+The auto-resume re-tagged the whole corpus into the reshaped tree (2026-07-25):
+**862 claims filed `good`, 930 left `unfiled`** (0 `approximate` — the tagger is
+binary here). The unfiled span both cohorts (521 new-episode, 413 re-consolidated
+original), and 0 remain `needs_tagging`, so the tagger ran fully — it simply found
+no existing branch above threshold for half the corpus. The new episodes brought
+whole subjects the spine has no branch for yet (thyroid, endometriosis, breast
+cancer screening, brain lipidology, seed oils, women's health). **Next step:
+`npm run pipeline -- discover --dry-run`** to see the branches the corpus wants,
+then apply (new ROOT topics land in the approval queue; children auto-create),
+then re-tag. AI-gated (was blocked by the outage) and Paul-gated (approvals).
+
 #### ✅ DECIDED 2026-07-25 (Paul, plain-language Q&A)
 - **Extraction over-reach → fix the instructions.** Done in `lib/extraction.ts`
   (absolute FAITHFULNESS rule); UNVALIDATED pending the backend fix above.
