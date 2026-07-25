@@ -15,17 +15,33 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🪟 2026-07-25 WINDOW HANDOFF (read the `v4-build-state` memory first).**
-> Tree is clean through commit `bea6eef`. Consolidate to ONE window — this project
-> has been running across several at once (see the `ARCHITECTURE.md` dedup-agent
-> section). Live state: 11 sources · 1,792 claims · 200 topics · 930 still
-> `unfiled` (a discovery+re-tag drain was finishing — check `npm run pipeline --
-> progress`). Three things queued for the next window: **(1)** build the
-> drag-and-drop topic curation tool (spec in the memory); **(2)** re-validate the
-> enrich prompt vs the now-92/92 gold set, then Paul's on/off call; **(3)** the
-> dedup-underperformance fix (~7% dedup — owned by the dedup agent, plan in
-> ARCHITECTURE.md). Paul's taxonomy rule: fewer topics, **max 3 levels**, merge up
-> later. Reply format: `standard-report-format` memory.
+> **🪟 2026-07-25 WINDOW HANDOFF v2 — TOPIC CURATION PHASE (read `v4-build-state` first).**
+> Consolidate to ONE window. Live state (verified 2026-07-25 22:30): **203 active
+> topics, 10 roots, tree 4 levels deep (15 topics at L4 — breaks max-3), 1,792
+> active claims, 930 unfiled.** A `discover_topics` job (`052d93ef`) is **still
+> running with a fresh lock** — a worker is live; the pipeline must be FROZEN
+> before any topic edit (the `ebe3697` claim-link-loss race is exactly this).
+>
+> **DECISIONS LOCKED (Paul, this window):**
+> - **Build model = staged change-plan**, not immediate-apply. Drag/rename/re-parent
+>   accrue a pending plan; one **batch Apply** endpoint commits it (reuse the proven
+>   merge logic in `app/api/admin/topics/[id]/route.ts`, which already handles the
+>   M:N `claim_topics` batching + concurrent-tag race).
+> - **Freeze the pipeline, curate now** (930 claims stay unfiled); re-run
+>   discovery/re-tag AFTER the structure is locked.
+> - **Target = 7 patient-facing pillars.** Fold **Healthy Aging** into the others;
+>   move **Research & Evidence** + **Public Health & Policy** into a separate/later
+>   process (they're meta/back-office, not patient pillars). Remaining 7: Exercise,
+>   Nutrition, Sleep, Medications & Supplements, Mental Health & Cognition, Reducing
+>   Risks, Reproductive & Hormonal Health.
+> - **Reference layout = peterattiamd.com/topics** — shallow (3-6 subtopics/pillar,
+>   "All X" catch-alls), Hormones filed *under* Risks, no Public-Health/Reproductive
+>   root. Use it as the target shape for discovery + curation.
+> - Taxonomy rule unchanged: fewer topics, **max 3 levels**, merge up later.
+>
+> Still queued behind this: re-validate the enrich prompt vs the 92/92 gold set;
+> the dedup-underperformance fix (~7% dedup, plan in ARCHITECTURE.md). Reply format:
+> `standard-report-format` memory.
 
 **For the agent picking this up in a fresh conversation.** This file is the
 work queue; work it top-down by stage. The rule of the project is in one line:
