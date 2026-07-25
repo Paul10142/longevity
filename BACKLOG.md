@@ -15,6 +15,18 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🪟 2026-07-25 WINDOW HANDOFF (read the `v4-build-state` memory first).**
+> Tree is clean through commit `bea6eef`. Consolidate to ONE window — this project
+> has been running across several at once (see the `ARCHITECTURE.md` dedup-agent
+> section). Live state: 11 sources · 1,792 claims · 200 topics · 930 still
+> `unfiled` (a discovery+re-tag drain was finishing — check `npm run pipeline --
+> progress`). Three things queued for the next window: **(1)** build the
+> drag-and-drop topic curation tool (spec in the memory); **(2)** re-validate the
+> enrich prompt vs the now-92/92 gold set, then Paul's on/off call; **(3)** the
+> dedup-underperformance fix (~7% dedup — owned by the dedup agent, plan in
+> ARCHITECTURE.md). Paul's taxonomy rule: fewer topics, **max 3 levels**, merge up
+> later. Reply format: `standard-report-format` memory.
+
 **For the agent picking this up in a fresh conversation.** This file is the
 work queue; work it top-down by stage. The rule of the project is in one line:
 **the system is a de-duplication and assembly engine — it contributes syntax,
