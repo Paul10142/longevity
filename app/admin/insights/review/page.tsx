@@ -67,6 +67,12 @@ export default async function InsightsReviewPage({
   const rawInsights = rawInsightsCount || 0
   const claims = claimsCount || 0
   const consolidated = memberCount || 0
+  // How many raw insights were folded into an existing claim (i.e. deduplicated
+  // away). "Consolidated" alone equals rawInsights whenever every insight belongs
+  // to a claim, which reads as "nothing happened"; members-minus-claims is the
+  // number that actually shows how much dedup collapsed.
+  const mergedAway = Math.max(consolidated - claims, 0)
+  const dedupPct = rawInsights > 0 ? Math.round((mergedAway / rawInsights) * 100) : 0
 
   // ── Filter inputs ────────────────────────────────────────────
   const searchQuery = (params.search || '').trim()
@@ -283,31 +289,38 @@ export default async function InsightsReviewPage({
 
           <Card>
             <CardContent className="pt-6">
-              <div className="grid grid-cols-5 gap-4 text-center">
+              {/* Funnel: raw extractions → deduplicated claims. The three left
+                  tiles read left-to-right as one flow so "raw" and "claims" no
+                  longer look like the same number with a different label. */}
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
                 <div>
                   <div className="text-2xl font-bold">{rawInsights.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Raw Insights</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(All extracted)</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">Every fact extracted</div>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold text-amber-600 dark:text-amber-500">
+                    −{mergedAway.toLocaleString()}
+                  </div>
+                  <div className="text-sm text-muted-foreground">Duplicates Merged</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">
+                    {dedupPct}% folded into a claim
+                  </div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{claims.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Claims</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Deduplicated)</div>
-                </div>
-                <div>
-                  <div className="text-2xl font-bold">{consolidated.toLocaleString()}</div>
-                  <div className="text-sm text-muted-foreground">Consolidated</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Insights in a claim)</div>
+                  <div className="text-sm text-muted-foreground">Active Claims</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">After dedup</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{(highActionabilityCount || 0).toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">High Actionability</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(Raw)</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">Raw insights</div>
                 </div>
                 <div>
                   <div className="text-2xl font-bold">{totalSourcesWithInsights.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Sources</div>
-                  <div className="text-xs text-muted-foreground/70 mt-1">(With insights)</div>
+                  <div className="text-xs text-muted-foreground/70 mt-1">With insights</div>
                 </div>
               </div>
             </CardContent>

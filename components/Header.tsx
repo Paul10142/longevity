@@ -27,15 +27,39 @@ const insightSubLinks = [
   { name: "Merge Reviews", href: "/admin/reviews" },
 ] as const
 
+type Pillar = {
+  name: string
+  slug: string
+  childCount: number
+  children: { name: string; slug: string }[]
+}
+
 export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
+  const [pillars, setPillars] = useState<Pillar[]>([])
   const pathname = usePathname()
   const isAdmin = pathname.startsWith("/admin")
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Topic tree for the Medical Library mega-menu. Fetched once; harmless to load
+  // on admin pages too, but only the public nav renders it.
+  useEffect(() => {
+    if (isAdmin) return
+    let cancelled = false
+    fetch("/api/topics/nav", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { pillars: [] }))
+      .then((d) => {
+        if (!cancelled) setPillars(d.pillars || [])
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [isAdmin])
 
   const handleNavigation = (href: string) => {
     if (href.startsWith("#")) {
@@ -88,7 +112,68 @@ export function Header() {
           <nav className="flex items-center gap-8">
             {!isAdmin &&
               publicNav.map((item) =>
-                item.href.startsWith("#") ? (
+                item.href === "/topics" && pillars.length > 0 ? (
+                  <div key={item.name} className="relative group">
+                    <Link href={item.href} className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
+                      {item.name}
+                      <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                      <span className={underlineClass} />
+                    </Link>
+                    <div
+                      className="absolute left-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 transition-[opacity,visibility] duration-150"
+                      role="menu"
+                    >
+                      <div className="rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-lg p-5 w-[640px] max-w-[calc(100vw-2rem)]">
+                        <div className="grid grid-cols-2 gap-x-8 gap-y-5">
+                          {pillars.map((p) => (
+                            <div key={p.slug} className="min-w-0">
+                              <Link
+                                href={`/topics/${p.slug}`}
+                                className="block text-sm font-semibold text-foreground hover:text-primary"
+                                role="menuitem"
+                              >
+                                {p.name}
+                              </Link>
+                              <ul className="mt-1.5 space-y-1">
+                                {p.children.map((c) => (
+                                  <li key={c.slug}>
+                                    <Link
+                                      href={`/topics/${c.slug}`}
+                                      className="block text-sm text-muted-foreground hover:text-foreground truncate"
+                                      role="menuitem"
+                                    >
+                                      {c.name}
+                                    </Link>
+                                  </li>
+                                ))}
+                                {p.childCount > p.children.length && (
+                                  <li>
+                                    <Link
+                                      href={`/topics/${p.slug}`}
+                                      className="block text-xs text-primary/80 hover:text-primary"
+                                      role="menuitem"
+                                    >
+                                      All {p.name} →
+                                    </Link>
+                                  </li>
+                                )}
+                              </ul>
+                            </div>
+                          ))}
+                        </div>
+                        <div className="mt-4 pt-3 border-t border-border/40">
+                          <Link
+                            href="/topics"
+                            className="text-sm font-medium text-primary hover:underline"
+                            role="menuitem"
+                          >
+                            Explore all topics →
+                          </Link>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                ) : item.href.startsWith("#") ? (
                   <button
                     key={item.name}
                     type="button"
@@ -160,7 +245,29 @@ export function Header() {
               <nav className="flex flex-col space-y-6 mt-8">
                 {!isAdmin &&
                   publicNav.map((item) =>
-                    item.href.startsWith("#") ? (
+                    item.href === "/topics" && pillars.length > 0 ? (
+                      <div key={item.name} className="border-b border-border/40 pb-2">
+                        <Link
+                          href={item.href}
+                          className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {item.name}
+                        </Link>
+                        <div className="flex flex-col">
+                          {pillars.map((p) => (
+                            <Link
+                              key={p.slug}
+                              href={`/topics/${p.slug}`}
+                              className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
+                              onClick={() => setIsOpen(false)}
+                            >
+                              {p.name}
+                            </Link>
+                          ))}
+                        </div>
+                      </div>
+                    ) : item.href.startsWith("#") ? (
                       <button
                         key={item.name}
                         type="button"

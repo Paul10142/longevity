@@ -47,19 +47,46 @@ function formatMs(ms: number | null): string | null {
     : `${m}:${String(sec).padStart(2, "0")}`
 }
 
+/**
+ * The adjudicator's reasoning is shown to the reviewer — but when the local
+ * `claude` CLI crashes, that field holds the raw error (which embeds the entire
+ * system prompt as the failed command line). Never surface that wall of text;
+ * replace it with a plain status. Root-cause fix lives with the dedup pipeline.
+ */
+function readableReasoning(r: Review): { text: string; failed: boolean } | null {
+  if (!r.model_reasoning) return null
+  const failed = /adjudication failed|claude cli failed|command failed/i.test(r.model_reasoning)
+  if (failed) {
+    return { text: "Automatic duplicate-check couldn’t run — please decide manually.", failed: true }
+  }
+  return { text: r.model_reasoning, failed: false }
+}
+
+/**
+ * One side of the pair. Sources are always shown (no toggle): each claim here is
+ * our rewrite, and the reviewer needs the verbatim source quotes to judge it. We
+ * show them flat — source name, then the quote in italics — with no member/source
+ * counter, since for these provisional pairs "member" and "source" are the same
+ * thing and the duplication only confused things.
+ */
 function ClaimCard({ label, claim }: { label: string; claim: ClaimSide }) {
-  const [open, setOpen] = useState(false)
   const [members, setMembers] = useState<Member[] | null>(null)
 
-  async function toggle() {
-    const next = !open
-    setOpen(next)
-    if (next && members === null) {
-      const res = await fetch(`/api/claims/${claim.id}/members`, { cache: "no-store" })
-      const data = await res.json()
-      setMembers(data.members || [])
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch(`/api/claims/${claim.id}/members`, { cache: "no-store" })
+        const data = await res.json()
+        if (!cancelled) setMembers(data.members || [])
+      } catch {
+        if (!cancelled) setMembers([])
+      }
+    })()
+    return () => {
+      cancelled = true
     }
-  }
+  }, [claim.id])
 
   return (
     <div className="flex-1 min-w-0 rounded-md border p-3">
@@ -73,61 +100,43 @@ function ClaimCard({ label, claim }: { label: string; claim: ClaimSide }) {
         <p className="text-xs text-muted-foreground mt-1">{claim.context_note}</p>
       )}
 
-      <button
-        type="button"
-        onClick={toggle}
-        className="text-xs text-muted-foreground mt-2 inline-flex items-center gap-1 hover:text-foreground"
-      >
-        <span className="w-3 shrink-0">{open ? "▾" : "▸"}</span>
-        {claim.member_count} member{claim.member_count === 1 ? "" : "s"} · {claim.source_count} source
-        {claim.source_count === 1 ? "" : "s"}
-      </button>
-
-      {open && (
-        <div className="mt-2 space-y-2">
-          {members === null ? (
-            <p className="text-xs text-muted-foreground pl-4">Loading sources…</p>
-          ) : members.length === 0 ? (
-            <p className="text-xs text-muted-foreground pl-4">No source records.</p>
-          ) : (
-            <>
-              <p className="text-[10px] uppercase tracking-wide text-muted-foreground/70 pl-4">
-                Verbatim from the sources — the claim above is our rewrite of these
-              </p>
-              {members.map((m) => (
-                <div key={m.raw_insight_id} className="text-xs border-l-2 pl-3 py-1">
-                  <div className="text-muted-foreground">
-                    {m.source ? (
-                      m.source.url ? (
-                        <a
-                          href={m.source.url}
-                          target="_blank"
-                          rel="noopener noreferrer"
-                          className="hover:underline font-medium"
-                        >
-                          {m.source.title}
-                        </a>
-                      ) : (
-                        <span className="font-medium">{m.source.title}</span>
-                      )
-                    ) : (
-                      <span>Unknown source</span>
-                    )}
-                    <span className="ml-2 opacity-70">{formatMs(m.start_ms) ?? m.locator}</span>
-                  </div>
-                  {m.direct_quote ? (
-                    <blockquote className="mt-1 border-l-2 border-muted-foreground/30 pl-2 italic">
-                      “{m.direct_quote}”
-                    </blockquote>
-                  ) : (
-                    <div className="mt-0.5">{m.statement}</div>
-                  )}
-                </div>
-              ))}
-            </>
-          )}
+      <div className="mt-3 space-y-2">
+        <div className="text-[10px] uppercase tracking-wide text-muted-foreground/70">
+          Verbatim from the source{members && members.length === 1 ? "" : "s"}
         </div>
-      )}
+        {members === null ? (
+          <p className="text-xs text-muted-foreground">Loading sources…</p>
+        ) : members.length === 0 ? (
+          <p className="text-xs text-muted-foreground">No source records.</p>
+        ) : (
+          members.map((m) => (
+            <div key={m.raw_insight_id} className="text-xs">
+              <div className="text-muted-foreground">
+                {m.source ? (
+                  m.source.url ? (
+                    <a
+                      href={m.source.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="hover:underline font-medium"
+                    >
+                      {m.source.title}
+                    </a>
+                  ) : (
+                    <span className="font-medium">{m.source.title}</span>
+                  )
+                ) : (
+                  <span>Unknown source</span>
+                )}
+                {(formatMs(m.start_ms) ?? m.locator) && (
+                  <span className="ml-2 opacity-70">{formatMs(m.start_ms) ?? m.locator}</span>
+                )}
+              </div>
+              <p className="italic mt-0.5">“{m.direct_quote || m.statement}”</p>
+            </div>
+          ))
+        )}
+      </div>
     </div>
   )
 }
@@ -178,39 +187,55 @@ export function MergeReviewClient() {
 
   return (
     <div className="space-y-4">
-      {reviews.map((r) => (
-        <Card key={r.id}>
-          <CardContent className="p-4 space-y-3">
-            <div className="flex items-center gap-2 text-xs">
-              {r.model_verdict && <Badge variant="secondary">{r.model_verdict}</Badge>}
-              {r.model_confidence != null && (
-                <span className="text-muted-foreground">conf {r.model_confidence.toFixed(2)}</span>
+      {reviews.map((r) => {
+        const reasoning = readableReasoning(r)
+        return (
+          <Card key={r.id}>
+            <CardContent className="p-4 space-y-3">
+              <div className="flex items-center gap-2 text-xs">
+                {reasoning?.failed ? (
+                  <Badge variant="destructive">Needs review</Badge>
+                ) : (
+                  r.model_verdict && <Badge variant="secondary">{r.model_verdict}</Badge>
+                )}
+                {!reasoning?.failed && r.model_confidence != null && (
+                  <span className="text-muted-foreground">conf {r.model_confidence.toFixed(2)}</span>
+                )}
+                {r.similarity != null && (
+                  <span className="text-muted-foreground">sim {r.similarity.toFixed(3)}</span>
+                )}
+              </div>
+              {reasoning && (
+                <p className="text-xs italic text-muted-foreground">{reasoning.text}</p>
               )}
-              {r.similarity != null && (
-                <span className="text-muted-foreground">sim {r.similarity.toFixed(3)}</span>
-              )}
-            </div>
-            {r.model_reasoning && <p className="text-xs italic text-muted-foreground">{r.model_reasoning}</p>}
-            <div className="flex flex-col md:flex-row gap-3">
-              <ClaimCard label="New (Provisional)" claim={r.claim} />
-              <ClaimCard label="Existing Candidate" claim={r.candidate} />
-            </div>
-            <div className="flex gap-2 justify-end">
-              <Button
-                size="sm"
-                variant="outline"
-                disabled={busy === r.id}
-                onClick={() => decide(r.id, "reject")}
-              >
-                Keep Separate
-              </Button>
-              <Button size="sm" disabled={busy === r.id} onClick={() => decide(r.id, "accept")}>
-                Merge (Same Claim)
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      ))}
+              {/* Existing Candidate on the LEFT, New (Provisional) on the RIGHT —
+                  reads more naturally: what we have, then what came in. */}
+              <div className="flex flex-col md:flex-row gap-3">
+                <ClaimCard label="Existing Candidate" claim={r.candidate} />
+                <ClaimCard label="New (Provisional)" claim={r.claim} />
+              </div>
+              {/* Keep Separate (left) vs Merge (right), full-width and larger. */}
+              <div className="flex gap-3 pt-1">
+                <Button
+                  className="flex-1"
+                  variant="outline"
+                  disabled={busy === r.id}
+                  onClick={() => decide(r.id, "reject")}
+                >
+                  Keep Separate
+                </Button>
+                <Button
+                  className="flex-1"
+                  disabled={busy === r.id}
+                  onClick={() => decide(r.id, "accept")}
+                >
+                  Merge (Same Claim)
+                </Button>
+              </div>
+            </CardContent>
+          </Card>
+        )
+      })}
     </div>
   )
 }

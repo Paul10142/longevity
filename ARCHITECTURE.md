@@ -277,6 +277,57 @@ which `app/api/worker/tick/route.ts` already assumes):
   row. Accept in the review UI collapses the two claims; reject keeps both.
   Nothing blocks the pipeline on human review.
 
+### Dedup underperformance — diagnosis & fix plan (2026-07-25) ⚠ OWNED BY THE DEDUP AGENT
+
+Paul flagged that the corpus is barely deduplicating. Confirmed against the live
+DB (`vgzcrihdxcoozgcqadbt`). The admin-UI window is handling only the *display*
+side (label fixes + hiding the leaked error in the merge cards); everything below
+— pipeline code (`lib/consolidation.ts`, `lib/llm.ts`) and any `merge_reviews` /
+`claims` data writes — is this section's owner. Do not edit those files from the
+UI window; do not run re-consolidation from two windows at once.
+
+**Measured state (2026-07-25):**
+- 1,932 `raw_insights` → **1,792 active claims** (+ 1,328 `retired` claims with 0
+  members — leftover clutter, already hidden from active views).
+- Member distribution across active claims: **1,669 singletons, 108 pairs, 15 with
+  3+ (max 5)**. Only ~140 insights merged away → **~7% dedup**. Far too low for an
+  overlapping-topic corpus (Attia episodes repeat protein/Zone 2/sleep endlessly).
+- `merge_reviews`: **67 pending, 0 ever decided.** 36 are CLI-crash UNSURE rows
+  (reasoning begins `adjudication failed after retries: claude CLI failed`); 31 are
+  genuine **SAME** verdicts parked below the 0.85 auto-merge bar.
+
+**Three root causes (in priority order):**
+1. **The 0.80 ANN floor (`CANDIDATE_THRESHOLD`) gates most insights out.** An
+   insight only reaches the adjudicator if some existing claim is already ≥0.80
+   cosine-similar; otherwise it becomes a singleton with no LLM check at all. With
+   93% singletons, most true duplicates never clear the floor. Levers: lower the
+   floor (e.g. 0.72–0.75), raise `CANDIDATE_COUNT` (currently 5), and/or revisit
+   embeddings. Re-measure the singleton rate after any change.
+2. **The local `claude` CLI intermittently exits non-zero** (36/67 reviews),
+   likely subscription usage/rate limits during batch runs. A crash → `adjudicate()`
+   returns UNSURE → new singleton + a garbage review row. Two fixes: (a) sanitize
+   the error so it stops leaking the full prompt — `claudeCodeText` (`lib/llm.ts`
+   ~:113) rejects with `stderr || err.message`, and `execFile`'s `err.message` is
+   literally `Command failed: claude -p --model opus --append-system-prompt <ENTIRE
+   SYSTEM PROMPT>`, which is the wall of text at the top of every failed merge card;
+   reject with a short message (stderr, truncated) and never include argv; and have
+   `adjudicate()` store a stable reasoning like `auto-check failed` rather than the
+   raw CLI error. (b) Address the failures themselves — back off / retry harder, or
+   fall back to the `api` backend when the CLI fails.
+3. **SAME-below-0.85 → review queue that nobody processes.** The 31 SAME rows are
+   real merges waiting on a human. Options: process the queue in the (now-fixed)
+   UI, lower `AUTO_MERGE_CONFIDENCE`, or one-shot auto-accept the existing 31.
+
+**Recommended action sequence for the dedup agent:**
+- (a) Sanitize `claudeCodeText` error handling + `adjudicate()` stored reasoning.
+- (b) Diagnose/mitigate the CLI failures (usage limits vs. `api`-backend fallback).
+- (c) Clean the 36 crash rows in `merge_reviews` (re-adjudicate, or close them).
+- (d) Decide the 31 SAME rows (process / lower bar / auto-accept) — Paul to choose.
+- (e) Lower `CANDIDATE_THRESHOLD` + run a full `claim_sweep`, then re-measure.
+  **Respect the 2026-07-23 dedup-calibration ruling** (merge liberally; do NOT
+  re-tighten the split prompt — see `BACKLOG.md` "Dedup calibration").
+- (f) Optional housekeeping: prune the 1,328 zero-member `retired` claims.
+
 ### Reading the corpus at scale — the 1000-row rule
 
 **PostgREST caps every response at 1000 rows (`db-max-rows`), and asking for a

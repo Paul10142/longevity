@@ -93,6 +93,12 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
             </div>
           )}
 
+          {!clin?.[0] && !pat?.[0] && !proto?.[0] && (
+            <div className="mt-6 rounded-md border border-border/60 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
+              No written article for this topic yet — showing the underlying evidence below as it accumulates.
+            </div>
+          )}
+
           <div className="mt-8">
             <TopicTabs
               topicId={topic.id}
