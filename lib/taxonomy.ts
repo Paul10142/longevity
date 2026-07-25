@@ -406,11 +406,23 @@ You are shown the current topic tree and a sample of claims that are either
 unfiled or sitting in over-broad buckets. Propose NEW topics that would give
 these claims a better home.
 
+This taxonomy is deliberately SHALLOW and BROAD. A topic is a substantial area a
+clinician would browse to — not a fine-grained sub-distinction. Fine distinctions
+belong INSIDE an article as sections or bullets, never as their own topic.
+
 Rules:
-- Propose a topic only when several claims genuinely share a subject. Never
-  propose a topic for a single claim.
-- Prefer a small number of durable, clinically meaningful topics over many
-  narrow ones. Proposing zero topics is a valid and common answer.
+- MINIMUM SIZE: propose a topic ONLY when at least ~8 of the shown claims
+  genuinely share that subject. A subject that would hold fewer than ~8 claims
+  must stay as bullets within its parent — do NOT propose it.
+- FEWER, BROADER: strongly prefer ONE broad, durable topic over several narrow
+  siblings. Before proposing two related topics, ask whether one well-named
+  broader topic covers both — if so, propose only the one. Do NOT split a parent
+  into a family of children; at most propose one or two broad children for a
+  genuinely large parent.
+- Proposing ZERO topics is the common, expected answer. A batch that yields many
+  proposals is almost always over-fragmenting — reconsider and consolidate.
+- Never propose a topic for a single claim, and never propose a narrow mechanism,
+  a single study, a single metric, or a single sub-population as its own topic.
 - "parent" must be the exact name of an existing topic, or null for a new
   top-level topic. Only use null when the subject genuinely sits alongside the
   existing top-level topics rather than inside one.
@@ -431,8 +443,14 @@ export type DiscoverCheckpoint = {
 }
 
 // A topic holding more than this many claims is a candidate for splitting.
-const OVERBROAD_CLAIM_COUNT = 15
-// How many claim statements to show the model per over-broad topic.
+// Raised 15→30 (2026-07-25, Paul): at 15 the engine fragmented sturdy branches
+// (it split Strength & Muscle Mass into four children). Only genuinely large
+// buckets should be split, and even then into few broad children — the taxonomy
+// stays deliberately shallow (micro-distinctions are article bullets, not nodes).
+const OVERBROAD_CLAIM_COUNT = 30
+// How many claim statements to show the model per over-broad topic. The
+// ~8-claim minimum for earning a topic (the anti-fragmentation floor) is
+// enforced in DISCOVERY_SYSTEM, since only the model sees which claims cluster.
 const DISCOVERY_SAMPLE = 40
 
 /**

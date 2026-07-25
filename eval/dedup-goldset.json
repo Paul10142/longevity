@@ -11,122 +11,137 @@
   {
     "id": "merge:fbf2c28f-36cf-4b66-aecf-311cf1552700",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:aa31df33-3e32-4e65-839a-ec1ebfa375ee",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:80cd5c83-e0ae-4abb-a195-6b701fbef090",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:74fb6f18-e43c-4a5d-b26a-411883856c72",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:bc22e39f-442f-445e-a59b-30aab5c280af",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:091e532c-ec5e-4f9b-ace3-a898bb2a270b",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:76f67031-fc45-463b-96d0-6e6367e22613",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:7864e723-ebf9-4753-87b7-b0dd8938815d",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:6f609fa7-b4c5-4f3b-ac27-1bd3f1eb7a23",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:9835ef56-bc5b-4490-a1b0-2779fcb26202",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:e593b93e-75ed-4dbc-bacb-bd5faef5ea1a",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:05a6fa55-6bf1-4294-a70f-e8ad45ab4ef3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:92714200-3137-4d56-809f-7c1c57c5341c",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:2a322129-93e1-47b1-a861-4ef3df5f81ed",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:b75d7694-665f-4361-9dcd-6b9dc3005dcd",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:11ca63fa-721c-4eb4-9905-67024f8be69f",
@@ -150,10 +165,11 @@
   {
     "id": "merge:f3fdfc43-e39f-438c-bee3-d612de59d7a8",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:d19cf6bd-c688-4173-97cf-57dcca3d8763",
@@ -167,58 +183,65 @@
   {
     "id": "merge:3deeb4e6-09cc-44bf-acbc-b2308a39aa18",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:760376b4-7e53-47de-97e5-0fe5ea9422ea",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:a9a1a207-0ac6-4aee-a0e4-8af2e53893ea",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:11bf8990-1d21-4135-a184-167728758ce9",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:b08bfbb4-49b3-4c83-be28-e4b4f7a8a48f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:5d1c6d07-54e6-4066-9faf-f492c39998c2",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:18a11b44-ea7a-46f4-9156-3d9afdd3a90e",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:8f4e764d-7acf-4dd7-8786-e318b9edf979",
@@ -232,18 +255,20 @@
   {
     "id": "merge:bfcc65d3-61ae-42a3-9b4c-bb8f22928eda",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:60eed702-9b77-4702-891d-becd0d2dbea5",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:c2cbaf96-2108-4b6a-9d73-65e8f5c51054",
@@ -267,18 +292,20 @@
   {
     "id": "merge:90b6cc6e-3557-4522-bdcf-a345bb6cf49d",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:ba92c9ff-ca5d-475b-bc5d-43304363bde3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:f1cd64b2-c8ee-48b7-8647-1d99d459a688",
@@ -313,26 +340,29 @@
   {
     "id": "merge:f2a367a4-6555-454a-9495-b8b88813c061",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:ae9ef578-2e0c-4c8c-b8d4-281367ab503f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:3cf0fbe0-49fe-4528-b848-adb297306b3f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:4f48d38a-142b-484f-bb88-02714e316c74",
@@ -375,34 +405,38 @@
   {
     "id": "merge:2d90e55e-461e-4305-9975-dd75d9db2345",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:50fe5b5a-2c7d-4fd7-a0ed-f8be68014fc6",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:4904035a-4989-433f-b870-29dc4ebe62d3",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:01eb7cce-7e31-4153-9984-3672baad44d1",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:c5dd94f9-041d-4675-84a7-5623ba8b1440",
@@ -425,10 +459,11 @@
   {
     "id": "merge:b9478a7b-6970-4df6-a00b-9d9a0d7a6223",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:ae54cccb-81d8-4e1b-ab55-912374f45bcb",
@@ -442,18 +477,20 @@
   {
     "id": "merge:36b2ed27-e192-46b0-93d9-7484ee08d2fb",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:5bebc03e-82e0-4110-9bb7-2cc2e7004014",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:75af1430-9701-4fbe-9061-dbf5d1612ad1",
@@ -467,10 +504,11 @@
   {
     "id": "merge:3e62626a-05ad-4210-9297-4bece20a0a69",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:62611a9c-86f1-4798-bf9f-31c5fa35e035",
@@ -520,34 +558,38 @@
   {
     "id": "merge:de16cc8e-895e-472f-a262-ea382a875e57",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:bc8cb67d-aa8d-4b81-af3d-01b3b0d89125",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:281f0b59-b93c-45fc-9d9f-19024b64f274",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:82f5bb38-d953-4bc1-ba88-8f0714352962",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:a6635a16-a19b-444f-aa19-cba736262d66",
@@ -635,18 +677,20 @@
   {
     "id": "merge:ba1ba658-0d72-4495-9496-cf307a1e7136",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:0cfc7943-c1ec-45a1-a260-eb16047f97a4",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:ce027b73-8eac-4b61-b4c8-8e4c1a489d0b",
@@ -670,10 +714,11 @@
   {
     "id": "merge:88d3c91d-ccc6-4789-ad09-2763ac8ded16",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:1bfb4651-cc60-428b-b62a-7b9d59ae7ec2",
@@ -688,97 +733,109 @@
   {
     "id": "merge:207deb4c-17d6-4351-bb2e-2e472b6a7021",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:866a4db6-4707-4cd8-9a2e-9f6f44a4182f",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:361c6ee5-0165-43b9-8f99-0d8df6009ff1",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:b6999dd7-8b2d-4c9f-bf98-cb525a12c415",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:75bd8707-26c8-4721-af22-685835bbebec",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:9a382d9e-2102-4530-9ba6-3f10b06e3538",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:3db25969-e2fe-42ff-83ad-88367a8e0e20",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:4db4bfec-ac85-45e1-b90c-3fbf0715b40e",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:36eb81df-280b-4bfc-8ec4-32cf0542d38b",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   },
   {
     "id": "merge:fab2816f-28ea-4a6b-be42-cdff17d5a1f2",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:d7583238-9929-449d-a08d-5347d8d74b4c",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "enrich",
+    "paul_verdict": "ENRICH"
   },
   {
     "id": "merge:dc32a7c8-2c7f-404b-9718-f930d6b8351b",
     "label": "SAME",
-    "confirmed": false,
-    "labeled_by": "claude-strict",
+    "confirmed": true,
+    "labeled_by": "paul",
     "rationale": "Redundant, or candidate already contains the new insight (lossless merge) — no material detail buried.",
-    "desired_operation": "plain"
+    "desired_operation": "merge",
+    "paul_verdict": "MERGE"
   }
 ]
