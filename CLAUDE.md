@@ -5,6 +5,27 @@ Two halves: a public lifestyle-medicine site, and the **Medical Library**
 knowledge engine (see `ARCHITECTURE.md` — read it before touching the
 pipeline; `docs/archive/` is stale v1 documentation kept for history).
 
+## ⛔ Session & phase discipline (READ FIRST — enforced by Paul, 2026-07-25)
+
+This project bloated one window's context and scattered work across several
+windows at once. To stop that recurring:
+
+1. **One phase per window.** Work a single phase (the phase list is in
+   `BACKLOG.md`) to its checkpoint, then STOP. Do NOT start the next phase in the
+   same window.
+2. **Stop early when context is large.** If the conversation is getting long
+   (many tool calls / large context) even mid-phase, checkpoint and hand off
+   rather than pushing on. A clean handoff beats a bloated window.
+3. **Hand off before stopping.** Always: (a) commit all changes, (b) update the
+   `v4-build-state` memory + the `BACKLOG.md` "WINDOW HANDOFF" block, (c) give
+   Paul the exact one-paragraph prompt to paste into a fresh window.
+4. **One active window at a time on this working tree.** Never run two windows'
+   edits or pipeline/DB writes against the repo concurrently — that is what
+   scattered and corrupted state on 2026-07-25. If another window may be live,
+   coordinate through `ARCHITECTURE.md` and do not run pipeline/DB writes.
+5. **Reply format:** follow the `standard-report-format` memory (Updates → Next
+   Steps → To-do Items).
+
 ## Commands
 
 - `npm run dev` — dev server
