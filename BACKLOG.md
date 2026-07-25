@@ -155,9 +155,18 @@ old-resolver sources were re-extracted to close it.
   memberless left); the YouTube version (`4a4425ae`, 3651 timed segments) is
   queued for extraction. #374's claims will now carry `start_ms` deep-links like
   the rest.
-- **Extracting 4 sources now** (single worker, supervised): YT #374 + Building
-  strength (Exercise), #380 Seed oils (guest Layne Norton, Nutrition), #373
-  Thyroid (hormones) — pillar-spread per §D. Near-duplicate capture on.
+- **4 sources extracted + consolidated** (single worker, supervised): YT #374 +
+  Building strength (Exercise), #380 Seed oils (Nutrition), #373 Thyroid
+  (hormones). All clean.
+
+**Corpus now: 11 sources processed, 1932 insights, 1792 active claims** — 0
+unconsolidated, 0 insights in two claims, **0 unverified quotes**, 1296
+timestamped. #374's swap verified: all 186 of its insights carry `start_ms` (the
+manual paste had 0). Novelty over the whole corpus: **92% novel, 7% redundant,
+1% refinement**; refinement is highest on #380 Seed oils (3%), which overlaps the
+protein episodes — the near-duplicate capture working as intended. 7 sources
+remain `pending` (breadth ingest — Phase 4 gate). Reference extraction +
+`tag_claims` are deferred (the latter until the reshape).
 
 #### 🔴 EXTRACTION INVENTS SUBSTANCE — measured 2026-07-24, needs Paul
 
