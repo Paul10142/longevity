@@ -27,11 +27,34 @@ import { selectAllPaged } from './pagination'
 // determines whether the library deduplicates correctly.
 const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 
-// Similarity floor for ANN candidates (cosine). Below this, no LLM call.
-const CANDIDATE_THRESHOLD = 0.8
-const CANDIDATE_COUNT = 5
+// Similarity floor for ANN candidates (cosine). Below this, no LLM call — so an
+// insight whose nearest claim sits under the floor becomes a singleton with no
+// dedup check at all. This is the dominant gate on the ~7% dedup rate: on the
+// 2026-07-25 corpus only 138 of 1,792 claims had a neighbour ≥0.80, while 498 sat
+// in 0.75–0.80 (gated out) and 309 more in 0.72–0.75. Env-tunable so a
+// re-consolidation experiment can lower it (e.g. 0.75) without a code edit;
+// default 0.80 keeps current behaviour until deliberately changed.
+const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.8)
+const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
 // Verdict confidence needed to auto-merge without human review.
-const AUTO_MERGE_CONFIDENCE = 0.85
+const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.85)
+// Claim-vs-claim floor for the periodic sweep — stricter than ingestion by
+// default, since these are already-canonical claims. Env-tunable for the same
+// re-consolidation experiment (lower it to catch the parked near-duplicates).
+const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.86)
+
+/** Read a float from env, falling back to `def` on unset/blank/NaN. */
+function envNum(name: string, def: number): number {
+  const raw = process.env[name]
+  if (raw == null || raw.trim() === '') return def
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : def
+}
+/** Read a positive integer from env, falling back to `def`. */
+function envInt(name: string, def: number): number {
+  const n = envNum(name, def)
+  return Number.isInteger(n) && n > 0 ? n : def
+}
 
 // Stable reasoning stored when the adjudicator itself failed (CLI crash / usage
 // limit) rather than returning a verdict. A constant string — never the raw error,
@@ -347,7 +370,6 @@ export async function sweepClaims(
   timeBudgetMs = 220_000
 ): Promise<{ done: boolean; checkpoint: { processed: number; total: number; merged: number } }> {
   const started = Date.now()
-  const SWEEP_THRESHOLD = 0.86 // stricter than ingestion — these are claim-vs-claim
 
   // Paged: PostgREST caps an unpaginated select at 1000 rows, and an active
   // corpus passes that quickly — an unpaged read would sweep only the oldest
