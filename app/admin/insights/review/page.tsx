@@ -292,7 +292,7 @@ export default async function InsightsReviewPage({
               {/* Funnel: raw extractions → deduplicated claims. The three left
                   tiles read left-to-right as one flow so "raw" and "claims" no
                   longer look like the same number with a different label. */}
-              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center">
+              <div className="grid grid-cols-2 md:grid-cols-5 gap-4 text-center tabular-nums">
                 <div>
                   <div className="text-2xl font-bold">{rawInsights.toLocaleString()}</div>
                   <div className="text-sm text-muted-foreground">Raw Insights</div>

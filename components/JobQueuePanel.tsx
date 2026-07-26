@@ -100,10 +100,14 @@ function JobRow({ job }: { job: Job }) {
         <Badge variant={STATUS_VARIANT[job.status]}>{job.status}</Badge>
         <span className="truncate" title={hint}>
           {typeLabel(job.type)}
-          {hint && <span className="ml-1 text-muted-foreground/60 cursor-help">ⓘ</span>}
+          {hint && (
+            <span className="ml-1 text-muted-foreground/60 cursor-help" aria-hidden="true">
+              ⓘ
+            </span>
+          )}
         </span>
       </div>
-      <div className="text-xs text-muted-foreground text-right shrink-0">
+      <div className="text-xs text-muted-foreground text-right shrink-0 tabular-nums">
         {job.status === "failed" && job.error ? (
           <span className="text-destructive" title={job.error}>
             {job.error.slice(0, 60)}
@@ -199,13 +203,17 @@ export function JobQueuePanel() {
                 <button
                   type="button"
                   onClick={() => setShowDone((v) => !v)}
+                  aria-expanded={showDone}
+                  aria-controls="completed-jobs"
                   className="text-sm text-muted-foreground hover:text-foreground inline-flex items-center gap-1"
                 >
-                  <span className="w-3 shrink-0">{showDone ? "▾" : "▸"}</span>
+                  <span className="w-3 shrink-0" aria-hidden="true">
+                    {showDone ? "▾" : "▸"}
+                  </span>
                   {showDone ? "Hide" : "Show"} {doneJobs.length} completed
                 </button>
                 {showDone && (
-                  <div className="space-y-3 mt-2">
+                  <div id="completed-jobs" className="space-y-3 mt-2">
                     {doneGroups.map((g) => (
                       <SourceGroup key={g.name} name={g.name} jobs={g.jobs} />
                     ))}

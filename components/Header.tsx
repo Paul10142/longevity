@@ -120,7 +120,7 @@ export function Header() {
                       <span className={underlineClass} />
                     </Link>
                     <div
-                      className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 transition-[opacity,visibility] duration-150"
+                      className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 transition-[opacity,visibility] duration-150"
                       role="menu"
                     >
                       <div className="rounded-lg border border-border/60 bg-popover text-popover-foreground shadow-lg p-5 w-[780px] max-w-[calc(100vw-2rem)] max-h-[calc(100vh-6rem)] overflow-y-auto">
@@ -209,7 +209,7 @@ export function Header() {
                     <span className={underlineClass} />
                   </Link>
                   <div
-                    className="absolute left-0 top-full pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
+                    className="absolute left-0 top-full pt-1 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
                     role="menu"
                   >
                     <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
