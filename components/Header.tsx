@@ -36,11 +36,27 @@ export function Header() {
   const [isOpen, setIsOpen] = useState(false)
   const [isMounted, setIsMounted] = useState(false)
   const [pillars, setPillars] = useState<Pillar[]>([])
+  const [showAdmin, setShowAdmin] = useState(false)
   const pathname = usePathname()
 
   useEffect(() => {
     setIsMounted(true)
   }, [])
+
+  // Only surface the Admin menu to an authenticated admin. Middleware is the real
+  // gate; this just keeps the entry point hidden from ordinary visitors.
+  useEffect(() => {
+    let cancelled = false
+    fetch("/api/admin/session", { cache: "no-store" })
+      .then((r) => (r.ok ? r.json() : { authed: false }))
+      .then((d) => {
+        if (!cancelled) setShowAdmin(Boolean(d.authed))
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [pathname])
 
   // Topic tree for the Medical Library mega-menu. The unified header renders the
   // same nav everywhere, so load it on every route (public and admin alike).
@@ -79,6 +95,12 @@ export function Header() {
 
   const handleLogoClick = () => {
     window.location.href = "/"
+  }
+
+  const handleLogout = async () => {
+    await fetch("/api/admin/logout", { method: "POST" }).catch(() => {})
+    setShowAdmin(false)
+    window.location.assign("/")
   }
 
   const navLinkClass =
@@ -189,31 +211,41 @@ export function Header() {
 
           <SearchBar className="w-56" />
 
-          {/* Admin: same hover menu everywhere, so the header never restructures */}
-          <div className="relative group">
-            <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
-              Admin
-              <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-              <span className={underlineClass} />
-            </Link>
-            <div
-              className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
-              role="menu"
-            >
-              <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
-                {adminMenu.map((sub) => (
-                  <Link
-                    key={sub.href}
-                    href={sub.href}
-                    className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+          {/* Admin: hidden unless an authenticated admin session is present */}
+          {showAdmin && (
+            <div className="relative group">
+              <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
+                Admin
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                <span className={underlineClass} />
+              </Link>
+              <div
+                className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
+                role="menu"
+              >
+                <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
+                  {adminMenu.map((sub) => (
+                    <Link
+                      key={sub.href}
+                      href={sub.href}
+                      className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                      role="menuitem"
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
+                  <button
+                    type="button"
+                    onClick={handleLogout}
+                    className="block w-full text-left px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground border-t border-border/40 mt-1"
                     role="menuitem"
                   >
-                    {sub.name}
-                  </Link>
-                ))}
+                    Log out
+                  </button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </div>
 
         {/* Mobile */}
@@ -275,27 +307,39 @@ export function Header() {
                   <SearchBar />
                 </div>
 
-                <div>
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsOpen(false)}
-                    className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
-                  >
-                    Admin
-                  </Link>
-                  <div className="flex flex-col">
-                    {adminMenu.map((sub) => (
-                      <Link
-                        key={sub.href}
-                        href={sub.href}
-                        className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
-                        onClick={() => setIsOpen(false)}
+                {showAdmin && (
+                  <div>
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsOpen(false)}
+                      className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                    >
+                      Admin
+                    </Link>
+                    <div className="flex flex-col">
+                      {adminMenu.map((sub) => (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setIsOpen(false)
+                          handleLogout()
+                        }}
+                        className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3 text-left"
                       >
-                        {sub.name}
-                      </Link>
-                    ))}
+                        Log out
+                      </button>
+                    </div>
                   </div>
-                </div>
+                )}
               </nav>
             </SheetContent>
           </Sheet>

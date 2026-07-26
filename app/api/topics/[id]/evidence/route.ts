@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { isAdmin } from "@/lib/isAdmin"
 
 export const dynamic = "force-dynamic"
 
@@ -15,6 +16,7 @@ export async function GET(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
+  if (!(await isAdmin())) return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 })
   const { id } = await params
   const page = Math.max(0, parseInt(request.nextUrl.searchParams.get("page") || "0", 10))

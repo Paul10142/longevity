@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { isAdmin } from "@/lib/isAdmin"
 
 export const dynamic = "force-dynamic"
 
@@ -21,6 +22,8 @@ function rollup(id: string, childrenOf: Map<string, TopicNode[]>, byId: Map<stri
 
 export default async function PublicTopicsPage() {
   if (!supabaseAdmin) return <div className="p-12">Not configured.</div>
+
+  const admin = await isAdmin()
 
   const { data } = await supabaseAdmin
     .from("topics")
@@ -59,7 +62,9 @@ export default async function PublicTopicsPage() {
                 <div key={domain.id} className="rounded-lg border p-5">
                   <Link href={`/topics/${domain.slug}`} className="group flex items-baseline justify-between">
                     <h2 className="text-lg font-semibold group-hover:underline">{domain.name}</h2>
-                    <span className="text-xs text-muted-foreground shrink-0 ml-2">{total} claims</span>
+                    {admin && (
+                      <span className="text-xs text-muted-foreground shrink-0 ml-2">{total} claims</span>
+                    )}
                   </Link>
                   {children.length > 0 && (
                     <ul className="mt-3 space-y-1">
@@ -70,7 +75,7 @@ export default async function PublicTopicsPage() {
                             className="text-sm text-muted-foreground hover:text-foreground hover:underline"
                           >
                             {c.name}
-                            <span className="text-xs ml-1.5 opacity-60">{c.claim_count}</span>
+                            {admin && <span className="text-xs ml-1.5 opacity-60">{c.claim_count}</span>}
                           </Link>
                         </li>
                       ))}

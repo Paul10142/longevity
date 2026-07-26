@@ -47,6 +47,10 @@ windows at once. To stop that recurring:
 `.env.local`: `NEXT_PUBLIC_SUPABASE_URL`, `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY`,
 `SUPABASE_SECRET_KEY`, `ANTHROPIC_API_KEY`, `OPENAI_API_KEY`,
 `YOUTUBE_TRANSCRIPT_API_TOKEN`.
+`ADMIN_PASSWORD` (the shared password for the `/admin` gate) and
+`ADMIN_SESSION_SECRET` (HMAC key that signs the admin session cookie) protect
+the workbench — `middleware.ts` blocks every `/admin` and `/api/admin` route
+without a valid session, and the gate fails closed while either is unset.
 Server code uses `lib/supabaseServer.ts` (secret key, bypasses RLS);
 client code uses `lib/supabaseClient.ts`. Never import the server client
 into a client component.

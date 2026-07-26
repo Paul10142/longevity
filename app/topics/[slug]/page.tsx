@@ -2,12 +2,37 @@ import Link from "next/link"
 import { notFound, redirect } from "next/navigation"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { TopicTabs } from "@/components/TopicTabs"
+import { TopicTree, type TreeNode } from "@/components/TopicTree"
+import { isAdmin } from "@/lib/isAdmin"
 
 export const dynamic = "force-dynamic"
+
+type Row = {
+  id: string
+  name: string
+  slug: string
+  parent_id: string | null
+  claim_count: number
+}
+
+// Build the nested subtree rooted at `parentId` from a flat childrenOf map.
+function buildTree(parentId: string, childrenOf: Map<string, Row[]>): TreeNode[] {
+  return (childrenOf.get(parentId) ?? [])
+    .slice()
+    .sort((a, b) => b.claim_count - a.claim_count || a.name.localeCompare(b.name))
+    .map((r) => ({
+      name: r.name,
+      slug: r.slug,
+      claim_count: r.claim_count,
+      children: buildTree(r.id, childrenOf),
+    }))
+}
 
 export default async function TopicPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params
   if (!supabaseAdmin) return <div className="p-12">Not configured.</div>
+
+  const admin = await isAdmin()
 
   const { data: topic } = await supabaseAdmin
     .from("topics")
@@ -28,39 +53,46 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
   }
   if (topic.status === "archived") notFound()
 
-  // Breadcrumb parent + subtopics.
-  const [{ data: parent }, { data: children }, { data: clin }, { data: pat }, { data: proto }] =
-    await Promise.all([
-      topic.parent_id
-        ? supabaseAdmin.from("topics").select("name, slug").eq("id", topic.parent_id).single()
-        : Promise.resolve({ data: null }),
-      supabaseAdmin
-        .from("topics")
-        .select("name, slug, claim_count")
-        .eq("parent_id", topic.id)
-        .eq("status", "active")
-        .order("claim_count", { ascending: false }),
-      supabaseAdmin
-        .from("topic_articles")
-        .select("title, body_markdown, version")
-        .eq("topic_id", topic.id)
-        .eq("audience", "clinician")
-        .order("version", { ascending: false })
-        .limit(1),
-      supabaseAdmin
-        .from("topic_articles")
-        .select("title, body_markdown, version")
-        .eq("topic_id", topic.id)
-        .eq("audience", "patient")
-        .order("version", { ascending: false })
-        .limit(1),
-      supabaseAdmin
-        .from("topic_protocols")
-        .select("title, body_markdown, version")
-        .eq("topic_id", topic.id)
-        .order("version", { ascending: false })
-        .limit(1),
-    ])
+  // All active topics (for the breadcrumb parent + the expandable subtree), plus
+  // the generated article/protocol rows.
+  const [{ data: allTopics }, { data: clin }, { data: pat }, { data: proto }] = await Promise.all([
+    supabaseAdmin
+      .from("topics")
+      .select("id, name, slug, parent_id, claim_count")
+      .eq("status", "active"),
+    supabaseAdmin
+      .from("topic_articles")
+      .select("title, body_markdown, version")
+      .eq("topic_id", topic.id)
+      .eq("audience", "clinician")
+      .order("version", { ascending: false })
+      .limit(1),
+    supabaseAdmin
+      .from("topic_articles")
+      .select("title, body_markdown, version")
+      .eq("topic_id", topic.id)
+      .eq("audience", "patient")
+      .order("version", { ascending: false })
+      .limit(1),
+    supabaseAdmin
+      .from("topic_protocols")
+      .select("title, body_markdown, version")
+      .eq("topic_id", topic.id)
+      .order("version", { ascending: false })
+      .limit(1),
+  ])
+
+  const rows = (allTopics ?? []) as Row[]
+  const byId = new Map<string, Row>(rows.map((r) => [r.id, r]))
+  const childrenOf = new Map<string, Row[]>()
+  for (const r of rows) {
+    if (!r.parent_id) continue
+    if (!childrenOf.has(r.parent_id)) childrenOf.set(r.parent_id, [])
+    childrenOf.get(r.parent_id)!.push(r)
+  }
+
+  const parent = topic.parent_id ? byId.get(topic.parent_id) : null
+  const subtree = buildTree(topic.id, childrenOf)
 
   return (
     <div className="min-h-screen bg-background">
@@ -79,23 +111,18 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
           <h1 className="text-3xl font-bold tracking-tight">{topic.name}</h1>
           {topic.description && <p className="text-muted-foreground mt-2">{topic.description}</p>}
 
-          {children && children.length > 0 && (
-            <div className="mt-4 flex flex-wrap gap-2">
-              {children.map((c: { name: string; slug: string; claim_count: number }) => (
-                <Link
-                  key={c.slug}
-                  href={`/topics/${c.slug}`}
-                  className="text-xs rounded-full border px-3 py-1 hover:bg-muted"
-                >
-                  {c.name} <span className="opacity-60">{c.claim_count}</span>
-                </Link>
-              ))}
+          {subtree.length > 0 && (
+            <div className="mt-4 rounded-lg border border-border/60 bg-muted/20 px-4 py-3">
+              <h2 className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                Explore this topic
+              </h2>
+              <TopicTree nodes={subtree} isAdmin={admin} />
             </div>
           )}
 
           {!clin?.[0] && !pat?.[0] && !proto?.[0] && (
             <div className="mt-6 rounded-md border border-border/60 bg-muted/40 px-4 py-3 text-sm text-muted-foreground">
-              No written article for this topic yet — showing the underlying evidence below as it accumulates.
+              No written article for this topic yet{admin ? " — showing the underlying evidence below as it accumulates." : "."}
             </div>
           )}
 
@@ -105,6 +132,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
               clinician={clin?.[0] ?? null}
               patient={pat?.[0] ?? null}
               protocol={proto?.[0] ?? null}
+              isAdmin={admin}
             />
           </div>
         </div>
