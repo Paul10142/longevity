@@ -211,29 +211,31 @@ export function Header() {
 
           <SearchBar className="w-56" />
 
-          {/* Admin: hidden unless an authenticated admin session is present */}
-          {showAdmin && (
-            <div className="relative group">
-              <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
-                Admin
-                <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-                <span className={underlineClass} />
-              </Link>
-              <div
-                className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
-                role="menu"
-              >
-                <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
-                  {adminMenu.map((sub) => (
-                    <Link
-                      key={sub.href}
-                      href={sub.href}
-                      className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                      role="menuitem"
-                    >
-                      {sub.name}
-                    </Link>
-                  ))}
+          {/* Admin: always visible as a login entry point. The middleware is the
+              real gate — clicking through sends non-admins to the login screen.
+              Log out only appears once an admin session is present. */}
+          <div className="relative group">
+            <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
+              Admin
+              <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+              <span className={underlineClass} />
+            </Link>
+            <div
+              className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
+              role="menu"
+            >
+              <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
+                {adminMenu.map((sub) => (
+                  <Link
+                    key={sub.href}
+                    href={sub.href}
+                    className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                    role="menuitem"
+                  >
+                    {sub.name}
+                  </Link>
+                ))}
+                {showAdmin && (
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -242,10 +244,10 @@ export function Header() {
                   >
                     Log out
                   </button>
-                </div>
+                )}
               </div>
             </div>
-          )}
+          </div>
         </div>
 
         {/* Mobile */}
@@ -307,26 +309,26 @@ export function Header() {
                   <SearchBar />
                 </div>
 
-                {showAdmin && (
-                  <div>
-                    <Link
-                      href="/admin"
-                      onClick={() => setIsOpen(false)}
-                      className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
-                    >
-                      Admin
-                    </Link>
-                    <div className="flex flex-col">
-                      {adminMenu.map((sub) => (
-                        <Link
-                          key={sub.href}
-                          href={sub.href}
-                          className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
-                          onClick={() => setIsOpen(false)}
-                        >
-                          {sub.name}
-                        </Link>
-                      ))}
+                <div>
+                  <Link
+                    href="/admin"
+                    onClick={() => setIsOpen(false)}
+                    className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Admin
+                  </Link>
+                  <div className="flex flex-col">
+                    {adminMenu.map((sub) => (
+                      <Link
+                        key={sub.href}
+                        href={sub.href}
+                        className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
+                        onClick={() => setIsOpen(false)}
+                      >
+                        {sub.name}
+                      </Link>
+                    ))}
+                    {showAdmin && (
                       <button
                         type="button"
                         onClick={() => {
@@ -337,9 +339,9 @@ export function Header() {
                       >
                         Log out
                       </button>
-                    </div>
+                    )}
                   </div>
-                )}
+                </div>
               </nav>
             </SheetContent>
           </Sheet>
