@@ -10,7 +10,7 @@
 import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
 import { extractSource, type ExtractCheckpoint } from './extraction'
-import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
+import { consolidateSource, sweepClaims, type ConsolidateCheckpoint, type SweepCheckpoint } from './consolidation'
 import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
 import { generateTopicContent, updateTopicContent } from './synthesis'
 import { extractReferences, resolveReferences, type ExtractRefCheckpoint } from './references'
@@ -173,9 +173,13 @@ async function handleDiscoverTopics(job: Job): Promise<void> {
 }
 
 async function handleClaimSweep(job: Job): Promise<void> {
+  // Pass the stored checkpoint back in so the sweep resumes after the last claim
+  // it swept (keyset cursor) instead of restarting from the oldest claim each
+  // tick. requeueJob persists the returned checkpoint — including the cursor.
   const result = await sweepClaims(
     async (done, total, merged) => { await heartbeatJob(job.id, { processed: done, total, merged }) },
-    220_000
+    220_000,
+    job.progress as Partial<SweepCheckpoint>
   )
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })

@@ -358,41 +358,85 @@ export async function mergeClaims(loserId: string, winnerId: string): Promise<vo
   }
 }
 
+export type SweepCheckpoint = {
+  processed: number
+  total: number
+  merged: number
+  // Keyset cursor: the (created_at, id) of the last claim fully swept. The next
+  // tick resumes strictly AFTER it. Null on a fresh run.
+  cursor_created_at: string | null
+  cursor_id: string | null
+}
+
 /**
  * Periodic claim-vs-claim sweep: catches near-duplicate claims that slipped
  * through (e.g. two sources consolidated concurrently each seeding their own
  * claim for the same idea). For each active claim, find higher-similarity
  * peers; adjudicate; auto-merge SAME/high-confidence, queue the rest for review.
  * Bounded per invocation by `timeBudgetMs`; idempotent (merged claims drop out).
+ *
+ * **Checkpoint-resumable.** A single tick rarely sweeps the whole corpus, so it
+ * yields on `timeBudgetMs` and the worker re-invokes it. Without a cursor the
+ * scan restarted from the oldest claim every tick — the non-merging front claims
+ * persist there and got re-adjudicated forever while the newer claims (the ones a
+ * fresh consolidation just created, i.e. the likeliest duplicates) were never
+ * reached. Resuming after the last-swept `(created_at, id)` makes each tick
+ * advance through the full corpus exactly once.
  */
 export async function sweepClaims(
   onProgress: (done: number, total: number, merged: number) => Promise<void>,
-  timeBudgetMs = 220_000
-): Promise<{ done: boolean; checkpoint: { processed: number; total: number; merged: number } }> {
+  timeBudgetMs = 220_000,
+  checkpoint?: Partial<SweepCheckpoint>
+): Promise<{ done: boolean; checkpoint: SweepCheckpoint }> {
   const started = Date.now()
+  const priorProcessed = checkpoint?.processed ?? 0
+  const priorMerged = checkpoint?.merged ?? 0
+  const cursorTs = checkpoint?.cursor_created_at ?? null
+  const cursorId = checkpoint?.cursor_id ?? null
 
   // Paged: PostgREST caps an unpaginated select at 1000 rows, and an active
-  // corpus passes that quickly — an unpaged read would sweep only the oldest
-  // 1000 claims and never look at the newest, which are exactly the ones a
-  // freshly-consolidated source just created.
-  type SweepClaim = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
+  // corpus passes that quickly. Ordered by (created_at, id) — id breaks ties so
+  // batch-inserted claims sharing a created_at can't be skipped or repeated by
+  // the keyset resume below.
+  type SweepClaim = { id: string; created_at: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
   const claims = await selectAllPaged<SweepClaim>(
-    (from, to) => db()
-      .from('claims')
-      .select('id, canonical_statement, context_note, embedding')
-      .eq('status', 'active')
-      .order('created_at', { ascending: true })
-      .range(from, to),
+    (from, to) => {
+      let q = db()
+        .from('claims')
+        .select('id, created_at, canonical_statement, context_note, embedding')
+        .eq('status', 'active')
+      // Resume strictly after the cursor: created_at > ts OR (created_at = ts AND id > id).
+      // Timestamp is double-quoted because it contains a space and a `+` offset.
+      if (cursorTs && cursorId) {
+        q = q.or(`created_at.gt."${cursorTs}",and(created_at.eq."${cursorTs}",id.gt.${cursorId})`)
+      }
+      return q
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
+    },
     500 // embeddings are 1536 floats each — keep the page small
   )
   const merged = new Set<string>()
-  let processed = 0
+  let processed = priorProcessed
+  const total = priorProcessed + claims.length
+  let lastTs = cursorTs
+  let lastId = cursorId
+
+  const cp = (done: boolean): { done: boolean; checkpoint: SweepCheckpoint } => ({
+    done,
+    checkpoint: { processed, total, merged: priorMerged + merged.size, cursor_created_at: lastTs, cursor_id: lastId },
+  })
 
   for (const claim of claims) {
+    // Budget check BEFORE touching this claim — so the cursor we yield points at
+    // the previous, fully-swept claim and this one is re-loaded next tick.
     if (Date.now() - started > timeBudgetMs) {
-      return { done: false, checkpoint: { processed, total: claims.length, merged: merged.size } }
+      return cp(false)
     }
     processed++
+    lastTs = claim.created_at
+    lastId = claim.id
     if (merged.has(claim.id) || !claim.embedding) continue
 
     const { data: candData } = await db().rpc('match_claims', {
@@ -432,10 +476,10 @@ export async function sweepClaims(
         })
       }
     }
-    await onProgress(processed, claims.length, merged.size)
+    await onProgress(processed, total, priorMerged + merged.size)
   }
 
-  return { done: true, checkpoint: { processed, total: claims.length, merged: merged.size } }
+  return cp(true)
 }
 
 export type ConsolidateCheckpoint = {
