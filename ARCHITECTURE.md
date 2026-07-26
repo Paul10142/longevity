@@ -319,13 +319,37 @@ UI window; do not run re-consolidation from two windows at once.
    UI, lower `AUTO_MERGE_CONFIDENCE`, or one-shot auto-accept the existing 31.
 
 **Recommended action sequence for the dedup agent:**
-- (a) Sanitize `claudeCodeText` error handling + `adjudicate()` stored reasoning.
-- (b) Diagnose/mitigate the CLI failures (usage limits vs. `api`-backend fallback).
-- (c) Clean the 36 crash rows in `merge_reviews` (re-adjudicate, or close them).
-- (d) Decide the 31 SAME rows (process / lower bar / auto-accept) — Paul to choose.
-- (e) Lower `CANDIDATE_THRESHOLD` + run a full `claim_sweep`, then re-measure.
-  **Respect the 2026-07-23 dedup-calibration ruling** (merge liberally; do NOT
-  re-tighten the split prompt — see `BACKLOG.md` "Dedup calibration").
+- (a) ✅ **DONE (branch `dedup-phase`, 2026-07-25).** `claudeCodeText` now rejects
+  with a short, argv-free reason (never `err.message`, which embedded the whole
+  system prompt); `adjudicate()` stores a stable `ADJUDICATION_FAILED_REASONING`
+  and logs the technical detail instead of persisting the raw CLI error.
+- (b) ✅ **DONE (mitigation) + diagnosed.** The 36 crashes fell in ONE continuous
+  13-min window (02:09–02:22Z), ~2–3/min with no gaps — the signature of a
+  subscription usage/rate limit, not sporadic crashes. The ~12s adjudicate() retry
+  backoff can't outlast a 13-min outage, so a *backend switch* is the only real
+  rescue: added an opt-in `LLM_FALLBACK_TO_API=1` fallback in `lib/llm.ts`
+  (`claude-code` CLI failure → one retry on the `api` backend; off by default so a
+  plain subscription run never spends API credit unexpectedly).
+- (c) ✅ **DONE (data hygiene).** All 36 leaked-prompt `merge_reviews.model_reasoning`
+  rows overwritten with the stable message; 0 leaked rows remain. Rows kept
+  `pending` as re-adjudication candidates (re-adjudicating bills the subscription →
+  deferred to the (e) sweep). No content lost — the overwritten text was the leaked
+  prompt only.
+- (d) ⏸ **AWAITING PAUL.** The 31 SAME rows are NOT safe to blanket auto-accept:
+  avg conf 0.757 (20 at 0.80–0.84, just under the 0.85 bar), but a spot-check found
+  genuine merges *mixed with* a wrong-SAME (leucine-trigger vs MPS-ceiling) and a
+  likely *contradiction* (sperm aneuploidy "not filtered" vs "epididymis filters").
+  Recommend routing through the human review UI, NOT a one-shot merge, and do NOT
+  lower `AUTO_MERGE_CONFIDENCE` (it would auto-merge exactly these borderline pairs).
+- (e) ⏸ **AWAITING PAUL (bills subscription).** Thresholds are now env-tunable
+  (`CONSOLIDATION_CANDIDATE_THRESHOLD`, `SWEEP_THRESHOLD`, …) with defaults
+  unchanged. Vector evidence: of 1,792 active claims only 138 have a neighbour
+  ≥0.80 (adjudicated today) while **498 sit in 0.75–0.80** and 309 in 0.72–0.75,
+  gated out entirely. Proposed: run `claim_sweep` at `SWEEP_THRESHOLD=0.75` (the
+  surgical claim-vs-claim tool; resumable; doesn't rewrite the membership graph)
+  ± a re-consolidation at `CONSOLIDATION_CANDIDATE_THRESHOLD=0.75`, then re-measure
+  the singleton rate. **Respect the 2026-07-23 dedup-calibration ruling** (merge
+  liberally; do NOT re-tighten the split prompt — see `BACKLOG.md` "Dedup calibration").
 - (f) Optional housekeeping: prune the 1,328 zero-member `retired` claims.
 
 ### Reading the corpus at scale — the 1000-row rule
