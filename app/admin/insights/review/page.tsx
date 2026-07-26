@@ -250,7 +250,7 @@ export default async function InsightsReviewPage({
     <div className="min-h-screen bg-background">
       <main className="container mx-auto py-8">
         <div className="mb-8">
-          <div className="flex items-center justify-between mb-4">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold mb-2">Insight Review</h1>
               <p className="text-muted-foreground">
@@ -271,7 +271,7 @@ export default async function InsightsReviewPage({
                   : ' • Use search or filters to view insights'}
               </p>
             </div>
-            <div className="flex gap-2">
+            <div className="flex flex-wrap gap-2 shrink-0">
               <Button asChild variant="outline">
                 <a href={`/api/admin/insights/export?format=json&limit=${rawInsights || 10000}`} download>
                   <Download className="mr-2 h-4 w-4" />
