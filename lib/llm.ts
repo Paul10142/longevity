@@ -109,7 +109,20 @@ function claudeCodeText(
       { maxBuffer: 64 * 1024 * 1024, timeout: 600_000, cwd: tmpdir() },
       (err, stdout, stderr) => {
         if (err) {
-          reject(new Error(`claude CLI failed (${model}): ${stderr || err.message}`))
+          // NEVER surface err.message: execFile sets it to
+          //   `Command failed: claude -p --model opus --append-system-prompt <ENTIRE SYSTEM PROMPT>`
+          // — the full argv, i.e. our whole system prompt. That leaked into
+          // merge_reviews.model_reasoning as a wall of text on every failed merge
+          // card (2026-07-25). Build a short, argv-free reason from the fields
+          // that actually describe the failure (stderr / timeout / signal / code).
+          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
+          const detail =
+            (stderr && stderr.trim().slice(0, 300)) ||
+            (e.killed ? 'timed out' : '') ||
+            (e.signal ? `signal ${e.signal}` : '') ||
+            (e.code != null ? `exit ${e.code}` : '') ||
+            'unknown error'
+          reject(new Error(`claude CLI failed (${cliAlias(model)}): ${detail}`))
           return
         }
         resolve(stdout)
@@ -162,11 +175,46 @@ export async function claudeJson<T>(
   model: string = CLAUDE_MODEL,
   effort?: Effort
 ): Promise<T> {
-  const text =
-    backend() === 'claude-code'
-      ? await claudeCodeText(system, user, model, effort)
-      : await apiText(system, user, maxTokens, model, effort)
-
+  const text = await claudeText(system, user, maxTokens, model, effort)
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T
+}
+
+/**
+ * Backend-selecting text call with an optional API fallback.
+ *
+ * The `claude-code` backend bills a subscription instead of API credits, but the
+ * local CLI intermittently exits non-zero mid-batch (subscription usage/rate
+ * limits) — a crash that, in consolidation, turned an insight into a singleton +
+ * a garbage merge_review instead of a real SAME/DIFFERENT verdict (2026-07-25).
+ *
+ * When `LLM_FALLBACK_TO_API=1` and an `ANTHROPIC_API_KEY` is set, a CLI failure
+ * transparently retries once on the `api` backend so a subscription batch run
+ * finishes instead of parking dozens of insights for manual review. It is OFF by
+ * default so a plain `npm run pipeline` never spends API credit unexpectedly — the
+ * whole point of the subscription backend — and it only ever engages on an actual
+ * CLI failure (never for a merely slow call), so the credit spend is bounded by
+ * how often the CLI is failing, which is exactly when the rescue is wanted.
+ */
+async function claudeText(
+  system: string,
+  user: string,
+  maxTokens: number,
+  model: string,
+  effort?: Effort
+): Promise<string> {
+  if (backend() !== 'claude-code') {
+    return apiText(system, user, maxTokens, model, effort)
+  }
+  try {
+    return await claudeCodeText(system, user, model, effort)
+  } catch (cliErr) {
+    const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
+    if (!fallbackEnabled) throw cliErr
+    console.warn(
+      `[llm] claude-code CLI failed (${cliAlias(model)}); falling back to api backend: ` +
+        `${cliErr instanceof Error ? cliErr.message : String(cliErr)}`
+    )
+    return apiText(system, user, maxTokens, model, effort)
+  }
 }

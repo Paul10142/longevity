@@ -33,6 +33,13 @@ const CANDIDATE_COUNT = 5
 // Verdict confidence needed to auto-merge without human review.
 const AUTO_MERGE_CONFIDENCE = 0.85
 
+// Stable reasoning stored when the adjudicator itself failed (CLI crash / usage
+// limit) rather than returning a verdict. A constant string — never the raw error,
+// which embedded the whole system prompt and flooded the merge cards (2026-07-25).
+// A row carrying this is a re-adjudication candidate, not a genuine UNSURE call.
+export const ADJUDICATION_FAILED_REASONING =
+  'Automatic duplicate-check was unavailable (checker error); queued for manual review.'
+
 // Evidence strength for choosing a claim's best_evidence_type.
 const EVIDENCE_RANK: Record<EvidenceType, number> = {
   MetaAnalysis: 8, RCT: 7, Cohort: 6, CaseSeries: 5,
@@ -96,12 +103,20 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
   // Exhausted retries: a checker failure is NOT a confident verdict. Return UNSURE
   // (consolidateSource then creates the claim AND queues a merge_review, surfacing
   // it) rather than a silent DIFFERENT that fabricates a split from a transport error.
+  //
+  // Store a STABLE, human-facing reasoning — never the raw error. The raw CLI error
+  // embedded the entire system prompt (execFile's `Command failed: claude … <prompt>`),
+  // which is what filled the merge cards with a wall of text (2026-07-25). The
+  // technical detail is logged for debugging but must not reach merge_reviews.
+  console.warn(
+    `[consolidate] adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  )
   return {
     verdict: 'UNSURE',
     candidate_index: null,
     confidence: 0,
     enrich: false,
-    reasoning: `adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+    reasoning: ADJUDICATION_FAILED_REASONING,
   }
 }
 
