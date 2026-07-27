@@ -10,7 +10,7 @@
 import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
 import { extractSource, type ExtractCheckpoint } from './extraction'
-import { consolidateSource, sweepClaims, type ConsolidateCheckpoint } from './consolidation'
+import { consolidateSource, sweepClaims, type ConsolidateCheckpoint, type SweepCheckpoint } from './consolidation'
 import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
 import { generateTopicContent, updateTopicContent } from './synthesis'
 import { extractReferences, resolveReferences, type ExtractRefCheckpoint } from './references'
@@ -103,7 +103,12 @@ async function handleConsolidateSource(job: Job): Promise<void> {
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })
     // Hand off to tagging. Deduped so many consolidations coalesce into one.
-    await enqueueJob('tag_claims', {})
+    // SKIP_TAGGING=1 suppresses this so extraction/consolidation can run during a
+    // topic-curation freeze without filing claims into the tree (they stay
+    // needs_tagging=true and are re-tagged in bulk once curation unfreezes).
+    if (process.env.SKIP_TAGGING !== '1') {
+      await enqueueJob('tag_claims', {})
+    }
   } else {
     await requeueJob(job.id, { ...result.checkpoint })
   }
@@ -166,16 +171,20 @@ async function handleDiscoverTopics(job: Job): Promise<void> {
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })
     // New topics only matter once claims are re-filed against them.
-    if (result.checkpoint.claims_reflagged > 0) await enqueueJob('tag_claims', {})
+    if (result.checkpoint.claims_reflagged > 0 && process.env.SKIP_TAGGING !== '1') await enqueueJob('tag_claims', {})
   } else {
     await requeueJob(job.id, { ...result.checkpoint })
   }
 }
 
 async function handleClaimSweep(job: Job): Promise<void> {
+  // Pass the stored checkpoint back in so the sweep resumes after the last claim
+  // it swept (keyset cursor) instead of restarting from the oldest claim each
+  // tick. requeueJob persists the returned checkpoint — including the cursor.
   const result = await sweepClaims(
     async (done, total, merged) => { await heartbeatJob(job.id, { processed: done, total, merged }) },
-    220_000
+    220_000,
+    job.progress as Partial<SweepCheckpoint>
   )
   if (result.done) {
     await completeJob(job.id, { ...result.checkpoint })

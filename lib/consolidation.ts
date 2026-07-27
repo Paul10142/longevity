@@ -27,11 +27,41 @@ import { selectAllPaged } from './pagination'
 // determines whether the library deduplicates correctly.
 const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 
-// Similarity floor for ANN candidates (cosine). Below this, no LLM call.
-const CANDIDATE_THRESHOLD = 0.8
-const CANDIDATE_COUNT = 5
+// Similarity floor for ANN candidates (cosine). Below this, no LLM call — so an
+// insight whose nearest claim sits under the floor becomes a singleton with no
+// dedup check at all. This is the dominant gate on the ~7% dedup rate: on the
+// 2026-07-25 corpus only 138 of 1,792 claims had a neighbour ≥0.80, while 498 sat
+// in 0.75–0.80 (gated out) and 309 more in 0.72–0.75. Env-tunable so a
+// re-consolidation experiment can lower it (e.g. 0.75) without a code edit;
+// default 0.80 keeps current behaviour until deliberately changed.
+const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.8)
+const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
 // Verdict confidence needed to auto-merge without human review.
-const AUTO_MERGE_CONFIDENCE = 0.85
+const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.85)
+// Claim-vs-claim floor for the periodic sweep — stricter than ingestion by
+// default, since these are already-canonical claims. Env-tunable for the same
+// re-consolidation experiment (lower it to catch the parked near-duplicates).
+const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.86)
+
+/** Read a float from env, falling back to `def` on unset/blank/NaN. */
+function envNum(name: string, def: number): number {
+  const raw = process.env[name]
+  if (raw == null || raw.trim() === '') return def
+  const n = Number(raw)
+  return Number.isFinite(n) ? n : def
+}
+/** Read a positive integer from env, falling back to `def`. */
+function envInt(name: string, def: number): number {
+  const n = envNum(name, def)
+  return Number.isInteger(n) && n > 0 ? n : def
+}
+
+// Stable reasoning stored when the adjudicator itself failed (CLI crash / usage
+// limit) rather than returning a verdict. A constant string — never the raw error,
+// which embedded the whole system prompt and flooded the merge cards (2026-07-25).
+// A row carrying this is a re-adjudication candidate, not a genuine UNSURE call.
+export const ADJUDICATION_FAILED_REASONING =
+  'Automatic duplicate-check was unavailable (checker error); queued for manual review.'
 
 // Evidence strength for choosing a claim's best_evidence_type.
 const EVIDENCE_RANK: Record<EvidenceType, number> = {
@@ -96,12 +126,20 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
   // Exhausted retries: a checker failure is NOT a confident verdict. Return UNSURE
   // (consolidateSource then creates the claim AND queues a merge_review, surfacing
   // it) rather than a silent DIFFERENT that fabricates a split from a transport error.
+  //
+  // Store a STABLE, human-facing reasoning — never the raw error. The raw CLI error
+  // embedded the entire system prompt (execFile's `Command failed: claude … <prompt>`),
+  // which is what filled the merge cards with a wall of text (2026-07-25). The
+  // technical detail is logged for debugging but must not reach merge_reviews.
+  console.warn(
+    `[consolidate] adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  )
   return {
     verdict: 'UNSURE',
     candidate_index: null,
     confidence: 0,
     enrich: false,
-    reasoning: `adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`,
+    reasoning: ADJUDICATION_FAILED_REASONING,
   }
 }
 
@@ -320,42 +358,85 @@ export async function mergeClaims(loserId: string, winnerId: string): Promise<vo
   }
 }
 
+export type SweepCheckpoint = {
+  processed: number
+  total: number
+  merged: number
+  // Keyset cursor: the (created_at, id) of the last claim fully swept. The next
+  // tick resumes strictly AFTER it. Null on a fresh run.
+  cursor_created_at: string | null
+  cursor_id: string | null
+}
+
 /**
  * Periodic claim-vs-claim sweep: catches near-duplicate claims that slipped
  * through (e.g. two sources consolidated concurrently each seeding their own
  * claim for the same idea). For each active claim, find higher-similarity
  * peers; adjudicate; auto-merge SAME/high-confidence, queue the rest for review.
  * Bounded per invocation by `timeBudgetMs`; idempotent (merged claims drop out).
+ *
+ * **Checkpoint-resumable.** A single tick rarely sweeps the whole corpus, so it
+ * yields on `timeBudgetMs` and the worker re-invokes it. Without a cursor the
+ * scan restarted from the oldest claim every tick — the non-merging front claims
+ * persist there and got re-adjudicated forever while the newer claims (the ones a
+ * fresh consolidation just created, i.e. the likeliest duplicates) were never
+ * reached. Resuming after the last-swept `(created_at, id)` makes each tick
+ * advance through the full corpus exactly once.
  */
 export async function sweepClaims(
   onProgress: (done: number, total: number, merged: number) => Promise<void>,
-  timeBudgetMs = 220_000
-): Promise<{ done: boolean; checkpoint: { processed: number; total: number; merged: number } }> {
+  timeBudgetMs = 220_000,
+  checkpoint?: Partial<SweepCheckpoint>
+): Promise<{ done: boolean; checkpoint: SweepCheckpoint }> {
   const started = Date.now()
-  const SWEEP_THRESHOLD = 0.86 // stricter than ingestion — these are claim-vs-claim
+  const priorProcessed = checkpoint?.processed ?? 0
+  const priorMerged = checkpoint?.merged ?? 0
+  const cursorTs = checkpoint?.cursor_created_at ?? null
+  const cursorId = checkpoint?.cursor_id ?? null
 
   // Paged: PostgREST caps an unpaginated select at 1000 rows, and an active
-  // corpus passes that quickly — an unpaged read would sweep only the oldest
-  // 1000 claims and never look at the newest, which are exactly the ones a
-  // freshly-consolidated source just created.
-  type SweepClaim = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
+  // corpus passes that quickly. Ordered by (created_at, id) — id breaks ties so
+  // batch-inserted claims sharing a created_at can't be skipped or repeated by
+  // the keyset resume below.
+  type SweepClaim = { id: string; created_at: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
   const claims = await selectAllPaged<SweepClaim>(
-    (from, to) => db()
-      .from('claims')
-      .select('id, canonical_statement, context_note, embedding')
-      .eq('status', 'active')
-      .order('created_at', { ascending: true })
-      .range(from, to),
+    (from, to) => {
+      let q = db()
+        .from('claims')
+        .select('id, created_at, canonical_statement, context_note, embedding')
+        .eq('status', 'active')
+      // Resume strictly after the cursor: created_at > ts OR (created_at = ts AND id > id).
+      // Timestamp is double-quoted because it contains a space and a `+` offset.
+      if (cursorTs && cursorId) {
+        q = q.or(`created_at.gt."${cursorTs}",and(created_at.eq."${cursorTs}",id.gt.${cursorId})`)
+      }
+      return q
+        .order('created_at', { ascending: true })
+        .order('id', { ascending: true })
+        .range(from, to)
+    },
     500 // embeddings are 1536 floats each — keep the page small
   )
   const merged = new Set<string>()
-  let processed = 0
+  let processed = priorProcessed
+  const total = priorProcessed + claims.length
+  let lastTs = cursorTs
+  let lastId = cursorId
+
+  const cp = (done: boolean): { done: boolean; checkpoint: SweepCheckpoint } => ({
+    done,
+    checkpoint: { processed, total, merged: priorMerged + merged.size, cursor_created_at: lastTs, cursor_id: lastId },
+  })
 
   for (const claim of claims) {
+    // Budget check BEFORE touching this claim — so the cursor we yield points at
+    // the previous, fully-swept claim and this one is re-loaded next tick.
     if (Date.now() - started > timeBudgetMs) {
-      return { done: false, checkpoint: { processed, total: claims.length, merged: merged.size } }
+      return cp(false)
     }
     processed++
+    lastTs = claim.created_at
+    lastId = claim.id
     if (merged.has(claim.id) || !claim.embedding) continue
 
     const { data: candData } = await db().rpc('match_claims', {
@@ -395,10 +476,10 @@ export async function sweepClaims(
         })
       }
     }
-    await onProgress(processed, claims.length, merged.size)
+    await onProgress(processed, total, priorMerged + merged.size)
   }
 
-  return { done: true, checkpoint: { processed, total: claims.length, merged: merged.size } }
+  return cp(true)
 }
 
 export type ConsolidateCheckpoint = {
