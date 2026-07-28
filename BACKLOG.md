@@ -15,6 +15,14 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **✅ 2026-07-28 — TOPIC CURATION + RE-TAG PHASE COMPLETE** (branch `topic-curation`,
+> not yet merged). Full reshape applied: 203 → 77 topics, 9 roots (Healthy Aging
+> folded), depth 3; then re-tag converged in one round — **all 2,450 claims filed
+> `good`, 0 unfiled, 0 root proposals**. Tagger grew 32 sensible subtopics → 109 active
+> topics. Fixed a reversed cycle guard in `mergeTopics` (also fixes the curate tool).
+> Morning to-dos in `v4-build-state`: review reshape, merge branch, audit 47
+> AI-unreviewed topics. The block below is the (now-completed) original brief.
+>
 > **🪟 2026-07-25 WINDOW HANDOFF v2 — TOPIC CURATION PHASE (read `v4-build-state` first).**
 > Consolidate to ONE window. Live state (verified 2026-07-25 22:30): **203 active
 > topics, 10 roots, tree 4 levels deep (15 topics at L4 — breaks max-3), 1,792
