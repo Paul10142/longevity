@@ -47,7 +47,14 @@ async function handleExtractSource(job: Job): Promise<void> {
     await completeJob(job.id, { ...result.checkpoint, run_id: result.runId })
     // Fan out: consolidate the claims, and (in parallel) extract references.
     await enqueueJob('consolidate_source', { source_id: sourceId })
-    await enqueueJob('extract_references', { source_id: sourceId })
+    // SKIP_REFERENCES=1 defers the reference pass — it re-reads every chunk with
+    // a second Haiku call and then hits CrossRef/PubMed, ~doubling a source's
+    // cost. For a large breadth extraction we want extract+consolidate throughput
+    // first; references are a deliberate later pass (they were deferred the same
+    // way during the original breadth ingest). Unset for normal single-source ingest.
+    if (process.env.SKIP_REFERENCES !== '1') {
+      await enqueueJob('extract_references', { source_id: sourceId })
+    }
   } else {
     // Yielded to stay under budget: requeue the same row to resume from checkpoint.
     await requeueJob(job.id, { ...result.checkpoint, run_id: result.runId })
