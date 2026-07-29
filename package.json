@@ -14,7 +14,8 @@
     "regen": "tsx --env-file=.env.local scripts/regen.ts",
     "eval:dedup": "tsx --env-file=.env.local scripts/evalDedup.ts",
     "eval:articles": "tsx --env-file=.env.local scripts/evalArticles.ts",
-    "eval:extraction": "tsx --env-file=.env.local scripts/evalExtraction.ts"
+    "eval:extraction": "tsx --env-file=.env.local scripts/evalExtraction.ts",
+    "test": "node --import tsx --test tests/*.test.ts"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.112.3",
