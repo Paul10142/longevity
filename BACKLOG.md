@@ -15,33 +15,51 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🪟 2026-07-25 WINDOW HANDOFF v2 — TOPIC CURATION PHASE (read `v4-build-state` first).**
-> Consolidate to ONE window. Live state (verified 2026-07-25 22:30): **203 active
-> topics, 10 roots, tree 4 levels deep (15 topics at L4 — breaks max-3), 1,792
-> active claims, 930 unfiled.** A `discover_topics` job (`052d93ef`) is **still
-> running with a fresh lock** — a worker is live; the pipeline must be FROZEN
-> before any topic edit (the `ebe3697` claim-link-loss race is exactly this).
+> **🪟 2026-07-27 WINDOW HANDOFF v3 — TOPIC CURATION PHASE (read `v4-build-state` first).**
+> Verified against the live DB (`vgzcrihdxcoozgcqadbt`) 2026-07-27. **Pipeline is idle:
+> no worker running, 0 open jobs — safe to curate.**
 >
-> **DECISIONS LOCKED (Paul, this window):**
-> - **Build model = staged change-plan**, not immediate-apply. Drag/rename/re-parent
->   accrue a pending plan; one **batch Apply** endpoint commits it (reuse the proven
->   merge logic in `app/api/admin/topics/[id]/route.ts`, which already handles the
->   M:N `claim_topics` batching + concurrent-tag race).
-> - **Freeze the pipeline, curate now** (930 claims stay unfiled); re-run
->   discovery/re-tag AFTER the structure is locked.
-> - **Target = 7 patient-facing pillars.** Fold **Healthy Aging** into the others;
->   move **Research & Evidence** + **Public Health & Policy** into a separate/later
->   process (they're meta/back-office, not patient pillars). Remaining 7: Exercise,
->   Nutrition, Sleep, Medications & Supplements, Mental Health & Cognition, Reducing
->   Risks, Reproductive & Hormonal Health.
-> - **Reference layout = peterattiamd.com/topics** — shallow (3-6 subtopics/pillar,
->   "All X" catch-alls), Hormones filed *under* Risks, no Public-Health/Reproductive
->   root. Use it as the target shape for discovery + curation.
+> **Done since v2 (dedup phase closed + corpus fully processed):**
+> - Dedup phase **merged to `main`** (`03cb8ef`); `~/la-dedup` worktree/branch gone; tree clean.
+> - **All 18 sources `succeeded`** (the 7 that were `pending` are now
+>   extracted+consolidated). Corpus **2,979 raw insights → 2,450 active claims**, 0 retired shells.
+> - **`claim_sweep` ran to completion** (resumable keyset cursor): 90 merges; dedup ~7% → **~18%**
+>   (singletons 93% → 83%).
+> - Merge-review crash rows cleared (34 stale UNSURE rejected).
+>
+> **Live state now: 203 active topics, 10 roots, 1,711 unfiled active claims** (unfiled grew from
+> 930 as the 7 new sources added claims left untagged via `SKIP_TAGGING=1` during the freeze).
+>
+> **DECISIONS LOCKED (Paul) — unchanged:**
+> - **Build model = staged change-plan**, not immediate-apply. Drag/rename/re-parent accrue a
+>   pending plan; one **batch Apply** endpoint commits it (reuse the proven merge logic in
+>   `app/api/admin/topics/[id]/route.ts` — M:N `claim_topics` batching + concurrent-tag race).
+>   Tool is BUILT: **`/admin/topics/curate`** (commit `0614649`).
+> - **Freeze the pipeline, curate now**; re-run discovery/re-tag AFTER the structure is locked.
+> - **Target = 7 patient-facing pillars.** Fold **Healthy Aging** into the others; move
+>   **Research & Evidence** + **Public Health & Policy** into a separate/later process. Remaining 7:
+>   Exercise, Nutrition, Sleep, Medications & Supplements, Mental Health & Cognition, Reducing Risks,
+>   Reproductive & Hormonal Health.
+> - **Reference layout = peterattiamd.com/topics** — shallow (3-6 subtopics/pillar, "All X"
+>   catch-alls), Hormones filed *under* Risks. Target shape for discovery + curation.
 > - Taxonomy rule unchanged: fewer topics, **max 3 levels**, merge up later.
 >
-> Still queued behind this: re-validate the enrich prompt vs the 92/92 gold set;
-> the dedup-underperformance fix (~7% dedup, plan in ARCHITECTURE.md). Reply format:
-> `standard-report-format` memory.
+> **RUNNING TO-DO (next window; reply in `standard-report-format`):**
+> - [ ] **Curate the tree to 7 pillars** at `/admin/topics/curate` (staged plan → Apply), keeping
+>       the pipeline FROZEN: fold **Healthy Aging** in; move **Research & Evidence** +
+>       **Public Health & Policy** to a later process; prune **Reproductive & Hormonal Health**'s
+>       **26 children** (the sperm micro-topics); flatten remaining **L4 topics to max-3**.
+> - [ ] **After the tree locks, unfreeze:** `discover --dry-run` → apply → re-tag the
+>       **1,711 unfiled** claims. Do NOT run `pipeline work`/discovery while curating (`ebe3697`
+>       claim-link race).
+> - [ ] **Re-run the parked `discover_topics`** (job `052d93ef`, still `failed`/frozen) only after
+>       curation locks.
+> - [ ] **Work the 70 pending merge-reviews** at `/admin/reviews` (69 SAME + 1 UNSURE). Non-blocking.
+> - [ ] **Decide `ENRICH_MERGE` on/off** — engine validated sound (κ=1.0, 0% false-merge, 100%
+>       recall) but over-flags enrich ~71%; still OFF pending Paul. Dedup floor stays **0.75**.
+> - [ ] **Verify `ANTHROPIC_API_KEY` credit** before relying on the `api` backend — it was OUT OF
+>       CREDIT (API + deployed Vercel worker dead; local subscription CLI only).
+> - [ ] **Deferred:** extract any newly-ingested sources (ingest does not auto-queue extraction).
 
 **For the agent picking this up in a fresh conversation.** This file is the
 work queue; work it top-down by stage. The rule of the project is in one line:
