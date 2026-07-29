@@ -15,6 +15,18 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🌙 2026-07-28 PM (overnight window) — Phase-1 fidelity advanced, recency shipped, corpus
+> extraction UNDERWAY.** Details in memory `v4-build-state` (top block). TL;DR: 1b validated
+> (6% residual), 1a worksheet awaiting Paul's labels
+> ([artifact](https://claude.ai/code/artifact/4e9a442b-6d41-4be3-afcf-4941072823ff)), 1c wired +
+> validated live (#310: 7/59 fidelity flags, shadow mode). Recency scoring shipped (migration 015
+> + all sources dated; conflict/contradiction half gated in `docs/recency-weighting.md`). **Ingested
+> the non-AMA Drive back-catalog: 18 → 249 sources (231 new, all dated, timestamped).**
+> `scripts/overnightExtract.ts` is extracting the ~229 pending sources on the subscription CLI
+> (batched, limit-reset-resilient; tagging/synthesis/references deferred). Resume it any time
+> (idempotent). Next after extraction: bulk re-tag + `discover --dry-run` (roots → Paul) → Phase-3
+> synthesis. **Do NOT run a second pipeline/DB writer concurrently while it's live.**
+>
 > **✅ 2026-07-28 — TOPIC CURATION + RE-TAG PHASE COMPLETE & MERGED to `main`.** Full reshape:
 > 203 → 77 → **109 active topics**, **9 roots** (Healthy Aging folded), depth 3; re-tag converged
 > in one round — **all 2,450 claims filed `good`, 0 unfiled, 0 root proposals**. Fixed a reversed
