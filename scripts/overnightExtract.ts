@@ -34,6 +34,12 @@ async function main() {
   const args = process.argv.slice(2)
   const hours = num(args, '--hours') ?? 10
   const maxSources = num(args, '--max-sources') ?? 10_000
+  // Enqueue in small batches and drain each to idle before the next, so the jobs
+  // queue never holds a big backlog (the daily Vercel cron would otherwise try
+  // these on the credit-less API backend, and a killed run would strand hundreds
+  // of queued jobs). Each source also finishes (extract+consolidate) before we
+  // move on, rather than extracting everything then consolidating.
+  const batch = num(args, '--batch') ?? 4
   const deadline = Date.now() + hours * 3_600_000
 
   const { enqueueJob } = await import('../lib/jobs')
@@ -85,9 +91,10 @@ async function main() {
     if (healed) console.log(`[${now()}] healed ${healed} failed job(s) → requeued`)
 
     const extracted = await extractedSourceIds()
-    let fresh = await freshPending(extracted)
-    if (enqueuedTotal >= maxSources) fresh = []
-    else if (enqueuedTotal + fresh.length > maxSources) fresh = fresh.slice(0, maxSources - enqueuedTotal)
+    const remainingPending = await freshPending(extracted)
+    // Only enqueue a small batch this round (respecting the total cap).
+    const room = Math.max(0, maxSources - enqueuedTotal)
+    const fresh = remainingPending.slice(0, Math.min(batch, room))
 
     for (const id of fresh) {
       const { deduped } = await enqueueJob('extract_source', { source_id: id })
