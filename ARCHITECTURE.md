@@ -697,3 +697,103 @@ tables; `sources` + transcripts survive). v1 migrations in
 3. AI taxonomy + audit UI
 4. Synthesis from claims
 5. Public read side (tree, evidence provenance, search)
+
+## 2026-07-28 — Taxonomy reshape, and the design it forced
+
+### Current state
+The taxonomy was reshaped to **9 top-level branches**: the 7 patient-facing
+pillars (Exercise, Nutrition, Sleep, Medications & Supplements, Mental Health &
+Cognition, Reducing Risks, Reproductive & Hormonal Health) + Research & Evidence
++ Public Health & Policy. Healthy Aging was folded into the pillars; depth is
+capped at 3. All **2,450 active claims are re-tagged and filed** (0 unfiled),
+across **109 active topics** (curation compacted 203→77; re-tagging then grew 32
+subject-subtopics under existing pillars). Articles were **not** regenerated —
+deferred to the Phase 3 synthesis rewrite; the 23 topics carrying pre-reshape
+articles cite stale claim sets and are scaffolding, not product.
+
+### The taxonomy is a living tree, not a frozen one — existence vs. visibility
+The tree **will** drift and grow as sources accumulate, and that is correct, not
+a failure (an UpToDate-scale library is thousands of topics; physicians still
+want one place to look). The design that makes drift safe is to **separate a
+topic's existence from its visibility**:
+
+- **Existence** = "is this a SUBJECT a clinician would browse *to*?" A subject
+  earns a node even at 2 claims (Hormonal Contraception, Thyroid) and is **never
+  folded away merely for being small** — it will grow when a dedicated source
+  lands.
+- **Visibility** = a maturity gate. A topic goes public / gets a generated
+  article only once it crosses a claim threshold (~10–15). Below that the node
+  exists but is **hidden** from readers (or shows a stub), quietly accumulating.
+  When the source arrives it crosses the gate and publishes — **no fold-then-
+  unfold churn.**
+
+So the fold decision is **SUBJECT vs. DETAIL, not big vs. small**: a subject →
+keep as a (possibly hidden) node; a **detail** — a mechanism or single finding
+(Sperm Chemotaxis, Blood-Testis Barrier) — → fold into a parent as an article
+bullet, because it will never be a browse-to destination no matter how many
+claims accrue. The reverse pressure (a source **floods** a broad topic) is the
+**topic-split** case (see "Topic split" in v3.2): claims forming ≥2 clusters
+propose a split into children under the same parent. The tree breathes both ways.
+
+**Status: the visibility gate + auto split/merge maintenance are DESIGNED, NOT
+BUILT.** There is no `is_hidden`/`min_claims` field, no `taxonomy_maintenance`
+job, and no centroid embeddings for cluster detection. Today a thin subject
+simply has no article (harmless — 97 topics have none) and splitting/merging is
+manual (as done by hand on 2026-07-28). Building this is the "cadence 2" work in
+"Taxonomy durability & maintenance" above and is the top structural priority
+after extraction fidelity. Plan: BACKLOG "🔨 BUILD-NEXT PLAN — 2026-07-28".
+
+### Incremental article update — VERIFIED built, with peripheral gaps
+A 2026-07-28 code audit confirms the v3.2 core is real, not a stub:
+`update_topic` → `updateTopicContent` (`lib/synthesis.ts:517`) regenerates only
+the sections whose claim set changed and reuses every other section's stored
+prose byte-for-byte; all three tiers (reinforcing-only / section-regen /
+new-section) are branched, and the patient article re-translates only changed
+sections. So a new source **can** be folded into an existing article by updating
+just the relevant portions today. Gaps to close (BACKLOG §3):
+
+- **`stale_topics()` checks only DIRECT claim links, not the subtree**
+  (`005.2_...sql`), but articles are built from the recursive subtree
+  (`topic_claims`). A claim filed under a **child** never marks the **parent**
+  stale, so the parent's article silently omits it. This is a correctness hole
+  **in the incremental model itself** — highest-priority fix.
+- **Protocol propagation is absent** in the incremental path — a section update
+  never regenerates `topic_protocols`, even for an actionable claim; the protocol
+  goes stale until a full rebuild, and no actionability check exists.
+- **Per-section versioning is not persisted** — the "what changed since your last
+  visit" living-document delta has nowhere to read from (whole-article version
+  bumps only).
+- **Coherence valve is half-built** — the >25%-growth trigger exists but its
+  baseline is the last *version* (resets every patch) not the last *full* build,
+  so it may never fire; the "every N updates" counter is absent.
+
+### Extraction fidelity — the trust axis
+The one place the engine can violate principle 1 ("syntax, never substance") is
+**extraction over-reach**: the per-chunk extractor asserting substance the chunk
+does not support (a management directive, an upgraded evidence claim, a named
+mechanism the source only gestured at). Measured at **~15% invention — but by an
+LLM judge with no human gold set**, so the number is uncertified. Mitigations
+that EXIST: (a) a hardened faithfulness rule with negative examples in the
+extraction prompt — *shipped, UNVALIDATED*; (b) the `extraction_fidelity` flag
+rule (`lib/extractionFidelity.ts`) — *code-complete, only ever run on 12 claims,
+not wired as a gate*; (c) verbatim-quote verification — *live corpus-wide, but
+guards the quote, not the paraphrased statement where invention lives*. Target:
+fidelity becomes the 5th claim-flag rule (spec §7.2), quarantining suspect claims
+(`flagged` → invisible to synthesis) **before** they reach an article. Build
+order (all quota-cheap on the flat-rate CLI — do now): certify the judge (build
+the missing gold set + human κ) → validate the shipped prompt
+(`testExtractionFix.ts`) → wire per-source fidelity flagging. Do **not**
+auto-quarantine on the uncertified judge first (it could bury faithful claims).
+
+### Scale readiness — the design scales; the execution harness does not (yet)
+Solid at scale: the layered re-derivable model, HNSW vectors, the 1000-row
+pagination rule, ANN-bounded dedup, and sub-linear cost via incremental updates.
+Not yet ready for hundreds of sources: the pipeline runs on **one laptop via the
+local CLI** (dies on sleep, subscription-throttled); there are **no tests / no
+CI** (the 2026-07-28 audit found 7 latent bugs — several of the silent-truncation
+/ checkpoint class that already corrupted state twice); everything runs against
+**production**; and taxonomy maintenance is manual. Hardening these is the
+pre-scale milestone. Provider/cost note: keep the flat-rate **local CLI** for the
+quota-cheap verification + maintenance passes (fidelity flagging, maintenance
+dry-runs) now that its fixed cost is paid; reserve the paid **API + Batch** for
+the one-time synthesis build.

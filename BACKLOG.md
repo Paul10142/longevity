@@ -1647,3 +1647,112 @@ Recorded to save the next person the trip:
   have degraded past ~100k rows. The `topic_claims` RPC replaced the unbounded
   `IN (...)` of claim ids. Both were open cliffs in the v3 plan; neither needs
   re-doing.
+
+---
+
+## 🔨 BUILD-NEXT PLAN — 2026-07-28 (post curation+retag; verified by audit)
+
+The topic-curation + re-tag phase is **complete** (203→77→109 active topics, 9
+pillars, all 2,450 claims filed; branch `topic-curation` — **merge it**, it also
+carries the `mergeTopics` reversed-cycle-guard fix). Strategy locked with Paul
+this session:
+1. **The taxonomy is expected to drift and grow** (UpToDate-scale) — the goal is
+   *automated maintenance*, not a frozen tree.
+2. **Use the local subscription CLI now** for all quota-cheap verification /
+   maintenance work (fixed cost already paid); reserve the paid **API + Batch**
+   for the one-time synthesis build later.
+3. **Don't build articles per-source now** — finish the corpus, build the v4
+   synthesis engine, generate once for mature topics, then rely on incremental
+   section-updates. (Incremental section-update is verified BUILT — see §3.)
+
+Ordered by dependency.
+
+### 1. Extraction fidelity — the trust axis. Do FIRST (all CLI-cheap)
+- **1a. Certify the judge.** Build the missing `eval/extraction-goldset.json`:
+  `evalExtraction.ts sample` (~40 stratified insights) → Paul labels → compute
+  judge↔human κ (`scripts/evalExtraction.ts:318`). Near-zero LLM. Until κ is
+  acceptable, the "15% invention" and any auto-flag are the JUDGE's opinion —
+  auto-quarantine on it could bury faithful claims.
+- **1b. Validate the shipped prompt fix.** Run `scripts/testExtractionFix.ts`
+  (6 chunks, trivial) — confirm invention drops toward 0. The prompt hardening in
+  `lib/extraction.ts:58-66` is live but UNVALIDATED (blocked by the old outage).
+- **1c. Wire per-source fidelity flagging** as a standing post-extraction stage:
+  `flagClaims fidelity --source <id>` (~1 call/claim, one source at a time — NOT
+  the 16h corpus sweep). Writes `extraction_fidelity` flags into the §7 claim
+  lifecycle so suspect claims stay `flagged`/invisible to synthesis by
+  construction. Sequence after the drain so it never competes for the CLI.
+
+### 2. Taxonomy maintenance — build the "living tree" (DESIGNED, NOT BUILT)
+- **2a. Visibility gate.** Add `topics.is_hidden` (or a `min_claims` threshold) +
+  make the public read side hide sub-threshold topics. Resolves the thin-subject
+  problem (e.g. Hormonal Contraception): keep the node, hide until mature — no
+  fold/unfold churn. Fold decision becomes SUBJECT vs DETAIL, not big vs small
+  (ARCHITECTURE "existence vs visibility").
+- **2b. `taxonomy_maintenance` job** (cadence 2): topic **centroid embeddings**
+  (mean of member-claim vectors); propose split when claims form ≥2 clusters,
+  merge near-duplicate topics, re-home drifted claims. Safe proposals on
+  unreviewed AI topics auto-apply; the rest → review queue. Replaces the manual
+  curation done by hand on 2026-07-28.
+- Together these let the tree absorb hundreds of sources without hand-curation.
+
+### 3. Incremental-update gaps (VERIFIED built core; fix these before the article build)
+`update_topic`→`updateTopicContent` (`lib/synthesis.ts:517`) genuinely does
+section-level regen (reuses unchanged sections byte-for-byte, 3 tiers, patient
+re-translation). Gaps:
+- **3a. `stale_topics()` subtree bug (HIGH).** Flags a topic only on DIRECT new
+  links, but articles are built from the recursive subtree (`topic_claims`) — a
+  claim under a child never restales the parent, whose article then silently
+  omits it. Fix: mirror `topic_claims`' `WITH RECURSIVE` subtree in
+  `stale_topics` (`005.2_...sql`).
+- **3b. Protocol propagation.** `updateTopicContent` never touches
+  `topic_protocols` → protocol goes stale until a full regen. Add an actionability
+  check + protocol regen in the incremental path.
+- **3c. Per-section versioning.** Persist the changed-section set + timestamps so
+  the "what's new since last visit" delta has a source.
+- **3d. Coherence-valve baseline.** Measure growth since the last FULL build (not
+  last version) and add the "every N updates" counter (`synthesis.ts:488`).
+
+### 4. Bug-audit findings — 2026-07-28 (mergeTopics-class latent bugs)
+A read-only audit (prompted by the now-fixed `mergeTopics` cycle-guard bug) found
+7 more. **Verify each with a quick repro before fixing;** several are the
+silent-truncation / checkpoint class that already corrupted state twice.
+- **HIGH — `stale_topics` subtree** — same as §3a.
+- **MED/HIGH — `enrichClinician` unpaginated `.in()`** (`synthesis.ts:86-89,101`):
+  member-quote read (one row/member) truncates at 1000 → large-topic articles
+  render with missing quotes / `[R#]` citations. Route through `selectAllPaged`.
+- **MED — `recomputeTopicCounts` counts retired/merged claims** (`taxonomy.ts:639`):
+  no `claims.status='active'` filter (unlike `topic_claim_count`) → `claim_count`
+  overcounts → discovery keeps splitting topics that aren't over-broad.
+- **MED — `discoverTopics` loses its reflag set on a budget yield**
+  (`taxonomy.ts:611`): a topic created just before the time cutoff is never
+  reflagged on resume → new topic stays empty, claims never re-filed.
+- **MED — sweep auto-merge drops the loser's distinct topics + can't re-tag the
+  winner under `SKIP_TAGGING`** (`consolidation.ts:352,459`; `worker.ts:180`):
+  `mergeClaims` doesn't move the loser's `claim_topics` and no `tag_claims` is
+  enqueued → a claim can vanish from a topic during a freeze. Move `claim_topics`
+  in `mergeClaims`, or enqueue tag on merge.
+- **MED/LOW — `recomputeAggregates`/`enrichClaimCanonical` cap member reads at
+  1000** (`consolidation.ts:281,250`): undercounts corroboration for a
+  >1000-member claim (scale-dependent).
+- **LOW — `extractReferences` non-idempotent resume** (`references.ts:119`): crash
+  between insert and heartbeat re-inserts mentions (downstream dedups; only wastes
+  work).
+- Verified **SAFE** (not bugs): reparent/mergeTopics guards (post-fix),
+  `consolidateSource` resume, `sweepClaims` keyset cursor, `scoreGroundedness`→null
+  on error, `discoverTopics` orphan paging.
+
+### 5. Harness hardening — before scaling to hundreds of sources
+- **Tests / CI** on the pure functions (`splitIntoChunks`, `outlineToMarkdown`,
+  `slugify`) AND the curation/pipeline ops (topicOps, pagination discipline,
+  checkpoint/resume). The 7 bugs above are the argument for this.
+- **Deployed worker + budget**: move the drain off the laptop to the Vercel worker
+  (needs Vercel Pro for sub-daily cron + 300s) and top up API credit / wire the
+  Batch API for the synthesis build. Local CLI stays the tool for quota-cheap
+  maintenance; API/Batch is for the one-time big build.
+- **Spend cap** wired into the `generate_topic` enqueue path.
+
+### 6. THEN: the v4 synthesis engine + first article build (Phase 3)
+Only after 1–5: build the v4 synthesizer (spec §5/§8 — sentence-block schema,
+per-section audit, min-claims + groundedness gates; the gates ARE the §2a
+visibility gate), generate articles once for topics past the gate, validate
+quality, then run in incremental mode.
