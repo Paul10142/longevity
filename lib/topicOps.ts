@@ -78,8 +78,11 @@ export async function archiveTopic(db: Db, id: string): Promise<void> {
  */
 export async function mergeTopics(db: Db, id: string, intoId: string): Promise<void> {
   if (!intoId || intoId === id) throw new Error("valid merge target required")
-  if (await createsCycle(db, intoId, id)) {
+  if (await createsCycle(db, id, intoId)) {
     // Merging a topic into one of its own descendants would orphan the subtree.
+    // Guard direction: createsCycle(X, Y) is true when X is an ancestor-or-self
+    // of Y, so this fires exactly when `intoId` is a descendant of `id` — the
+    // orphan case. (The reversed form blocked the legitimate child→parent fold.)
     throw new Error("Cannot merge a topic into its own descendant")
   }
   const MERGE_BATCH = 500
