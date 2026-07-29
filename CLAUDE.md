@@ -41,6 +41,13 @@ windows at once. To stop that recurring:
   fail loudly instead).
 - `npm run regen -- <topicId>` — regenerate one topic's article off-queue,
   bypassing the job system. Same subscription-billing default as `pipeline`.
+- `scripts/extract_with_fidelity.sh <source_id>…` — the standing per-source
+  post-extraction flow: extract → drain (consolidate → tag) → `extraction_fidelity`
+  flagging, strictly serialized so the fidelity judge never competes with the
+  drain for the CLI. Defaults `SKIP_SYNTHESIS_FANOUT=1` (no article regen). Run
+  under `caffeinate` on AC power. Flags land in `claim_flags` (shadow mode — no
+  quarantine until the judge's κ is certified; see `docs/recency-weighting.md`
+  sibling `eval/extraction-goldset.json`).
 
 ## Environment
 

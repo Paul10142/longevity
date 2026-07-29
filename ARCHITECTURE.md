@@ -785,6 +785,31 @@ the missing gold set + human κ) → validate the shipped prompt
 (`testExtractionFix.ts`) → wire per-source fidelity flagging. Do **not**
 auto-quarantine on the uncertified judge first (it could bury faithful claims).
 
+**Status (2026-07-28 PM):** (1b) **validated** — `testExtractionFix.ts` re-ran the
+shipped prompt on the 6 previously-inventing chunks: 32 insights, **2 residual
+over-reaches (6%)**, down from those chunks inventing 100% before. A real
+improvement, not a cure — the residual is why 1a + 1c exist. (1a) **judge
+labelling harness built** — the 40-pair sample now renders as a mobile gold-label
+worksheet (`scripts/buildFidelityWorksheet.ts`, published artifact); Paul labels →
+`eval/extraction-goldset.json` → `evalExtraction.ts score` gives judge↔human κ.
+(1c) **wired** — `scripts/extract_with_fidelity.sh` runs `extraction_fidelity`
+flagging as a standing post-extraction stage, strictly after each source's drain
+(the judge and the drain are both heavy CLI consumers, so they must not overlap).
+Flags land in `claim_flags` in **shadow mode**: nothing sets `status='flagged'`
+until the judge is κ-certified, so an uncertified judge can never bury a faithful
+claim. When the drain moves to the deployed worker it becomes a low-priority job.
+
+### Recency weighting (2026-07-28) — newer sources rank higher
+Migration `015_recency_scoring.sql` adds a bounded recency bonus (0..8, decaying
+~1.5 pts/yr) to the `topic_claims()` score, so the newer of two comparable claims
+surfaces first (`docs/recency-weighting.md`). Prerequisite shipped: all 18 original
+sources are now dated (13 backfilled from YouTube upload dates), lifting recency
+coverage from 24% → ~100% of claims. This is the *always-on* half of Paul's
+request. The *conflict-scoped* half ("prefer the newer of two CONTRADICTING
+claims, boosted for same author") needs the contradiction path — designed in
+`docs/recency-weighting.md`, **gated** on Paul approving a corpus re-consolidation
+(the corpus is single-author today, so the author boost is inert regardless).
+
 ### Scale readiness — the design scales; the execution harness does not (yet)
 Solid at scale: the layered re-derivable model, HNSW vectors, the 1000-row
 pagination rule, ANN-bounded dedup, and sub-linear cost via incremental updates.

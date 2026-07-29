@@ -1688,6 +1688,25 @@ this session:
 Ordered by dependency.
 
 ### 1. Extraction fidelity — the trust axis. Do FIRST (all CLI-cheap)
+
+> **STATUS 2026-07-28 PM (overnight window):**
+> - **1b ✅ VALIDATED.** `testExtractionFix.ts`: the shipped faithfulness prompt
+>   produced 32 insights over the 6 previously-inventing chunks with **2 residual
+>   over-reaches (6%)** (was 100% of those chunks inventing). Real improvement,
+>   uncertified (judge's call) — the 2 residuals are why 1a + 1c matter.
+> - **1a ⏳ HARNESS BUILT, AWAITING PAUL.** The 40-pair sample is now a mobile
+>   gold-label worksheet: **artifact
+>   `claude.ai/code/artifact/4e9a442b-6d41-4be3-afcf-4941072823ff`**
+>   (`scripts/buildFidelityWorksheet.ts`). Paul rules each → Export →
+>   `eval/extraction-goldset.json` → `evalExtraction.ts score` prints judge↔human
+>   κ. (Sample is the 8-source 07-24 set that produced the "15%" headline — the
+>   right certification target. A fresh 18-source sample is a later broader pass.)
+> - **1c ✅ WIRED.** `scripts/extract_with_fidelity.sh` = extract → drain →
+>   `extraction_fidelity` flag, per source, serialized (judge never overlaps the
+>   drain). Flags → `claim_flags` in **shadow mode** (no `status='flagged'` until κ
+>   certified). Validated live on ≥1 newly-ingested source this window.
+> - **Do NOT auto-quarantine on the judge until κ is acceptable** (unchanged).
+
 - **1a. Certify the judge.** Build the missing `eval/extraction-goldset.json`:
   `evalExtraction.ts sample` (~40 stratified insights) → Paul labels → compute
   judge↔human κ (`scripts/evalExtraction.ts:318`). Near-zero LLM. Until κ is
