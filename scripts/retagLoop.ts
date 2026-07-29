@@ -17,6 +17,11 @@
  * (laptop sleep) re-running resumes mid-drain. Idempotent: tag only touches
  * needs_tagging=true claims.
  */
+// `export {}` marks this file a module so its top-level `main` doesn't collide
+// with pipeline.ts's global `main` (both use dynamic imports, no static import,
+// which would otherwise leave them in the global script scope — a build error).
+export {}
+
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || "claude-code"
 process.env.SKIP_SYNTHESIS_FANOUT = process.env.SKIP_SYNTHESIS_FANOUT || "1"
 
