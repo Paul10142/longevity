@@ -39,10 +39,15 @@ there.
 > **⚠ STORAGE GATE:** org is on Supabase **free (500 MB)**; DB ~177 MB. Full catalog (~249) projects
 > to ~0.7–1 GB → needs **Pro** or extraction stops ~120 sources in. Paul's decision.
 >
-> **PARALLEL WORK IN FLIGHT (separate branches, code-only, self-verified — merge when green):**
-> §2a visibility gate, §3a+§4 deferred-path bug-fixes+tests, §6 sentence-block plumbing. See the
-> build-next plan below for each. Consolidation.ts/hot-path bug-fixes are DEFERRED to a window when
-> extraction is idle (too risky to edit the running path).
+> **PARALLEL WORK — DONE & MERGED to `main` (2026-07-29; verified tsc + `npm test` 49/49 + build):**
+> ✅ **§2a visibility gate** (`lib/topicVisibility.ts`, thin topics hidden from public; migration 018
+> `is_hidden` applied — wire read-side SELECTs to honor it later). ✅ **§3a stale_topics
+> recursive-subtree** (migration 017 applied + verified: flags 12 stale topics / 2001 new claims).
+> ✅ **§4 deferred-path bugs** (enrichClinician paging, recomputeTopicCounts active-filter,
+> discoverTopics reflag persistence + tests). ✅ **§6 sentence-block plumbing** (`lib/blocks.ts` +
+> `lib/blockRenderer.ts` + 19 tests; not wired into synthesis yet). Still DEFERRED to an
+> extraction-idle window: the §4 HOT-PATH bugs in `consolidation.ts` (mergeClaims topic-move,
+> member-read 1000-cap).
 >
 > **NEXT PHASE after extraction:** bulk re-tag + `discover --dry-run` (new roots → Paul) → Phase-3
 > synthesis (the article build; the §2a gate + min-claims gate front it).
