@@ -449,6 +449,11 @@ export type DiscoverCheckpoint = {
   topics_created: number
   claims_reflagged: number
   proposals_queued: number
+  // The claim ids awaiting a needs_tagging flush. Persisted so a budget yield
+  // mid-run doesn't lose the reflag set: without this, a topic created just
+  // before the cutoff never gets its claims reflagged on resume (the topic
+  // already exists, so discovery skips it) and the new topic stays empty.
+  reflag?: string[]
   run_id?: string | null
 }
 
@@ -488,7 +493,24 @@ export async function discoverTopics(
       topics_created: checkpoint?.topics_created ?? 0,
       claims_reflagged: checkpoint?.claims_reflagged ?? 0,
       proposals_queued: checkpoint?.proposals_queued ?? 0,
+      reflag: checkpoint?.reflag ?? [],
       run_id: runId,
+    }
+
+    // Restore any reflag set carried over from a prior budget yield, so claims
+    // whose new topic was created just before the last cutoff still get flushed.
+    const reflag = new Set<string>(checkpoint?.reflag ?? [])
+
+    // Write needs_tagging=true for the whole accumulated set (idempotent) and
+    // record it in the checkpoint. Called before every budget yield and once at
+    // the end, so no reflag is stranded by a resume.
+    const flushReflag = async (): Promise<void> => {
+      if (dryRun) return
+      const ids = Array.from(reflag)
+      for (let i = 0; i < ids.length; i += 200) {
+        await db().from('claims').update({ needs_tagging: true }).in('id', ids.slice(i, i + 200))
+      }
+      cp = { ...cp, claims_reflagged: ids.length, reflag: ids }
     }
 
     // Current tree, for both the prompt and duplicate rejection.
@@ -550,10 +572,10 @@ export async function discoverTopics(
       })
     }
 
-    const reflag = new Set<string>()
-
     for (const batch of batches) {
       if (Date.now() - started > timeBudgetMs) {
+        // Persist the reflag set before yielding so resume re-files these claims.
+        await flushReflag()
         return { done: false, checkpoint: cp }
       }
 
@@ -613,13 +635,7 @@ export async function discoverTopics(
       await onProgress(cp)
     }
 
-    if (!dryRun && reflag.size > 0) {
-      const ids = Array.from(reflag)
-      for (let i = 0; i < ids.length; i += 200) {
-        await db().from('claims').update({ needs_tagging: true }).in('id', ids.slice(i, i + 200))
-      }
-      cp = { ...cp, claims_reflagged: ids.length }
-    }
+    await flushReflag()
 
     if (dryRun) return { done: true, checkpoint: cp }
 
@@ -635,14 +651,19 @@ export async function discoverTopics(
   }
 }
 
-/** Recompute every active topic's claim_count from claim_topics. */
+/** Recompute every active topic's claim_count from claim_topics.
+ *  Counts only ACTIVE claims — matching topic_claim_count()/topic_claims(), which
+ *  filter c.status = 'active'. Without this, retired/merged claims inflate
+ *  claim_count and discovery keeps splitting topics that aren't actually
+ *  over-broad. */
 export async function recomputeTopicCounts(): Promise<void> {
   const { data: topics } = await db().from('topics').select('id').eq('status', 'active')
   for (const t of (topics ?? []) as { id: string }[]) {
     const { count } = await db()
       .from('claim_topics')
-      .select('claim_id', { count: 'exact', head: true })
+      .select('claim_id, claims!inner(status)', { count: 'exact', head: true })
       .eq('topic_id', t.id)
+      .eq('claims.status', 'active')
     await db().from('topics').update({ claim_count: count ?? 0 }).eq('id', t.id)
   }
 }

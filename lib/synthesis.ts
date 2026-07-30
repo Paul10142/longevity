@@ -20,6 +20,7 @@
 import { supabaseAdmin } from './supabaseServer'
 import { claudeJson, CLAUDE_MODEL, CLAUDE_BULK_MODEL, type Effort } from './llm'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
+import { selectAllPaged } from './pagination'
 
 // Effectively uncapped at current scale; pagination of topic_claims() is the
 // scale path when a single topic exceeds this. NOT the old summarizing cap.
@@ -66,7 +67,7 @@ type Enrichment = {
   references: { marker: string; citation: string; url: string | null }[]
 }
 
-function citationText(r: {
+export function citationText(r: {
   authors: string[] | null; year: number | null; title: string; journal: string | null; doi: string | null
 }): string {
   const authors = r.authors && r.authors.length
@@ -83,39 +84,62 @@ async function enrichClinician(claimIds: string[]): Promise<Enrichment> {
   if (claimIds.length === 0) return { quoteByClaim, refMarkersByClaim, references }
 
   // One representative verbatim quote per claim (via its member raw insights).
-  const { data: members } = await db()
-    .from('claim_members')
-    .select('claim_id, raw_insights ( direct_quote, sources ( title ) )')
-    .in('claim_id', claimIds)
-  for (const m of (members ?? []) as {
+  // Route through selectAllPaged: one row per member means a large-topic article
+  // (>1000 members across its claims) would otherwise truncate at the 1000-row
+  // server cap and render with missing quotes.
+  const members = await selectAllPaged<{
     claim_id: string
     raw_insights: { direct_quote: string | null; sources: { title: string } | null } | null
-  }[]) {
+  }>(
+    (from, to) => db()
+      .from('claim_members')
+      .select('claim_id, raw_insights ( direct_quote, sources ( title ) )')
+      .in('claim_id', claimIds)
+      .order('claim_id', { ascending: true })
+      .range(from, to)
+  )
+  for (const m of members) {
     const q = m.raw_insights?.direct_quote
     if (q && !quoteByClaim.has(m.claim_id)) {
       quoteByClaim.set(m.claim_id, { quote: q, source: m.raw_insights?.sources?.title ?? 'source' })
     }
   }
 
-  // Verified references supporting these claims → numbered markers.
-  const { data: links } = await db().from('claim_references').select('claim_id, reference_id').in('claim_id', claimIds)
-  const refIds = Array.from(new Set((links ?? []).map((l: { reference_id: string }) => l.reference_id)))
+  // Verified references supporting these claims → numbered markers. Both reads
+  // are one-row-per-link/reference and unbounded in the corpus size, so they
+  // page too — a truncated links set drops [R#] citations from an article.
+  const links = await selectAllPaged<{ claim_id: string; reference_id: string }>(
+    (from, to) => db()
+      .from('claim_references')
+      .select('claim_id, reference_id')
+      .in('claim_id', claimIds)
+      .order('claim_id', { ascending: true })
+      .order('reference_id', { ascending: true })
+      .range(from, to)
+  )
+  const refIds = Array.from(new Set(links.map(l => l.reference_id)))
   if (refIds.length > 0) {
-    const { data: refs } = await db()
-      .from('references_')
-      .select('id, title, authors, year, journal, doi, url')
-      .in('id', refIds)
-      .order('year', { ascending: false, nullsFirst: false })
-    const markerById = new Map<string, string>()
-    ;(refs ?? []).forEach((r: {
+    // Stable order: year desc (marker priority) with id as a deterministic
+    // tiebreaker so paging never repeats or skips a reference.
+    const refs = await selectAllPaged<{
       id: string; title: string; authors: string[] | null; year: number | null
       journal: string | null; doi: string | null; url: string | null
-    }, i: number) => {
+    }>(
+      (from, to) => db()
+        .from('references_')
+        .select('id, title, authors, year, journal, doi, url')
+        .in('id', refIds)
+        .order('year', { ascending: false, nullsFirst: false })
+        .order('id', { ascending: true })
+        .range(from, to)
+    )
+    const markerById = new Map<string, string>()
+    refs.forEach((r, i: number) => {
       const marker = `R${i + 1}`
       markerById.set(r.id, marker)
       references.push({ marker, citation: citationText(r), url: r.url ?? (r.doi ? `https://doi.org/${r.doi}` : null) })
     })
-    for (const l of (links ?? []) as { claim_id: string; reference_id: string }[]) {
+    for (const l of links) {
       const marker = markerById.get(l.reference_id)
       if (!marker) continue
       const arr = refMarkersByClaim.get(l.claim_id) ?? []

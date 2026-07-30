@@ -8,6 +8,7 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint .",
+    "test": "node --import tsx --test tests/*.test.ts",
     "devtools": "react-devtools",
     "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts",
     "seed-spine": "tsx --env-file=.env.local scripts/seedSpine.ts",
