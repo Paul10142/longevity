@@ -17,7 +17,7 @@ export async function GET() {
 
   const { data, error } = await supabaseAdmin
     .from("topics")
-    .select("id, name, slug, parent_id, claim_count")
+    .select("id, name, slug, parent_id, claim_count, is_hidden")
     .eq("status", "active")
     .order("claim_count", { ascending: false })
 

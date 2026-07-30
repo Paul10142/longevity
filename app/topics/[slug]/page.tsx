@@ -62,7 +62,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
   const [{ data: allTopics }, { data: clin }, { data: pat }, { data: proto }] = await Promise.all([
     supabaseAdmin
       .from("topics")
-      .select("id, name, slug, parent_id, claim_count")
+      .select("id, name, slug, parent_id, claim_count, is_hidden")
       .eq("status", "active"),
     supabaseAdmin
       .from("topic_articles")
@@ -94,7 +94,7 @@ export default async function TopicPage({ params }: { params: Promise<{ slug: st
   // than a one-line article. Admins bypass the gate and see everything.
   const counts = subtreeClaimCounts(rows)
   const showTopic = (r: Row) => admin || isVisibleCount(counts.get(r.id) ?? 0, r.is_hidden)
-  const topicVisible = admin || isVisibleCount(counts.get(topic.id) ?? 0)
+  const topicVisible = admin || isVisibleCount(counts.get(topic.id) ?? 0, byId.get(topic.id)?.is_hidden)
 
   const childrenOf = new Map<string, Row[]>()
   for (const r of rows) {

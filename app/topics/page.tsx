@@ -31,7 +31,7 @@ export default async function PublicTopicsPage() {
 
   const { data } = await supabaseAdmin
     .from("topics")
-    .select("id, name, slug, description, parent_id, claim_count")
+    .select("id, name, slug, description, parent_id, claim_count, is_hidden")
     .eq("status", "active")
     .order("name")
   const topics = (data ?? []) as TopicNode[]
