@@ -40,6 +40,10 @@ async function main() {
   // of queued jobs). Each source also finishes (extract+consolidate) before we
   // move on, rather than extracting everything then consolidating.
   const batch = num(args, '--batch') ?? 4
+  // Storage safety brake: stop before the Supabase free-plan 500 MB cap, which
+  // locks the DB to read-only (halting everything). Default leaves ~40 MB of
+  // headroom. Raise on a paid plan, or pass a bigger --max-mb.
+  const maxMb = num(args, '--max-mb') ?? 460
   const deadline = Date.now() + hours * 3_600_000
 
   const { enqueueJob } = await import('../lib/jobs')
@@ -72,6 +76,14 @@ async function main() {
     return count ?? 0
   }
 
+  async function dbSizeMb(): Promise<number> {
+    const { data, error } = await db.rpc('database_size_bytes')
+    // Fail OPEN: a transient read error must not halt a healthy extraction. The
+    // external monitor is a second line of defence, and the cap is far off.
+    if (error || data == null) { console.log(`[${now()}] (db size check failed: ${error?.message ?? 'null'})`); return 0 }
+    return Number(data) / (1024 * 1024)
+  }
+
   // Heal jobs that failed under a usage limit so they retry after a reset.
   async function healFailed(): Promise<number> {
     const { data } = await db.from('jobs')
@@ -87,6 +99,11 @@ async function main() {
   let idleStreak = 0
   while (Date.now() < deadline) {
     round++
+    const mb = await dbSizeMb()
+    if (mb >= maxMb) {
+      console.log(`[${now()}] STOP — database at ${mb.toFixed(0)} MB ≥ ${maxMb} MB safety cap (free-plan lock is 500 MB). Upgrade to Supabase Pro or pass a higher --max-mb to continue.`)
+      break
+    }
     const healed = await healFailed()
     if (healed) console.log(`[${now()}] healed ${healed} failed job(s) → requeued`)
 
