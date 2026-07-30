@@ -215,7 +215,7 @@ type Outline = {
  * (e.g. "…male factors [d5d0e719-3b37-4855-b72e-e213a3394ac7]."). Claim ids
  * belong in the paragraph's claim_ids array, never in reader-facing text.
  * Leaves [R#] reference markers untouched. */
-function stripInlineClaimIds(text: string): string {
+export function stripInlineClaimIds(text: string): string {
   return text
     .replace(/\s*\[[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}\]/g, '')
     .replace(/ +([.,;:)])/g, '$1')
@@ -223,7 +223,7 @@ function stripInlineClaimIds(text: string): string {
     .trim()
 }
 
-function outlineToMarkdown(outline: Outline): string {
+export function outlineToMarkdown(outline: Outline): string {
   const parts: string[] = []
   for (const s of outline.sections ?? []) {
     parts.push(`## ${s.title}`)
