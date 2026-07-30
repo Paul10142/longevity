@@ -15,17 +15,37 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌙 2026-07-28 PM (overnight window) — Phase-1 fidelity advanced, recency shipped, corpus
-> extraction UNDERWAY.** Details in memory `v4-build-state` (top block). TL;DR: 1b validated
-> (6% residual), 1a worksheet awaiting Paul's labels
-> ([artifact](https://claude.ai/code/artifact/4e9a442b-6d41-4be3-afcf-4941072823ff)), 1c wired +
-> validated live (#310: 7/59 fidelity flags, shadow mode). Recency scoring shipped (migration 015
-> + all sources dated; conflict/contradiction half gated in `docs/recency-weighting.md`). **Ingested
-> the non-AMA Drive back-catalog: 18 → 249 sources (231 new, all dated, timestamped).**
-> `scripts/overnightExtract.ts` is extracting the ~229 pending sources on the subscription CLI
-> (batched, limit-reset-resilient; tagging/synthesis/references deferred). Resume it any time
-> (idempotent). Next after extraction: bulk re-tag + `discover --dry-run` (roots → Paul) → Phase-3
-> synthesis. **Do NOT run a second pipeline/DB writer concurrently while it's live.**
+> **🌙 2026-07-29 (overnight) — STATE OF PLAY (single source of truth; keep this coherent with
+> memory `v4-build-state`).**
+>
+> **DONE & merged to `main`:**
+> - **Phase-1 extraction fidelity COMPLETE.** 1b validated (6% residual over-reach). 1c wired
+>   (`scripts/extract_with_fidelity.sh`) + validated live (#310 → 7/59 shadow-mode flags). 1a
+>   worksheet built ([artifact](https://claude.ai/code/artifact/4e9a442b-6d41-4be3-afcf-4941072823ff))
+>   — **awaiting Paul's labels** for judge↔human κ (the only Phase-1 item still on Paul).
+> - **Recency scoring shipped** (migration 015 + all sources dated). Contradiction/"same-author"
+>   half designed + gated in `docs/recency-weighting.md` (needs Paul + a reprocess).
+> - **Drive back-catalog ingested: 18 → 249 sources** (231 new non-AMA, dated, timestamped).
+> - **Test harness exists** (`npm test`, node:test) — 16 checks on resolveQuote / splitIntoChunks /
+>   youtube helpers. First automated tests in the project.
+> - **Storage safety brake** (migration 016 + `overnightExtract.ts --max-mb`, default 460) so the
+>   free-plan 500 MB read-only lock can't halt the pipeline unattended.
+> - **`/admin/flags` review screen** — triage claim_flags (keep / dismiss). Read-only + resolve.
+>
+> **RUNNING NOW:** `overnightExtract.ts` extracting the pending sources on the subscription CLI
+> (batched, limit-reset-resilient; tagging/synthesis/references deferred; idempotent — resume any
+> time). ~31/249 processed. **⚠ ONE pipeline/DB writer at a time — do not start a second.**
+>
+> **⚠ STORAGE GATE:** org is on Supabase **free (500 MB)**; DB ~177 MB. Full catalog (~249) projects
+> to ~0.7–1 GB → needs **Pro** or extraction stops ~120 sources in. Paul's decision.
+>
+> **PARALLEL WORK IN FLIGHT (separate branches, code-only, self-verified — merge when green):**
+> §2a visibility gate, §3a+§4 deferred-path bug-fixes+tests, §6 sentence-block plumbing. See the
+> build-next plan below for each. Consolidation.ts/hot-path bug-fixes are DEFERRED to a window when
+> extraction is idle (too risky to edit the running path).
+>
+> **NEXT PHASE after extraction:** bulk re-tag + `discover --dry-run` (new roots → Paul) → Phase-3
+> synthesis (the article build; the §2a gate + min-claims gate front it).
 >
 > **✅ 2026-07-28 — TOPIC CURATION + RE-TAG PHASE COMPLETE & MERGED to `main`.** Full reshape:
 > 203 → 77 → **109 active topics**, **9 roots** (Healthy Aging folded), depth 3; re-tag converged
