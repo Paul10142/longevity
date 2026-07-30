@@ -1,6 +1,7 @@
 import Link from "next/link"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { isAdmin } from "@/lib/isAdmin"
+import { subtreeClaimCounts, isVisibleCount } from "@/lib/topicVisibility"
 
 export const dynamic = "force-dynamic"
 
@@ -11,6 +12,9 @@ type TopicNode = {
   description: string | null
   parent_id: string | null
   claim_count: number
+  // Not selected until migration 018 is applied; kept optional so the future
+  // curator override is type-wired without the read depending on the column.
+  is_hidden?: boolean | null
 }
 
 // Total claims for a topic including its descendants.
@@ -32,10 +36,16 @@ export default async function PublicTopicsPage() {
     .order("name")
   const topics = (data ?? []) as TopicNode[]
 
+  // Visibility gate: public readers see only topics whose subtree has matured
+  // past the threshold; admins see everything so thin topics stay manageable.
+  const counts = subtreeClaimCounts(topics)
+  const showTopic = (t: TopicNode) => admin || isVisibleCount(counts.get(t.id) ?? 0, t.is_hidden)
+
   const byId = new Map<string, TopicNode>()
   const childrenOf = new Map<string, TopicNode[]>()
   for (const t of topics) byId.set(t.id, t)
   for (const t of topics) {
+    if (!showTopic(t)) continue
     const key = t.parent_id && byId.has(t.parent_id) ? t.parent_id : "__root__"
     if (!childrenOf.has(key)) childrenOf.set(key, [])
     childrenOf.get(key)!.push(t)
