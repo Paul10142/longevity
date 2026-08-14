@@ -1,4 +1,5 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
+import { selectAllPaged } from '@/lib/pagination'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -110,13 +111,18 @@ export default async function InsightsReviewPage({
   const allTopics = (topicsData || []) as { id: string; name: string; slug: string }[]
 
   // Per-source totals for the card headers.
-  const { data: allInsightSourceIds } = await db
-    .from('raw_insights')
-    .select('source_id')
-    .range(0, 49999)
+  //
+  // This used to read every raw_insight with `.range(0, 49999)` and tally in JS.
+  // That does NOT lift PostgREST's 1000-row cap — it silently returns 1000 (see
+  // lib/pagination.ts) — so `accurateInsightCounts` was anything but, for every
+  // corpus past 1000 insights (now >13,000). admin_source_list() (migration 019)
+  // aggregates with a GROUP BY server-side, so it is both correct and one round
+  // trip instead of fourteen.
+  const { data: sourceRollup } = await db.rpc('admin_source_list')
   const accurateInsightCounts: Record<string, number> = {}
-  ;(allInsightSourceIds || []).forEach((r: any) => {
-    accurateInsightCounts[r.source_id] = (accurateInsightCounts[r.source_id] || 0) + 1
+  ;(sourceRollup || []).forEach((s: any) => {
+    const n = Number(s.insights_count ?? 0)
+    if (n > 0) accurateInsightCounts[s.id] = n
   })
   const totalSourcesWithInsights = Object.keys(accurateInsightCounts).length
 
@@ -138,21 +144,37 @@ export default async function InsightsReviewPage({
       if (!topic) {
         topicRawIds = []
       } else {
-        const { data: claimLinks } = await db
-          .from('claim_topics')
-          .select('claim_id')
-          .eq('topic_id', topic.id)
-        const claimIds = (claimLinks || []).map((l: any) => l.claim_id)
+        // Paged: a topic will hold well over 1000 claims once the deferred bulk
+        // tagging pass runs (the biggest is ~700 today), and an unpaginated read
+        // would then silently drop the overflow from this filter.
+        const claimLinks = await selectAllPaged<{ claim_id: string }>(
+          (from, to) =>
+            db
+              .from('claim_topics')
+              .select('claim_id')
+              .eq('topic_id', topic.id)
+              .order('claim_id', { ascending: true })
+              .range(from, to),
+          1000
+        )
+        const claimIds = claimLinks.map(l => l.claim_id)
 
         if (claimIds.length === 0) {
           topicRawIds = []
         } else {
-          const { data: members } = await db
-            .from('claim_members')
-            .select('raw_insight_id')
-            .in('claim_id', claimIds)
-            .range(0, 49999)
-          topicRawIds = (members || []).map((m: any) => m.raw_insight_id)
+          // Same trap: `.range(0, 49999)` still caps at 1000, so filtering by a
+          // large topic silently showed only part of its insights.
+          const members = await selectAllPaged<{ raw_insight_id: string }>(
+            (from, to) =>
+              db
+                .from('claim_members')
+                .select('raw_insight_id')
+                .in('claim_id', claimIds)
+                .order('raw_insight_id', { ascending: true })
+                .range(from, to),
+            1000
+          )
+          topicRawIds = members.map(m => m.raw_insight_id)
         }
       }
     }
