@@ -71,6 +71,24 @@ there.
 >   — still `queued`, nothing lost. It would have tagged all 7,414 claims unattended, eaten the night, and
 >   raised topic proposals. **Un-park by resetting `run_after` to `now()` when the deliberate re-tag phase runs.**
 >
+> **⛔ DO NOT "fix" the low merge rate by lowering `SWEEP_THRESHOLD` (0.75). Measured 2026-08-14.**
+> ~92% of claims are singletons, which reads like broken dedup. It is not. Nearest-neighbour analysis over
+> a 150-claim sample: 35% of claims have a neighbour in the 0.75–0.85 band the sweep already checks, and the
+> adjudicator calls them DIFFERENT — correctly. Inspected Zone 2 pairs at **0.82–0.87 similarity** are plainly
+> distinct facts (a definition vs a lactate threshold vs a mitochondrial mechanism vs fibre-type recruitment).
+> Embeddings cluster by TOPIC; a claim is an atomic FACT, and one topic supports dozens of true statements.
+> A full-corpus sweep over the ~7,500 never-swept claims produced a **~0.2% merge rate**, independently
+> confirming this. Lowering the floor would buy false merges and review-queue noise — the "wrong-SAME" risk.
+> **Many related-but-distinct claims per topic is the raw material for article synthesis, not a dedup failure.**
+>
+> **SILENT-TRUNCATION BUG CLASS — 5 live instances fixed 2026-08-14, 3 latent ones remain.** PostgREST caps
+> every read at 1000 rows and `.range(0, 49_999)` does NOT lift it (see `lib/pagination.ts`). Fixed:
+> `/admin/sources` (timeout + counts), `/admin/insights/review` (per-source totals were showing ~1/12 of
+> reality; topic filter), `/admin/insights/export` (chunk lookup — ~70% of rows lost transcript context).
+> **Still latent, and they GO LIVE when the bulk tagging pass runs** (topics will pass 1000 claims):
+> `flagClaims` open-flag report, `flagClaims` 200-claim member batch, topic-proposals claim lookup.
+> **Fix these before tagging.** The hot path (`consolidation.ts`) was audited and is clean.
+>
 > **DO NOT delete the retired claim shells to reclaim storage.** It was on the list, and it is a bad trade:
 > ~316 shells ≈ 5 MB (of 500), and deleting them destroys the `merged_into_id` chain that makes every merge
 > reversible — the same chain `repairOrphanedTopicLinks.ts` needs to resolve targets. Storage must come from
