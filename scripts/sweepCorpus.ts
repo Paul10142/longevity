@@ -20,6 +20,7 @@ export {}
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 const ZERO_UUID = '00000000-0000-0000-0000-000000000000'
+const MAX_CONSECUTIVE_FAILURES = 5
 const now = () => new Date().toISOString().slice(11, 19)
 
 async function main() {
@@ -40,12 +41,32 @@ async function main() {
 
   console.log(`[${now()}] sweep — ${since ? `claims created after ${since}` : 'FULL CORPUS'}`)
 
+  // Transient `TypeError: fetch failed` blips do happen on long runs — one killed
+  // a 95%-complete sweep once. The checkpoint lives in this process, so dying
+  // means rescanning from the top; retry the tick instead, resuming from the last
+  // good cursor. Only consecutive failures with no progress give up.
+  let consecutiveFailures = 0
+
   for (let tick = 1; ; tick++) {
-    const result = await sweepClaims(
-      async () => {}, // full checkpoint is persisted here between ticks, not by the heartbeat
-      220_000,
-      checkpoint as never
-    )
+    let result
+    try {
+      result = await sweepClaims(
+        async () => {}, // full checkpoint is persisted here between ticks, not by the heartbeat
+        220_000,
+        checkpoint as never
+      )
+      consecutiveFailures = 0
+    } catch (err) {
+      consecutiveFailures++
+      if (consecutiveFailures >= MAX_CONSECUTIVE_FAILURES) throw err
+      const backoff = consecutiveFailures * 15_000
+      console.log(
+        `[${now()}] tick ${tick} failed (${consecutiveFailures}/${MAX_CONSECUTIVE_FAILURES}): ` +
+          `${err instanceof Error ? err.message : err} — retrying in ${backoff / 1000}s from the last cursor`
+      )
+      await new Promise(r => setTimeout(r, backoff))
+      continue
+    }
     const cp = result.checkpoint
     console.log(
       `[${now()}] tick ${tick}: processed ${cp.processed}/${cp.total}, merged ${cp.merged}` +
