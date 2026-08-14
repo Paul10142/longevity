@@ -12,7 +12,7 @@
  */
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { resolveQuote, splitIntoChunks } from '../lib/extraction'
+import { resolveQuote, splitIntoChunks, sanitizeSpeaker } from '../lib/extraction'
 
 test('resolveQuote: exact substring is located with correct offsets', () => {
   const content = 'the quick brown fox jumps'
@@ -98,4 +98,26 @@ test('splitIntoChunks: long text splits into multiple chunks, each a substring o
 
 test('splitIntoChunks: empty input yields no chunks', () => {
   assert.deepEqual(splitIntoChunks('', 100, 20), [])
+})
+
+// ── sanitizeSpeaker ─────────────────────────────────────────
+// Attribution feeds physician-facing provenance: a role word stored as a name
+// would read as a real attribution, so refusals must normalize to null.
+
+test('sanitizeSpeaker: keeps a real name', () => {
+  assert.equal(sanitizeSpeaker('Micky Collins'), 'Micky Collins')
+  assert.equal(sanitizeSpeaker('  Peter Attia  '), 'Peter Attia')
+})
+
+test('sanitizeSpeaker: role words and refusals become null', () => {
+  for (const s of ['host', 'Guest', 'SPEAKER', 'interviewer', 'unknown', 'Unclear', 'n/a', 'none', 'null', 'guests']) {
+    assert.equal(sanitizeSpeaker(s), null, s)
+  }
+})
+
+test('sanitizeSpeaker: non-strings, empties, and absurd lengths become null', () => {
+  assert.equal(sanitizeSpeaker(undefined), null)
+  assert.equal(sanitizeSpeaker(42), null)
+  assert.equal(sanitizeSpeaker('   '), null)
+  assert.equal(sanitizeSpeaker('x'.repeat(81)), null)
 })

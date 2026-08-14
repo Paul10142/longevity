@@ -36,6 +36,7 @@ export type RawInsight = {
   statement: string
   context_note: string | null
   direct_quote: string | null           // verbatim source span supporting the insight
+  speaker: string | null                // who said it (model-inferred; transcripts are unlabeled). Null = unsure or pre-2026-08-14 row awaiting backfill
   quote_char_start: number | null
   quote_char_end: number | null
   evidence_type: EvidenceType

@@ -40,6 +40,7 @@ type ExtractedInsight = {
   statement: string
   context_note?: string | null
   direct_quote?: string | null   // verbatim span from the chunk supporting the insight
+  speaker?: string | null        // who said it, model-inferred (transcripts are unlabeled); null = unsure
   evidence_type: EvidenceType
   qualifiers?: InsightQualifiers | null
   confidence: Confidence
@@ -112,8 +113,11 @@ WRITING STYLE
 DIRECT QUOTE (for verifiability)
 For each insight, also return "direct_quote": the SHORTEST verbatim span copied EXACTLY from the chunk text above that best supports the insight — same words, punctuation, and casing, no paraphrasing or ellipses. This is used to quote the source precisely, so it must appear character-for-character in the chunk. If no single span cleanly supports it, return null.
 
+SPEAKER ATTRIBUTION
+Also return "speaker": the full name of the person who stated the insight. The transcript has no speaker labels, so infer it from conversational context: who is asking vs answering, names used in the dialogue, and the participant list when one is provided above the text. Attribution matters — an expert guest's claim carries different weight than the host's commentary — so NEVER guess between plausible speakers: return null unless the context makes the speaker clear. Use the person's name as given in the participant list (e.g. "Micky Collins"), not a role word like "guest". This field is the ONLY place a speaker may appear — the statement itself must still contain no speaker names.
+
 OUTPUT FORMAT (STRICT JSON)
-{"insights":[{"statement":"...","context_note":"...","direct_quote":"exact words from the chunk or null","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
+{"insights":[{"statement":"...","context_note":"...","direct_quote":"exact words from the chunk or null","speaker":"full name or null","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
 If no high-value insights are present, return {"insights":[]}.
 `.trim()
 
@@ -125,6 +129,15 @@ const LOW_VALUE_PATTERNS: RegExp[] = [
   /no conflict/i,
   /^(this|the) (podcast|episode|discussion|conversation|topic)/i,
 ]
+
+/** Keep only a real person-name attribution; role words and "unknown" become null. */
+export function sanitizeSpeaker(raw: unknown): string | null {
+  if (typeof raw !== 'string') return null
+  const s = raw.trim()
+  if (!s || s.length > 80) return null
+  if (/^(host|guest|speaker|interviewer|interviewee|narrator|unknown|unclear|n\/?a|none|null)s?$/i.test(s)) return null
+  return s
+}
 
 function isLowValue(statement: string): boolean {
   if (statement.trim().length < 30) return true
@@ -321,7 +334,14 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 }
 
 // ── LLM extraction for one chunk ────────────────────────────
-export async function extractFromChunk(content: string, label: string): Promise<ExtractedInsight[]> {
+export async function extractFromChunk(
+  content: string,
+  label: string,
+  // "Host: Peter Attia. Guest(s): Micky Collins." — gives the speaker-attribution
+  // rule names to attribute to. Optional: eval harnesses call without it, and the
+  // model then attributes only when the dialogue itself names the speaker.
+  participants?: string
+): Promise<ExtractedInsight[]> {
   // Retry transient failures: the claude-code CLI intermittently prefixes prose
   // ("Extracted the following…") so `claudeJson` throws a parse error. Swallowing
   // that as 0 insights silently drops a whole chunk's content, so retry a few
@@ -334,7 +354,7 @@ export async function extractFromChunk(content: string, label: string): Promise<
     try {
       parsed = await claudeJson<{ insights?: ExtractedInsight[] }>(
         EXTRACTION_SYSTEM_PROMPT,
-        `Text to analyze:\n${content}`,
+        `${participants ? `Participants in this recording — ${participants}\n\n` : ''}Text to analyze:\n${content}`,
         8000,
         EXTRACTION_MODEL
       )
@@ -365,6 +385,9 @@ export async function extractFromChunk(content: string, label: string): Promise<
       statement: i.statement,
       context_note: i.context_note ?? null,
       direct_quote: typeof i.direct_quote === 'string' && i.direct_quote.trim() ? i.direct_quote.trim() : null,
+      // Role words ("host", "guest", "speaker", "unknown") are refusals to name a
+      // person, not attributions — normalize them to null rather than storing them.
+      speaker: sanitizeSpeaker(i.speaker),
       evidence_type: coerceEvidenceType(i.evidence_type),
       confidence: coerceConfidence(i.confidence),
       importance: coerceImportance(i.importance),
@@ -401,18 +424,18 @@ export async function extractSource(
   // Load transcript + timed segments. Select timed_transcript defensively so
   // extraction still runs if migration 010 has not been applied yet (the column
   // is then absent → we fall back to a select without it and no timing).
-  type SourceRow = { id: string; transcript: string | null; timed_transcript?: unknown }
+  type SourceRow = { id: string; transcript: string | null; timed_transcript?: unknown; authors?: string[] | null }
   let source: SourceRow
   {
     const withTiming = await db()
       .from('sources')
-      .select('id, transcript, timed_transcript')
+      .select('id, transcript, timed_transcript, authors')
       .eq('id', sourceId)
       .single()
     if (withTiming.error && /timed_transcript/.test(withTiming.error.message || '')) {
       const fallback = await db()
         .from('sources')
-        .select('id, transcript')
+        .select('id, transcript, authors')
         .eq('id', sourceId)
         .single()
       if (fallback.error || !fallback.data) throw new Error(`Source ${sourceId} not found: ${fallback.error?.message}`)
@@ -547,6 +570,15 @@ export async function extractSource(
 
   const total = chunkTexts.length
 
+  // Names for the speaker-attribution rule. This corpus is the Attia podcast, so
+  // the host is constant; guests come from sources.authors (parsed from titles).
+  // Nothing here asserts who said what — it only tells the model which names
+  // exist so its attributions use real names or null, never role words.
+  const guests = (source.authors ?? []).filter(a => a && a !== 'Peter Attia')
+  const participants =
+    `Host: Peter Attia (the interviewer).` +
+    (guests.length > 0 ? ` Guest(s): ${guests.join(', ')}.` : ` No guest is listed; solo episodes are the host speaking.`)
+
   let cp: ExtractCheckpoint = {
     chunk_index: checkpoint?.chunk_index ?? 0,
     total_chunks: total,
@@ -564,7 +596,7 @@ export async function extractSource(
     const content = chunkTexts[idx]
     const locator = `seg-${String(idx + 1).padStart(3, '0')}`
 
-    const extracted = await extractFromChunk(content, label)
+    const extracted = await extractFromChunk(content, label, participants)
 
     if (extracted.length > 0) {
       const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
@@ -586,6 +618,7 @@ export async function extractSource(
         direct_quote: quote.text,
         quote_char_start: quote.start,
         quote_char_end: quote.end,
+        speaker: ins.speaker ?? null,
         evidence_type: ins.evidence_type,
         confidence: ins.confidence,
         importance: ins.importance ?? null,
