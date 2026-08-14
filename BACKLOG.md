@@ -15,8 +15,49 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌙 2026-08-01 — HANDOFF (read this FIRST; supersedes the 07-29 block below for live state).
-> Extraction is STOPPED, nothing running now. Written from a separate window.**
+> **🌙 2026-08-14 — HANDOFF (read this FIRST; supersedes every block below for live state).
+> The mystery second writer is FOUND and REMOVED.**
+>
+> **🔴 THE SECOND WRITER WAS THE DAILY VERCEL CRON.** `vercel.json` carried
+> `crons: [{ "path": "/api/worker/tick", "schedule": "0 8 * * *" }]`. It fired daily at ~08:40 UTC, ran one
+> 300 s function, and was killed at the Vercel `maxDuration` limit — every single day from Aug 2 to Aug 13
+> (the write window is a tight, unmistakable `08:40:1x → 08:44:5x`). **Removed in commit `6a1bdc7`, pushed.**
+> Re-add it ONLY once `ANTHROPIC_API_KEY` is funded.
+>
+> **Why it was actively harmful:** cloud code cannot reach the local `claude` CLI, so the cron ran on the
+> **API backend, whose key is out of credit** → every dedup adjudicator call failed. Over 12 days it added
+> **~1,500 claims with ZERO deduplication** (`merged_into` frozen at 265 — *no merges at all* since Aug 2)
+> and filed **159 junk `UNSURE` / 0.00-confidence rows** reading *"Automatic duplicate-check was unavailable
+> (checker error)"* — all onto a DB already at 68 % of its cap.
+>
+> **⛔ CORRECTION — THE SUBSCRIPTION WAS NEVER EXHAUSTED.** The 08-01 block below blames the stalled 9 h run
+> on "subscription usage-limit exhaustion" and tells the next window to stop CLI extraction. **That is wrong,
+> and it cost this session a wrong plan.** Paul verified **99 % of the subscription remaining**. Local runs
+> (`LLM_BACKEND=claude-code`) dedup correctly; only the *cloud* path was ever broken. The stalled run is
+> better explained by the DB timeouts. **Do not repeat this misdiagnosis.**
+>
+> **LIVE STATE (verified vs DB `vgzcrihdxcoozgcqadbt`, 2026-08-14):**
+> - **60 / 249 sources extracted** (189 pending). 11,221 raw insights → **9,925 active claims**, of which
+>   **1,502 were cron-added without dedup**; **7,417 untagged**.
+> - **342 pending `merge_reviews`, but 209 are junk crash rows** → only **~133 are real**.
+> - **DB 339 MB / 500 MB.** Tables: claims 168 MB, raw_insights 99 MB, sources 42 MB.
+> - **Headroom ≈ 20–25 more sources** (~5 MB/source against the `--max-mb 460` brake). **Supabase Pro is still
+>   required to finish the 189** — Paul is buying it shortly.
+>
+> **RESOLVED / DEBUNKED from the 08-01 block:** `main` == `origin/main`, **0 unpushed** (the "25 unpushed
+> commits" warning was stale). **No Cursor agent running.** The unaccounted
+> `_admissionsacademy/scripts/reachability-monitor.mjs` **does not exist**.
+>
+> **⚠ VERIFY IN THE VERCEL DASHBOARD** that the `6a1bdc7` deployment is **Ready** — a cron is only dropped on
+> a *successful* production deploy. `npm run build` passes locally; the Vercel CLI is logged out on this
+> machine and the Vercel MCP is unauthorized, so it cannot be confirmed from the shell.
+>
+> **CLEANUP OWED** (once extraction is idle and Pro is live): clear the 209 junk rows, and **re-sweep the
+> ~1,500 un-deduped claims** — that should recover real storage, easing the cap pressure.
+
+> **🌙 2026-08-01 — HANDOFF (SUPERSEDED by the block above; kept as dated history.
+> ⚠ Its "subscription exhausted" diagnosis is WRONG — see the correction above).
+> Written from a separate window.**
 >
 > **⚠️ OPEN THIS PROJECT DIRECTLY.** The last two extraction runs were driven from a *different* repo's
 > window (`admissionsacademy`) operating on this tree — awkward and error-prone. Start the new window in
