@@ -5,6 +5,35 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { JobQueuePanel } from "@/components/JobQueuePanel"
 
+/**
+ * Where a source is in the pipeline.
+ *
+ * Without this the table showed only words + insights, so a source that was
+ * merely QUEUED (transcript present, insights "-") looked identical to one that
+ * had run and produced nothing — which is exactly how it got misread. The
+ * genuinely alarming case (finished but extracted zero insights) is called out
+ * separately rather than blending in with the queue.
+ */
+function SourceStatus({ status, insights }: { status: string | null; insights: number }) {
+  const base = "inline-block rounded-full px-2 py-0.5 text-xs font-medium whitespace-nowrap"
+
+  if (status === "succeeded" && insights === 0) {
+    return <span className={`${base} bg-destructive/10 text-destructive`}>Done · no insights</span>
+  }
+  switch (status) {
+    case "succeeded":
+      return <span className={`${base} bg-emerald-500/10 text-emerald-700 dark:text-emerald-400`}>Extracted</span>
+    case "processing":
+      return <span className={`${base} bg-amber-500/10 text-amber-700 dark:text-amber-500`}>Extracting…</span>
+    case "failed":
+      return <span className={`${base} bg-destructive/10 text-destructive`}>Failed</span>
+    case "pending":
+      return <span className={`${base} bg-muted text-muted-foreground`}>Queued</span>
+    default:
+      return <span className={`${base} bg-muted text-muted-foreground`}>{status ?? "unknown"}</span>
+  }
+}
+
 export default async function AdminSourcesPage() {
   if (!supabaseAdmin) {
     return (
@@ -134,6 +163,7 @@ export default async function AdminSourcesPage() {
                       <TableHead>Type</TableHead>
                       <TableHead>Authors</TableHead>
                       <TableHead>Created</TableHead>
+                      <TableHead>Status</TableHead>
                       <TableHead>Word Count</TableHead>
                       <TableHead>Insights</TableHead>
                       <TableHead>Actions</TableHead>
@@ -155,6 +185,9 @@ export default async function AdminSourcesPage() {
                             day: '2-digit',
                             year: '2-digit'
                           })}
+                        </TableCell>
+                        <TableCell>
+                          <SourceStatus status={source.processing_status} insights={source.insightsCount} />
                         </TableCell>
                         <TableCell>
                           {source.wordCount > 0 ? source.wordCount.toLocaleString() : "-"}
