@@ -52,8 +52,29 @@ there.
 > a *successful* production deploy. `npm run build` passes locally; the Vercel CLI is logged out on this
 > machine and the Vercel MCP is unauthorized, so it cannot be confirmed from the shell.
 >
-> **CLEANUP OWED** (once extraction is idle and Pro is live): clear the 209 junk rows, and **re-sweep the
-> ~1,500 un-deduped claims** — that should recover real storage, easing the cap pressure.
+> **WORK COMPLETED THE NIGHT OF 2026-08-13/14 (all committed + pushed):**
+> - **Junk queue cleared:** 209 crash rows **DELETED**, 40 dead-pair rows closed as rejected. Deletion (not
+>   rejection) was required — `sweepClaims` skips any pair that already has a review row *regardless of status*
+>   (`consolidation.ts`, the UNSURE branch), so rejecting would have permanently blocked re-adjudication. All
+>   249 rows backed up to `scratchpad/merge-reviews-junk-backup-20260814.json` (committed). **Queue 342 → 93.**
+> - **Scoped re-dedup done:** `scratchpad/sweepCronEra.ts` seeded the keyset cursor to just before the cron era
+>   and swept the 1,547 un-deduped claims in **15 min → 51 merges** (first merges in 12 days). Scoping only
+>   limits which claims are *iterated*; each is still matched corpus-wide via `match_claims`.
+> - **`mergeClaims` fixed** (`61c0b0f`): it never moved `claim_topics` (filings stranded on the retired claim),
+>   and the winner-members read was unpaginated (silent short read past 1000 → merge aborts on the PK).
+> - **229 stranded topic filings repaired** (`c17aac9`): `scripts/repairOrphanedTopicLinks.ts` (dry-run by
+>   default) resolved every one transitively through `merged_into_id` — 22 were chained through a second dead
+>   claim. Orphans now **0**; topic counts recomputed.
+> - **`/admin` is now a live to-do dashboard** (`911de90`): outstanding-decision counts (merge reviews, topic
+>   proposals, accuracy flags, unreviewed topics) + pipeline status + a storage gauge vs the 500 MB cap.
+> - **⚠ A `tag_claims` job (`f0e7998d`, enqueued by the cron on 08-04) is PARKED** via `run_after='2027-01-01'`
+>   — still `queued`, nothing lost. It would have tagged all 7,414 claims unattended, eaten the night, and
+>   raised topic proposals. **Un-park by resetting `run_after` to `now()` when the deliberate re-tag phase runs.**
+>
+> **DO NOT delete the retired claim shells to reclaim storage.** It was on the list, and it is a bad trade:
+> ~316 shells ≈ 5 MB (of 500), and deleting them destroys the `merged_into_id` chain that makes every merge
+> reversible — the same chain `repairOrphanedTopicLinks.ts` needs to resolve targets. Storage must come from
+> **Pro**, not from shredding merge provenance.
 
 > **🌙 2026-08-01 — HANDOFF (SUPERSEDED by the block above; kept as dated history.
 > ⚠ Its "subscription exhausted" diagnosis is WRONG — see the correction above).
