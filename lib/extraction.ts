@@ -12,7 +12,7 @@
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
-import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
+import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
 import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import {
@@ -136,7 +136,38 @@ export function sanitizeSpeaker(raw: unknown): string | null {
   const s = raw.trim()
   if (!s || s.length > 80) return null
   if (/^(host|guest|speaker|interviewer|interviewee|narrator|unknown|unclear|n\/?a|none|null)s?$/i.test(s)) return null
+  // One canonical spelling for the host — "Dr. Peter Attia" / "peter attia"
+  // variants would otherwise fragment the attribution rollups.
+  if (/^(dr\.?\s+)?peter\s+attia(,?\s+m\.?d\.?)?$/i.test(s)) return 'Peter Attia'
   return s
+}
+
+/**
+ * One cheap LLM read of the transcript's opening to name the guest(s).
+ * Podcast episodes introduce guests in the first minutes; titles often don't
+ * (213 of 249 sources have no guest in metadata). Empty array = could not tell,
+ * which downstream renders as a hedged participant line — never "solo".
+ */
+export async function inferGuestsFromIntro(transcript: string): Promise<string[]> {
+  try {
+    const intro = transcript.slice(0, 4000)
+    const parsed = await claudeJson<{ guests?: unknown }>(
+      `You read the opening of a health-podcast transcript and identify the guest(s) being interviewed. The host is Peter Attia. Return JSON only: {"guests": ["Full Name", ...]} — full names of guests actually introduced or addressed in this opening. Empty array if no guest is identifiable. Never include the host. Never guess.`,
+      `Transcript opening:\n${intro}`,
+      400,
+      CLAUDE_JUDGMENT_MODEL
+    )
+    if (!Array.isArray(parsed.guests)) return []
+    return parsed.guests
+      .filter((g): g is string => typeof g === 'string')
+      .map(g => g.trim())
+      .filter(g => g.length > 1 && g.length <= 80 && !/peter\s+attia/i.test(g))
+      .slice(0, 6)
+  } catch {
+    // Attribution is an enhancement — a failed inference must never block
+    // extraction. The hedged participant line covers this case.
+    return []
+  }
 }
 
 function isLowValue(statement: string): boolean {
@@ -402,6 +433,10 @@ export type ExtractCheckpoint = {
   chunk_index: number      // next chunk to process
   total_chunks: number
   insights_created: number
+  // Participant line for speaker attribution, computed once per source (an LLM
+  // read of the transcript intro when metadata lists no guest) and carried in
+  // the checkpoint so resumed ticks don't re-pay the inference call.
+  participants?: string
 }
 
 /**
@@ -570,19 +605,37 @@ export async function extractSource(
 
   const total = chunkTexts.length
 
-  // Names for the speaker-attribution rule. This corpus is the Attia podcast, so
-  // the host is constant; guests come from sources.authors (parsed from titles).
-  // Nothing here asserts who said what — it only tells the model which names
-  // exist so its attributions use real names or null, never role words.
-  const guests = (source.authors ?? []).filter(a => a && a !== 'Peter Attia')
-  const participants =
-    `Host: Peter Attia (the interviewer).` +
-    (guests.length > 0 ? ` Guest(s): ${guests.join(', ')}.` : ` No guest is listed; solo episodes are the host speaking.`)
+  // Names for the speaker-attribution rule. Nothing here asserts who said what —
+  // it only tells the model which names exist so attributions use real names or
+  // null, never role words.
+  //
+  // sources.authors (parsed from titles) lists a real guest for only ~36 of 249
+  // sources, and naive filtering let "Dr. Peter Attia" through as a "guest" —
+  // the first live run attributed guest statements to the host because the
+  // prompt claimed interviews were solo. So: metadata guests when they exist,
+  // otherwise ONE inference call over the transcript intro (episodes open by
+  // introducing the guest), cached in the checkpoint across resume ticks. When
+  // even that fails, the line hedges — it never claims a solo episode.
+  const isAttia = (a: string) => /peter\s+attia/i.test(a)
+  const metaGuests = (source.authors ?? []).filter(a => a && !isAttia(a))
+  let participants = checkpoint?.participants
+  if (!participants) {
+    let guests = metaGuests
+    if (guests.length === 0 && source.transcript) {
+      guests = await inferGuestsFromIntro(source.transcript)
+    }
+    participants =
+      `Host: Peter Attia (the interviewer).` +
+      (guests.length > 0
+        ? ` Guest(s): ${guests.join(', ')}.`
+        : ` Guest names are unavailable — attribute a statement ONLY when the dialogue itself makes the speaker unambiguous; otherwise return null. Do not assume the host is speaking.`)
+  }
 
   let cp: ExtractCheckpoint = {
     chunk_index: checkpoint?.chunk_index ?? 0,
     total_chunks: total,
     insights_created: checkpoint?.insights_created ?? 0,
+    participants,
   }
 
   while (cp.chunk_index < total) {
