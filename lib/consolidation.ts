@@ -316,10 +316,14 @@ export async function recomputeAggregates(claimId: string): Promise<void> {
     .eq('id', claimId)
 }
 
+/** Rows per read/write batch when merging. At or below the 1000-row server cap. */
+const MERGE_BATCH = 500
+
 /**
- * Merge `loserId` into `winnerId`: move the loser's members onto the winner,
- * mark the loser merged, and refresh the winner's aggregates. Reversible by
- * detaching members and reactivating. Used by the review queue's "accept".
+ * Merge `loserId` into `winnerId`: move the loser's members AND topic filings
+ * onto the winner, mark the loser merged, and refresh the winner's aggregates.
+ * Reversible by detaching members and reactivating. Used by the review queue's
+ * "accept" and by the sweep's auto-merge.
  */
 export async function mergeClaims(loserId: string, winnerId: string): Promise<void> {
   if (loserId === winnerId) return
@@ -328,13 +332,29 @@ export async function mergeClaims(loserId: string, winnerId: string): Promise<vo
   // member of the winner would collide on the (claim_id, raw_insight_id) PK and
   // abort the whole merge, so first drop the loser's rows that already exist on
   // the winner (they are redundant duplicates), then move the remainder.
-  const { data: winnerMembers, error: wmErr } = await db()
-    .from('claim_members').select('raw_insight_id').eq('claim_id', winnerId)
-  if (wmErr) throw new Error(`Failed to read winner members: ${wmErr.message}`)
-  const winnerIds = (winnerMembers ?? []).map((m: { raw_insight_id: string }) => m.raw_insight_id)
-  if (winnerIds.length > 0) {
+  //
+  // Paged: this read was unpaginated, so on a winner with more than 1000 members
+  // PostgREST silently returned the first 1000 (see lib/pagination.ts) — the
+  // dedup-delete below then missed the rest and the move aborted the whole merge
+  // on the PK. Ordered by raw_insight_id so paging cannot skip or repeat.
+  const winnerMembers = await selectAllPaged<{ raw_insight_id: string }>(
+    (from, to) =>
+      db()
+        .from('claim_members')
+        .select('raw_insight_id')
+        .eq('claim_id', winnerId)
+        .order('raw_insight_id', { ascending: true })
+        .range(from, to),
+    MERGE_BATCH
+  )
+  const winnerIds = winnerMembers.map(m => m.raw_insight_id)
+  // Chunked: a single `.in()` carrying thousands of ids overflows the request URL.
+  for (let i = 0; i < winnerIds.length; i += MERGE_BATCH) {
     const { error: dupErr } = await db()
-      .from('claim_members').delete().eq('claim_id', loserId).in('raw_insight_id', winnerIds)
+      .from('claim_members')
+      .delete()
+      .eq('claim_id', loserId)
+      .in('raw_insight_id', winnerIds.slice(i, i + MERGE_BATCH))
     if (dupErr) throw new Error(`Failed to drop duplicate members: ${dupErr.message}`)
   }
   const { error: moveErr } = await db()
@@ -342,6 +362,50 @@ export async function mergeClaims(loserId: string, winnerId: string): Promise<vo
     .update({ claim_id: winnerId, matched_by: 'human' })
     .eq('claim_id', loserId)
   if (moveErr) throw new Error(`Failed to move members: ${moveErr.message}`)
+
+  // Move the loser's topic filings onto the winner. Without this they stayed
+  // pointed at the retired claim: the winner silently lost those topics and the
+  // rows became orphans (229 of them in the live DB before this fix). The
+  // `needs_tagging` flag set below only papers over it when a re-tag actually
+  // runs — every breadth-extraction run so far has deferred tagging with
+  // SKIP_TAGGING=1, so in practice the filings were simply lost.
+  //
+  // Read → upsert → delete-only-what-was-read, in batches: the same shape as
+  // mergeTopics, which keeps a concurrent tag_claims insert from being dropped
+  // and dodges the 1000-row read cap. `ignoreDuplicates` keeps the winner's own
+  // filing (and its confidence) when both claims sit under the same topic.
+  type TopicLink = { topic_id: string; confidence: number | null; assigned_by: string }
+  for (let pass = 0; pass < 100; pass++) {
+    const { data: links, error: readErr } = await db()
+      .from('claim_topics')
+      .select('topic_id, confidence, assigned_by')
+      .eq('claim_id', loserId)
+      .limit(MERGE_BATCH)
+    if (readErr) throw new Error(`Failed to read merged claim's topics: ${readErr.message}`)
+    const rows = (links ?? []) as TopicLink[]
+    if (rows.length === 0) break
+
+    const { error: upErr } = await db()
+      .from('claim_topics')
+      .upsert(
+        rows.map(r => ({
+          claim_id: winnerId,
+          topic_id: r.topic_id,
+          confidence: r.confidence,
+          // Preserved, not overwritten: assigned_by is constrained to ai/human.
+          assigned_by: r.assigned_by,
+        })),
+        { onConflict: 'claim_id,topic_id', ignoreDuplicates: true }
+      )
+    if (upErr) throw new Error(`Failed to move topics onto the surviving claim: ${upErr.message}`)
+
+    const { error: delErr } = await db()
+      .from('claim_topics')
+      .delete()
+      .eq('claim_id', loserId)
+      .in('topic_id', rows.map(r => r.topic_id))
+    if (delErr) throw new Error(`Failed to clear merged claim's topics: ${delErr.message}`)
+  }
 
   const { error: markErr } = await db()
     .from('claims')
