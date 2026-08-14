@@ -2,6 +2,7 @@ import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import fidelityPairs from "@/eval/extraction-eval-pairs.json"
 
 // Counts are live — never serve a cached to-do list.
 export const dynamic = "force-dynamic"
@@ -62,6 +63,7 @@ async function loadDashboard() {
     topicProposals,
     openFlags,
     unreviewedTopics,
+    fidelityLabeled,
     pendingSources,
     untaggedClaims,
     activeClaims,
@@ -74,6 +76,7 @@ async function loadDashboard() {
     countOf("topics", q =>
       q.select("id", { count: "exact", head: true }).eq("status", "active").eq("reviewed_by_human", false)
     ),
+    countOf("fidelity_labels", q => q.select("pair_id", { count: "exact", head: true })),
     countOf("sources", q => q.select("id", { count: "exact", head: true }).eq("processing_status", "pending")),
     countOf("claims", q =>
       q.select("id", { count: "exact", head: true }).eq("status", "active").eq("needs_tagging", true)
@@ -111,6 +114,14 @@ async function loadDashboard() {
       count: unreviewedTopics,
       description: "Topics the AI created that you have not signed off on yet. Fold thin ones into their parent.",
       emptyLabel: "All reviewed",
+    },
+    {
+      name: "Fidelity Labels",
+      href: "/admin/fidelity",
+      // Unlabeled pairs remaining; unknown label count keeps this unknown too.
+      count: fidelityLabeled === null ? null : Math.max(0, fidelityPairs.length - fidelityLabeled),
+      description: "Rule whether extracted insights faithfully reflect the transcript. Certifies the AI accuracy judge.",
+      emptyLabel: "All labeled",
     },
   ]
 
