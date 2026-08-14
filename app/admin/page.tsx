@@ -9,10 +9,14 @@ export const dynamic = "force-dynamic"
 /** Supabase free-plan ceiling; the DB goes read-only if it is reached. */
 const STORAGE_CAP_MB = 500
 
+/** An unknown count renders as a dash, never as zero. */
+const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString())
+
 type Decision = {
   name: string
   href: string
-  count: number
+  /** null = the query failed. Never conflate that with zero — see countOf. */
+  count: number | null
   description: string
   /** Shown instead of the count when there is nothing to do. */
   emptyLabel: string
@@ -20,15 +24,31 @@ type Decision = {
 
 type Stat = { name: string; value: string; description: string }
 
+/**
+ * Count rows, or null if the query failed.
+ *
+ * Deliberately NOT `?? 0`: on a to-do dashboard a swallowed error would render
+ * as "Queue clear" and quietly tell the reader there is nothing waiting on them.
+ * An unknown count has to look different from an empty one.
+ */
 async function countOf(
   table: string,
   apply: (q: ReturnType<NonNullable<typeof supabaseAdmin>["from"]>) => unknown
-): Promise<number> {
-  if (!supabaseAdmin) return 0
-  // head:true → the row payload is discarded server-side; we only want the count.
-  const query = apply(supabaseAdmin.from(table)) as { count: number | null; error: unknown }
-  const { count } = (await query) as unknown as { count: number | null }
-  return count ?? 0
+): Promise<number | null> {
+  if (!supabaseAdmin) return null
+  try {
+    // head:true → the row payload is discarded server-side; we only want the count.
+    const query = apply(supabaseAdmin.from(table))
+    const { count, error } = (await query) as { count: number | null; error: unknown }
+    if (error) {
+      console.error(`[admin dashboard] count failed for ${table}:`, error)
+      return null
+    }
+    return count ?? 0
+  } catch (err) {
+    console.error(`[admin dashboard] count threw for ${table}:`, err)
+    return null
+  }
 }
 
 async function loadDashboard() {
@@ -100,10 +120,15 @@ async function loadDashboard() {
   const usedMb = sizeBytes > 0 ? sizeBytes / 1024 / 1024 : null
 
   const stats: Stat[] = [
-    { name: "Sources awaiting extraction", value: pendingSources.toLocaleString(), description: "Processed automatically by the pipeline — no action needed from you." },
-    { name: "Active claims", value: activeClaims.toLocaleString(), description: "Deduplicated facts currently in the library." },
-    { name: "Claims awaiting filing", value: untaggedClaims.toLocaleString(), description: "Extracted but not yet sorted into topics; a bulk pass handles these." },
-    { name: "Jobs in the queue", value: openJobs.toLocaleString(), description: openJobs > 0 ? "The pipeline is working." : "The pipeline is idle." },
+    { name: "Sources awaiting extraction", value: fmt(pendingSources), description: "Processed automatically by the pipeline — no action needed from you." },
+    { name: "Active claims", value: fmt(activeClaims), description: "Deduplicated facts currently in the library." },
+    { name: "Claims awaiting filing", value: fmt(untaggedClaims), description: "Extracted but not yet sorted into topics; a bulk pass handles these." },
+    {
+      name: "Jobs in the queue",
+      value: fmt(openJobs),
+      description:
+        openJobs === null ? "Queue status unavailable." : openJobs > 0 ? "The pipeline is working." : "The pipeline is idle.",
+    },
   ]
 
   return { decisions, stats, storage: usedMb, configured: true }
@@ -111,7 +136,9 @@ async function loadDashboard() {
 
 export default async function AdminHomePage() {
   const { decisions, stats, storage, configured } = await loadDashboard()
-  const outstanding = decisions.reduce((sum, d) => sum + d.count, 0)
+  const outstanding = decisions.reduce((sum, d) => sum + (d.count ?? 0), 0)
+  // If any count failed, "nothing is waiting on you" would be a lie.
+  const anyUnknown = decisions.some(d => d.count === null)
   const storagePct = storage === null ? null : Math.min(100, (storage / STORAGE_CAP_MB) * 100)
 
   return (
@@ -124,9 +151,11 @@ export default async function AdminHomePage() {
               <p className="text-muted-foreground mt-2">
                 {!configured
                   ? "Database not configured — counts unavailable."
-                  : outstanding === 0
-                    ? "Nothing is waiting on you right now."
-                    : `${outstanding.toLocaleString()} ${outstanding === 1 ? "item needs" : "items need"} your decision.`}
+                  : anyUnknown
+                    ? `Some counts could not be loaded${outstanding > 0 ? ` — at least ${outstanding.toLocaleString()} waiting` : ""}. Refresh to retry.`
+                    : outstanding === 0
+                      ? "Nothing is waiting on you right now."
+                      : `${outstanding.toLocaleString()} ${outstanding === 1 ? "item needs" : "items need"} your decision.`}
               </p>
             </div>
 
@@ -134,7 +163,8 @@ export default async function AdminHomePage() {
               <h2 className="text-lg font-semibold">Needs your decision</h2>
               <div className="grid gap-3 sm:grid-cols-2">
                 {decisions.map(item => {
-                  const active = item.count > 0
+                  const unknown = item.count === null
+                  const active = (item.count ?? 0) > 0
                   return (
                     <Link
                       key={item.href}
@@ -147,8 +177,10 @@ export default async function AdminHomePage() {
                     >
                       <div className="flex items-baseline justify-between gap-3">
                         <span className="font-semibold">{item.name}</span>
-                        {active ? (
-                          <span className="text-2xl font-bold tabular-nums">{item.count.toLocaleString()}</span>
+                        {unknown ? (
+                          <span className="text-xs text-muted-foreground">Count unavailable</span>
+                        ) : active ? (
+                          <span className="text-2xl font-bold tabular-nums">{fmt(item.count)}</span>
                         ) : (
                           <span className="text-xs text-muted-foreground">{item.emptyLabel}</span>
                         )}
