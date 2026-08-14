@@ -30,12 +30,14 @@ export default async function AdminSourcesPage() {
   let error = null
 
   try {
-    const result = await supabaseAdmin
-      .from('sources')
-      .select('*')
-      .order('created_at', { ascending: false })
-    
-    sources = result.data
+    // admin_source_list() (migration 019) aggregates server-side and returns no
+    // transcript text. The previous `select('*')` dragged all ~42 MB of
+    // transcripts through PostgREST and started failing the statement timeout
+    // (57014) outright, and the per-source insight count was read from an
+    // unpaginated raw_insights select — silently capped at 1000 rows by
+    // PostgREST, so every count was wrong once the corpus passed 1000 insights.
+    const result = await supabaseAdmin.rpc('admin_source_list')
+
     error = result.error
 
     if (error) {
@@ -44,34 +46,12 @@ export default async function AdminSourcesPage() {
       console.error('Error message:', error.message)
       console.error('Error details:', error.details)
       console.error('Error hint:', error.hint)
-    } else if (sources) {
-      // Count raw insights per source (v2: raw_insights carries source_id directly).
-      const sourceIds = sources.map((s: any) => s.id)
-      const { data: insightCounts } = await supabaseAdmin
-        .from('raw_insights')
-        .select('source_id')
-        .in('source_id', sourceIds)
-
-      const insightsCountMapFinal = new Map<string, number>()
-      if (insightCounts) {
-        insightCounts.forEach((item: any) => {
-          insightsCountMapFinal.set(item.source_id, (insightsCountMapFinal.get(item.source_id) || 0) + 1)
-        })
-      }
-
-      // Add insights count and word count to each source
-      sources = sources.map((source: any) => {
-        const wordCount = source.transcript 
-          ? source.transcript.trim().split(/\s+/).filter((w: string) => w.length > 0).length 
-          : 0
-        const insightsCount = insightsCountMapFinal.get(source.id) || 0
-        
-        return {
-          ...source,
-          wordCount,
-          insightsCount
-        }
-      })
+    } else {
+      sources = (result.data ?? []).map((source: any) => ({
+        ...source,
+        wordCount: source.word_count ?? 0,
+        insightsCount: Number(source.insights_count ?? 0),
+      }))
     }
   } catch (err) {
     console.error('Exception fetching sources:', err)
