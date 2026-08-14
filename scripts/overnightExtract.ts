@@ -40,10 +40,13 @@ async function main() {
   // of queued jobs). Each source also finishes (extract+consolidate) before we
   // move on, rather than extracting everything then consolidating.
   const batch = num(args, '--batch') ?? 4
-  // Storage safety brake: stop before the Supabase free-plan 500 MB cap, which
-  // locks the DB to read-only (halting everything). Default leaves ~40 MB of
-  // headroom. Raise on a paid plan, or pass a bigger --max-mb.
-  const maxMb = num(args, '--max-mb') ?? 460
+  // Storage safety brake. Originally sized for the free plan's 500 MB read-only
+  // lock; the org moved to Pro (8 GB included) on 2026-08-14, so the default is
+  // now 6000 MB — still a runaway guard, but far above the ~1.1 GB the full
+  // 249-source catalogue is projected to need (~4.5 MB/source). Pass --max-mb to
+  // override. NOTE: on Pro this is a cost guard, not a lock — exceeding the
+  // included disk bills extra rather than halting the database.
+  const maxMb = num(args, '--max-mb') ?? 6000
   const deadline = Date.now() + hours * 3_600_000
 
   const { enqueueJob } = await import('../lib/jobs')
@@ -101,7 +104,7 @@ async function main() {
     round++
     const mb = await dbSizeMb()
     if (mb >= maxMb) {
-      console.log(`[${now()}] STOP — database at ${mb.toFixed(0)} MB ≥ ${maxMb} MB safety cap (free-plan lock is 500 MB). Upgrade to Supabase Pro or pass a higher --max-mb to continue.`)
+      console.log(`[${now()}] STOP — database at ${mb.toFixed(0)} MB ≥ ${maxMb} MB safety cap. Pass a higher --max-mb to continue (on Pro this is a cost guard: 8 GB is included, beyond that bills extra).`)
       break
     }
     const healed = await healFailed()
