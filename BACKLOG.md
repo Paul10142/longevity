@@ -15,6 +15,56 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🌙 2026-08-01 — HANDOFF (read this FIRST; supersedes the 07-29 block below for live state).
+> Extraction is STOPPED, nothing running now. Written from a separate window.**
+>
+> **⚠️ OPEN THIS PROJECT DIRECTLY.** The last two extraction runs were driven from a *different* repo's
+> window (`admissionsacademy`) operating on this tree — awkward and error-prone. Start the new window in
+> `/Users/paulclancy/_lifestyleacademy`. **ONE pipeline/DB writer only.**
+>
+> **LIVE STATE (verified vs DB `vgzcrihdxcoozgcqadbt`, 2026-08-01):**
+> - **60 / 249 sources extracted** (189 still pending). Corpus: **11,221 raw insights → 9,925 active claims**.
+> - **7,417 active claims are UNTAGGED** (`needs_tagging=true`) — every new source ran with `SKIP_TAGGING=1`,
+>   so a large re-tag/discover backlog is queued (was ~1,700; now ~7,400).
+> - **342 pending `merge_reviews`** (was 167 two days ago; growing).
+> - **DB is 339 MB of the 500 MB free-plan cap (~68%).** The storage brake (`--max-mb 460`) will halt
+>   extraction before the remaining 189 sources finish → **the Supabase Pro decision is now the gating item.**
+> - **⚠ POSSIBLE SECOND WRITER:** active-claim + review counts kept RISING after the extraction runs stopped
+>   (8,376 → 9,925 claims). **Check the parked Cursor agent worker on this repo AND any Vercel cron BEFORE
+>   starting a new writer** — do not create a two-writer race (the `ebe3697` corruption scenario).
+>
+> **TWO OVERNIGHT EXTRACTION RUNS THIS HANDOFF:**
+> - Run 1 (~07-30): healthy — drained 122 jobs, +7 sources (53→60).
+> - Run 2 (~07-31→08-01): **STALLED** — ran the full 9h but added **0 sources**, only +67 raw insights /
+>   +3 claims / 21 jobs drained, and threw repeated DB **TimeoutErrors** (heartbeat + insert). Likely cause:
+>   **subscription usage-limit exhaustion + DB strain** (timeouts track the 339 MB DB). Back-to-back 9h CLI
+>   runs now hit diminishing returns → **stop bulk-extracting on the subscription CLI; either top up
+>   `ANTHROPIC_API_KEY` (API/Batch backend) or move to Pro, then resume.**
+>
+> **MERGE-REVIEW QUEUE — reviewed read-only, NOTHING APPLIED.** Of the 167 pending at review time:
+> **40 dead** (a claim already merged away — safe to clear), **35 crash rows** (UNSURE / 0.00-confidence,
+> adjudicator call failed — junk, clear them), **92 live**. The 92 live `SAME` are **mostly NOT true
+> duplicates** — the model's own reasoning says "adds a detail/mechanism/safety-caveat the other lacks", and
+> several are outright different facts (APOE risk-multiplier vs baseline incidence; keto-compound liver-enzyme
+> caveat vs its dosing; dwarf-mouse 40%-longer vs GH-reversal). **Do NOT bulk-accept** — blanket-merging would
+> destroy distinct facts (the "wrong-SAME" risk the notes warn of). Resolution is ONE policy call, not 92
+> chores: **ENRICH_MERGE OFF → reject all 92** (keep claims separate, nothing lost); **ON → route to the
+> enrich path** (richer phrasing kept, but enrich over-flags ~71% so still spot-check). A handful of true dups
+> (e.g. "cycling/swimming don't build bone") can merge. Run the clear/merge pass only when extraction is idle.
+>
+> **PAUL — DECISIONS PENDING (unchanged, now sharper):**
+> 1. **Supabase Pro?** — now GATING: free-tier 339/500 MB + DB timeouts. Without it extraction can't finish 249.
+> 2. **`ENRICH_MERGE` on/off** — the 92-row review above is the evidence; it drives the whole merge queue.
+> 3. **Recency contradiction-path** — pick an option in `docs/recency-weighting.md`.
+> 4. **Label the 40-pair fidelity worksheet** → judge↔human κ (artifact link in the 07-29 block).
+> 5. **Verify `ANTHROPIC_API_KEY` credit** — needed to move bulk extraction off the tapped-out CLI.
+>
+> **NEXT WINDOW — build order:** (a) confirm no other writer is active; (b) decide Pro / API credit, then
+> resume extraction for the 189 remaining; (c) once idle, clear the 75 dead+crash reviews + apply the
+> `ENRICH_MERGE` decision to the 92; (d) plan the big **re-tag + `discover --dry-run`** pass for the 7,417
+> untagged claims (new roots → Paul); (e) housekeeping: **push `main` to origin (25 commits live only on this
+> laptop)**, prune the `stoic-blackburn` + `topic-curation` worktrees.
+
 > **🌙 2026-07-29 (overnight) — STATE OF PLAY (single source of truth; keep this coherent with
 > memory `v4-build-state`).**
 >
