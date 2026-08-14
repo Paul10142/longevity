@@ -73,11 +73,15 @@ export async function GET(request: NextRequest) {
       const chunkIds = Array.from(
         new Set(insights.map((i: any) => i.chunk_id).filter(Boolean))
       ) as string[]
-      if (chunkIds.length > 0) {
+      // Batched like the claim_members lookup above. A single .in() over every
+      // chunk id hits PostgREST's 1000-row cap and silently returns 1000 — with
+      // 3,479 distinct chunks referenced today, a full export was dropping the
+      // transcript context for ~70% of its rows with no error.
+      for (let i = 0; i < chunkIds.length; i += 500) {
         const { data: chunks } = await supabaseAdmin
           .from('chunks')
           .select('id, content')
-          .in('id', chunkIds)
+          .in('id', chunkIds.slice(i, i + 500))
         chunks?.forEach((c: any) => chunkContentById.set(c.id, c.content))
       }
     }
