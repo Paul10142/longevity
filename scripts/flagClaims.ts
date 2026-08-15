@@ -78,14 +78,22 @@ async function run(dryRun: boolean): Promise<void> {
   let fidelityFlags = 0
   for (let i = 0; i < claims.length; i += 200) {
     const batch = claims.slice(i, i + 200)
-    const { data: members, error } = await db
-      .from('claim_members')
-      .select('claim_id, raw_insights(statement, direct_quote)')
-      .in('claim_id', batch.map(c => c.id))
-    if (error) throw new Error(`load members: ${error.message}`)
+    // Paged: every claim here has ≥2 members, so 200 claims can exceed the
+    // silent 1000-row cap — a cut-off page reads as missing grounding and
+    // raises FALSE merge_fidelity flags on whichever claims sorted last.
+    type MemberRow = { claim_id: string; raw_insights: { statement: string; direct_quote: string | null } | null }
+    const members = await selectAllPaged<MemberRow>(
+      (from, to) => db
+        .from('claim_members')
+        .select('claim_id, raw_insights(statement, direct_quote)')
+        .in('claim_id', batch.map(c => c.id))
+        .order('claim_id', { ascending: true })
+        .order('raw_insight_id', { ascending: true })
+        .range(from, to)
+    )
 
     const groundingByClaim = new Map<string, string[]>()
-    for (const m of (members ?? []) as { claim_id: string; raw_insights: { statement: string; direct_quote: string | null } | null }[]) {
+    for (const m of members) {
       const texts = groundingByClaim.get(m.claim_id) ?? []
       if (m.raw_insights?.statement) texts.push(m.raw_insights.statement)
       // The verbatim quote counts as grounding too: a number the speaker said
@@ -158,14 +166,19 @@ async function run(dryRun: boolean): Promise<void> {
 
 async function report(): Promise<void> {
   const db = await loadDb()
-  const { data, error } = await db
-    .from('claim_flags')
-    .select('rule, detail, claim_id, resolved_at, claims(canonical_statement)')
-    .is('resolved_at', null)
-  if (error) throw new Error(error.message)
-
+  const { selectAllPaged } = await import('../lib/pagination')
   type Row = { rule: string; detail: string | null; claim_id: string; claims: { canonical_statement: string } | null }
-  const rows = (data ?? []) as Row[]
+  // Paged: the bulk tagging pass will push open flags well past the silent
+  // 1000-row cap, and a truncated report under-counts every rule after it.
+  const rows = await selectAllPaged<Row>(
+    (from, to) => db
+      .from('claim_flags')
+      .select('rule, detail, claim_id, resolved_at, claims(canonical_statement)')
+      .is('resolved_at', null)
+      .order('claim_id', { ascending: true })
+      .order('rule', { ascending: true })
+      .range(from, to)
+  )
   const byRule = new Map<string, Row[]>()
   for (const r of rows) byRule.set(r.rule, [...(byRule.get(r.rule) ?? []), r])
 

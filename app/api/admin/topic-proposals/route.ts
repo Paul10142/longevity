@@ -31,11 +31,15 @@ export async function GET() {
   ) as string[]
 
   const statementById = new Map<string, string>()
-  if (allClaimIds.length > 0) {
+  // Chunked: a single .in() over every sampled id rides the silent 1000-row
+  // cap (and the query-string length limit) the moment the proposal queue
+  // grows — the bulk tagging pass will do exactly that. 200-id chunks stay
+  // far under both, and each chunk's result is bounded by its input size.
+  for (let i = 0; i < allClaimIds.length; i += 200) {
     const { data: claims } = await supabaseAdmin
       .from("claims")
       .select("id, canonical_statement")
-      .in("id", allClaimIds)
+      .in("id", allClaimIds.slice(i, i + 200))
     for (const c of claims ?? []) statementById.set(c.id, c.canonical_statement)
   }
 
