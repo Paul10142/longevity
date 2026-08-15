@@ -37,7 +37,7 @@ const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.8)
 const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
 // Verdict confidence needed to auto-merge without human review.
-const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.85)
+export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.85)
 // Claim-vs-claim floor for the periodic sweep — stricter than ingestion by
 // default, since these are already-canonical claims. Env-tunable for the same
 // re-consolidation experiment (lower it to catch the parked near-duplicates).
@@ -56,12 +56,25 @@ function envInt(name: string, def: number): number {
   return Number.isInteger(n) && n > 0 ? n : def
 }
 
-// Stable reasoning stored when the adjudicator itself failed (CLI crash / usage
-// limit) rather than returning a verdict. A constant string — never the raw error,
-// which embedded the whole system prompt and flooded the merge cards (2026-07-25).
-// A row carrying this is a re-adjudication candidate, not a genuine UNSURE call.
+// LEGACY marker (no longer written as of 2026-08-15): reasoning stored on
+// merge_reviews filed while the adjudicator itself was down. adjudicate() now
+// throws AdjudicationUnavailableError instead, so the job retries rather than
+// filing a junk row. Kept exported so scripts/readjudicateCheckerErrors.ts can
+// find and re-adjudicate the historical rows.
 export const ADJUDICATION_FAILED_REASONING =
   'Automatic duplicate-check was unavailable (checker error); queued for manual review.'
+
+// The dedup checker itself failed after retries (usage-limit window / CLI
+// crash). Message is truncated: the raw CLI error embeds the entire system
+// prompt (execFile's `Command failed: claude … <prompt>`), which must reach
+// neither merge_reviews nor jobs.last_error as a wall of text (2026-07-25).
+export class AdjudicationUnavailableError extends Error {
+  constructor(cause: unknown) {
+    const detail = cause instanceof Error ? cause.message : String(cause)
+    super(`Dedup adjudicator unavailable after retries: ${detail.slice(0, 200)}`)
+    this.name = 'AdjudicationUnavailableError'
+  }
+}
 
 // Evidence strength for choosing a claim's best_evidence_type.
 const EVIDENCE_RANK: Record<EvidenceType, number> = {
@@ -74,7 +87,7 @@ function db() {
   return supabaseAdmin
 }
 
-type Candidate = { id: string; canonical_statement: string; context_note: string | null; similarity: number }
+export type Candidate = { id: string; canonical_statement: string; context_note: string | null; similarity: number }
 
 type Adjudication = {
   verdict: 'SAME' | 'DIFFERENT' | 'UNSURE'
@@ -95,7 +108,7 @@ type Adjudication = {
 // canonical to carry every detail when `enrich` is flagged.
 const ADJUDICATION_SYSTEM = ADJUDICATION_V3
 
-async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
+export async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
   const list = candidates
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
@@ -123,24 +136,18 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
       lastErr = err
     }
   }
-  // Exhausted retries: a checker failure is NOT a confident verdict. Return UNSURE
-  // (consolidateSource then creates the claim AND queues a merge_review, surfacing
-  // it) rather than a silent DIFFERENT that fabricates a split from a transport error.
-  //
-  // Store a STABLE, human-facing reasoning — never the raw error. The raw CLI error
-  // embedded the entire system prompt (execFile's `Command failed: claude … <prompt>`),
-  // which is what filled the merge cards with a wall of text (2026-07-25). The
-  // technical detail is logged for debugging but must not reach merge_reviews.
+  // Exhausted retries: the checker itself is down (usage-limit window / CLI
+  // crash), which is a missing measurement, never a verdict. Throw, so the job
+  // fails loudly and the supervisor's heal loop retries it with its checkpoint
+  // intact — the same rule extractChunk applies. Until 2026-08-15 this returned
+  // a fabricated UNSURE instead, which filed one junk merge_review PER INSIGHT
+  // while the CLI was down (121 rows in the 05:08 UTC outage alone) — burying
+  // the genuine review queue and, because sweepClaims skips any pair that has a
+  // review row regardless of status, permanently blocking re-adjudication.
   console.warn(
     `[consolidate] adjudication failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
   )
-  return {
-    verdict: 'UNSURE',
-    candidate_index: null,
-    confidence: 0,
-    enrich: false,
-    reasoning: ADJUDICATION_FAILED_REASONING,
-  }
+  throw new AdjudicationUnavailableError(lastErr)
 }
 
 /**
@@ -153,7 +160,7 @@ async function adjudicate(rawStatement: string, candidates: Candidate[]): Promis
  * tally. Never fatal — a missing link degrades a metric, it does not corrupt the
  * corpus, so a failure here must not abort a source's consolidation.
  */
-async function linkNearDuplicate(a: string, b: string, similarity: number | null): Promise<void> {
+export async function linkNearDuplicate(a: string, b: string, similarity: number | null): Promise<void> {
   if (a === b) return
   const [lo, hi] = a < b ? [a, b] : [b, a]
   const { error } = await db()
