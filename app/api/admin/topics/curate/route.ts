@@ -21,6 +21,7 @@ import { renameTopic, reparentTopic, archiveTopic, mergeTopics } from "@/lib/top
  */
 type Op =
   | { type: "rename"; id: string; name: string }
+  | { type: "review"; id: string }
   | { type: "reparent"; id: string; parent_id: string | null }
   | { type: "merge"; id: string; into_id: string }
   | { type: "archive"; id: string }
@@ -57,6 +58,12 @@ export async function POST(request: NextRequest) {
         case "archive":
           await archiveTopic(db, op.id)
           break
+        case "review": {
+          // Sign-off as-is: no structural change, just the human's approval.
+          const { error } = await db.from("topics").update({ reviewed_by_human: true }).eq("id", op.id)
+          if (error) throw new Error(error.message)
+          break
+        }
         default:
           throw new Error(`unknown op type: ${(op as { type: string }).type}`)
       }

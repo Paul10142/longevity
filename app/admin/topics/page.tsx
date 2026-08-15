@@ -1,35 +1,35 @@
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
-import { TopicsAuditClient } from "@/components/TopicsAuditClient"
+import { TopicCurationClient } from "@/components/TopicCurationClient"
 
 export const dynamic = "force-dynamic"
 
-export default function TopicsAuditPage() {
+/**
+ * The drag-and-drop board IS the Topics page (Paul's call, 2026-08-15 — the
+ * audit list offered nothing the board doesn't, so it lives on at
+ * /admin/topics/audit as a fallback list view).
+ */
+export default function TopicsPage() {
   return (
     <div className="min-h-screen bg-background">
       <main>
-        <div className="container mx-auto px-4 py-12">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <h1 className="text-3xl font-bold tracking-tight">Topics</h1>
-                <p className="text-muted-foreground mt-1">
-                  The AI-managed taxonomy. Hover a row to rename, move, merge, archive, or sign it
-                  off with <em>✓ reviewed</em> — every edit is recorded as human-reviewed. For bulk
-                  reshaping, use the drag-and-drop board.
-                </p>
-              </div>
-              <div className="flex gap-2 shrink-0">
-                <Link href="/admin/topics/curate">
-                  <Button size="sm">Drag &amp; drop board</Button>
-                </Link>
-                <Link href="/admin/sources">
-                  <Button variant="ghost" size="sm">← Sources</Button>
-                </Link>
-              </div>
+        <div className="container mx-auto px-4 py-10">
+          <div className="mb-6 flex items-start justify-between gap-4">
+            <div>
+              <h1 className="text-3xl font-bold tracking-tight">Topics</h1>
+              <p className="text-muted-foreground mt-1 max-w-2xl text-sm">
+                Drag a topic onto another and choose <b>Merge into it</b> or <b>Nest under it</b>; drop on a
+                pillar header to move it into that pillar; click a name to <b>rename</b>; click{" "}
+                <b>☐ approve</b> on an AI topic to sign it off as-is. Changes stage into a plan and only touch
+                the database when you press <b>Apply</b>. Rule of thumb: fewer topics, max&nbsp;3&nbsp;levels —
+                start small and merge up.
+              </p>
             </div>
-            <TopicsAuditClient />
+            <Link href="/admin/topics/audit" className="shrink-0">
+              <Button variant="ghost" size="sm">List view</Button>
+            </Link>
           </div>
+          <TopicCurationClient />
         </div>
       </main>
     </div>

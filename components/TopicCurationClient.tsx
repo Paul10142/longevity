@@ -23,6 +23,7 @@ type PlanOp =
   | { type: "reparent"; id: string; parent_id: string | null; label: string }
   | { type: "merge"; id: string; into_id: string; label: string }
   | { type: "archive"; id: string; label: string }
+  | { type: "review"; id: string; label: string }
 
 type Node = {
   id: string
@@ -45,6 +46,9 @@ export function TopicCurationClient() {
   const [editingId, setEditingId] = useState<string | null>(null)
   const [draggedId, setDraggedId] = useState<string | null>(null)
   const [dropHint, setDropHint] = useState<{ id: string; mode: "merge" | "nest" } | null>(null)
+  // A modifier-free drop opens a chooser instead of committing immediately —
+  // Shift-during-drag is unreliable on macOS and invisible to discover.
+  const [pendingDrop, setPendingDrop] = useState<{ sourceId: string; targetId: string } | null>(null)
   const [result, setResult] = useState<string | null>(null)
 
   const load = useCallback(async () => {
@@ -91,6 +95,8 @@ export function TopicCurationClient() {
         for (const c of map.values()) if (c.parent_id === op.id && !c.removed) c.parent_id = dst.id
         dst.claim_count += n.claim_count
         n.removed = true
+      } else if (op.type === "review") {
+        n.reviewed_by_human = true
       }
     }
     void alive
@@ -169,6 +175,18 @@ export function TopicCurationClient() {
     setPlan((p) => [...p, { type: "rename", id, name: trimmed, label: `Rename "${n.name}" → "${trimmed}"` }])
   }
 
+  /** Toggle a staged sign-off: check stages "reviewed as-is", uncheck removes it. */
+  function toggleReview(id: string) {
+    const n = byId.get(id)
+    if (!n) return
+    setPlan((p) => {
+      const existing = p.findIndex((op) => op.type === "review" && op.id === id)
+      if (existing >= 0) return p.filter((_, i) => i !== existing)
+      const name = base.find((b) => b.id === id)?.name ?? n.name
+      return [...p, { type: "review", id, label: `Mark "${name}" reviewed` }]
+    })
+  }
+
   function stageArchive(id: string) {
     const n = byId.get(id)
     if (!n) return
@@ -217,11 +235,28 @@ export function TopicCurationClient() {
   function onRowDrop(e: React.DragEvent, id: string) {
     e.preventDefault()
     if (!draggedId || draggedId === id) return
-    if (e.shiftKey) stageReparent(draggedId, id)
-    else stageMerge(draggedId, id)
+    if (e.shiftKey) {
+      // Shift still works as a power-user fast path when the browser delivers it.
+      stageReparent(draggedId, id)
+    } else {
+      // Ask instead of assuming: merge and nest are both common intents.
+      setPendingDrop({ sourceId: draggedId, targetId: id })
+    }
     setDropHint(null)
     setDraggedId(null)
   }
+
+  function resolvePendingDrop(mode: "merge" | "nest" | "cancel") {
+    if (!pendingDrop) return
+    if (mode === "merge") stageMerge(pendingDrop.sourceId, pendingDrop.targetId)
+    else if (mode === "nest") stageReparent(pendingDrop.sourceId, pendingDrop.targetId)
+    setPendingDrop(null)
+  }
+  const pendingSourceName = pendingDrop ? byId.get(pendingDrop.sourceId)?.name ?? null : null
+  const isReviewStaged = useCallback(
+    (id: string) => plan.some((op) => op.type === "review" && op.id === id),
+    [plan]
+  )
 
   const stats = useMemo(() => {
     const overDepth = [...depthOf.entries()].filter(([, d]) => d > MAX_DEPTH).length
@@ -285,7 +320,9 @@ export function TopicCurationClient() {
                         draggedId={draggedId} dropHint={dropHint} editingId={editingId}
                         setDraggedId={setDraggedId} setDropHint={setDropHint} setEditingId={setEditingId}
                         onRowDragOver={onRowDragOver} onRowDrop={onRowDrop}
-                        stageRename={stageRename} stageArchive={stageArchive} />
+                        stageRename={stageRename} stageArchive={stageArchive}
+                        pendingDrop={pendingDrop} resolvePendingDrop={resolvePendingDrop}
+                        pendingSourceName={pendingSourceName} toggleReview={toggleReview} isReviewStaged={isReviewStaged} />
                     ))}
                     {(childrenOf.get(root.id) ?? []).length === 0 && (
                       <p className="px-2 py-1 text-xs text-muted-foreground italic">no subtopics</p>
@@ -364,6 +401,7 @@ function RowName({
 function TopicRow({
   node, depth, childrenOf, depthOf, draggedId, dropHint, editingId,
   setDraggedId, setDropHint, setEditingId, onRowDragOver, onRowDrop, stageRename, stageArchive,
+  pendingDrop, resolvePendingDrop, pendingSourceName, toggleReview, isReviewStaged,
 }: {
   node: Node; depth: number
   childrenOf: Map<string, Node[]>; depthOf: Map<string, number>
@@ -375,6 +413,11 @@ function TopicRow({
   onRowDrop: (e: React.DragEvent, id: string) => void
   stageRename: (id: string, name: string) => void
   stageArchive: (id: string) => void
+  pendingDrop: { sourceId: string; targetId: string } | null
+  resolvePendingDrop: (mode: "merge" | "nest" | "cancel") => void
+  pendingSourceName: string | null
+  toggleReview: (id: string) => void
+  isReviewStaged: (id: string) => boolean
 }) {
   const children = childrenOf.get(node.id) ?? []
   const d = depthOf.get(node.id) ?? depth
@@ -404,7 +447,21 @@ function TopicRow({
           onCommit={(v) => { stageRename(node.id, v); setEditingId(null) }} onCancel={() => setEditingId(null)} />
         <span className="text-xs text-muted-foreground">{node.claim_count}</span>
         {node.created_by === "ai" && !node.reviewed_by_human && (
-          <Badge variant="secondary" className="text-[10px] py-0 px-1">AI</Badge>
+          <>
+            <Badge variant="secondary" className="text-[10px] py-0 px-1">AI</Badge>
+            <button
+              className="text-xs text-muted-foreground hover:text-foreground"
+              title="Sign off this topic as-is (stages into the plan)"
+              onClick={(e) => { e.stopPropagation(); toggleReview(node.id) }}
+            >☐ approve</button>
+          </>
+        )}
+        {isReviewStaged(node.id) && (
+          <button
+            className="text-xs"
+            title="Sign-off staged — click to undo"
+            onClick={(e) => { e.stopPropagation(); toggleReview(node.id) }}
+          >✅</button>
         )}
         {overDepth && <Badge variant="destructive" className="text-[10px] py-0 px-1">L{d}</Badge>}
         {isDropTarget && (
@@ -413,12 +470,33 @@ function TopicRow({
         <button className="ml-auto text-xs text-muted-foreground opacity-0 group-hover:opacity-100 hover:text-destructive"
           onClick={() => stageArchive(node.id)} title="Archive">✕</button>
       </div>
+      {pendingDrop?.targetId === node.id && (
+        <div
+          className="my-1 flex flex-wrap items-center gap-2 rounded-md border bg-card px-3 py-2 shadow-sm"
+          style={{ marginLeft: `${(depth - 2) * 16 + 16}px` }}
+        >
+          <span className="text-xs text-muted-foreground">
+            “{pendingSourceName}” → “{node.name}”:
+          </span>
+          <Button size="sm" className="h-7 text-xs" onClick={() => resolvePendingDrop("merge")}>
+            Merge into it
+          </Button>
+          <Button size="sm" variant="secondary" className="h-7 text-xs" onClick={() => resolvePendingDrop("nest")}>
+            Nest under it
+          </Button>
+          <Button size="sm" variant="ghost" className="h-7 text-xs" onClick={() => resolvePendingDrop("cancel")}>
+            Cancel
+          </Button>
+        </div>
+      )}
       {children.map((c) => (
         <TopicRow key={c.id} node={c} depth={depth + 1} childrenOf={childrenOf} depthOf={depthOf}
           draggedId={draggedId} dropHint={dropHint} editingId={editingId}
           setDraggedId={setDraggedId} setDropHint={setDropHint} setEditingId={setEditingId}
           onRowDragOver={onRowDragOver} onRowDrop={onRowDrop}
-          stageRename={stageRename} stageArchive={stageArchive} />
+          stageRename={stageRename} stageArchive={stageArchive}
+          pendingDrop={pendingDrop} resolvePendingDrop={resolvePendingDrop}
+          pendingSourceName={pendingSourceName} toggleReview={toggleReview} isReviewStaged={isReviewStaged} />
       ))}
     </div>
   )
