@@ -15,7 +15,52 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌙 2026-08-14 — HANDOFF (read this FIRST; supersedes every block below for live state).
+> **🌙 2026-08-15 — HANDOFF (read this FIRST; supersedes every block below for live state).
+> Extraction STOPPED cleanly for a window change; ~26 queued jobs resume on the next run.**
+>
+> **LIVE STATE (2026-08-15 ~09:00 UTC):** **77/249 sources extracted** (172 pending); 14,835 raw insights →
+> **13,087 active claims**; **253 pending merge_reviews** (grows ~25/source — the ENRICH_MERGE decision now
+> compounds daily); DB **430 MB on Supabase PRO** (verified `plan: pro`; brake raised to 6000 MB — storage is
+> no longer a constraint). Laptop on AC. `main` == `origin/main` @ `1b32e50`, build green, **91/91 tests**.
+>
+> **RESUME EXTRACTION with:** `caffeinate -dimsu npx tsx --env-file=.env.local scripts/overnightExtract.ts
+> --hours 8 --batch 4` — idempotent; drains the queued backlog first. ONE writer at a time, as ever.
+>
+> **THIS SESSION SHIPPED (all on main, pushed):**
+> - **Vercel cron (the second writer) removed & CONFIRMED dead** — 08-15's 08:40 UTC window watched: zero
+>   signature. Production builds from `main` (Paul fixed the production branch; a build log confirmed it).
+> - **Speaker attribution end-to-end** (migration 020): every new insight records who said it. Guests inferred
+>   from transcript intros when titles lack them (213/249 do); host variants canonicalized; null over guessing.
+>   **Working live:** Dan Rader 118 vs Attia 32 on Rader's episode; 796 attributed so far. **Backfill of the
+>   ~14k pre-020 insights is a planned pass.** First-run bug (all-Attia attributions) caught + 83 cleared.
+> - **Dedup verdict (do NOT relitigate):** full-corpus sweep = 11,502 claims → 14 merges (0.13%), 0 reviews.
+>   92% singletons is corpus diversity, NOT broken dedup. Do not lower SWEEP_THRESHOLD.
+> - **Fidelity: judge FAILED certification** — Paul's 40 labels vs judge: κ≈-0.1, 9 disagreements (#4,7,8,9,
+>   13,16,18,24,40) awaiting Paul's re-check at /admin/fidelity (judge-take toggle on). Paul's measured
+>   extraction accuracy 37/40 (92.5%). The split is philosophical: judge enforces "never add true-but-unsourced
+>   detail" (Paul's own July rule); Paul's labels were looser. Shadow mode stays. Judge DID catch a real 10x
+>   unit error (ng/mL vs ng/dL) on live data — useful, not yet aligned.
+> - **Admin overhaul:** /admin = live to-do dashboard (cleared queues collapse); /admin/topics IS the
+>   drag-and-drop board (drop chooser replaces flaky Shift; ☐ approve stages sign-offs; audit list at
+>   /admin/topics/audit); /admin/fidelity = DB-backed labeling worksheet (+ dashboard tile + verdict guide);
+>   sources page shows per-source status; flag buttons de-ambiguated; login placeholder dots removed.
+> - **Silent-truncation bug class:** 6 live instances fixed (sources page timeout+counts, insights-review
+>   counts+topic filter, export chunk lookup). **3 latent remain — fix BEFORE the bulk tagging pass:**
+>   flagClaims open-flag report, flagClaims member batch, topic-proposals claim lookup.
+> - **CLI usage-window outage handled** (05:08–07:49 UTC): self-healed; supervisor now pauses fresh enqueues
+>   while stalled (`1b32e50`).
+> - **229 orphaned topic filings repaired; mergeClaims fixed** (topic-move + paged member read).
+> - **tag_claims job still PARKED** (`f0e7998d`, run_after=2027-01-01) for the deliberate re-tag phase.
+>
+> **PAUL'S OPEN ITEMS:** (1) the 9 fidelity re-checks → then re-score κ; (2) merge reviews + ENRICH_MERGE
+> (his articulated goal — "keep the new detail without repetition" — IS enrich; queue grows daily);
+> (3) try the topics board on the 47 unreviewed.
+>
+> **NEXT BUILD STEPS:** (a) resume extraction toward ~90 sources; (b) `discover --dry-run` taxonomy-stability
+> checkpoint (read-only) — proposals→0 means tag now, not at 249; (c) fix the 3 latent truncations; (d) bulk
+> tag (un-park the job); (e) references/study-linking backfill pass; (f) speaker backfill; (g) synthesis last.
+
+> **🌙 2026-08-14 — HANDOFF (superseded by the block above; kept as dated history).
 > The mystery second writer is FOUND and REMOVED.**
 >
 > **🔴 THE SECOND WRITER WAS THE DAILY VERCEL CRON.** `vercel.json` carried
