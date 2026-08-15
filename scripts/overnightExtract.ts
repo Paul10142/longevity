@@ -100,6 +100,7 @@ async function main() {
   let enqueuedTotal = 0
   let round = 0
   let idleStreak = 0
+  let lastExtractedCount = -1
   while (Date.now() < deadline) {
     round++
     const mb = await dbSizeMb()
@@ -114,7 +115,15 @@ async function main() {
     const remainingPending = await freshPending(extracted)
     // Only enqueue a small batch this round (respecting the total cap).
     const room = Math.max(0, maxSources - enqueuedTotal)
-    const fresh = remainingPending.slice(0, Math.min(batch, room))
+    // Back-pressure: when the last round healed failures and completed no new
+    // source, the CLI is likely down (usage-limit window). Enqueueing more
+    // sources then just bloats the queue with jobs that will fail the same way
+    // — the 2026-08-15 outage stacked 27 open jobs like that. Drain what exists;
+    // resume enqueueing once something actually completes.
+    const stalled = healed > 0 && extracted.size === lastExtractedCount
+    lastExtractedCount = extracted.size
+    const fresh = stalled ? [] : remainingPending.slice(0, Math.min(batch, room))
+    if (stalled) console.log(`[${now()}] stalled (healed ${healed}, no new sources) — pausing fresh enqueues this round`)
 
     for (const id of fresh) {
       const { deduped } = await enqueueJob('extract_source', { source_id: id })
