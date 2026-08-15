@@ -57,4 +57,3 @@ eval/dedup-eval-pairs.json
 eval/dedup-run-*.json
 eval/article-eval-baseline.json
 eval/article-sentence-baseline.json
-eval/extraction-eval-pairs.json
