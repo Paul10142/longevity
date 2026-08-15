@@ -78,12 +78,15 @@ function FlagCard({
         )}
 
         <div className="flex flex-col sm:flex-row gap-2 pt-1">
+          {/* "approved" = the FLAG is right (the insight really does misstate the
+              source). The old label "Keep (looks fine)" read as the opposite and
+              nearly steered a correct confirmation into a dismissal. */}
           <Button
             className="flex-1"
             disabled={busy}
             onClick={() => onResolve(flag.id, "approved")}
           >
-            Keep (looks fine)
+            Confirm issue (insight misstates source)
           </Button>
           <Button
             className="flex-1"
@@ -91,7 +94,7 @@ function FlagCard({
             disabled={busy}
             onClick={() => onResolve(flag.id, "false_positive")}
           >
-            Dismiss flag (false alarm)
+            Dismiss (flag is wrong — insight is fine)
           </Button>
         </div>
       </CardContent>

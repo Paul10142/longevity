@@ -1,0 +1,282 @@
+[
+  {
+    "id": "extract:99d0742f-4e9f-4e60-beab-a36afa2dacf3",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:14e56481-0377-429e-8fc7-9c7d359ae2e5",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:085d5a27-4bb3-40d3-83ec-b1d9dca5660e",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:d6f0f966-b05d-4d7a-b182-7bcc11a12c31",
+    "label": "ADDED_DETAIL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:ba316cb6-2d5f-4607-9496-66ded5a6b116",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:7c91a202-0f28-47fc-93ae-4f13a1a5cb08",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:aeae9968-5dbd-4b22-ac24-28ec98c48558",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:7a3755bf-28d4-41a8-a9be-6fe7a8c2ebd3",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:36ba4b3a-83f8-46a5-8977-9225328f3ecf",
+    "label": "ADDED_DETAIL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:64dd3667-2c05-460f-8abd-9bd61e2dc70a",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:7f31e741-a28a-477c-ac73-930dcc266797",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:c27f478e-f759-41d3-9ba6-7503739cb99c",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:0d8a5614-4cf3-4b31-a5c4-1b31d7e1c857",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:10dae46b-0e3e-4176-acf9-896c925501a2",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:8ed98c4c-aa73-4b15-b88a-285c0a5d1b0f",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:e74f5012-818f-45ca-b288-e82c41162742",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:04142c71-575e-4c35-9351-fa134043fc82",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:bd05a496-489c-4e3a-8cae-3021fe62275a",
+    "label": "DROPPED_QUALIFIER",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:15232d0b-42fe-41ff-ad26-361b0db517dc",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:9b050d7f-4e19-4aac-9c4e-69b0fdcf6a2e",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:bd5e220d-87e8-4736-80a1-78fbb0085dfb",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:1e5d6735-3c85-4ab1-b56b-ab0227e57cb6",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:86722c83-a930-4432-a34a-60b5a95c34db",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:bbd5b2e5-8da5-469e-8e93-7533831852a0",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:99df862b-7652-441c-b1e2-715b721b6264",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:c88eb72e-0523-4b4d-8e7f-73162e0e8230",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:4cdfb0dd-ad81-4044-b9ac-6219197518b7",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:24fe68ee-6795-471e-a481-1aa683b52864",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:d4bc04f2-ae14-4290-960c-bbf2a49c55cf",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:411eb1f2-50dc-40db-aa9d-f02bcd0b17a7",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:d818fbed-c7af-418e-9c0f-20a81ff74434",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:8999d7c8-cf6d-483c-a4ca-88a4dd9bd331",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:75b77d58-a92f-4c35-a85f-8819ea06af40",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:693731a6-319d-400f-aceb-c09a1dfc34a5",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:1721c8f0-0d9e-4efc-bb85-1fb56d89169e",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:bd640c19-16ad-47b4-ac73-ab524b72c1cf",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:8bbaf2fa-68fb-4abd-808f-7aeb94a69498",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:e1104748-f516-4273-89f7-4851f7af7b0a",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:0f2ea277-e652-4107-b814-e56905b1148a",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  },
+  {
+    "id": "extract:0a12494d-3f9e-4eb1-bf5f-abf45c6db146",
+    "label": "FAITHFUL",
+    "confirmed": true,
+    "labeled_by": "paul",
+    "rationale": ""
+  }
+]
