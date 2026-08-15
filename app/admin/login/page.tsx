@@ -50,7 +50,6 @@ function LoginForm() {
           autoComplete="current-password"
           value={password}
           onChange={(e) => setPassword(e.target.value)}
-          placeholder="••••••••"
         />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
