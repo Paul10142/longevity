@@ -1,0 +1,849 @@
+[
+  {
+    "id": "839e7843-6f87-4a0b-8195-24d4ba1c34b6",
+    "claim_id": "6ab9b8c9-7f62-4acc-9a36-10db2a386b9e",
+    "candidate_claim_id": "12756039-66df-4d43-94a9-e712cd59d1db",
+    "similarity": 0.808951051063411,
+    "created_at": "2026-08-15T03:37:34.493737+00:00"
+  },
+  {
+    "id": "9e653199-a83c-4eac-9607-d9c64a666f0f",
+    "claim_id": "af9f7636-58ba-4581-96b4-ecdde8148db5",
+    "candidate_claim_id": "4aec26ae-6da7-4784-8387-38c8885d4b56",
+    "similarity": 0.85850443366838,
+    "created_at": "2026-08-15T03:38:08.968645+00:00"
+  },
+  {
+    "id": "e6b9b37f-a632-4938-8dea-09d50db29b91",
+    "claim_id": "a8979dd6-b5c9-4afa-9a5d-490793d044f2",
+    "candidate_claim_id": "05a8d0b8-5ca2-45a4-9cab-725423d5054f",
+    "similarity": 0.821083578790176,
+    "created_at": "2026-08-15T03:38:54.360121+00:00"
+  },
+  {
+    "id": "c4e46dac-efe2-42b8-880e-a71cebef6293",
+    "claim_id": "d02b10ac-adb0-4256-ade0-43c1399f10af",
+    "candidate_claim_id": "77c86065-5de6-4eab-ae24-293a42f1b3cd",
+    "similarity": 0.817501249991783,
+    "created_at": "2026-08-15T03:39:25.112733+00:00"
+  },
+  {
+    "id": "9c9da692-1e2c-410e-a2be-b1947da9dae6",
+    "claim_id": "533e1b5f-07d9-4ad2-8f1c-ac7761b3515d",
+    "candidate_claim_id": "87b01404-6368-4005-bbf3-2e85c91e0873",
+    "similarity": 0.813237438300453,
+    "created_at": "2026-08-15T03:39:55.5169+00:00"
+  },
+  {
+    "id": "4ade8702-572e-4c2f-bd09-4aaa160d6833",
+    "claim_id": "a71324e3-4503-4811-9ca2-8ded97143418",
+    "candidate_claim_id": "961aa896-9bbd-4e5c-8d33-5432f255746d",
+    "similarity": 0.854096192978071,
+    "created_at": "2026-08-15T03:40:41.146736+00:00"
+  },
+  {
+    "id": "f92f5aa6-3c38-4ecd-9c3d-dd77103a2487",
+    "claim_id": "9c1fc264-75d9-4b04-b0f1-ce357b38df52",
+    "candidate_claim_id": "148f634d-a253-4d53-a344-efdde2a440df",
+    "similarity": 0.801398476536869,
+    "created_at": "2026-08-15T03:41:45.171884+00:00"
+  },
+  {
+    "id": "e15988e2-f4c3-4328-8425-8aae93000d55",
+    "claim_id": "fbaa8653-b6ce-4647-98e6-d4fe075bcdac",
+    "candidate_claim_id": "36586bf2-4780-4776-bcd7-b35920a8c065",
+    "similarity": 0.819533875757034,
+    "created_at": "2026-08-15T03:42:28.860118+00:00"
+  },
+  {
+    "id": "f17871ce-7050-423a-885d-5c10f1e5e3eb",
+    "claim_id": "52a37e2f-3756-473d-9e9c-1be812044b1a",
+    "candidate_claim_id": "c3fbe472-9a15-4e76-97e1-f4b8e67a37d0",
+    "similarity": 0.81475768448861,
+    "created_at": "2026-08-15T03:43:12.350728+00:00"
+  },
+  {
+    "id": "ea9538af-afe2-4f2f-a7c0-8c22726961da",
+    "claim_id": "017da9bd-7eb8-47c0-bb26-7bb995cd4800",
+    "candidate_claim_id": "c345a3ae-ca99-4291-9234-70d9d77154a0",
+    "similarity": 0.830394691723504,
+    "created_at": "2026-08-15T03:44:17.673689+00:00"
+  },
+  {
+    "id": "96024c4e-417b-424f-815a-dc799292120e",
+    "claim_id": "1a1e4013-361f-459c-9407-8673c79bb1c5",
+    "candidate_claim_id": "85791c93-d666-400e-9fd1-0805a8a48927",
+    "similarity": 0.818778846327043,
+    "created_at": "2026-08-15T03:45:00.232394+00:00"
+  },
+  {
+    "id": "7e3c1514-d46a-4e1a-a5f4-d590d03629c9",
+    "claim_id": "42238578-5264-47bb-be85-84c2046a0226",
+    "candidate_claim_id": "e51452d4-f4cc-4e84-87a9-57ae0ebe3102",
+    "similarity": 0.892456449296692,
+    "created_at": "2026-08-15T03:46:18.192644+00:00"
+  },
+  {
+    "id": "94e31626-7517-4e02-8b3e-2c515f5c9a6e",
+    "claim_id": "e9243da9-e1ca-4eb4-82e6-ee697a597259",
+    "candidate_claim_id": "37be0ae3-8cd1-439d-ac55-663ce90c7bc9",
+    "similarity": 0.825964107328906,
+    "created_at": "2026-08-15T03:46:54.368694+00:00"
+  },
+  {
+    "id": "a41df991-ef00-4ead-9446-15e25323fc3e",
+    "claim_id": "3bbd6b07-9c1e-4898-be02-431f155a38d7",
+    "candidate_claim_id": "0c166f8a-f5bf-46e5-9332-1ad294d4c674",
+    "similarity": 0.821447032930621,
+    "created_at": "2026-08-15T03:47:34.780171+00:00"
+  },
+  {
+    "id": "a906d3f0-c118-44aa-874b-0afe983a3993",
+    "claim_id": "10792b8d-83d0-4230-aeb6-69046471c85d",
+    "candidate_claim_id": "9dc7307e-fa96-4393-b882-e7b1ae8e8124",
+    "similarity": 0.81009068441972,
+    "created_at": "2026-08-15T03:48:08.827501+00:00"
+  },
+  {
+    "id": "cd64847b-4927-4dca-b2cc-4af0cddae68e",
+    "claim_id": "0a98a3b9-bc41-4223-b869-e6f931bc2530",
+    "candidate_claim_id": "c8d39194-15cf-44c1-a3c7-04f6ad8a1cff",
+    "similarity": 0.918193475736099,
+    "created_at": "2026-08-15T03:48:38.912147+00:00"
+  },
+  {
+    "id": "b07baf3e-3b67-447d-8753-a17e813bad0f",
+    "claim_id": "d21ef8d7-a3db-40cc-bfcb-9cd21805318f",
+    "candidate_claim_id": "a2033523-784f-4605-9d88-bfce658740d5",
+    "similarity": 0.885369816796759,
+    "created_at": "2026-08-15T03:49:10.27494+00:00"
+  },
+  {
+    "id": "e0c249f1-1ed7-47f8-a623-ba8e0a779761",
+    "claim_id": "e9538bbd-06b8-480b-9409-608b724c63fc",
+    "candidate_claim_id": "0a98a3b9-bc41-4223-b869-e6f931bc2530",
+    "similarity": 0.854826977871879,
+    "created_at": "2026-08-15T03:49:45.932074+00:00"
+  },
+  {
+    "id": "6712c3b7-64dd-4780-8d15-e5ebbd62999e",
+    "claim_id": "121a9cb3-db62-46f4-8f68-7b30240ac610",
+    "candidate_claim_id": "d21ef8d7-a3db-40cc-bfcb-9cd21805318f",
+    "similarity": 0.928679996512959,
+    "created_at": "2026-08-15T03:50:22.691533+00:00"
+  },
+  {
+    "id": "7a68fadf-67db-4987-b45d-63c6f64392d2",
+    "claim_id": "e61d56c8-e4f3-4052-b970-5ae60f4d33a9",
+    "candidate_claim_id": "4e299580-cfb4-4478-8be2-7edfbabdd4d9",
+    "similarity": 0.820307879459217,
+    "created_at": "2026-08-15T03:51:03.511547+00:00"
+  },
+  {
+    "id": "a1fcbdc5-d642-497e-9a84-96f3ce43d082",
+    "claim_id": "55ac65ca-14e8-4ac7-a3d4-c743e87ecade",
+    "candidate_claim_id": "e9538bbd-06b8-480b-9409-608b724c63fc",
+    "similarity": 0.803639929659297,
+    "created_at": "2026-08-15T03:51:34.882516+00:00"
+  },
+  {
+    "id": "e2784e57-a531-4efe-a41e-c928fdf8a300",
+    "claim_id": "4cbf34b2-473c-4c58-ad22-f0d6417c6825",
+    "candidate_claim_id": "6ff9108d-e587-49e9-89e7-a74c58fb2094",
+    "similarity": 0.871736769334821,
+    "created_at": "2026-08-15T03:52:12.082274+00:00"
+  },
+  {
+    "id": "684297dc-8b56-4410-aa05-12dcd0468cb5",
+    "claim_id": "545a8174-c0f8-47c0-bb3c-cfefc9bbaaf3",
+    "candidate_claim_id": "493948d0-93f4-468d-8752-6f6462dfab5e",
+    "similarity": 0.808663784816431,
+    "created_at": "2026-08-15T03:52:40.779667+00:00"
+  },
+  {
+    "id": "18d88f6d-533c-45bd-afea-9fc3de192d36",
+    "claim_id": "9fb2aab6-1b73-4f35-ad86-6d00ea39a314",
+    "candidate_claim_id": "cef58dab-83a1-4c31-a3aa-45f502ef2a10",
+    "similarity": 0.805776890729912,
+    "created_at": "2026-08-15T03:53:17.499881+00:00"
+  },
+  {
+    "id": "e55a43cc-4318-4097-b203-01b9c854831b",
+    "claim_id": "5d3ceaf7-c3f4-4121-9bcf-31aa113e20ce",
+    "candidate_claim_id": "014189cb-f42e-4fd1-85f3-dab3d76546e5",
+    "similarity": 0.805718270951021,
+    "created_at": "2026-08-15T03:55:43.538237+00:00"
+  },
+  {
+    "id": "63b355a8-c4b8-4ece-b54d-c42c94660045",
+    "claim_id": "f0e1cc3f-58fb-48b2-ac33-48d9fbd43cc0",
+    "candidate_claim_id": "03d3fa7a-5cc5-4546-a50b-39c5e5da3a5f",
+    "similarity": 0.848947351098378,
+    "created_at": "2026-08-15T03:56:26.889657+00:00"
+  },
+  {
+    "id": "e8c54d7c-1017-4e9a-b7a1-0fa14e0a9d99",
+    "claim_id": "515600fb-29d7-4d91-812b-607b378c1672",
+    "candidate_claim_id": "ca469113-86d4-4f3e-b5c9-df3237beb2c3",
+    "similarity": 0.814536276979078,
+    "created_at": "2026-08-15T03:57:01.717555+00:00"
+  },
+  {
+    "id": "762bf809-ee02-4da2-948f-c1fd57776072",
+    "claim_id": "04d44ebd-8aa8-469f-8850-45fada353481",
+    "candidate_claim_id": "197a10a3-0bfb-451a-8da5-19b39ffddf7d",
+    "similarity": 0.873461128589227,
+    "created_at": "2026-08-15T03:57:31.736359+00:00"
+  },
+  {
+    "id": "b03c170a-d552-47ef-9ddb-908ef52b1a54",
+    "claim_id": "5bb1b42a-0957-48f4-bde2-1843727b06aa",
+    "candidate_claim_id": "197a10a3-0bfb-451a-8da5-19b39ffddf7d",
+    "similarity": 0.89326924254585,
+    "created_at": "2026-08-15T03:58:11.649765+00:00"
+  },
+  {
+    "id": "8d40fed0-dde2-43e3-9771-c8b8e1fa7b92",
+    "claim_id": "c42d3a3e-23f3-4d14-aa4e-f9c3c9796fe2",
+    "candidate_claim_id": "ca469113-86d4-4f3e-b5c9-df3237beb2c3",
+    "similarity": 0.807302304461105,
+    "created_at": "2026-08-15T03:59:37.8474+00:00"
+  },
+  {
+    "id": "6293c5b1-b5e1-4a4b-9617-ed63e59da506",
+    "claim_id": "fa95a5ca-aae5-4483-8550-e553fc375487",
+    "candidate_claim_id": "c1a95c38-1f90-45b6-b6aa-98cf55cba2fa",
+    "similarity": 0.861984102503207,
+    "created_at": "2026-08-15T04:00:40.778197+00:00"
+  },
+  {
+    "id": "31e2fcb0-feb1-43a1-bf88-0fa387525d24",
+    "claim_id": "3276f1f2-d0b4-41fa-bec5-e80a79327cf5",
+    "candidate_claim_id": "d135ddff-3058-494e-addc-e64fe8140882",
+    "similarity": 0.82529475034475,
+    "created_at": "2026-08-15T04:01:18.920299+00:00"
+  },
+  {
+    "id": "05b5d909-2923-421d-b333-165cd12244c7",
+    "claim_id": "4357f837-323b-40f8-8cbd-92ebb764a99b",
+    "candidate_claim_id": "94391ef6-fc04-48c5-bd13-11ba387aab87",
+    "similarity": 0.802181542621944,
+    "created_at": "2026-08-15T04:01:53.293966+00:00"
+  },
+  {
+    "id": "8d61f6a2-994a-477d-af84-85344a7f0ff9",
+    "claim_id": "d650dcc6-5c46-4046-a9a5-17f3c3be9c81",
+    "candidate_claim_id": "b6ef3055-07f3-42c7-b2e3-6f05a0d92890",
+    "similarity": 0.808189974596517,
+    "created_at": "2026-08-15T04:02:43.825315+00:00"
+  },
+  {
+    "id": "fdb81049-1669-4e05-8b1f-2eaea4c1323d",
+    "claim_id": "8933cc38-b48b-42f4-b017-3654cbb4092d",
+    "candidate_claim_id": "d650dcc6-5c46-4046-a9a5-17f3c3be9c81",
+    "similarity": 0.808227918686585,
+    "created_at": "2026-08-15T04:04:08.552055+00:00"
+  },
+  {
+    "id": "10e6814c-b2a9-4ebc-8ad2-3039cf997cf1",
+    "claim_id": "d82f62b3-7ce4-431d-835d-9f5751305bd7",
+    "candidate_claim_id": "5784bc6d-5001-498c-a8af-ca6195105c84",
+    "similarity": 0.805986800360317,
+    "created_at": "2026-08-15T04:04:51.963343+00:00"
+  },
+  {
+    "id": "44472c75-eb4a-495a-81a3-2abcecb313f1",
+    "claim_id": "b18f2ec5-68a3-4e48-8f25-d8231d803b3f",
+    "candidate_claim_id": "1035acea-0502-4388-8a53-ff73a8421a7e",
+    "similarity": 0.828044063544097,
+    "created_at": "2026-08-15T04:05:35.812366+00:00"
+  },
+  {
+    "id": "fcc537a6-275c-4afd-bff0-f823aa182d9f",
+    "claim_id": "4b1e72bf-c56d-469b-b4dd-28dec7f46090",
+    "candidate_claim_id": "431d52cb-fe21-4a2f-b078-db223ff1ddeb",
+    "similarity": 0.866455755076156,
+    "created_at": "2026-08-15T04:06:20.809521+00:00"
+  },
+  {
+    "id": "72df1358-d657-4723-82b9-d3282fb8f426",
+    "claim_id": "fef94fde-9e0d-439c-af8b-a4fb83a921e7",
+    "candidate_claim_id": "12e1e030-2c4a-446d-ad14-4dbaf800f6d8",
+    "similarity": 0.81501063994018,
+    "created_at": "2026-08-15T04:06:49.782878+00:00"
+  },
+  {
+    "id": "abb41350-d9bd-4dcf-8835-34a7550f3e6d",
+    "claim_id": "6b949abe-3f22-4b81-b98f-fbb727a87b96",
+    "candidate_claim_id": "1035acea-0502-4388-8a53-ff73a8421a7e",
+    "similarity": 0.804791022080555,
+    "created_at": "2026-08-15T04:07:23.492055+00:00"
+  },
+  {
+    "id": "30e5f27c-7762-4673-9ba2-5a6e19846e0b",
+    "claim_id": "34c63634-b7fb-4961-9f79-cebfd0f06d74",
+    "candidate_claim_id": "a38ec845-9f49-48a5-a3c1-fa0c9f737c22",
+    "similarity": 0.806941394082477,
+    "created_at": "2026-08-15T04:08:14.317521+00:00"
+  },
+  {
+    "id": "d6dc4305-d3e0-413f-a3fd-fee2ac54f430",
+    "claim_id": "82b4c1ea-518f-4b39-a1cf-1dffa6053ca6",
+    "candidate_claim_id": "c880ed7c-c32c-46d8-863d-85a84b401db4",
+    "similarity": 0.834114382039029,
+    "created_at": "2026-08-15T04:08:47.9143+00:00"
+  },
+  {
+    "id": "8c0d6003-bbe1-4bb4-902e-97e79d475e5f",
+    "claim_id": "803d5a38-8657-4122-806d-285468ccbb3e",
+    "candidate_claim_id": "e0fde366-a51f-48b3-bc01-cac2a27b7297",
+    "similarity": 0.83589097001797,
+    "created_at": "2026-08-15T04:09:22.929569+00:00"
+  },
+  {
+    "id": "034e11dd-7b66-4e6a-8d68-c129722c0eff",
+    "claim_id": "2da6bce9-7319-4518-9346-4c5f27a56e0b",
+    "candidate_claim_id": "6f1b07fb-e9e8-4a62-b0f8-e52b58fd1db8",
+    "similarity": 0.815592588690759,
+    "created_at": "2026-08-15T04:09:55.369514+00:00"
+  },
+  {
+    "id": "a497a2ee-ac9d-40e1-8f3d-11aaee9a52ed",
+    "claim_id": "8b8a5163-f4e3-499e-89b0-4275ad1e3cf6",
+    "candidate_claim_id": "82b4c1ea-518f-4b39-a1cf-1dffa6053ca6",
+    "similarity": 0.820949564175977,
+    "created_at": "2026-08-15T04:10:55.49656+00:00"
+  },
+  {
+    "id": "8afd2853-86b3-4066-b4a7-baa288df8866",
+    "claim_id": "50e15615-f32f-4171-8ead-0d9c09e08c57",
+    "candidate_claim_id": "8b8a5163-f4e3-499e-89b0-4275ad1e3cf6",
+    "similarity": 0.820456255995189,
+    "created_at": "2026-08-15T04:11:31.190195+00:00"
+  },
+  {
+    "id": "486fa5b7-51af-4155-92a4-af586a2a37c6",
+    "claim_id": "4eccd402-7cca-4a2c-b709-23ca1736b2e2",
+    "candidate_claim_id": "2eb2e34f-a9f6-4789-9ae3-a936d4f68a13",
+    "similarity": 0.802059367199143,
+    "created_at": "2026-08-15T04:12:15.55379+00:00"
+  },
+  {
+    "id": "0d90b564-af1e-4d4b-928a-fef0907a4fd8",
+    "claim_id": "e4ae2dec-b620-4c3e-9063-08561000a94e",
+    "candidate_claim_id": "fa66845a-1b23-4443-a789-4f59ab38873e",
+    "similarity": 0.810390223608672,
+    "created_at": "2026-08-15T04:13:00.585664+00:00"
+  },
+  {
+    "id": "102debc2-0e9b-438b-bb3f-98c20110a245",
+    "claim_id": "76e958b5-64e9-406f-848b-3ddf1819e4db",
+    "candidate_claim_id": "e3c2d8ab-1b87-4335-803c-ab98aa712cb5",
+    "similarity": 0.826175081163604,
+    "created_at": "2026-08-15T04:13:52.342006+00:00"
+  },
+  {
+    "id": "af3eeb64-1b28-4332-b620-b8e47c1e0c5e",
+    "claim_id": "a6413a61-3fe2-45f4-aaa8-44f887a5127a",
+    "candidate_claim_id": "8b8a5163-f4e3-499e-89b0-4275ad1e3cf6",
+    "similarity": 0.832417035283607,
+    "created_at": "2026-08-15T04:14:48.688836+00:00"
+  },
+  {
+    "id": "25d3c7a3-854e-4e4a-9059-f684ca243359",
+    "claim_id": "eed23669-ed7c-47cd-9b43-406a3b051b6e",
+    "candidate_claim_id": "4d02b517-3307-4ebd-9438-eaf6b19bea83",
+    "similarity": 0.85007067729644,
+    "created_at": "2026-08-15T04:15:21.076041+00:00"
+  },
+  {
+    "id": "8ea635cc-40d3-43de-8325-57f46d3bfe3e",
+    "claim_id": "760b0f1c-b5bd-4001-901f-2dfca0ee17f0",
+    "candidate_claim_id": "709a784b-21f7-4e03-a6d7-ec0a954acbc5",
+    "similarity": 0.848936481462644,
+    "created_at": "2026-08-15T04:16:19.01446+00:00"
+  },
+  {
+    "id": "eb170a5f-e1f2-453f-92fa-6128a7b39b7a",
+    "claim_id": "3adba01e-9ad6-4ff9-8270-f18a03d0072a",
+    "candidate_claim_id": "db34e932-66db-459b-89e7-4f47a5306105",
+    "similarity": 0.845956104633995,
+    "created_at": "2026-08-15T04:16:52.410549+00:00"
+  },
+  {
+    "id": "158429fb-c792-4c6b-82e6-520dfb745ff5",
+    "claim_id": "648b6214-2560-49cf-be51-4a077da5ecb1",
+    "candidate_claim_id": "ae19d75a-feb2-4f2f-b7cf-9aebd6f9c5eb",
+    "similarity": 0.825469960816739,
+    "created_at": "2026-08-15T04:17:24.532061+00:00"
+  },
+  {
+    "id": "230ff785-f52b-4f7e-9292-5ccbfe355978",
+    "claim_id": "e6545ecd-90cf-4acf-909e-039daac3f0be",
+    "candidate_claim_id": "ec288909-2b04-46ee-b4ec-7ecba36f3239",
+    "similarity": 0.804829706864469,
+    "created_at": "2026-08-15T04:17:54.826373+00:00"
+  },
+  {
+    "id": "125daeb6-b1e0-4264-9c97-68eca20f1f7d",
+    "claim_id": "68cf3a38-104c-408b-856b-17e1b3cd3aac",
+    "candidate_claim_id": "648b6214-2560-49cf-be51-4a077da5ecb1",
+    "similarity": 0.871216578976626,
+    "created_at": "2026-08-15T04:18:35.639473+00:00"
+  },
+  {
+    "id": "6bcf80ac-7ba9-4766-a9b4-c416dcd2504f",
+    "claim_id": "f778c9a7-ad25-442a-8868-c1e986735598",
+    "candidate_claim_id": "7043b065-48b0-460d-822b-ae43c4c332f6",
+    "similarity": 0.809953367625906,
+    "created_at": "2026-08-15T04:19:16.437149+00:00"
+  },
+  {
+    "id": "e55e3488-ae7a-4651-b146-0fafd22b07f4",
+    "claim_id": "3983ca47-807e-4e70-bcfa-f221fdad2bce",
+    "candidate_claim_id": "76e958b5-64e9-406f-848b-3ddf1819e4db",
+    "similarity": 0.806348446634816,
+    "created_at": "2026-08-15T04:19:51.843859+00:00"
+  },
+  {
+    "id": "82553dc4-5051-4d59-95ca-487fd15e82df",
+    "claim_id": "03fb7e01-4b67-4cef-a187-fb69e69d715f",
+    "candidate_claim_id": "3983ca47-807e-4e70-bcfa-f221fdad2bce",
+    "similarity": 0.937963008924264,
+    "created_at": "2026-08-15T04:20:35.639147+00:00"
+  },
+  {
+    "id": "750833f5-2b8b-4ef8-8399-d8ee975375b1",
+    "claim_id": "5526e9d8-7749-49fd-8acb-50fc7d8c8ea4",
+    "candidate_claim_id": "58bc4633-982b-46f4-ba95-695f6d8aa460",
+    "similarity": 0.810659296328941,
+    "created_at": "2026-08-15T04:21:44.15575+00:00"
+  },
+  {
+    "id": "43a8a0ae-ac6c-4ab5-83a1-efed5931a818",
+    "claim_id": "9b85ac88-426d-4fe7-9cd5-490eebfaa1e4",
+    "candidate_claim_id": "5d1f9ca1-2607-4e6a-882f-d4a3b01aeff7",
+    "similarity": 0.843400620170484,
+    "created_at": "2026-08-15T04:22:26.327153+00:00"
+  },
+  {
+    "id": "5721558d-a07b-469f-86a0-b8ff42561c53",
+    "claim_id": "d9a49ba4-a84b-461f-bc52-479a4f93cf3a",
+    "candidate_claim_id": "9b85ac88-426d-4fe7-9cd5-490eebfaa1e4",
+    "similarity": 0.830384667355615,
+    "created_at": "2026-08-15T04:24:29.15407+00:00"
+  },
+  {
+    "id": "ed7c695f-c4e5-4201-a145-16445fa6a7c7",
+    "claim_id": "59110618-f820-4be5-bb7b-78fcceecd46c",
+    "candidate_claim_id": "d9a49ba4-a84b-461f-bc52-479a4f93cf3a",
+    "similarity": 0.840011221909917,
+    "created_at": "2026-08-15T04:25:10.704123+00:00"
+  },
+  {
+    "id": "a2f46414-0e37-4cec-9125-37b20431af7f",
+    "claim_id": "1c42668d-8cea-4ab0-a777-9f553c4a0b3d",
+    "candidate_claim_id": "40d2b730-67d0-489c-b167-27520e27ab62",
+    "similarity": 0.835691189546506,
+    "created_at": "2026-08-15T04:25:41.921755+00:00"
+  },
+  {
+    "id": "96dec3a4-8cc4-40d8-b74b-b7293e167544",
+    "claim_id": "bcad83b2-2cfa-43fb-87c5-1ba0d9ddb71d",
+    "candidate_claim_id": "d7a94876-0e5a-4657-a566-e4eb9f2e1fd9",
+    "similarity": 0.800204017560604,
+    "created_at": "2026-08-15T04:26:26.222186+00:00"
+  },
+  {
+    "id": "425848fb-9233-42f6-b1ad-35d4d882fce3",
+    "claim_id": "14ff53f2-bfc5-44fd-b832-41f3dd7f3190",
+    "candidate_claim_id": "53338b6e-940f-4d35-aac4-31855d9b291c",
+    "similarity": 0.837790539594539,
+    "created_at": "2026-08-15T04:27:07.239788+00:00"
+  },
+  {
+    "id": "3aaa22d4-6445-4d8f-b76d-7e6f2bbe85ed",
+    "claim_id": "e343867d-9776-4a99-b798-ba51529f842d",
+    "candidate_claim_id": "38dbabfd-020f-4f4b-b371-d685e6c55618",
+    "similarity": 0.802511812068354,
+    "created_at": "2026-08-15T04:27:36.929021+00:00"
+  },
+  {
+    "id": "06f3df53-f0ef-4a98-a612-d86398ad643f",
+    "claim_id": "5669fdf7-ffdb-4800-b5e1-3212b256370a",
+    "candidate_claim_id": "450cf855-b66a-4625-ab1c-e6739962ad95",
+    "similarity": 0.857464374012593,
+    "created_at": "2026-08-15T04:28:22.823973+00:00"
+  },
+  {
+    "id": "358f468e-7f8b-4e36-b074-4b020de7eddd",
+    "claim_id": "6f577298-9f26-4609-9923-f40d549d708d",
+    "candidate_claim_id": "d4fdfc79-c79a-4406-ad16-00d02b92de3f",
+    "similarity": 0.832184778648181,
+    "created_at": "2026-08-15T04:28:53.550875+00:00"
+  },
+  {
+    "id": "fe78b4e7-8071-4346-b200-88cb4a6ee790",
+    "claim_id": "2994d1f2-1ca9-423c-8800-9408db6bc61d",
+    "candidate_claim_id": "7a5707ef-fe66-4c64-ad15-6e4938b5806f",
+    "similarity": 0.803315533013129,
+    "created_at": "2026-08-15T04:29:27.697322+00:00"
+  },
+  {
+    "id": "8eb7c878-4e02-4567-a6fd-bc3ab52e9982",
+    "claim_id": "fcc487a0-d274-499f-b0bd-1bfd302de78f",
+    "candidate_claim_id": "d650c867-e17a-46ed-8521-465ded526d24",
+    "similarity": 0.804357646871598,
+    "created_at": "2026-08-15T04:30:01.165387+00:00"
+  },
+  {
+    "id": "2408e487-e562-44b8-9f88-10bf2c9d2441",
+    "claim_id": "73ddb366-b12b-4fc1-af99-eb833d71476a",
+    "candidate_claim_id": "8fce3f39-1c95-4941-9f96-31a9f8952156",
+    "similarity": 0.813151093271233,
+    "created_at": "2026-08-15T04:30:41.319209+00:00"
+  },
+  {
+    "id": "53e6df1e-62bd-4882-8985-3521bdee2890",
+    "claim_id": "1ba22d5a-6037-42bd-a278-3e0651080fdb",
+    "candidate_claim_id": "58bc4633-982b-46f4-ba95-695f6d8aa460",
+    "similarity": 0.831175238022876,
+    "created_at": "2026-08-15T04:31:15.288289+00:00"
+  },
+  {
+    "id": "0c880f3e-e0a1-4fbc-8f37-157249d13e43",
+    "claim_id": "f31fa726-e02c-4df4-affc-ac2d86579795",
+    "candidate_claim_id": "35900ebf-9d8a-464d-88d7-0893bc8830c8",
+    "similarity": 0.817211156593819,
+    "created_at": "2026-08-15T04:31:52.957095+00:00"
+  },
+  {
+    "id": "9ea57a20-f62c-4f6e-a430-ece45d5fdfb6",
+    "claim_id": "e5d6647a-a767-41aa-828c-2c74390bca3f",
+    "candidate_claim_id": "03ae958e-7213-44c2-820e-891567eb8aca",
+    "similarity": 0.81817354360331,
+    "created_at": "2026-08-15T04:32:51.168868+00:00"
+  },
+  {
+    "id": "deaa842f-6ce7-46d9-8e64-4a8ea6010ec4",
+    "claim_id": "46bf7581-f6fe-441b-8e8c-d87a586a6239",
+    "candidate_claim_id": "abec8f10-6152-45ed-a43e-baef035861a3",
+    "similarity": 0.816494689233649,
+    "created_at": "2026-08-15T04:33:27.364258+00:00"
+  },
+  {
+    "id": "704ec453-4bbb-44af-8fef-85dabe38e187",
+    "claim_id": "741e52ac-2b5f-4ba2-bcf0-478e6f8e9289",
+    "candidate_claim_id": "e343867d-9776-4a99-b798-ba51529f842d",
+    "similarity": 0.827742486438414,
+    "created_at": "2026-08-15T04:34:07.299093+00:00"
+  },
+  {
+    "id": "8c99982a-71c5-4317-b0a2-3cb3937d264d",
+    "claim_id": "faa53515-ec93-40bc-aa5d-03328c08a44d",
+    "candidate_claim_id": "38dbabfd-020f-4f4b-b371-d685e6c55618",
+    "similarity": 0.82986617780227,
+    "created_at": "2026-08-15T04:34:35.719759+00:00"
+  },
+  {
+    "id": "c407cf63-4604-4e36-9083-7161f51543ae",
+    "claim_id": "e2e63813-5c14-46fc-93b3-12341d3fa6e9",
+    "candidate_claim_id": "fcc487a0-d274-499f-b0bd-1bfd302de78f",
+    "similarity": 0.836880897789533,
+    "created_at": "2026-08-15T04:35:05.919815+00:00"
+  },
+  {
+    "id": "2716685b-4af8-4688-9f33-1e2adcabeb82",
+    "claim_id": "f7dac8e0-3d3d-4998-84e6-85dd1faf7c39",
+    "candidate_claim_id": "5e2d0e0f-7143-4feb-9d98-033bc535df4d",
+    "similarity": 0.819578284136202,
+    "created_at": "2026-08-15T04:35:37.023043+00:00"
+  },
+  {
+    "id": "703ea8fb-183e-4ff8-8379-f4df1a14eabc",
+    "claim_id": "c82eac77-de34-4c75-8c93-9eb80ff56bdc",
+    "candidate_claim_id": "38dbabfd-020f-4f4b-b371-d685e6c55618",
+    "similarity": 0.827772381200819,
+    "created_at": "2026-08-15T04:36:24.847021+00:00"
+  },
+  {
+    "id": "899e25aa-f3f0-4b58-988f-50e6a169fad0",
+    "claim_id": "4add4f9c-c719-4ac2-b9d1-82a8ed4782de",
+    "candidate_claim_id": "f5b57884-6a80-49ad-bb47-17fa134a3acc",
+    "similarity": 0.857262300139914,
+    "created_at": "2026-08-15T04:37:09.332447+00:00"
+  },
+  {
+    "id": "46fe70ca-ed7d-4d96-a56d-9508ed51284a",
+    "claim_id": "21a6204f-0f3a-44ac-8987-b317fc2af026",
+    "candidate_claim_id": "4d02b517-3307-4ebd-9438-eaf6b19bea83",
+    "similarity": 0.808574172747616,
+    "created_at": "2026-08-15T04:37:53.166626+00:00"
+  },
+  {
+    "id": "b0c5725d-df10-429a-af9b-2c300ecd5c7b",
+    "claim_id": "dfe1e8d3-9c6c-41db-8120-ac4ee08a0449",
+    "candidate_claim_id": "68122bb6-2ec3-4adf-a536-729291d7a36c",
+    "similarity": 0.822328271139052,
+    "created_at": "2026-08-15T04:39:07.517611+00:00"
+  },
+  {
+    "id": "53a189e4-b0f0-4725-9ab8-967e31086e4d",
+    "claim_id": "1d60baf6-0956-45f5-8af9-66b254578607",
+    "candidate_claim_id": "26a67fc3-2c32-4d38-a68c-b989cae4b0b5",
+    "similarity": 0.81098670744696,
+    "created_at": "2026-08-15T04:39:45.128288+00:00"
+  },
+  {
+    "id": "479f5d8c-6673-4a73-ba4e-9f7b2fb93c23",
+    "claim_id": "afac7cad-ce3c-478f-b3b7-ba65489a0644",
+    "candidate_claim_id": "826a752e-e287-488c-8a76-7325bd9beb90",
+    "similarity": 0.826530825884336,
+    "created_at": "2026-08-15T04:40:38.677085+00:00"
+  },
+  {
+    "id": "120ef48d-e924-40d0-aac2-b713500b3b60",
+    "claim_id": "9e5fa700-1e91-45a7-bf58-baaa88f2753e",
+    "candidate_claim_id": "272386eb-8d46-4a66-8436-b6ab37b6d1b7",
+    "similarity": 0.842676420323211,
+    "created_at": "2026-08-15T04:41:22.471091+00:00"
+  },
+  {
+    "id": "3b67b207-6447-46a0-9de0-370677452593",
+    "claim_id": "0c5a07d5-2f8b-4e8b-8987-f8791be7c4c5",
+    "candidate_claim_id": "272386eb-8d46-4a66-8436-b6ab37b6d1b7",
+    "similarity": 0.858752720749466,
+    "created_at": "2026-08-15T04:42:00.469207+00:00"
+  },
+  {
+    "id": "c1ee80ba-b775-4041-8aac-46f7f9c83739",
+    "claim_id": "cb0c760a-9b73-4b6e-95e9-0a38a689a6ab",
+    "candidate_claim_id": "0c5a07d5-2f8b-4e8b-8987-f8791be7c4c5",
+    "similarity": 0.800192737165104,
+    "created_at": "2026-08-15T04:42:39.231385+00:00"
+  },
+  {
+    "id": "2aa63723-bc49-41d0-b68a-da0d186675fb",
+    "claim_id": "ab176c20-0d39-4188-bd68-d975a21a615f",
+    "candidate_claim_id": "cb0c760a-9b73-4b6e-95e9-0a38a689a6ab",
+    "similarity": 0.81797339671753,
+    "created_at": "2026-08-15T04:43:11.207747+00:00"
+  },
+  {
+    "id": "2f9a98a7-acec-4b5a-92c5-e3d55ed4eda5",
+    "claim_id": "a384fd6d-e05f-46c2-b8cd-6e34575529b8",
+    "candidate_claim_id": "65f540a5-7cc8-4e44-8157-9d9821b89ead",
+    "similarity": 0.818738009604109,
+    "created_at": "2026-08-15T04:43:43.534848+00:00"
+  },
+  {
+    "id": "6666fa2d-d284-4ecc-95b0-763012f0dfca",
+    "claim_id": "67cadeaa-6e2f-4b6e-9a34-d61b7cfb1fe9",
+    "candidate_claim_id": "f52d0371-ba7e-4f86-b12f-8487b67dbf31",
+    "similarity": 0.824954904291352,
+    "created_at": "2026-08-15T04:44:46.243561+00:00"
+  },
+  {
+    "id": "037d39e6-ba2e-498d-add1-c8e6bbb7f388",
+    "claim_id": "21b2cb4f-a944-488b-b31f-4e3e8883346c",
+    "candidate_claim_id": "a3f510c9-7e59-4212-be5e-4b5621a22191",
+    "similarity": 0.865782204460369,
+    "created_at": "2026-08-15T04:45:51.100026+00:00"
+  },
+  {
+    "id": "49b18aff-aff2-4c0c-b317-3c029de36ad5",
+    "claim_id": "38cfc532-d924-42f1-8f56-f897a93f03c1",
+    "candidate_claim_id": "c740a0bd-2504-4f4b-ad65-24ac4cf2a27d",
+    "similarity": 0.820908322441688,
+    "created_at": "2026-08-15T04:46:44.702236+00:00"
+  },
+  {
+    "id": "60dfad51-0a72-4186-936e-493d4948816f",
+    "claim_id": "31cecddb-939a-4ee8-a19f-69b83c2f776e",
+    "candidate_claim_id": "492fbf64-f51b-465a-a488-211a8c7e7f78",
+    "similarity": 0.933769926062222,
+    "created_at": "2026-08-15T04:47:29.623379+00:00"
+  },
+  {
+    "id": "dadf5a53-a12d-4181-8760-e92eb65c90c0",
+    "claim_id": "f414d87d-380a-4e7b-bc02-23a2b07715e8",
+    "candidate_claim_id": "aeee87da-fecc-4bb7-9e8d-a480fbc29c3c",
+    "similarity": 0.804967536194958,
+    "created_at": "2026-08-15T04:47:59.987365+00:00"
+  },
+  {
+    "id": "f453722d-979d-446e-883e-dcf3e3d69fbd",
+    "claim_id": "679eb28e-dab6-4c3c-8bc2-4d0560f54970",
+    "candidate_claim_id": "2176e53b-0cb3-438b-bb90-db8ab25289d0",
+    "similarity": 0.823457570956828,
+    "created_at": "2026-08-15T04:48:39.541565+00:00"
+  },
+  {
+    "id": "6f493a13-6567-4ba4-9a2c-66dbe4aa9af6",
+    "claim_id": "78ae0ea1-5d96-4e2d-80bf-50fe461c8ac6",
+    "candidate_claim_id": "97aa166e-fc11-48db-b8c8-7b662acedbf4",
+    "similarity": 0.821213754479591,
+    "created_at": "2026-08-15T04:49:15.61453+00:00"
+  },
+  {
+    "id": "b7c90c26-21e8-4245-a6d7-728e06b47f1f",
+    "claim_id": "d099d9e8-399e-4a97-8746-90576351fa82",
+    "candidate_claim_id": "0f6b9381-8d93-4b55-b609-9b0de5ecac6a",
+    "similarity": 0.802994838377855,
+    "created_at": "2026-08-15T04:49:44.26175+00:00"
+  },
+  {
+    "id": "ec68da92-8ba7-4bcb-be17-7d1054ff5303",
+    "claim_id": "9676c25a-c60c-4dca-986d-08e07212c68b",
+    "candidate_claim_id": "78ae0ea1-5d96-4e2d-80bf-50fe461c8ac6",
+    "similarity": 0.853002788103627,
+    "created_at": "2026-08-15T04:50:31.084926+00:00"
+  },
+  {
+    "id": "a71362da-5570-46ea-a915-3201ee39f8f5",
+    "claim_id": "43c9ef15-5fd6-4520-ab27-3e6ffcfaa916",
+    "candidate_claim_id": "90da6efc-992b-4f7c-80dc-ebb9679c0946",
+    "similarity": 0.865306706927246,
+    "created_at": "2026-08-15T04:51:31.490252+00:00"
+  },
+  {
+    "id": "97876acb-70b4-4d70-b420-08bcc29ef066",
+    "claim_id": "94813d2e-bc49-4a56-9647-7c3fac700429",
+    "candidate_claim_id": "0d9ac888-439a-4081-968c-ea593ad70079",
+    "similarity": 0.80195335734252,
+    "created_at": "2026-08-15T04:52:27.865987+00:00"
+  },
+  {
+    "id": "b114a7ed-d5b8-4564-9271-affe4a86d5f5",
+    "claim_id": "eaeb6527-d269-494c-93ee-5bb6cbb2ed24",
+    "candidate_claim_id": "7d213b7e-477e-407e-a1cb-55d72927e0a7",
+    "similarity": 0.81689545106626,
+    "created_at": "2026-08-15T04:53:11.596831+00:00"
+  },
+  {
+    "id": "bdcb97aa-58cf-4952-b078-f99103ff8212",
+    "claim_id": "1094efc6-15f4-4904-8985-ed41503b450f",
+    "candidate_claim_id": "8e5209be-7a2d-442c-9e1b-9dad77917d84",
+    "similarity": 0.855166471089195,
+    "created_at": "2026-08-15T04:53:48.775043+00:00"
+  },
+  {
+    "id": "c7186e35-d76a-46aa-94d2-013100e17242",
+    "claim_id": "84c57e9c-9bc2-4220-8654-70667c5afcac",
+    "candidate_claim_id": "1d0a3172-fb5f-47c8-994f-153c06f5a914",
+    "similarity": 0.863288611178647,
+    "created_at": "2026-08-15T04:54:49.413511+00:00"
+  },
+  {
+    "id": "22460c26-3e55-4f7c-b0e8-ae6ad632e6d6",
+    "claim_id": "c606e456-7251-4f86-9e09-146cbe9726d0",
+    "candidate_claim_id": "09118c8e-985c-409c-8c8c-21a20eb1fe14",
+    "similarity": 0.814654793390234,
+    "created_at": "2026-08-15T04:55:40.786993+00:00"
+  },
+  {
+    "id": "6554ee35-50d8-46eb-8f0d-eae58cdb2e3d",
+    "claim_id": "d0ff1020-4300-4eba-ba64-7b2f3e227acb",
+    "candidate_claim_id": "17c533be-b23e-4c1b-8f67-9dfa74cdedce",
+    "similarity": 0.818188928880791,
+    "created_at": "2026-08-15T04:56:36.422719+00:00"
+  },
+  {
+    "id": "20844b63-273a-40d3-bff5-543cadc7b873",
+    "claim_id": "dfd8fb21-caa3-48f1-b805-b120fa2c3442",
+    "candidate_claim_id": "da8dbb02-a89a-475a-8ca9-70a913df50c6",
+    "similarity": 0.811189184122798,
+    "created_at": "2026-08-15T04:57:30.62305+00:00"
+  },
+  {
+    "id": "e3322f53-38bf-4f35-81f5-d4e02f506a70",
+    "claim_id": "68b7c7dc-e275-4151-91e7-714abf0c4c82",
+    "candidate_claim_id": "df5de640-caa6-402d-b123-974aa734f363",
+    "similarity": 0.841074649490169,
+    "created_at": "2026-08-15T04:58:07.274801+00:00"
+  },
+  {
+    "id": "84215cc3-ed0f-4bb1-8b89-1956b6d290a4",
+    "claim_id": "613605e0-1174-40be-bba4-c369f71a7cf3",
+    "candidate_claim_id": "efee1261-ed29-4a14-a598-91ac47b676b7",
+    "similarity": 0.83288869577495,
+    "created_at": "2026-08-15T04:58:42.651284+00:00"
+  },
+  {
+    "id": "7b7c4d62-0434-495a-8c91-649497afb16b",
+    "claim_id": "128d6c48-d3b2-4af9-95b3-dbd52dee27ae",
+    "candidate_claim_id": "68abc5ba-7d67-4071-b2ee-43096a3f614d",
+    "similarity": 0.856112919140847,
+    "created_at": "2026-08-15T04:59:37.901573+00:00"
+  },
+  {
+    "id": "84912ca8-ff76-4f2b-a30d-dc8bbaf0f3a5",
+    "claim_id": "4a304834-b174-4807-9850-ab7ba17f1376",
+    "candidate_claim_id": "605bab3d-9474-40e0-9216-ffb4f0f123b8",
+    "similarity": 0.855992229984752,
+    "created_at": "2026-08-15T05:00:37.253906+00:00"
+  },
+  {
+    "id": "22f8101b-aa5b-46d5-af1b-73871c96a470",
+    "claim_id": "d1596a72-4fb7-4e9f-93a1-e0635b91ecfb",
+    "candidate_claim_id": "e00c2498-abb7-4a25-8970-888c6fbe5b7a",
+    "similarity": 0.834274309639218,
+    "created_at": "2026-08-15T05:01:50.597973+00:00"
+  },
+  {
+    "id": "996bc5c9-e7fd-4668-baa0-5828715f14ad",
+    "claim_id": "d86f5835-7a23-4795-a37d-95c44ed3c3df",
+    "candidate_claim_id": "e5f1d511-b92b-444b-a540-9bb159543587",
+    "similarity": 0.864644538835241,
+    "created_at": "2026-08-15T05:02:36.278292+00:00"
+  },
+  {
+    "id": "e83c5d7b-4cf3-447d-a618-4470f13beeb6",
+    "claim_id": "90b85bdd-2cbb-4e8b-8d88-ba13c934674a",
+    "candidate_claim_id": "a5fab6c2-9e32-46b0-9d25-4509f2f1bf2f",
+    "similarity": 0.826970709517455,
+    "created_at": "2026-08-15T05:03:54.45123+00:00"
+  },
+  {
+    "id": "90c16cbe-ca40-4578-8efe-e65f77e0b337",
+    "claim_id": "db0fecea-5e0c-4d97-ad50-1ebd94af8968",
+    "candidate_claim_id": "0fbda533-c369-4254-afa1-de87380a5a0f",
+    "similarity": 0.8081010213912,
+    "created_at": "2026-08-15T05:04:42.067239+00:00"
+  },
+  {
+    "id": "6f985831-8ca1-423f-b990-056dc0d26adf",
+    "claim_id": "36be3047-c8c2-4d8b-902d-8f2a4cbe6b78",
+    "candidate_claim_id": "e0a04511-7536-471e-8127-34579cb02817",
+    "similarity": 0.832571823067082,
+    "created_at": "2026-08-15T05:05:39.523489+00:00"
+  },
+  {
+    "id": "abf2a3e6-6082-458d-82e5-405d0e1392ba",
+    "claim_id": "da49c895-13ff-48ee-a84a-824ad6ff23f6",
+    "candidate_claim_id": "74ddc8be-e571-4528-852a-fbd58a661a25",
+    "similarity": 0.830485020963301,
+    "created_at": "2026-08-15T05:06:24.018335+00:00"
+  },
+  {
+    "id": "008d0b05-db23-4c44-b484-b5a91ca96241",
+    "claim_id": "fbaacf1a-db02-4909-b026-dbba597159c3",
+    "candidate_claim_id": "63299c1f-6879-4ad5-884b-0f832da76ed5",
+    "similarity": 0.80037110278122,
+    "created_at": "2026-08-15T05:06:55.313178+00:00"
+  },
+  {
+    "id": "6e829077-83a8-40d2-a3c7-7821ed7172de",
+    "claim_id": "6cd1d4d1-3424-4407-ac98-3999ba768284",
+    "candidate_claim_id": "c0c332e2-9e49-4396-b3f0-29a2351f101c",
+    "similarity": 0.802996436820709,
+    "created_at": "2026-08-15T05:07:33.290219+00:00"
+  },
+  {
+    "id": "2ac932d4-c424-4c41-ad17-01600cb20d30",
+    "claim_id": "15ed461d-18e3-4641-9944-236e188f2ae3",
+    "candidate_claim_id": "d663c2e0-6977-4066-b806-e19ed4be3492",
+    "similarity": 0.826458079693216,
+    "created_at": "2026-08-15T05:08:10.080627+00:00"
+  }
+]
