@@ -14,13 +14,19 @@ export default function TopicsAuditPage() {
               <div>
                 <h1 className="text-3xl font-bold tracking-tight">Topics</h1>
                 <p className="text-muted-foreground mt-1">
-                  The AI-managed taxonomy. Rename, move, merge, or archive topics — every edit is
-                  recorded as human-reviewed.
+                  The AI-managed taxonomy. Hover a row to rename, move, merge, archive, or sign it
+                  off with <em>✓ reviewed</em> — every edit is recorded as human-reviewed. For bulk
+                  reshaping, use the drag-and-drop board.
                 </p>
               </div>
-              <Link href="/admin/sources">
-                <Button variant="ghost" size="sm">← Sources</Button>
-              </Link>
+              <div className="flex gap-2 shrink-0">
+                <Link href="/admin/topics/curate">
+                  <Button size="sm">Drag &amp; drop board</Button>
+                </Link>
+                <Link href="/admin/sources">
+                  <Button variant="ghost" size="sm">← Sources</Button>
+                </Link>
+              </div>
             </div>
             <TopicsAuditClient />
           </div>

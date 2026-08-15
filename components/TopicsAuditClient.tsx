@@ -129,6 +129,13 @@ export function TopicsAuditClient() {
               size="sm" variant="ghost" className="h-6 px-2 text-xs text-destructive" disabled={busy === topic.id}
               onClick={() => { if (confirm(`Archive "${topic.name}"? Its claims keep their other topics.`)) act(topic.id, { action: "archive" }) }}
             >archive</Button>
+            {!topic.reviewed_by_human && (
+              <Button
+                size="sm" variant="outline" className="h-6 px-2 text-xs" disabled={busy === topic.id}
+                title="Sign off this topic as-is — clears it from the unreviewed count without changing anything"
+                onClick={() => act(topic.id, { action: "review" })}
+              >✓ reviewed</Button>
+            )}
           </div>
         </div>
         {children.map(c => <TopicNode key={c.id} topic={c} depth={depth + 1} />)}

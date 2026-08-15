@@ -52,6 +52,17 @@ export async function POST(
       case "archive":
         await archiveTopic(supabaseAdmin, id)
         break
+      case "review":
+        // Sign-off with no structural change — "I looked at this topic and it's
+        // fine as-is." Every other action implies review; this is the explicit one.
+        {
+          const { error } = await supabaseAdmin
+            .from("topics")
+            .update({ reviewed_by_human: true })
+            .eq("id", id)
+          if (error) throw new Error(error.message)
+        }
+        break
       case "merge":
         await mergeTopics(supabaseAdmin, id, body.into_id as string)
         await recomputeTopicCounts()

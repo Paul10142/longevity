@@ -172,8 +172,13 @@ export default async function AdminHomePage() {
 
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Needs your decision</h2>
-              <div className="grid gap-3 sm:grid-cols-2">
-                {decisions.map(item => {
+              {(() => {
+                // Cleared queues fall out of sight: only live decisions (or ones
+                // whose count failed to load) get a top-level card. The rest tuck
+                // under a collapsed toggle so an empty dashboard reads as "done".
+                const live = decisions.filter(d => d.count === null || d.count > 0)
+                const cleared = decisions.filter(d => d.count === 0)
+                const tile = (item: Decision) => {
                   const unknown = item.count === null
                   const active = (item.count ?? 0) > 0
                   return (
@@ -199,8 +204,25 @@ export default async function AdminHomePage() {
                       <p className="text-xs text-muted-foreground mt-1.5">{item.description}</p>
                     </Link>
                   )
-                })}
-              </div>
+                }
+                return (
+                  <>
+                    {live.length > 0 ? (
+                      <div className="grid gap-3 sm:grid-cols-2">{live.map(tile)}</div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">All queues are clear. 🎉</p>
+                    )}
+                    {cleared.length > 0 && (
+                      <details className="group">
+                        <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
+                          {cleared.length} cleared {cleared.length === 1 ? "queue" : "queues"} — nothing waiting ▸
+                        </summary>
+                        <div className="grid gap-3 sm:grid-cols-2 mt-3">{cleared.map(tile)}</div>
+                      </details>
+                    )}
+                  </>
+                )
+              })()}
             </section>
 
             <section className="space-y-3">
