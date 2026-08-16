@@ -287,13 +287,19 @@ export async function enrichClaimCanonical(claimId: string): Promise<EnrichResul
 
   const result = await synthesizeEnrichedCanonical(claim.canonical_statement, statements, { memberQuotes: quotes })
 
-  if (result.changed) {
-    const { error: updErr } = await db()
-      .from('claims')
-      .update({ canonical_statement: result.canonical, needs_tagging: true })
-      .eq('id', claimId)
-    if (updErr) throw new Error(`enrich: failed to update canonical: ${updErr.message}`)
-  }
+  // `enriched_at` marks "this claim's members have been folded in", and is
+  // stamped on every successful evaluation — including one that changed nothing,
+  // which is still a real answer ("already carries every member's detail").
+  // Without it the column was dead and there was no way to tell an enriched
+  // claim from one that predates enrich-merge, which is exactly what the
+  // backfill (scripts/backfillEnrich.ts) needs to resume safely.
+  const enrichedAt = new Date().toISOString()
+  const patch = result.changed
+    ? { canonical_statement: result.canonical, needs_tagging: true, enriched_at: enrichedAt }
+    : { enriched_at: enrichedAt }
+  const { error: updErr } = await db().from('claims').update(patch).eq('id', claimId)
+  if (updErr) throw new Error(`enrich: failed to update claim ${claimId}: ${updErr.message}`)
+
   return result
 }
 
