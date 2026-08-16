@@ -100,8 +100,17 @@ async function main() {
   let enqueuedTotal = 0
   let round = 0
   let idleStreak = 0
+  let failStreak = 0
   let lastExtractedCount = -1
   while (Date.now() < deadline) {
+    // A round that dies mid-flight (total network blip: Supabase `fetch failed`
+    // AND the CLI unreachable at once) must not kill an unattended overnight
+    // run — the 2026-08-15 22:22 blip took the whole supervisor down within a
+    // minute of launch. Treat it like a no-progress round: whatever job it was
+    // on is failed (healFailed requeues it) or its lock goes stale (reclaimed
+    // >10 min), so backing off and retrying loses nothing. The deadline stays
+    // the ultimate bound, mirroring the usage-limit idleStreak design.
+    try {
     round++
     const mb = await dbSizeMb()
     if (mb >= maxMb) {
@@ -155,6 +164,14 @@ async function main() {
       await sleep(wait)
     } else {
       idleStreak = 0
+    }
+    failStreak = 0
+    } catch (err) {
+      failStreak++
+      const wait = Math.min(15 * 60_000, 3 * 60_000 * failStreak)
+      const msg = err instanceof Error ? err.message.slice(0, 160) : String(err)
+      console.warn(`[${now()}] round ${round} died (${msg}) — sleeping ${Math.round(wait / 60000)}m before retry (network blip? streak ${failStreak})`)
+      await sleep(wait)
     }
   }
 
