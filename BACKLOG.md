@@ -15,7 +15,78 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌆 2026-08-15/16 EVENING WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
+> **🌃 2026-08-16 DAY WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
+>
+> **LIVE STATE (2026-08-16 ~10:45 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
+> insights**; active claims **12,997 and about to move for the first time in 29 h** (see the queue bug below).
+> `main`==`origin/main`@`7f3aced`, **91/91 tests**, lint at its real baseline (23 problems, 3 pre-existing).
+> A **bulk merge-accept is RUNNING** (started 10:31, ~80 merges at ~1.5 min each → finishes ~12:30 UTC).
+> **Do not start a second writer until it finishes.**
+>
+> **⛔ THE FINDING THAT MATTERS THIS WINDOW — extraction was healthy and the library still stopped growing.**
+> `claim_next_job()` ordered strictly by `created_at`. `overnightExtract` enqueues `extract_source` in
+> batches of 4, and each source's `consolidate_source` job is only created ~an hour later when its extract
+> finishes — so every consolidate landed BEHIND the rest of its batch and behind any older extract. At
+> ~1 source/hour the queue head stayed extract-only for a full day:
+> **21 consolidate jobs queued, oldest 2026-08-15 06:58, never claimed once** (`attempts 0`,
+> `started_at NULL`); **no consolidate completed since 2026-08-15 05:08**; **4,114 raw insights (22% of the
+> corpus) had no claim_member**; active claims pinned at exactly 12,997 while raw insights grew ~3,500.
+> Nothing was failing — the work was simply always last in line, which is why a week of green runs hid it.
+> **Fixed + applied: migration `022_consolidate_priority.sql`** (`7f3aced`) claims `consolidate_source`
+> first, FIFO within a tier. Queue head verified as the 06:58 consolidate immediately after.
+> **Consequence for the plan: "sources extracted" was never the real progress metric — claims are.**
+> The next run must drain the 21-source consolidation backlog BEFORE more extraction; with 022 the worker
+> now does that by itself.
+>
+> **RESUME EXTRACTION with:** `npx tsx --env-file=.env.local scripts/overnightExtract.ts --hours 8 --batch 4`
+> from the repo root (`/Users/paulclancy/_lifestyleacademy` — the worktree has NO `.env.local`), then attach
+> `caffeinate -dims -w <pid>` separately. ONE writer at a time. It will now consolidate first, which is
+> slower per source than raw extraction but is what actually produces claims.
+>
+> **THIS WINDOW SHIPPED:**
+> - **ENRICH_MERGE decision TAKEN — Paul chose ON** (`33ac555`; `ENRICH_MERGE=1` set in `.env.local`, which
+>   is gitignored — a fresh clone must re-add it). Evidence: `eval/enrich-merge-test.json` — 30/30 rewrites,
+>   **0 invented specifics**, **27/30 fully lossless** (the 3 gaps are wording nuance, not facts).
+>   **Verified live on real merges**, e.g. a 5-member power-training claim now carries the Type 2A fibre
+>   mechanism AND the "starting in the 40s" finding that were previously buried in the drill-down.
+>   *Read caution:* `recomputeAggregates` commits the new member_count BEFORE `enrichClaimCanonical` writes,
+>   so a claim sampled mid-merge shows the new count with the old sentence — that is a race in the reader,
+>   not a lost rewrite.
+> - **The merge queue was diagnosed, not just counted:** all 145 pending rows were `SAME` verdicts that fell
+>   under `AUTO_MERGE_CONFIDENCE` (0.85) — **83 at 0.82–0.83** (a threshold miss, not a judgement), 57 at
+>   0.72–0.78, 5 at 0.60–0.62. Parking them was only ever right while merging was lossy; enrich ends that.
+> - **`scripts/acceptNearMissReviews.ts`** (`33ac555`) clears exactly the ≥0.80 band and leaves the **62
+>   uncertain rows for Paul** (his call, asked and answered). Dry-run default, backup before apply, survivor
+>   resolution through `merged_into_id`, `decided_by: 'auto-accept-near-miss'`, refuses `--apply` while
+>   `overnightExtract` runs. Dry run: 83 → 78 merges + 5 already merged elsewhere.
+> - **The 38 taxonomy proposals became a decision surface for Paul** (published page; verbatim source stays
+>   `scratchpad/discover-dryrun-87-sources-20260815.txt`). Key finding: **8 proposals are cross-batch
+>   duplicates** — cancer screening ×4, dementia diagnosis ×3, dementia treatment ×2, female athlete ×2,
+>   ultra-processed food ×2, sex differences ×2, obesity/weight ×2 — because each parent shelf is examined
+>   with no memory of the others. **38 → ~31 real topics.** Only 1 came from unfiled claims.
+>   **Paul's 7 verdicts on the overlap groups are the reshape's input.**
+> - **ESLint no longer walks the nested worktree** (`.claude/worktrees/**`): `npm run lint` had been
+>   reporting **15,308 problems** against a real baseline of **23**.
+>
+> **KNOWN GAP (not a bug, worth closing):** `mergeClaims` discards the `EnrichResult`, so a rewrite the
+> fidelity guard REJECTS (invented specific → prior canonical kept) is invisible. Log it when convenient;
+> `claims.enriched_at` is also still never set by `enrichClaimCanonical`.
+>
+> **STILL OPEN FOR PAUL:** (1) the **62 remaining merge reviews** at `/admin/reviews` — the 83 are handled;
+> (2) the **7 overlap verdicts** on the taxonomy page; (3) topics board: 47 unreviewed.
+>
+> **NEXT WINDOW'S PHASE — pick ONE:** (a) **restart extraction** and let 022 drain the consolidation backlog
+> into claims — re-run the `discover --dry-run` checkpoint only once claims are caught up AND sources ≈110
+> (that is ~14 more sources, i.e. two or three windows at ~1 source/hour); or (b) **fidelity-judge
+> recalibration** (the 9 confirmed rulings → prompt revision → re-run 40 → re-score), only while extraction
+> is idle.
+>
+> **OPERATIONAL NOTES:** the Bash tool's cwd flips between the repo root and the worktree between turns —
+> always `cd /Users/paulclancy/_lifestyleacademy` first. A killed run leaves one `extract_source` row
+> `running`; that is self-healing (heartbeat stale >10 min is reclaimable, `lib/jobs.ts`) — never "fix" it
+> by hand. Background runs are children of the chat window and die with it; the jobs queue loses nothing.
+
+> **🌆 2026-08-15/16 EVENING WINDOW — HANDOFF (superseded by the block above; kept as dated history).**
 >
 > **LIVE STATE (2026-08-16 ~01:30 UTC):** **89/249 sources**; 16.4k raw insights → **12,997 active claims**
 > (net DOWN from 13,087 — real consolidation); **145 pending merge_reviews, ALL genuine** (Paul reviewing);
