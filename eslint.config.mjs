@@ -11,6 +11,10 @@ export default tseslint.config(
       "dist/**",
       "coverage/**",
       "src/**",
+      // Claude Code worktrees are full checkouts nested inside the repo, so
+      // `eslint .` would lint a second copy of everything (plus its build
+      // output) — 15k phantom errors that drown the real ones.
+      ".claude/worktrees/**",
     ],
   },
   js.configs.recommended,
