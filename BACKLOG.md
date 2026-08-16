@@ -15,7 +15,64 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌙 2026-08-15 — HANDOFF (read this FIRST; supersedes every block below for live state).
+> **🌆 2026-08-15/16 EVENING WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
+>
+> **LIVE STATE (2026-08-16 ~01:30 UTC):** **89/249 sources**; 16.4k raw insights → **12,997 active claims**
+> (net DOWN from 13,087 — real consolidation); **145 pending merge_reviews, ALL genuine** (Paul reviewing);
+> DB **448 MB on Pro**. `main`==`origin/main`@`4e92b37`, build green, **91/91 tests**. An 8 h extraction run
+> launched 01:12 UTC (deadline ~09:12 UTC) as a child of the closing chat window — **if it died with the
+> window, nothing is lost**; the jobs queue holds everything.
+>
+> **RESUME EXTRACTION with:** `npx tsx --env-file=.env.local scripts/overnightExtract.ts --hours 8 --batch 4`
+> from the repo root (idempotent, drains the queue first; attach `caffeinate -dims -w <pid>` separately —
+> wrapping the command in caffeinate can trip the permission classifier). ONE writer at a time, as ever.
+>
+> **THIS WINDOW SHIPPED (all on main, pushed):**
+> - **Junk-review bug KILLED at the source** (`18e9a5e`): when the dedup checker itself is down (usage-limit
+>   window / CLI crash), `adjudicate()` now THROWS (`AdjudicationUnavailableError`) so the job fails and the
+>   heal loop retries — it no longer files an UNSURE merge_review per insight. The 05:08 outage alone had
+>   filed 121 junk rows; that class of queue pollution is over.
+> - **The 121 existing junk rows re-adjudicated** (`scripts/readjudicateCheckerErrors.ts`, backup `3576d1c`):
+>   **90 auto-merged** (real duplicates the outage had hidden), **15 closed distinct** (+near-dup links),
+>   **16 genuine UNSUREs kept** with real verdicts. Queue 253 → 148 pending, all genuine. The script refuses
+>   to run while overnightExtract runs (CLI + writer contention).
+> - **Fidelity certification CLOSED — Paul's item DONE:** his re-checks kept every original ruling (his
+>   exported goldset verified byte-identical to the DB). Official κ = **-0.11 — judge FAILS cert,
+>   definitively and two-sided** (flags pairs Paul calls faithful AND missed both his ADDED_DETAIL catches).
+>   Shadow mode stays. Next fidelity step: recalibrate the judge prompt using the 9 confirmed disagreements
+>   (#4,7,8,9,13,16,18,24,40) as alignment examples, re-run over the 40, re-score. Needs the CLI — never
+>   alongside an extraction drain.
+> - **The 3 latent silent-truncations FIXED** (`06ad3e2`): flagClaims member batch (was one row-cap away from
+>   raising FALSE merge_fidelity flags), flagClaims open-flag report, topic-proposals claim lookup (chunked).
+>   **Every bulk-tag prerequisite is now clear.**
+> - **⛔ TAXONOMY CHECKPOINT AT 87 SOURCES: NOT STABLE — 38 topics proposed** (the tag job STAYS PARKED).
+>   Verbatim list with rationales: `scratchpad/discover-dryrun-87-sources-20260815.txt` (committed).
+>   Character: ~all are SPLITS of oversized topics (Medications 121 claims, Behavioral Science 141,
+>   Neurodegenerative Disease 146); only 1/38 from unfiled claims; several near-duplicate proposals across
+>   parent batches (cancer screening ×3, dementia treatment ×2, female athlete ×2 — discover has no
+>   cross-batch dedup, so the reshape round must merge those first).
+> - **Overnight supervisor hardened** (`4e92b37`): a total network blip (Supabase fetch failed + CLI
+>   unreachable at once) killed the 22:22 UTC run within a minute; a dead round now backs off and retries
+>   like a usage-limit stall instead of crashing the process.
+>
+> **NEXT WINDOW'S PHASE — pick ONE:**
+> (a) **Resume extraction toward ~110** (the default; re-run `discover --dry-run` there as the next
+>     stability checkpoint), or
+> (b) **Fidelity-judge recalibration** (the 9 confirmed rulings → prompt revision → re-run 40 → re-score) —
+>     only when extraction is idle.
+> The **taxonomy reshape** is Paul-gated curation from the saved 38-proposal list (his reading, the drag
+> board, the proposals queue) and runs before any re-tag — but `tag_claims` (`f0e7998d`) stays parked until
+> a checkpoint comes back quiet AFTER the reshape.
+>
+> **PAUL'S OPEN ITEMS:** (1) merge reviews (145) + the **ENRICH_MERGE decision** — his stated goal ("keep
+> the new detail without repetition") IS enrich; still the compounding one; (2) skim the 38-proposal list —
+> his browse-instinct verdict is the reshape's input; (3) topics board: 47 unreviewed.
+>
+> **OPERATIONAL NOTES:** background Bash tasks may start in a worktree — prefix pipeline commands with
+> `cd` to the repo root (`.env.local` lives there). Extraction throughput ≈ 1 source/hour on long Drive
+> episodes. Claude-in-Chrome was not connected this session (fidelity recovery worked around it).
+
+> **🌙 2026-08-15 MORNING — HANDOFF (superseded by the block above; kept as dated history).
 > Extraction STOPPED cleanly for a window change; ~26 queued jobs resume on the next run.**
 >
 > **LIVE STATE (2026-08-15 ~09:00 UTC):** **77/249 sources extracted** (172 pending); 14,835 raw insights →
