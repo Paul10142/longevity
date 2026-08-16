@@ -23,8 +23,9 @@ windows at once. To stop that recurring:
    edits or pipeline/DB writes against the repo concurrently — that is what
    scattered and corrupted state on 2026-07-25. If another window may be live,
    coordinate through `ARCHITECTURE.md` and do not run pipeline/DB writes.
-5. **Reply format:** follow the `standard-report-format` memory (Updates → Next
-   Steps → To-do Items).
+5. **Reply format:** defined once globally in `~/.claude/CLAUDE.md` (ALL-CAPS
+   level-2 headings: UPDATES → NEXT STEPS → TO-DO ITEMS, plain language). Do not
+   restate it here or in project memory — edit the global file instead.
 
 ## Commands
 
