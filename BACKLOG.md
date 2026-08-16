@@ -46,14 +46,23 @@ there.
 > because merging was lossy; enrich removes that. The 0.82 band now auto-merges instead of queueing, so the
 > review queue stops refilling with threshold misses and only genuine uncertainty (0.60–0.78) reaches Paul.
 >
-> **🔁 ENRICH BACKFILL IS RUNNING (started 14:07 UTC, `df18f7a`) — EXTRACTION IS PAUSED FOR IT.** They cannot
-> overlap: both write claims and both need the CLI. `scripts/backfillEnrich.ts --apply` re-enriches the
-> **1,230 multi-member claims merged before enrich existed** (1,019 pairs, 150 triples, tail out to 9
-> members), richest first. **Resumable** — `enriched_at` is now stamped on every evaluation and selection is
-> `enriched_at IS NULL`, so an interrupted run just continues; each claim commits on its own. It also
-> **logs fidelity-guard rejects**, which `mergeClaims` silently discards.
-> **When it finishes: restart extraction** (command above). If it is still running at window close, it dies
-> with the window — just rerun the same command, nothing is lost.
+> **⏸ BOTH TASKS ARE PAUSED (Paul, 2026-08-16 ~19:57 UTC). Nothing is running. Nothing is lost.**
+>
+> **Enrich backfill — 970 of 1,230 done (79%), 260 left.** 841 claims gained buried detail, 109 were already
+> complete, **0 rejected, 0 failed** across the whole run (it rode out a network disconnection without a
+> single error). Resume with, and it continues from exactly where it stopped:
+> `npx tsx --env-file=.env.local scripts/backfillEnrich.ts --apply`
+> Resumability is real, not hopeful: `enriched_at` is stamped per claim and selection is `enriched_at IS
+> NULL`, so at most the one in-flight claim is redone. `scripts/backfillEnrich.ts` re-enriches the
+> multi-member claims merged before enrich existed (1,019 pairs, 150 triples, tail out to 9), richest first,
+> and **logs fidelity-guard rejects** that `mergeClaims` otherwise discards.
+>
+> **Extraction — paused since 14:07 UTC** so the backfill could have the CLI. They can never overlap: both
+> write claims and both drive the CLI. **Order on resume: finish the backfill first, then restart extraction**
+> (command above) — the backfill is finite and nearly done, extraction is open-ended.
+>
+> **The 88% number is the verdict on this whole exercise:** 841 of 950 pre-enrich merges really had lost
+> detail from the sentence articles are written from. It was worth doing.
 >
 > **⛔ THE FINDING THAT MATTERS THIS WINDOW — extraction was healthy and the library still stopped growing.**
 > `claim_next_job()` ordered strictly by `created_at`. `overnightExtract` enqueues `extract_source` in
