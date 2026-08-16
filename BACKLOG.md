@@ -17,11 +17,18 @@ there.
 
 > **🌃 2026-08-16 DAY WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
 >
-> **LIVE STATE (2026-08-16 ~10:45 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
-> insights**; active claims **12,997 and about to move for the first time in 29 h** (see the queue bug below).
-> `main`==`origin/main`@`7f3aced`, **91/91 tests**, lint at its real baseline (23 problems, 3 pre-existing).
-> A **bulk merge-accept is RUNNING** (started 10:31, ~80 merges at ~1.5 min each → finishes ~12:30 UTC).
-> **Do not start a second writer until it finishes.**
+> **LIVE STATE (2026-08-16 ~11:05 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
+> insights**; **12,922 active claims — MOVING again** (12,997 → 12,920 via the merge accepts, then climbing
+> as consolidation finally runs). **62 pending merge_reviews** (the 83 near-misses are cleared).
+> `main`==`origin/main`@`6de6bc6`, **91/91 tests**, lint at its real baseline (23 problems, 3 pre-existing).
+> An 8 h extraction run started **10:59 UTC** (deadline ~18:59); it is a child of the chat window and dies
+> with it, losing nothing.
+>
+> **THE QUEUE FIX IS VERIFIED END-TO-END:** on restart the worker immediately claimed the 2026-08-15 06:58
+> consolidate job — the one that had sat unclaimed for 29 h — and it is live (110 insights, checkpointing,
+> claims created). Migration 022 works; the backlog is draining.
+>
+> **The bulk merge-accept COMPLETED:** 83 rows → **77 merged, 6 already merged elsewhere, 0 failed**.
 >
 > **⛔ THE FINDING THAT MATTERS THIS WINDOW — extraction was healthy and the library still stopped growing.**
 > `claim_next_job()` ordered strictly by `created_at`. `overnightExtract` enqueues `extract_source` in
