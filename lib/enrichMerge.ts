@@ -29,10 +29,22 @@
 
 import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
 
-/** Enrich-merge runs in the live pipeline only when explicitly enabled. Off by
- *  default so switching the adjudicator to V3 does not silently start rewriting
- *  canonicals on the next consolidation — Paul opts in per the surfaced decision. */
-export const ENRICH_MERGE_ENABLED = process.env.ENRICH_MERGE === '1'
+/**
+ * Enrich-merge is ON unless explicitly disabled with `ENRICH_MERGE=0`.
+ *
+ * It was opt-in (`=== '1'`) so that switching the adjudicator to V3 would not
+ * silently start rewriting canonicals before Paul had decided. He decided on
+ * 2026-08-16: on. Leaving the gate opt-in after that point actively misled —
+ * the flag lived in `.env.local`, which is gitignored, so the local pipeline
+ * enriched while the DEPLOYED admin did not. Every merge Paul made from the
+ * production review queue silently kept the loser's detail buried, which is the
+ * exact failure the decision was meant to end.
+ *
+ * Defaulting ON makes the behaviour travel with the code to every environment.
+ * The escape hatch is inverted rather than removed: set `ENRICH_MERGE=0` to run
+ * a lossy merge deliberately (e.g. bisecting a bad rewrite).
+ */
+export const ENRICH_MERGE_ENABLED = process.env.ENRICH_MERGE !== '0'
 
 /** Mechanical-synthesis tier (Haiku): merge-fidelity is assembly, not prose. */
 export const ENRICH_MODEL = CLAUDE_BULK_MODEL

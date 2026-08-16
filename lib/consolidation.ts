@@ -37,7 +37,21 @@ const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.8)
 const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
 // Verdict confidence needed to auto-merge without human review.
-export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.85)
+//
+// Lowered 0.85 → 0.80 (Paul, 2026-08-16) as the direct consequence of turning
+// enrich-merge on. The bar was set high because a merge was LOSSY: the winner
+// kept its own canonical, so auto-merging a "same claim" verdict quietly buried
+// the other side's detail, and parking borderline pairs for a human was the only
+// protection. Enrich-merge removes that failure mode — the surviving canonical
+// now carries both sides — so a confident-enough SAME verdict no longer costs
+// anything to act on.
+//
+// The evidence: every one of the 145 reviews parked under the old bar was a SAME
+// verdict, 83 of them clustered at 0.82–0.83 — they failed a threshold, not a
+// judgement. Accepting that band produced 77 merges with 0 failures and visibly
+// richer canonicals. Below ~0.80 the verdicts are genuinely uncertain (0.60–0.78)
+// and still go to review, which is where human attention belongs.
+export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.8)
 // Claim-vs-claim floor for the periodic sweep — stricter than ingestion by
 // default, since these are already-canonical claims. Env-tunable for the same
 // re-consolidation experiment (lower it to catch the parked near-duplicates).
