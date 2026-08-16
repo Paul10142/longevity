@@ -7,8 +7,23 @@ import fidelityPairs from "@/eval/extraction-eval-pairs.json"
 // Counts are live — never serve a cached to-do list.
 export const dynamic = "force-dynamic"
 
-/** Supabase free-plan ceiling; the DB goes read-only if it is reached. */
-const STORAGE_CAP_MB = 500
+/**
+ * Supabase Pro includes 8 GB of database disk (the org upgraded 2026-08-14).
+ *
+ * This was 500 MB — the FREE-plan ceiling, where the database flips to read-only.
+ * On Pro neither the number nor the consequence holds: past the included disk
+ * Supabase bills for the overage, it does not lock the database. Left stale, the
+ * card read "448 MB of the 500 MB plan limit (90%) — Critical", which is a
+ * false alarm about a plan that no longer applies.
+ */
+const STORAGE_CAP_MB = 8 * 1024
+
+/**
+ * overnightExtract's default `--max-mb` brake. Extraction halts itself here,
+ * well before the included disk runs out, so this is the number that actually
+ * governs a run — the cap above is just the billing boundary.
+ */
+const EXTRACTION_BRAKE_MB = 6000
 
 /** An unknown count renders as a dash, never as zero. */
 const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString())
@@ -239,31 +254,47 @@ export default async function AdminHomePage() {
                 </CardContent>
               </Card>
 
-              {storagePct !== null && (
-                <Card>
-                  <CardHeader className="pb-3">
-                    <CardTitle className="text-base">Database storage</CardTitle>
-                    <CardDescription>
-                      {storage!.toFixed(0)} MB of the {STORAGE_CAP_MB} MB plan limit ({storagePct.toFixed(0)}%).
-                      {storagePct >= 90
-                        ? " Critical — the database goes read-only at the limit."
-                        : storagePct >= 65
-                          ? " Extraction will stop before the limit is reached."
-                          : ""}
-                    </CardDescription>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
-                      <div
-                        className={`h-full rounded-full ${
-                          storagePct >= 90 ? "bg-destructive" : storagePct >= 65 ? "bg-amber-500" : "bg-foreground/60"
-                        }`}
-                        style={{ width: `${Math.max(2, storagePct)}%` }}
-                      />
-                    </div>
-                  </CardContent>
-                </Card>
-              )}
+              {storagePct !== null && (() => {
+                // Storage is a background fact on Pro, not a decision — so it
+                // tucks under a toggle like a cleared queue, with the number on
+                // the summary line so it never needs opening to be read. It
+                // springs open on its own once the extraction brake is in sight,
+                // which is the point where it stops being background.
+                const atBrake = storage! >= EXTRACTION_BRAKE_MB
+                const nearBrake = storage! >= EXTRACTION_BRAKE_MB * 0.8
+                return (
+                  <details className="group" open={nearBrake}>
+                    <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
+                      Database storage — {storage!.toFixed(0)} MB of {(STORAGE_CAP_MB / 1024).toFixed(0)} GB (
+                      {storagePct.toFixed(0)}%) ▸
+                    </summary>
+                    <Card className="mt-3">
+                      <CardHeader className="pb-3">
+                        <CardTitle className="text-base">Database storage</CardTitle>
+                        <CardDescription>
+                          {storage!.toFixed(0)} MB of the {(STORAGE_CAP_MB / 1024).toFixed(0)} GB included with
+                          Supabase Pro ({storagePct.toFixed(0)}%).{" "}
+                          {atBrake
+                            ? `Extraction has stopped — it brakes at ${EXTRACTION_BRAKE_MB.toLocaleString()} MB. Pass a higher --max-mb to continue.`
+                            : nearBrake
+                              ? `Extraction brakes itself at ${EXTRACTION_BRAKE_MB.toLocaleString()} MB, which is close.`
+                              : "Past the included disk Supabase bills for the overage — the database does not go read-only."}
+                        </CardDescription>
+                      </CardHeader>
+                      <CardContent>
+                        <div className="h-2 w-full rounded-full bg-muted overflow-hidden">
+                          <div
+                            className={`h-full rounded-full ${
+                              atBrake ? "bg-destructive" : nearBrake ? "bg-amber-500" : "bg-foreground/60"
+                            }`}
+                            style={{ width: `${Math.max(2, storagePct)}%` }}
+                          />
+                        </div>
+                      </CardContent>
+                    </Card>
+                  </details>
+                )
+              })()}
             </section>
 
             <section className="space-y-3">
