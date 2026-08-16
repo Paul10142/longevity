@@ -17,18 +17,34 @@ there.
 
 > **🌃 2026-08-16 DAY WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
 >
-> **LIVE STATE (2026-08-16 ~11:05 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
-> insights**; **12,922 active claims — MOVING again** (12,997 → 12,920 via the merge accepts, then climbing
-> as consolidation finally runs). **62 pending merge_reviews** (the 83 near-misses are cleared).
-> `main`==`origin/main`@`6de6bc6`, **91/91 tests**, lint at its real baseline (23 problems, 3 pre-existing).
-> An 8 h extraction run started **10:59 UTC** (deadline ~18:59); it is a child of the chat window and dies
-> with it, losing nothing.
+> **LIVE STATE (2026-08-16 ~14:05 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
+> insights**; **15,548 active claims — +2,626 in three hours** as the consolidation backlog drains
+> (unconsolidated insights 4,114 → **1,311**). **67 pending merge_reviews, 0 in the near-miss band.**
+> `main`==`origin/main`@`b0d7089`, **91/91 tests**, lint at its real baseline (23 problems, 3 pre-existing).
+> An 8 h extraction run restarted **14:01 UTC** (deadline ~22:01) to pick up the new auto-merge bar; it is a
+> child of the chat window and dies with it, losing nothing.
 >
 > **THE QUEUE FIX IS VERIFIED END-TO-END:** on restart the worker immediately claimed the 2026-08-15 06:58
-> consolidate job — the one that had sat unclaimed for 29 h — and it is live (110 insights, checkpointing,
-> claims created). Migration 022 works; the backlog is draining.
+> consolidate job — the one that had sat unclaimed for 29 h — and 14 consolidate jobs have since completed
+> (84 → 98 done, 21 → 6 queued). Migration 022 works. The supervisor also rode out two `fetch failed`
+> network blips during the run without dying, which is the `4e92b37` hardening earning its keep.
 >
-> **The bulk merge-accept COMPLETED:** 83 rows → **77 merged, 6 already merged elsewhere, 0 failed**.
+> **Merge accepts COMPLETED across two runs:** 83 rows → 77 merged + 6 already merged, then 16 more → **93
+> merges total, 0 failures**.
+>
+> **⚠ THE DEPLOYED ADMIN WAS STILL MERGING LOSSILY — fixed in `b0d7089`.** Paul went looking for an "enrich"
+> button in the production review queue; there is none (enrich is not a third verdict, it is what Merge
+> does), but chasing it found that **`ENRICH_MERGE` was never set in the Vercel production environment**.
+> The flag was opt-in and lived in `.env.local`, which is **gitignored** — so the local pipeline enriched
+> while every merge Paul made from the production queue silently buried the loser's detail. The gate is now
+> **inverted: enrich runs unless `ENRICH_MERGE=0`**, so it ships with the code to every environment. No
+> Vercel env var was added — deliberately, because config that must hold everywhere does not belong in one
+> machine's untracked file. **Generalise this:** any behaviour gated only by `.env.local` is off in
+> production. `SKIP_*` flags and `CONSOLIDATION_*` tunables have the same shape — check before trusting them.
+>
+> **AUTO_MERGE_CONFIDENCE lowered 0.85 → 0.80 in code** (Paul's call, 2026-08-16). The high bar existed only
+> because merging was lossy; enrich removes that. The 0.82 band now auto-merges instead of queueing, so the
+> review queue stops refilling with threshold misses and only genuine uncertainty (0.60–0.78) reaches Paul.
 >
 > **⛔ THE FINDING THAT MATTERS THIS WINDOW — extraction was healthy and the library still stopped growing.**
 > `claim_next_job()` ordered strictly by `created_at`. `overnightExtract` enqueues `extract_source` in
