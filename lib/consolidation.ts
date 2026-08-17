@@ -244,9 +244,46 @@ async function attachMember(
   }, { onConflict: 'claim_id,raw_insight_id', ignoreDuplicates: true })
   if (memErr) throw new Error(`Failed to attach claim member: ${memErr.message}`)
   await recomputeAggregates(claimId)
-  if (opts?.enrich && ENRICH_MERGE_ENABLED) {
-    await enrichClaimCanonical(claimId)
+  if (ENRICH_MERGE_ENABLED) {
+    if (opts?.enrich) {
+      await enrichClaimCanonical(claimId)
+    } else {
+      // The adjudicator judged this member carries no detail the canonical lacks,
+      // so there is nothing to fold in and an LLM call would buy nothing. Stamp
+      // anyway: `enriched_at` records that a claim's enrichment state has been
+      // DECIDED, not that a rewrite happened — enrichClaimCanonical already
+      // stamps on a no-change result for exactly that reason.
+      //
+      // Without this, every merge the adjudicator declines to enrich (~36% of
+      // them — V3 flags enrich on 64%) left `enriched_at` NULL forever, which is
+      // indistinguishable from a pre-enrich-era claim. Measured 2026-08-17:
+      // right after the backfill reported 1,230/1,230 complete, 48 multi-member
+      // claims read as un-enriched, and all 48 had been merged during that same
+      // run. `scripts/backfillEnrich.ts` selects on `enriched_at IS NULL`, so the
+      // count climbs forever, a rerun silently redoes finished work, and
+      // enrichment coverage cannot be audited.
+      await stampEnrichmentDecided(claimId)
+    }
   }
+}
+
+/**
+ * Record that a claim's enrichment state has been decided as of now.
+ *
+ * Deliberately does NOT touch `canonical_statement` — it is the bookkeeping half
+ * of enrichment, used where the fold-in itself is a no-op (nothing to merge, or
+ * the adjudicator judged the new member adds nothing).
+ *
+ * Note for a future full re-enrich pass: because this marks "decided", a sweep
+ * that wants to re-examine claims the adjudicator declined must select on
+ * `member_count > 1` rather than `enriched_at IS NULL`.
+ */
+async function stampEnrichmentDecided(claimId: string): Promise<void> {
+  const { error } = await db()
+    .from('claims')
+    .update({ enriched_at: new Date().toISOString() })
+    .eq('id', claimId)
+  if (error) throw new Error(`enrich: failed to stamp enriched_at on ${claimId}: ${error.message}`)
 }
 
 /**
@@ -280,8 +317,11 @@ export async function enrichClaimCanonical(claimId: string): Promise<EnrichResul
   const quotes = members.map(m => m.raw_insights?.direct_quote ?? '').filter((q): q is string => Boolean(q))
 
   // A single-member claim has nothing to fold in — its canonical already equals
-  // its only member. Only multi-member claims can bury a side.
+  // its only member. Only multi-member claims can bury a side. That is still a
+  // decided enrichment state, so stamp it rather than returning silently and
+  // leaving the claim indistinguishable from one never evaluated.
   if (statements.length <= 1) {
+    await stampEnrichmentDecided(claimId)
     return { canonical: claim.canonical_statement, changed: false, rejected: false, invented: [], reason: 'single member' }
   }
 
