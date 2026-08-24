@@ -8,6 +8,7 @@
  *
  *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --dry-run
  *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --out ~/Desktop/LifestyleAcademyAudio
+ *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --skip 100 --limit 100   # one slice
  *
  * SECRET HANDLING: the feed URL is a paid-membership credential — the same key
  * is embedded in every episode guid — so it is read from ATTIA_FEED_URL (or
@@ -164,6 +165,11 @@ async function main() {
   const prefix = val('--prefix') ?? 'attia'
   const outDir = expandHome(val('--out') ?? '~/Desktop/LifestyleAcademyAudio')
   const limit = Number(val('--limit')) || Infinity
+  // Batching exists for DISK, not politeness: the full catalogue is ~37 GB, so
+  // the workflow is download a slice -> transcribe it -> delete the audio ->
+  // next slice. Ordering is newest-first and stable (feed order), so
+  // `--skip 100 --limit 100` is a repeatable window, not a moving target.
+  const skip = Number(val('--skip')) || 0
   const dryRun = has('--dry-run')
 
   process.stdout.write(`reading feed from $${feedEnv}…\n`)
@@ -206,8 +212,13 @@ async function main() {
   process.stdout.write(`  manifest → ${manifestPath} (audio URLs stripped — safe to share)\n`)
 
   if (dryRun) {
-    process.stdout.write('\ndry run — nothing downloaded. Sample of the join keys:\n')
-    episodes.slice(0, 5).forEach(e => process.stdout.write(`  ${e.file}  ${e.title.slice(0, 64)}\n`))
+    const preview = episodes.slice(skip, limit === Infinity ? undefined : skip + limit)
+    const previewBytes = preview.reduce((s2, e) => s2 + (e.audio_bytes ?? 0), 0)
+    process.stdout.write(
+      `\ndry run — nothing downloaded. This slice: ${preview.length} episodes, ` +
+        `${(previewBytes / 1e9).toFixed(1)} GB\n`
+    )
+    preview.slice(0, 5).forEach(e => process.stdout.write(`  ${e.file}  ${e.title.slice(0, 60)}\n`))
     return
   }
 
@@ -215,7 +226,7 @@ async function main() {
   let done = 0
   let skipped = 0
   let failed = 0
-  const queue = episodes.slice(0, limit === Infinity ? episodes.length : limit)
+  const queue = episodes.slice(skip, limit === Infinity ? undefined : skip + limit)
 
   for (const [i, ep] of queue.entries()) {
     const dest = path.join(outDir, ep.file)
