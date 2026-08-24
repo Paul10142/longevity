@@ -110,9 +110,20 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[]): 
     }))
 
   const speakers = [...new Set(segments.map(s => s.speaker).filter(s => s !== null))].sort()
+  // Record what the SERVER says it ran, not what we asked for. A silently
+  // ignored parameter (an unsupported model alias, a keyterm the model does not
+  // accept) is otherwise invisible, and months later there would be no way to
+  // tell which transcripts were produced with which settings.
+  const modelInfo = Object.values(body?.metadata?.model_info ?? {})[0] as
+    | { name?: string; version?: string; arch?: string }
+    | undefined
   const out = {
     key: base,
-    model: 'nova-3',
+    model: modelInfo?.name ?? 'unknown',
+    model_version: modelInfo?.version ?? null,
+    diarized: body?.metadata?.diarize_info != null,
+    keyterms,
+    request_id: body?.metadata?.request_id ?? null,
     duration_seconds: body?.metadata?.duration ?? null,
     speakers,
     segments,
@@ -124,7 +135,9 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[]): 
   const mins = (out.duration_seconds ?? 0) / 60
   process.stdout.write(
     `  ${base}: ${segments.length} utterances, ${speakers.length} speakers, ` +
-      `${mins.toFixed(1)} min audio, ${((Date.now() - started) / 1000).toFixed(0)}s wall, ` +
+      `${mins.toFixed(1)} min audio, ${((Date.now() - started) / 1000).toFixed(0)}s wall ` +
+      `(${(mins * 60 / Math.max(1, (Date.now() - started) / 1000)).toFixed(0)}x realtime), ` +
+      `model ${out.model}, diarized=${out.diarized}, ` +
       `~$${(((out.duration_seconds ?? 0) / 3600) * 0.34).toFixed(2)}\n  → ${dest}\n`
   )
 }
