@@ -638,57 +638,94 @@ export async function extractSource(
     participants,
   }
 
+  // Chunks are independent, so they run CONCURRENTLY in batches instead of one
+  // at a time. Measured 2026-08-24 on live chunks: serial ~58.5 s/chunk; 8-way
+  // 3.2x; 16-way 6.9x (8.5 s/chunk effective), zero failures on the subscription
+  // CLI. At ~55 chunks/source that is ~77 min -> ~11 min of extraction.
+  //
+  // The checkpoint still advances only after a WHOLE batch is written, so
+  // resumability is unchanged in kind: a killed worker redoes at most one batch
+  // rather than at most one chunk. Never advance it per-chunk here — the chunks
+  // of a batch complete out of order, so a per-chunk advance could skip a chunk
+  // that had not been inserted yet.
+  //
+  // Raise/lower with EXTRACT_CONCURRENCY. Each unit is a `claude -p` process, so
+  // this is bounded by local CPU/RAM and the account's rate limits, not by us.
+  const concurrency = Math.max(1, Number(process.env.EXTRACT_CONCURRENCY) || 16)
+
   while (cp.chunk_index < total) {
     if (Date.now() - started > timeBudgetMs) {
       // Yield: not done, worker will resume this run on the next tick.
       return { done: false, checkpoint: cp, runId }
     }
 
-    const idx = cp.chunk_index
-    const label = `${idx + 1}/${total}`
-    const content = chunkTexts[idx]
-    const locator = `seg-${String(idx + 1).padStart(3, '0')}`
+    const batchStart = cp.chunk_index
+    const batchEnd = Math.min(batchStart + concurrency, total)
+    const indices: number[] = []
+    for (let i = batchStart; i < batchEnd; i++) indices.push(i)
 
-    const extracted = await extractFromChunk(content, label, participants)
+    // One failure rejects the whole batch: extractFromChunk throws only after
+    // its own retries, and a thrown chunk is a MISSING MEASUREMENT, never an
+    // empty one. Failing here leaves the checkpoint where it was so the queue
+    // retries the batch — the same contract the serial loop had.
+    const perChunk = await Promise.all(
+      indices.map(async idx => {
+        const label = `${idx + 1}/${total}`
+        const content = chunkTexts[idx]
+        const locator = `seg-${String(idx + 1).padStart(3, '0')}`
 
-    if (extracted.length > 0) {
-      const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
-      const timing = chunkTimings[idx]
-      const rows = extracted.map((ins, i) => {
-        const quote = resolveQuote(content, ins.direct_quote)
-        return {
-        source_id: sourceId,
-        chunk_id: chunkIdByIndex.get(idx) ?? null,
-        run_id: runId,
-        locator,
-        // Carry the clock through: every insight inherits its chunk's timing so
-        // an Evidence citation can deep-link to the moment in the video. Null for
-        // sources without timed segments (the manual-paste transcripts).
-        start_ms: timing?.start_ms ?? null,
-        end_ms: timing?.end_ms ?? null,
-        statement: ins.statement,
-        context_note: ins.context_note ?? null,
-        direct_quote: quote.text,
-        quote_char_start: quote.start,
-        quote_char_end: quote.end,
-        speaker: ins.speaker ?? null,
-        evidence_type: ins.evidence_type,
-        confidence: ins.confidence,
-        importance: ins.importance ?? null,
-        actionability: ins.actionability ?? null,
-        primary_audience: ins.primary_audience ?? null,
-        insight_type: ins.insight_type ?? null,
-        qualifiers: ins.qualifiers ?? null,
-        embedding: embeddings[i],
-        extraction_model: EXTRACTION_MODEL,
-        }
+        const extracted = await extractFromChunk(content, label, participants)
+        if (extracted.length === 0) return []
+
+        const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
+        const timing = chunkTimings[idx]
+        return extracted.map((ins, i) => {
+          const quote = resolveQuote(content, ins.direct_quote)
+          return {
+            source_id: sourceId,
+            chunk_id: chunkIdByIndex.get(idx) ?? null,
+            run_id: runId,
+            locator,
+            // Carry the clock through: every insight inherits its chunk's timing so
+            // an Evidence citation can deep-link to the moment in the video. Null for
+            // sources without timed segments (the manual-paste transcripts).
+            start_ms: timing?.start_ms ?? null,
+            end_ms: timing?.end_ms ?? null,
+            statement: ins.statement,
+            context_note: ins.context_note ?? null,
+            direct_quote: quote.text,
+            quote_char_start: quote.start,
+            quote_char_end: quote.end,
+            speaker: ins.speaker ?? null,
+            evidence_type: ins.evidence_type,
+            confidence: ins.confidence,
+            importance: ins.importance ?? null,
+            actionability: ins.actionability ?? null,
+            primary_audience: ins.primary_audience ?? null,
+            insight_type: ins.insight_type ?? null,
+            qualifiers: ins.qualifiers ?? null,
+            embedding: embeddings[i],
+            extraction_model: EXTRACTION_MODEL,
+          }
+        })
       })
+    )
+
+    // Insert in chunk order, in one call — the rows are keyed by run_id+locator,
+    // and the checkpoint has not moved yet, so a retry after a failed insert
+    // re-does this batch without duplicating it.
+    const rows = perChunk.flat()
+    if (rows.length > 0) {
       const { error: insErr } = await db().from('raw_insights').insert(rows)
-      if (insErr) throw new Error(`Failed to insert raw_insights for chunk ${label}: ${insErr.message}`)
+      if (insErr) {
+        throw new Error(
+          `Failed to insert raw_insights for chunks ${batchStart + 1}-${batchEnd}/${total}: ${insErr.message}`
+        )
+      }
       cp.insights_created += rows.length
     }
 
-    cp = { ...cp, chunk_index: idx + 1 }
+    cp = { ...cp, chunk_index: batchEnd }
     await onProgress(cp, runId)
   }
 
