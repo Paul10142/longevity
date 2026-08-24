@@ -37,19 +37,7 @@ import { pipeline } from 'node:stream/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
-type Episode = {
-  /** Stable base filename, no extension — the join key described above. */
-  key: string
-  title: string
-  /** ISO date, or null when the feed omits/garbles pubDate. */
-  published_at: string | null
-  duration_seconds: number | null
-  /** Feed guid with the membership key stripped. Stable across re-runs. */
-  guid: string
-  audio_url: string
-  audio_bytes: number | null
-  file: string
-}
+import { parseFeed, redact, totalHours, type Episode } from '../lib/podcastFeed'
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(f)
@@ -60,89 +48,6 @@ const val = (f: string): string | undefined => {
 
 function expandHome(p: string): string {
   return p.startsWith('~') ? path.join(homedir(), p.slice(1)) : p
-}
-
-/** Strip the membership key from anything we persist or print. */
-function redact(s: string): string {
-  return s.replace(/([?&](?:key|token|auth)=)[^&\s"']+/gi, '$1<redacted>')
-}
-
-// ── minimal RSS reading ──────────────────────────────────────
-// A dependency-free reader is deliberate: podcast RSS is a flat, predictable
-// shape and adding an XML parser to the app's bundle for one offline script is
-// not worth it. Only the fields below are read; anything else is ignored.
-
-function decodeEntities(s: string): string {
-  return s
-    .replace(/<!\[CDATA\[([\s\S]*?)\]\]>/g, '$1')
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&amp;/g, '&')
-    .trim()
-}
-
-function tag(block: string, name: string): string | null {
-  const m = block.match(new RegExp(`<${name}(?:\\s[^>]*)?>([\\s\\S]*?)</${name}>`, 'i'))
-  return m ? decodeEntities(m[1]) : null
-}
-
-/** "01:13:59" | "44:10" | "2650" → seconds. */
-function parseDuration(raw: string | null): number | null {
-  if (!raw || !raw.trim()) return null
-  const parts = raw.split(':').map(p => Number(p.trim()))
-  if (parts.some(n => !Number.isFinite(n))) return null
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2] || null
-  if (parts.length === 2) return parts[0] * 60 + parts[1] || null
-  if (parts.length === 1) return parts[0] || null
-  return null
-}
-
-/**
- * Build the join key. Episode numbers are preferred because they are what a
- * human recognises and what the show notes are filed under, but they are NOT
- * guaranteed unique or present (AMAs, specials, re-releases), so a guid-derived
- * suffix disambiguates. Never derive the key from the title alone: titles get
- * edited in the feed, which would silently orphan an already-transcribed file.
- */
-function buildKey(prefix: string, title: string, guid: string, seen: Set<string>): string {
-  const num = title.match(/#\s*(\d{1,4})/)?.[1]
-  const short = Buffer.from(guid).toString('hex').slice(-6)
-  let key = num ? `${prefix}-${num.padStart(4, '0')}` : `${prefix}-g${short}`
-  if (seen.has(key)) key = `${key}-${short}`
-  seen.add(key)
-  return key
-}
-
-function parseFeed(xml: string, prefix: string): Episode[] {
-  const out: Episode[] = []
-  const seen = new Set<string>()
-  for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
-    const block = m[1]
-    const enclosure = block.match(/<enclosure\b[^>]*>/i)?.[0] ?? ''
-    const audio_url = enclosure.match(/url\s*=\s*"([^"]+)"/i)?.[1] ?? ''
-    if (!audio_url) continue // no audio → nothing to transcribe
-
-    const lengthAttr = Number(enclosure.match(/length\s*=\s*"(\d+)"/i)?.[1])
-    const title = tag(block, 'title') ?? '(untitled)'
-    const guid = tag(block, 'guid') ?? audio_url
-    const pub = tag(block, 'pubDate')
-    const parsedDate = pub ? new Date(pub) : null
-
-    const key = buildKey(prefix, title, guid, seen)
-    out.push({
-      key,
-      title,
-      published_at: parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : null,
-      duration_seconds: parseDuration(tag(block, 'itunes:duration')),
-      guid: redact(guid),
-      audio_url,
-      audio_bytes: Number.isFinite(lengthAttr) ? lengthAttr : null,
-      file: `${key}.mp3`,
-    })
-  }
-  return out
 }
 
 async function download(url: string, dest: string): Promise<number> {
@@ -178,26 +83,16 @@ async function main() {
   const episodes = parseFeed(await res.text(), prefix)
   if (episodes.length === 0) throw new Error('feed parsed to 0 episodes — aborting rather than writing an empty manifest')
 
-  // Total audio must NOT be summed from <itunes:duration>: only 174 of this
-  // feed's 425 items carry the tag, so summing it silently counts 251 episodes
-  // as zero and under-reports the catalogue by half (312 h vs the real 648 h —
-  // a real 2026-08-24 miscount that also halved a cost estimate). Fall back to
-  // the enclosure's byte length at the observed bitrate, which every item has.
-  const BITRATE_BPS = 128_000
-  const totalSecs = episodes.reduce(
-    (s, e) => s + (e.duration_seconds || (e.audio_bytes ? (e.audio_bytes * 8) / BITRATE_BPS : 0)),
-    0
-  )
-  const tagged = episodes.filter(e => (e.duration_seconds ?? 0) > 0).length
+  const { hours, estimated: tagless } = totalHours(episodes)
   const totalBytes = episodes.reduce((s, e) => s + (e.audio_bytes ?? 0), 0)
   process.stdout.write(
-    `  ${episodes.length} episodes | ~${(totalSecs / 3600).toFixed(0)} h audio | ` +
+    `  ${episodes.length} episodes | ~${hours.toFixed(0)} h audio | ` +
       `${(totalBytes / 1e9).toFixed(1)} GB | ` +
       `${episodes[episodes.length - 1]?.published_at?.slice(0, 10)} → ${episodes[0]?.published_at?.slice(0, 10)}\n`
   )
-  if (tagged < episodes.length) {
+  if (tagless > 0) {
     process.stdout.write(
-      `  (${episodes.length - tagged} episodes have no duration tag — their length is estimated from file size)\n`
+      `  (${tagless} episodes have no duration tag — their length is estimated from file size)\n`
     )
   }
 
