@@ -89,12 +89,12 @@ function tag(block: string, name: string): string | null {
 
 /** "01:13:59" | "44:10" | "2650" → seconds. */
 function parseDuration(raw: string | null): number | null {
-  if (!raw) return null
+  if (!raw || !raw.trim()) return null
   const parts = raw.split(':').map(p => Number(p.trim()))
   if (parts.some(n => !Number.isFinite(n))) return null
-  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2]
-  if (parts.length === 2) return parts[0] * 60 + parts[1]
-  if (parts.length === 1) return parts[0]
+  if (parts.length === 3) return parts[0] * 3600 + parts[1] * 60 + parts[2] || null
+  if (parts.length === 2) return parts[0] * 60 + parts[1] || null
+  if (parts.length === 1) return parts[0] || null
   return null
 }
 
@@ -172,11 +172,28 @@ async function main() {
   const episodes = parseFeed(await res.text(), prefix)
   if (episodes.length === 0) throw new Error('feed parsed to 0 episodes — aborting rather than writing an empty manifest')
 
-  const totalSecs = episodes.reduce((s, e) => s + (e.duration_seconds ?? 0), 0)
+  // Total audio must NOT be summed from <itunes:duration>: only 174 of this
+  // feed's 425 items carry the tag, so summing it silently counts 251 episodes
+  // as zero and under-reports the catalogue by half (312 h vs the real 648 h —
+  // a real 2026-08-24 miscount that also halved a cost estimate). Fall back to
+  // the enclosure's byte length at the observed bitrate, which every item has.
+  const BITRATE_BPS = 128_000
+  const totalSecs = episodes.reduce(
+    (s, e) => s + (e.duration_seconds || (e.audio_bytes ? (e.audio_bytes * 8) / BITRATE_BPS : 0)),
+    0
+  )
+  const tagged = episodes.filter(e => (e.duration_seconds ?? 0) > 0).length
+  const totalBytes = episodes.reduce((s, e) => s + (e.audio_bytes ?? 0), 0)
   process.stdout.write(
-    `  ${episodes.length} episodes | ${(totalSecs / 3600).toFixed(0)} h audio | ` +
+    `  ${episodes.length} episodes | ~${(totalSecs / 3600).toFixed(0)} h audio | ` +
+      `${(totalBytes / 1e9).toFixed(1)} GB | ` +
       `${episodes[episodes.length - 1]?.published_at?.slice(0, 10)} → ${episodes[0]?.published_at?.slice(0, 10)}\n`
   )
+  if (tagged < episodes.length) {
+    process.stdout.write(
+      `  (${episodes.length - tagged} episodes have no duration tag — their length is estimated from file size)\n`
+    )
+  }
 
   await mkdir(outDir, { recursive: true })
 
