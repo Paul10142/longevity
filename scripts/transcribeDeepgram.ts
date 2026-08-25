@@ -67,6 +67,42 @@ async function writeLedger(file: string, entries: LedgerEntry[]): Promise<void> 
   await rename(tmp, file)
 }
 
+/**
+ * Ask Deepgram for the real remaining credit. Preferred over the ledger, which
+ * is only an estimate of duration x published rate and has already drifted from
+ * reality once (it read $3.31 against a charged $6.26).
+ *
+ * Returns null when the key lacks the scope — the first key issued for this
+ * project could not read usage at all — so the caller falls back to the ledger
+ * rather than treating "cannot read" as "nothing left" or "plenty left". Both
+ * of those failure modes are worse than an estimate: one halts a funded run,
+ * the other spends past the cap.
+ */
+async function fetchRealBalance(key: string): Promise<{ balance: number; project: string } | null> {
+  try {
+    const pRes = await fetch('https://api.deepgram.com/v1/projects', {
+      headers: { Authorization: `Token ${key}` },
+    })
+    if (!pRes.ok) return null
+    const projects = (await pRes.json())?.projects ?? []
+    if (projects.length === 0) return null
+    const project = projects[0].project_id as string
+
+    const bRes = await fetch(`https://api.deepgram.com/v1/projects/${project}/balances`, {
+      headers: { Authorization: `Token ${key}` },
+    })
+    if (!bRes.ok) return null
+    const balances = (await bRes.json())?.balances ?? []
+    if (balances.length === 0) return null
+    // Sum every balance: an account can hold more than one (promotional credit
+    // alongside pay-as-you-go).
+    const total = balances.reduce((sum: number, b: { amount?: number }) => sum + (b.amount ?? 0), 0)
+    return { balance: total, project }
+  } catch {
+    return null
+  }
+}
+
 async function readLedger(file: string): Promise<LedgerEntry[]> {
   if (!existsSync(file)) return []
   try {
@@ -259,15 +295,25 @@ async function main() {
     process.stdout.write(`reconciled ${recovered} untracked transcript(s) into the spend ledger\n`)
   }
 
-  const spent = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
+  const estimated = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
 
-  process.stdout.write(
-    `${files.length} file(s), model ${model}, ${keyterms.length} keyterms\n` +
-      `budget $${budget.toFixed(2)} | already spent ~$${spent.toFixed(2)} | ` +
-      `remaining ~$${Math.max(0, budget - spent).toFixed(2)}\n` +
-      `(estimated from duration x $${RATE_PER_HOUR}/h — this key cannot read real usage, ` +
-      `so check the Deepgram dashboard near the limit)\n`
-  )
+  // Real balance wins when the key can read it; the ledger is the fallback.
+  const real = await fetchRealBalance(process.env.DEEPGRAM_API_KEY!)
+  const spent = real ? Math.max(0, budget - real.balance) : estimated
+
+  process.stdout.write(`${files.length} file(s), model ${model}, ${keyterms.length} keyterms\n`)
+  if (real) {
+    process.stdout.write(
+      `REAL balance from Deepgram: $${real.balance.toFixed(2)} remaining` +
+        ` (ledger estimate would have said $${Math.max(0, budget - estimated).toFixed(2)})\n`
+    )
+  } else {
+    process.stdout.write(
+      `budget $${budget.toFixed(2)} | spent ~$${estimated.toFixed(2)} | remaining ~$${Math.max(0, budget - estimated).toFixed(2)}\n` +
+        `(ESTIMATE from duration x $${RATE_PER_HOUR}/h — this key cannot read real usage; ` +
+        `an owner key would replace this with the real balance)\n`
+    )
+  }
   if (spent >= budget) {
     process.stdout.write('budget already reached — nothing to do. Raise it with --budget once funded.\n')
     return
