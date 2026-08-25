@@ -30,6 +30,7 @@ export {} // module marker: keep `main` file-scoped (collides with pipeline.ts o
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 
 const API = 'https://api.deepgram.com/v1/listen'
 
@@ -203,9 +204,12 @@ async function main() {
   if (files.length === 0) throw new Error(`no audio files found in ${target}`)
 
   const outDir = flag('--out') ?? (info.isDirectory() ? target : path.dirname(target))
+  // `new URL('..', import.meta.url)` already resolves to the repo root from
+  // scripts/ — wrapping it in dirname() strips one level too many and put the
+  // ledger in the home directory, where it read as $0 spent.
   const ledgerPath =
     process.env.DEEPGRAM_LEDGER ??
-    path.join(path.dirname(new URL('..', import.meta.url).pathname), '.deepgram-spend.json')
+    path.join(fileURLToPath(new URL('..', import.meta.url)), '.deepgram-spend.json')
   const ledger = await readLedger(ledgerPath)
   const spent = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
 
