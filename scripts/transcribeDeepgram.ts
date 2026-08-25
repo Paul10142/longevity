@@ -27,7 +27,7 @@
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
-import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
+import { readFile, writeFile, readdir, rename, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -55,6 +55,17 @@ const RATE_PER_HOUR = 0.34
  * account.
  */
 type LedgerEntry = { key: string; model: string; hours: number; est_usd: number; at: string }
+
+/** Write atomically. A plain writeFile that is killed mid-flush leaves a
+ *  0-byte file, and a 0-byte ledger is an unreadable ledger — which halts the
+ *  next run. Observed exactly that on 2026-08-24 when the run was interrupted.
+ *  Temp-then-rename makes the swap atomic, so the ledger is always either the
+ *  previous good version or the new one. */
+async function writeLedger(file: string, entries: LedgerEntry[]): Promise<void> {
+  const tmp = `${file}.tmp`
+  await writeFile(tmp, JSON.stringify(entries, null, 2))
+  await rename(tmp, file)
+}
 
 async function readLedger(file: string): Promise<LedgerEntry[]> {
   if (!existsSync(file)) return []
@@ -252,7 +263,7 @@ async function main() {
       running += est
       done++
       ledger.push({ key: base, model, hours, est_usd: est, at: new Date().toISOString() })
-      await writeFile(ledgerPath, JSON.stringify(ledger, null, 2))
+      await writeLedger(ledgerPath, ledger)
     } catch (err) {
       process.stdout.write(`  ${base} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
     }
