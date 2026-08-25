@@ -1,0 +1,1856 @@
+{
+  "generated_at": "2026-08-25T02:56:19.991Z",
+  "count": 370,
+  "episodes": [
+    {
+      "slug": "qa-83-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-83-dr-rhonda-patrick",
+      "title": "Q&A #83: Does Glucosamine Worsen Alzheimer’s Disease?"
+    },
+    {
+      "slug": "aliquot-149-mood-habits",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-149-mood-habits",
+      "title": "Aliquot #149: The Biology of a Better Mood"
+    },
+    {
+      "slug": "aliquot-148-nicotinamide-riboside",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-148-nicotinamide-riboside",
+      "title": "Aliquot #148: The Hype and Reality of Nicotinamide Riboside"
+    },
+    {
+      "slug": "derya-unutmaz",
+      "url": "https://www.foundmyfitness.com/episodes/derya-unutmaz",
+      "title": "Why AI Could Add Decades to Your Lifespan | Dr. Derya Unutmaz"
+    },
+    {
+      "slug": "qa-82-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-82-dr-rhonda-patrick",
+      "title": "Q&A #82: Organic Food, Pesticides & Glyphosate—What Actually Lowers Exposure?"
+    },
+    {
+      "slug": "aliquot-147-visceral-fat",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-147-visceral-fat",
+      "title": "Aliquot #147: How to Break the Visceral Fat Cycle"
+    },
+    {
+      "slug": "aliquot-146-exercise-timing",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-146-exercise-timing",
+      "title": "Aliquot #146: When Is the Best Time to Exercise?"
+    },
+    {
+      "slug": "steve-horvath-2",
+      "url": "https://www.foundmyfitness.com/episodes/steve-horvath-2",
+      "title": "How To Slow Biological Aging With a Multivitamin, Vegetables, & Omega-3 | Dr. Steve Horvath"
+    },
+    {
+      "slug": "qa-81-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-81-dr-rhonda-patrick",
+      "title": "Q&A #81: Beta-Glucan vs. Psyllium—LDL Reduction, PFAS, & Gluten"
+    },
+    {
+      "slug": "qa-80-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-80-dr-rhonda-patrick",
+      "title": "Q&A #80: Does Nattokinase Protect Your Heart?—What the Evidence Shows"
+    },
+    {
+      "slug": "kelly-starrett",
+      "url": "https://www.foundmyfitness.com/episodes/kelly-starrett",
+      "title": "The Optimal Mobility Protocol for a Durable Body | Dr. Kelly Starrett"
+    },
+    {
+      "slug": "aliquot-145-immune-aging",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-145-immune-aging",
+      "title": "Aliquot #145: How to Protect Immune Function With Age"
+    },
+    {
+      "slug": "qa-79-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-79-dr-rhonda-patrick",
+      "title": "Q&A #79: Why I’m Taking Nicotinamide Riboside—Safety, Uncertainty, & Cycling Concerns"
+    },
+    {
+      "slug": "arthur-brooks",
+      "url": "https://www.foundmyfitness.com/episodes/arthur-brooks",
+      "title": "How To Build Lasting Happiness | Dr. Arthur Brooks"
+    },
+    {
+      "slug": "aliquot-144-slow-joint-degeneration",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-144-slow-joint-degeneration",
+      "title": "Aliquot #144: How to Slow Joint Degeneration"
+    },
+    {
+      "slug": "qa-78-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-78-dr-rhonda-patrick",
+      "title": "Q&A #78: How to Raise Healthy Eaters—Nutrition for Active Children Ages 6–12"
+    },
+    {
+      "slug": "aliquot-143-reducing-shift-work-strain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-143-reducing-shift-work-strain",
+      "title": "Aliquot #143: How to Reduce the Strain of Shift Work"
+    },
+    {
+      "slug": "charles-brenner",
+      "url": "https://www.foundmyfitness.com/episodes/charles-brenner",
+      "title": "How To Boost NAD Levels To Fight Inflammation, Improve Recovery, and Slow Aging | Dr. Charles Brenner"
+    },
+    {
+      "slug": "qa-77-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-77-dr-rhonda-patrick",
+      "title": "Q&A #77: What’s the Best Time to Exercise?—Morning vs. Evening and How to Sequence Sauna and Cold"
+    },
+    {
+      "slug": "aliquot-142-jet-lag",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-142-jet-lag",
+      "title": "Aliquot #142: How to Prevent and Recover From Jet Lag"
+    },
+    {
+      "slug": "aliquot-141-cancer-prevention",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-141-cancer-prevention",
+      "title": "Aliquot #141: The Lifestyle of Cancer Prevention"
+    },
+    {
+      "slug": "aliquot-140-gluten-leaky-gut",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-140-gluten-leaky-gut",
+      "title": "Aliquot #140: Should Everyone Cut Out Gluten?"
+    },
+    {
+      "slug": "aliquot-139-sleep-apnea",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-139-sleep-apnea",
+      "title": "Aliquot #139: Do You Have Sleep Apnea and Not Know It?"
+    },
+    {
+      "slug": "qa-76-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-76-dr-rhonda-patrick",
+      "title": "Q&A #76: How Much Protein Do You Need—and Is Nightly Melatonin Safe?"
+    },
+    {
+      "slug": "exercise-intensity",
+      "url": "https://www.foundmyfitness.com/episodes/exercise-intensity",
+      "title": "The Best Type of Exercise for Longevity"
+    },
+    {
+      "slug": "aliquot-138-sleep-supplements-and-substances",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-138-sleep-supplements-and-substances",
+      "title": "Aliquot #138: Why Sedation Isn't Sleep and What Actually Works"
+    },
+    {
+      "slug": "qa-75-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-75-dr-rhonda-patrick",
+      "title": "Q&A #75: How to Slow Joint Aging—Exercise, Body Weight, & Osteoarthritis Risk"
+    },
+    {
+      "slug": "aliquot-137-iron-anemia-overload",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-137-iron-anemia-overload",
+      "title": "Aliquot #137: How to Optimize Iron without Causing Overload"
+    },
+    {
+      "slug": "qa-74-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-74-dr-rhonda-patrick",
+      "title": "Q&A #74: How to Slow Immune Aging—Plus Gluten, Stroke Risk, & APOE4"
+    },
+    {
+      "slug": "aliquot-136-micronutrient-triage-aging",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-136-micronutrient-triage-aging",
+      "title": "Aliquot #136: How Micronutrient Deficiencies Accelerate Aging"
+    },
+    {
+      "slug": "aliquot-135-creatine-myths",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-135-creatine-myths",
+      "title": "Aliquot #135: Creatine Myths and Misconceptions"
+    },
+    {
+      "slug": "michael-grandner",
+      "url": "https://www.foundmyfitness.com/episodes/michael-grandner",
+      "title": "Why You Can't Sleep (and How to Fix It) | Dr. Michael Grandner"
+    },
+    {
+      "slug": "aliquot-134-homocysteine-heart-brain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-134-homocysteine-heart-brain",
+      "title": "Aliquot #134: Why Homocysteine Accelerates Brain Aging"
+    },
+    {
+      "slug": "more-plates-more-dates",
+      "url": "https://www.foundmyfitness.com/episodes/more-plates-more-dates",
+      "title": "How To Increase Your Testosterone Levels Naturally | Derek from MPMD"
+    },
+    {
+      "slug": "qa-73-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-73-dr-rhonda-patrick",
+      "title": "Q&A #73: Can NAD+ Boosters Slow Aging?—Plus Urolithin A & Mitochondrial Health"
+    },
+    {
+      "slug": "aliquot-133-creatine-brain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-133-creatine-brain",
+      "title": "Aliquot #133: The Surprising Effects of Creatine on the Brain"
+    },
+    {
+      "slug": "aliquot-132-air-pollution",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-132-air-pollution",
+      "title": "Aliquot #132: Mitigating the Harms of Air Pollution"
+    },
+    {
+      "slug": "qa-72-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-72-dr-rhonda-patrick",
+      "title": "Q&A #72: What Causes Fragmented Sleep—and Which Lipid Markers Best Predict Heart Risk?"
+    },
+    {
+      "slug": "aliquot-131-creatine-muscle-bone",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-131-creatine-muscle-bone",
+      "title": "Aliquot #131: The Muscle and Bone Benefits of Creatine"
+    },
+    {
+      "slug": "ben-bikman",
+      "url": "https://www.foundmyfitness.com/episodes/ben-bikman",
+      "title": "Dr. Ben Bikman: How To Reverse Insulin Resistance Through Diet, Exercise, & Sleep"
+    },
+    {
+      "slug": "aliquot-130-natural-food-flavorings",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-130-natural-food-flavorings",
+      "title": "Aliquot #130: Hidden Risks of Flavor Additives"
+    },
+    {
+      "slug": "qa-71-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-71-dr-rhonda-patrick",
+      "title": "Q&A #71: Does Neu5Gc in Red Meat Raise Cancer Risk?—Plus Cholesterol Drugs & Diabetes Risk"
+    },
+    {
+      "slug": "coffee",
+      "url": "https://www.foundmyfitness.com/episodes/coffee",
+      "title": "How To Use Coffee To Live Longer (Full Guide & Research)"
+    },
+    {
+      "slug": "aliquot-129-glyphosate-dna-organic",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-129-glyphosate-dna-organic",
+      "title": "Aliquot #129: How Harmful Is Glyphosate?"
+    },
+    {
+      "slug": "aliquot-128-weight-loss-drugs",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-128-weight-loss-drugs",
+      "title": "Aliquot #128: The Expanding Role of Weight Loss Drugs"
+    },
+    {
+      "slug": "qa-70-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-70-dr-rhonda-patrick",
+      "title": "Q&A #70: Can Methylene Blue Protect the Brain—and What Actually Prevents Cancer?"
+    },
+    {
+      "slug": "vitamin-d-dementia",
+      "url": "https://www.foundmyfitness.com/episodes/vitamin-d-dementia",
+      "title": "Why Vitamin D Deficiency Accelerates Brain Aging"
+    },
+    {
+      "slug": "aliquot-127-caffeine-nicotine",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-127-caffeine-nicotine",
+      "title": "Aliquot #127: The Promise and Peril of Stimulants for Focus"
+    },
+    {
+      "slug": "aliquot-126-calcium-dairy-supplements",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-126-calcium-dairy-supplements",
+      "title": "Aliquot #126: The Science of Calcium for Bone Health and Beyond"
+    },
+    {
+      "slug": "qa-69-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-69-dr-rhonda-patrick",
+      "title": "Q&A #69: Should You Take Low-Dose Lithium—and How Can You Lower Homocysteine?"
+    },
+    {
+      "slug": "andy-galpin",
+      "url": "https://www.foundmyfitness.com/episodes/andy-galpin",
+      "title": "Dr. Andy Galpin: The Optimal Diet, Supplement, & Recovery Protocol for Peak Performance"
+    },
+    {
+      "slug": "aliquot-125-screen-time-balance",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-125-screen-time-balance",
+      "title": "Aliquot #125: Why Screens Make Us Sick"
+    },
+    {
+      "slug": "darren-candow",
+      "url": "https://www.foundmyfitness.com/episodes/darren-candow",
+      "title": "The Optimal Creatine Protocol for Strength, Brain, and Longevity | Darren Candow, PhD"
+    },
+    {
+      "slug": "aliquot-124-sodium-balance",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-124-sodium-balance",
+      "title": "Aliquot #124: How much sodium do you actually need?"
+    },
+    {
+      "slug": "qa-68-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-68-dr-rhonda-patrick",
+      "title": "Q&A #68: Are Natural and Artificial Flavors Harmful?—Plus Saturated Fat & LDL"
+    },
+    {
+      "slug": "aliquot-123-eye-health",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-123-eye-health",
+      "title": "Aliquot #123: Diet & Lifestyle Strategies for Optimizing Eye Health"
+    },
+    {
+      "slug": "kerry-courneya",
+      "url": "https://www.foundmyfitness.com/episodes/kerry-courneya",
+      "title": "The Science of Exercise for Cancer | Kerry Courneya, PhD"
+    },
+    {
+      "slug": "aliquot-122-microplastics-reduce-exposure",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-122-microplastics-reduce-exposure",
+      "title": "Aliquot #122: How to Limit Microplastic Exposure"
+    },
+    {
+      "slug": "senate-aging",
+      "url": "https://www.foundmyfitness.com/episodes/senate-aging",
+      "title": "How to Solve Aging in America"
+    },
+    {
+      "slug": "qa-67-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-67-dr-rhonda-patrick",
+      "title": "Q&A #67: Microdosing Nicotine—Focus, Addiction, Cardiovascular Risk, & Sleep"
+    },
+    {
+      "slug": "aliquot-121-circadian-light-sleep",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-121-circadian-light-sleep",
+      "title": "Aliquot #121: Harnessing Natural Light for Better Sleep"
+    },
+    {
+      "slug": "how-to-train",
+      "url": "https://www.foundmyfitness.com/episodes/how-to-train",
+      "title": "How to Train According to the Experts"
+    },
+    {
+      "slug": "aliquot-120-experts-muscle-protein",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-120-experts-muscle-protein",
+      "title": "Aliquot #120: How the Experts Build Muscle Mass"
+    },
+    {
+      "slug": "qa-66-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-66-dr-rhonda-patrick",
+      "title": "Q&A #66: GLP-1 Agonists Beyond Weight Loss—Brain, Heart, Addiction, & Muscle Preservation"
+    },
+    {
+      "slug": "aliquot-119-experts-longevity-routines",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-119-experts-longevity-routines",
+      "title": "Aliquot #119: Longevity Routines of the Experts"
+    },
+    {
+      "slug": "aliquot-118-recovery-performance",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-118-recovery-performance",
+      "title": "Aliquot #118: How to Optimize Recovery and Prevent Overtraining"
+    },
+    {
+      "slug": "aliquot-117-lactate-brain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-117-lactate-brain",
+      "title": "Aliquot #117: The Science of Lactate in Brain Performance"
+    },
+    {
+      "slug": "qa-65-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-65-dr-rhonda-patrick",
+      "title": "Q&A #65: Are Food Emulsifiers Harmful to Gut and Metabolic Health?"
+    },
+    {
+      "slug": "aliquot-116-testosterone-muscle",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-116-testosterone-muscle",
+      "title": "Aliquot #116: Testosterone Optimization Strategies for Men"
+    },
+    {
+      "slug": "protein",
+      "url": "https://www.foundmyfitness.com/episodes/protein",
+      "title": "The Science of Protein and Its Role in Longevity, Cancer, Aging, and Building Muscle"
+    },
+    {
+      "slug": "qa-64-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-64-dr-rhonda-patrick",
+      "title": "Q&A #64: Peptide Therapies—BPC-157, TB-500, & GHK-Cu"
+    },
+    {
+      "slug": "aliquot-115-lifestyle-guide-mitochondria",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-115-lifestyle-guide-mitochondria",
+      "title": "Aliquot #115: A Lifestyle Guide for Mitochondrial Optimization"
+    },
+    {
+      "slug": "aliquot-114-supplements-diet-mitochondria",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-114-supplements-diet-mitochondria",
+      "title": "Aliquot #114: Supplements & Diet Strategies to Boost Mitochondrial Function"
+    },
+    {
+      "slug": "qa-63-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-63-dr-rhonda-patrick",
+      "title": "Q&A #63: How Much Sodium Do You Need—and Are Electrolyte Supplements Overhyped?"
+    },
+    {
+      "slug": "aliquot-113-resistance-vs-aerobic",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-113-resistance-vs-aerobic",
+      "title": "Aliquot #113: Is resistance training a type of aerobic exercise?"
+    },
+    {
+      "slug": "metabolic-health",
+      "url": "https://www.foundmyfitness.com/episodes/metabolic-health",
+      "title": "How to Improve Metabolic Health with HIIT, Circadian-Timed Eating, & Sleep"
+    },
+    {
+      "slug": "qa-62-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-62-dr-rhonda-patrick",
+      "title": "Q&A #62: Vitamin D for Autoimmune Disease—and Is Smoked Salmon Carcinogenic?"
+    },
+    {
+      "slug": "microplastics",
+      "url": "https://www.foundmyfitness.com/episodes/microplastics",
+      "title": "What Microplastics Are Doing to the Brain, Body, and Reproductive Systems"
+    },
+    {
+      "slug": "qa-61-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-61-dr-rhonda-patrick",
+      "title": "Q&A #61: How Can You Lower A1C—and When Should You Start Hormone Replacement Therapy?"
+    },
+    {
+      "slug": "layne-norton",
+      "url": "https://www.foundmyfitness.com/episodes/layne-norton",
+      "title": "Dr. Layne Norton on Building Muscle – Insights on Diet, Training, and Supplements"
+    },
+    {
+      "slug": "aliquot-112-healthy-hair",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-112-healthy-hair",
+      "title": "Aliquot #112: Approaches to Reverse Hair Loss and Graying"
+    },
+    {
+      "slug": "luc-van-loon",
+      "url": "https://www.foundmyfitness.com/episodes/luc-van-loon",
+      "title": "Dr. Luc van Loon: Optimizing Protein Intake & Distribution for Muscle Growth"
+    },
+    {
+      "slug": "aliquot-111-ultra-processed-foods",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-111-ultra-processed-foods",
+      "title": "Aliquot #111: Why ultra-processed foods and their additives are harmful"
+    },
+    {
+      "slug": "alcohol",
+      "url": "https://www.foundmyfitness.com/episodes/alcohol",
+      "title": "The Truth About Alcohol: Risks, Benefits, and Everything In-Between | Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "aliquot-110-banana-dairy-polyphenols",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-110-banana-dairy-polyphenols",
+      "title": "Aliquot #110: Why I don’t mix bananas and polyphenols — and other smoothie tips"
+    },
+    {
+      "slug": "aliquot-109-apob-diet-drugs-supplements",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-109-apob-diet-drugs-supplements",
+      "title": "Aliquot #109: Reducing ApoB with diet, drugs, and supplements"
+    },
+    {
+      "slug": "qa-60-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-60-dr-rhonda-patrick",
+      "title": "Q&A #60: Does Fish Oil Increase Atrial Fibrillation Risk?"
+    },
+    {
+      "slug": "andrew-huberman",
+      "url": "https://www.foundmyfitness.com/episodes/andrew-huberman",
+      "title": "Andrew Huberman, PhD: How to Improve Motivation & Focus By Leveraging Dopamine"
+    },
+    {
+      "slug": "qa-59-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-59-dr-rhonda-patrick",
+      "title": "Q&A #59: Do Benzodiazepines Cause Dementia?—Plus PRP & Stem Cell Injections"
+    },
+    {
+      "slug": "benjamin-levine",
+      "url": "https://www.foundmyfitness.com/episodes/benjamin-levine",
+      "title": "How Exercise Prevents & Reverses Heart Aging | Dr. Benjamin Levine"
+    },
+    {
+      "slug": "aliquot-108-science-staying-young",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-108-science-staying-young",
+      "title": "Aliquot #108: The Science of Staying Young — Cardio, Omegas, and Glucose Control"
+    },
+    {
+      "slug": "aliquot-107-experts-health-longevity",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-107-experts-health-longevity",
+      "title": "Aliquot #107: What Experts Do to Promote Health & Longevity"
+    },
+    {
+      "slug": "aliquot-106-longevity-vitamins",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-106-longevity-vitamins",
+      "title": "Aliquot #106: The Science of Longevity Vitamins: Taurine, Ergothioneine, and PQQ"
+    },
+    {
+      "slug": "qa-58-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-58-dr-rhonda-patrick",
+      "title": "Q&A #58: High-Dose Niacin, NAD+ Boosters, & Cardiovascular Risk"
+    },
+    {
+      "slug": "aliquot-105-blood-pressure",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-105-blood-pressure",
+      "title": "Aliquot #105: Lifestyle Strategies to Lower Blood Pressure and Reduce Disease Risk"
+    },
+    {
+      "slug": "crossfit",
+      "url": "https://www.foundmyfitness.com/episodes/crossfit",
+      "title": "Why Exercise Intensity Matters for Longevity | CrossFit for Health 2024"
+    },
+    {
+      "slug": "aliquot-104-science-optimizing-sleep",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-104-science-optimizing-sleep",
+      "title": "Aliquot #104: The Science of Optimizing Sleep"
+    },
+    {
+      "slug": "qa-57-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-57-dr-rhonda-patrick",
+      "title": "Q&A #57: The Best Blood Tests to Track Your Health—Plus Mitochondrial Supplements"
+    },
+    {
+      "slug": "magnesium",
+      "url": "https://www.foundmyfitness.com/episodes/magnesium",
+      "title": "The Science of Magnesium and Its Role in Aging and Disease | Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "aliquot-103-aging-therapeutics-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-103-aging-therapeutics-2",
+      "title": "Aliquot #103: The Future of Aging Therapeutics, Part 2"
+    },
+    {
+      "slug": "micronutrients-exercise-ameliorate-aging",
+      "url": "https://www.foundmyfitness.com/episodes/micronutrients-exercise-ameliorate-aging",
+      "title": "How Micronutrients & Exercise Ameliorate Aging | Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "qa-56-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-56-dr-rhonda-patrick",
+      "title": "Q&A #56: Ozempic for Weight Loss—Muscle Loss, Side Effects, & Weight Regain"
+    },
+    {
+      "slug": "aliquot-102-aging-therapeutics-1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-102-aging-therapeutics-1",
+      "title": "Aliquot #102: The Future of Aging Therapeutics, Part 1"
+    },
+    {
+      "slug": "aliquot-101-muscle-omega-3",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-101-muscle-omega-3",
+      "title": "Aliquot #101: How Omega-3s Combat Age-Related Muscle Atrophy"
+    },
+    {
+      "slug": "qa-55-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-55-dr-rhonda-patrick",
+      "title": "Q&A #55: Red Yeast Rice vs. Statins—Cholesterol, Diabetes Risk, & Supplement Contamination"
+    },
+    {
+      "slug": "aliquot-100-child-development-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-100-child-development-2",
+      "title": "Aliquot #100: Optimizing for a Healthy Pregnancy & Early Childhood"
+    },
+    {
+      "slug": "peter-attia-2",
+      "url": "https://www.foundmyfitness.com/episodes/peter-attia-2",
+      "title": "Dr. Peter Attia on Mastering Longevity – Insights on Cancer Prevention, Heart Disease, and Aging"
+    },
+    {
+      "slug": "qa-54-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-54-dr-rhonda-patrick",
+      "title": "Q&A #54: Can Glycine and Inositol Improve Sleep?—Plus Melatonin as an Antioxidant"
+    },
+    {
+      "slug": "aliquot-99-tre-part-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-99-tre-part-2",
+      "title": "Aliquot #99: The Science of Meal Timing: Can the Clock Influence Nutritional Impact? (TRE Series Part 2)"
+    },
+    {
+      "slug": "how-vigorous-exercise-improves-cognition-longevity",
+      "url": "https://www.foundmyfitness.com/episodes/how-vigorous-exercise-improves-cognition-longevity",
+      "title": "The Longevity & Brain Benefits of Vigorous Exercise"
+    },
+    {
+      "slug": "aliquot-98-tre-part-1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-98-tre-part-1",
+      "title": "Aliquot #98: Fasting or Time-Restricted Eating? The Muscle Preservation Divide (TRE Series Part 1)"
+    },
+    {
+      "slug": "qa-53-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-53-dr-rhonda-patrick",
+      "title": "Q&A #53: The Saturated Fat Paradox in Cheese—Plus Ergothioneine as a Longevity Vitamin"
+    },
+    {
+      "slug": "aliquot-97-thermal-stress-part-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-97-thermal-stress-part-2",
+      "title": "Aliquot #97: Thermal Stress, Part II: Unveiling the Power of Cold Exposure on Health and Performance"
+    },
+    {
+      "slug": "ifm-micronutrients-exercise",
+      "url": "https://www.foundmyfitness.com/episodes/ifm-micronutrients-exercise",
+      "title": "How Vitamin D, Omega-3s, & Exercise May Increase Longevity | Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "aliquot-96-thermal-stress-part-1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-96-thermal-stress-part-1",
+      "title": "Aliquot #96: Thermal Stress, Part I: The Science Behind Heat Stress and its Positive Effects on Health"
+    },
+    {
+      "slug": "qa-52-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-52-dr-rhonda-patrick",
+      "title": "Q&A #52: Does Lion’s Mane Boost Brain Health—and Are Mineral Sunscreens Safe?"
+    },
+    {
+      "slug": "aliquot-95-rhonda-diet-and-supplement",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-95-rhonda-diet-and-supplement",
+      "title": "Aliquot #95: My Current Diet and Supplement Blueprint (2023)"
+    },
+    {
+      "slug": "martin-gibala",
+      "url": "https://www.foundmyfitness.com/episodes/martin-gibala",
+      "title": "Dr. Martin Gibala: The Science of Vigorous Exercise — From VO2 Max to Time Efficiency of HIIT"
+    },
+    {
+      "slug": "screen-time-early-exposure",
+      "url": "https://www.foundmyfitness.com/episodes/screen-time-early-exposure",
+      "title": "The Brain and Social Impacts of Screen Time and Early Device Exposure"
+    },
+    {
+      "slug": "qa-51-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-51-dr-rhonda-patrick",
+      "title": "Q&A #51: Can Methylene Blue Help Alzheimer’s Disease?—Plus Spermidine for Longevity"
+    },
+    {
+      "slug": "aliquot-94-sulforaphane-and-inflammation",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-94-sulforaphane-and-inflammation",
+      "title": "Aliquot #94: Why Sulforaphane Matters: The Science of Cellular Protection"
+    },
+    {
+      "slug": "qa-50-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-50-dr-rhonda-patrick",
+      "title": "Q&A #50: Which Additives in Processed Foods Are Most Harmful—and Does Taurine Extend Healthspan?"
+    },
+    {
+      "slug": "aliquot-93-berberine",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-93-berberine",
+      "title": "Aliquot #93: Why berberine may treat diseases of obesity"
+    },
+    {
+      "slug": "aliquot-92-body-recomposition",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-92-body-recomposition",
+      "title": "Aliquot #92: The Underestimated Role of Resistance in Body Recomposition"
+    },
+    {
+      "slug": "qa-49-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-49-dr-rhonda-patrick",
+      "title": "Q&A #49: How Can You Lower ApoB With APOE4—and Can You Slow or Reverse Gray Hair?"
+    },
+    {
+      "slug": "chris-mcglory",
+      "url": "https://www.foundmyfitness.com/episodes/chris-mcglory",
+      "title": "Chris McGlory, PhD, on the Anabolic Potential of Omega-3 Fatty Acids"
+    },
+    {
+      "slug": "aliquot-91-blood-brain-barrier",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-91-blood-brain-barrier",
+      "title": "Aliquot #91: How blood-brain barrier dysfunction fuels Alzheimer's disease"
+    },
+    {
+      "slug": "qa-48-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-48-dr-rhonda-patrick",
+      "title": "Q&A #48: Are Sunflower Oil and Soy Foods Harmful?—Plus Restoring Gut Health After Antibiotics"
+    },
+    {
+      "slug": "aliquot-90-dementia-prevention",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-90-dementia-prevention",
+      "title": "Aliquot #90: Inflammation and the Early Seeds of Dementia — and Its Prevention"
+    },
+    {
+      "slug": "heat-therapy-slow-wave-sleep",
+      "url": "https://www.foundmyfitness.com/episodes/heat-therapy-slow-wave-sleep",
+      "title": "How Heat Therapy Improves Slow Wave Sleep"
+    },
+    {
+      "slug": "aliquot-89-alzheimers-breakthroughs",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-89-alzheimers-breakthroughs",
+      "title": "Aliquot #89: Beyond The Amyloid of Alzheimer's — The Vascular Repair Perspective"
+    },
+    {
+      "slug": "qa-47-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-47-dr-rhonda-patrick",
+      "title": "Q&A #47: How to Improve Slow-Wave Sleep—Plus Berberine for Cholesterol and Atherosclerosis"
+    },
+    {
+      "slug": "aliquot-88-ketogenic-diet",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-88-ketogenic-diet",
+      "title": "Aliquot #88: Mastering the ketogenic diet"
+    },
+    {
+      "slug": "aliquot-87-advanced-glycation-end-products",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-87-advanced-glycation-end-products",
+      "title": "Aliquot #87: Advanced glycation end-products (AGEs) – byproducts of glucose metabolism that promote aging"
+    },
+    {
+      "slug": "aliquot-86-red-light-therapy",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-86-red-light-therapy",
+      "title": "Aliquot #86: A Fair Examination of Red Light Therapy"
+    },
+    {
+      "slug": "aliquot-85-building-resilient-skin",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-85-building-resilient-skin",
+      "title": "Aliquot #85: The Science of Wrinkle Prevention ⎯ Building Resilient Skin"
+    },
+    {
+      "slug": "aliquot-84-reducing-inflammation",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-84-reducing-inflammation",
+      "title": "Aliquot #84: Putting the Brakes on Chronic Inflammation"
+    },
+    {
+      "slug": "qa-46-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-46-dr-rhonda-patrick",
+      "title": "Q&A #46: Thyroid Health in Women—Screening, Autoimmunity, & Nutrition"
+    },
+    {
+      "slug": "aliquot-83-strong-bones",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-83-strong-bones",
+      "title": "Aliquot #83: The Path to Strong Bones ⎯ and why it matters"
+    },
+    {
+      "slug": "aliquot-82-lifestyle-behavior-apoe4-carrier",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-82-lifestyle-behavior-apoe4-carrier",
+      "title": "Aliquot #82: Reducing Alzheimer’s Risk for APOE4 Carriers"
+    },
+    {
+      "slug": "qa-45-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-45-dr-rhonda-patrick",
+      "title": "Q&A #45: Can Melatonin Help Older Adults Sleep—and Should You Supplement With Nicotinamide Riboside?"
+    },
+    {
+      "slug": "axel-montagne",
+      "url": "https://www.foundmyfitness.com/episodes/axel-montagne",
+      "title": "Axel Montagne, Ph.D. on Blood-Brain Barrier Dysfunction in Alzheimer’s Disease and Dementia"
+    },
+    {
+      "slug": "aliquot-81-apob-lifestyle-behaviors",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-81-apob-lifestyle-behaviors",
+      "title": "Aliquot #81: Lifestyle behaviors that reduce apolipoprotein B (ApoB)"
+    },
+    {
+      "slug": "qa-44-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-44-dr-rhonda-patrick",
+      "title": "Q&A #44: Should You Take NAC Daily—and Does Fish Oil Raise LDL?"
+    },
+    {
+      "slug": "aliquot-80-build-muscle-plant-protein",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-80-build-muscle-plant-protein",
+      "title": "Aliquot #80: Can you build muscle with plant protein?"
+    },
+    {
+      "slug": "aliquot-79-muscle-soreness-recovery",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-79-muscle-soreness-recovery",
+      "title": "Aliquot #79: How to manage muscle soreness and promote recovery"
+    },
+    {
+      "slug": "qa-43-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-43-dr-rhonda-patrick",
+      "title": "Q&A #43: Rhonda’s Diet and Supplements—Plus Menopausal Hormone Therapy"
+    },
+    {
+      "slug": "aliquot-78-time-efficient-exercise",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-78-time-efficient-exercise",
+      "title": "Aliquot #78: The minimum effective dose for hypertrophy (more gains, less time)"
+    },
+    {
+      "slug": "aliquot-77-migraine-frequency-pain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-77-migraine-frequency-pain",
+      "title": "Aliquot #77: Managing migraine frequency and pain with lifestyle"
+    },
+    {
+      "slug": "aliquot-76-meditation-parallel-practices",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-76-meditation-parallel-practices",
+      "title": "Aliquot #76: The many methods of meditation and its parallel practices"
+    },
+    {
+      "slug": "aliquot-75-meditation-reshapes-brain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-75-meditation-reshapes-brain",
+      "title": "Aliquot #75: Meditation reshapes and protects the brain"
+    },
+    {
+      "slug": "brad-schoenfeld",
+      "url": "https://www.foundmyfitness.com/episodes/brad-schoenfeld",
+      "title": "Brad Schoenfeld, PhD: Resistance Training for Time Efficiency, Body Composition & Maximum Hypertrophy"
+    },
+    {
+      "slug": "qa-42-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-42-dr-rhonda-patrick",
+      "title": "Q&A #42: How to Lower ApoB—and Can Hyperbaric Oxygen Improve Health?"
+    },
+    {
+      "slug": "aliquot-74-protein-hypertrophy",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-74-protein-hypertrophy",
+      "title": "Aliquot #74: Protein intake for growing and maintaining muscle"
+    },
+    {
+      "slug": "aliquot-73-supplements-exercise-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-73-supplements-exercise-2",
+      "title": "Aliquot #73: Can supplements enhance adaptations to exercise? Part II"
+    },
+    {
+      "slug": "qa-41-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-41-dr-rhonda-patrick",
+      "title": "Q&A #41: APOE4 Lifestyle Strategies—Plus Collagen for Skin Aging"
+    },
+    {
+      "slug": "aliquot-72-supplements-exercise",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-72-supplements-exercise",
+      "title": "Aliquot #72: Can supplements enhance adaptations to exercise? Part I"
+    },
+    {
+      "slug": "why-exercise-reduces-drinking",
+      "url": "https://www.foundmyfitness.com/episodes/why-exercise-reduces-drinking",
+      "title": "Can exercise replace alcohol cravings?"
+    },
+    {
+      "slug": "aliquot-71-eating-for-aging",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-71-eating-for-aging",
+      "title": "Aliquot #71: Eating for aging – and the protein debate"
+    },
+    {
+      "slug": "aliquot-70-muscle-loss",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-70-muscle-loss",
+      "title": "Aliquot #70: Preventing age-related muscle loss"
+    },
+    {
+      "slug": "aliquot-69-high-intensity-interval-training",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-69-high-intensity-interval-training",
+      "title": "Aliquot #69: Benefits of high-intensity interval training"
+    },
+    {
+      "slug": "qa-40-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-40-dr-rhonda-patrick",
+      "title": "Q&A #40: Rapamycin for Longevity—Plus How to Maintain Bone Density With Age"
+    },
+    {
+      "slug": "aliquot-68-toxins",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-68-toxins",
+      "title": "Aliquot #68: Can diet and lifestyle mitigate environmental toxins?"
+    },
+    {
+      "slug": "aliquot-67-choline",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-67-choline",
+      "title": "Aliquot #67: Choline in metabolic and brain health"
+    },
+    {
+      "slug": "aliquot-66-sugar-substitutes",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-66-sugar-substitutes",
+      "title": "Aliquot #66: Sugar substitutes: Risks and benefits"
+    },
+    {
+      "slug": "qa-39-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-39-dr-rhonda-patrick",
+      "title": "Q&A #39: How to Reduce Inflammation—Foods, Gut Health, Exercise, & Sauna"
+    },
+    {
+      "slug": "aliquot-65-nsaids",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-65-nsaids",
+      "title": "Aliquot #65: Concerns with chronic NSAID use"
+    },
+    {
+      "slug": "george-church",
+      "url": "https://www.foundmyfitness.com/episodes/george-church",
+      "title": "Dr. George Church: Rewriting Genomes to Eradicate Disease and Aging"
+    },
+    {
+      "slug": "qa-38-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-38-dr-rhonda-patrick",
+      "title": "Q&A #38: Protein for Muscle and Longevity—Plant Sources, mTOR, & Cancer"
+    },
+    {
+      "slug": "aliquot-64-chocolate",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-64-chocolate",
+      "title": "Aliquot #64: Benefits and risks of eating chocolate"
+    },
+    {
+      "slug": "aliquot-63-continuous-glucose-monitors",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-63-continuous-glucose-monitors",
+      "title": "Aliquot #63: Personalizing diet with a continuous glucose monitor"
+    },
+    {
+      "slug": "aliquot-62-vitamins-k1-k2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-62-vitamins-k1-k2",
+      "title": "Aliquot #62: How vitamin K influences cardiovascular and bone health"
+    },
+    {
+      "slug": "human-lifespan-limit",
+      "url": "https://www.foundmyfitness.com/episodes/human-lifespan-limit",
+      "title": "Is there a limit to human longevity?"
+    },
+    {
+      "slug": "qa-37-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-37-dr-rhonda-patrick",
+      "title": "Q&A #37: Why ApoB Stays High—and How Omega-3s, Diet, & Gut Health May Lower It"
+    },
+    {
+      "slug": "aliquot-61-fiber-metabolic-health",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-61-fiber-metabolic-health",
+      "title": "Aliquot #61: How dietary fiber influences metabolic health"
+    },
+    {
+      "slug": "stuart-phillips",
+      "url": "https://www.foundmyfitness.com/episodes/stuart-phillips",
+      "title": "Stuart Phillips, PhD, on Building Muscle with Resistance Exercise and Reassessing Protein Intake"
+    },
+    {
+      "slug": "aliquot-60-cruciferous-vegetables-red-meat",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-60-cruciferous-vegetables-red-meat",
+      "title": "Aliquot #60: Can we negate risks associated with eating red meat?"
+    },
+    {
+      "slug": "aliquot-59-alcohol-sleep-behavior-cancer",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-59-alcohol-sleep-behavior-cancer",
+      "title": "Aliquot #59: How alcohol affects sleep, behavior, and cancer risk"
+    },
+    {
+      "slug": "qa-36-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-36-dr-rhonda-patrick",
+      "title": "Q&A #36: How Much Protein After 50?—Sources, Timing, & Leucine"
+    },
+    {
+      "slug": "intestinal-permeability",
+      "url": "https://www.foundmyfitness.com/episodes/intestinal-permeability",
+      "title": "Intestinal Permeability: the Bacterial link to Aging, Brain Barrier Dysfunction & Metabolic Disorder"
+    },
+    {
+      "slug": "aliquot-58-mediterranean-diet-pattern",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-58-mediterranean-diet-pattern",
+      "title": "Aliquot #58: Eating a Mediterranean diet pattern for health and longevity"
+    },
+    {
+      "slug": "aliquot-57-can-aging-be-reversed",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-57-can-aging-be-reversed",
+      "title": "Aliquot #57: Can aging be reversed?"
+    },
+    {
+      "slug": "qa-35-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-35-dr-rhonda-patrick",
+      "title": "Q&A #35: Time-Restricted Eating and Muscle Loss—Plus Pregnancy Nutrition"
+    },
+    {
+      "slug": "dominic-dagostino-2",
+      "url": "https://www.foundmyfitness.com/episodes/dominic-dagostino-2",
+      "title": "Dr. Dominic D'Agostino on Developing a Well-Designed Ketogenic Diet and Harnessing its Benefits"
+    },
+    {
+      "slug": "aliquot-56-aging-gracefully-with-exercise",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-56-aging-gracefully-with-exercise",
+      "title": "Aliquot #56: Aging gracefully with exercise"
+    },
+    {
+      "slug": "aliquot-55-multiple-sclerosis",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-55-multiple-sclerosis",
+      "title": "Aliquot #55: Dietary strategies to improve symptoms of autoimmune disorders such as multiple sclerosis"
+    },
+    {
+      "slug": "medcram-sauna",
+      "url": "https://www.foundmyfitness.com/episodes/medcram-sauna",
+      "title": "Sauna Benefits Deep Dive and Optimal Use with Dr. Rhonda Patrick & MedCram"
+    },
+    {
+      "slug": "morgan-levine",
+      "url": "https://www.foundmyfitness.com/episodes/morgan-levine",
+      "title": "Morgan Levine, PhD, on PhenoAge and the Epigenetics of Age Acceleration: Can We Change the Pace?"
+    },
+    {
+      "slug": "qa-34-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-34-dr-rhonda-patrick",
+      "title": "Q&A #34: Is Dark Chocolate Heart-Healthy—and What Does High Lp(a) Mean for Heart Risk?"
+    },
+    {
+      "slug": "cold-shock-norepinephrine",
+      "url": "https://www.foundmyfitness.com/episodes/cold-shock-norepinephrine",
+      "title": "Cold-Water Immersion and Cryotherapy: Neuroendocrine and Fat Browning Effects"
+    },
+    {
+      "slug": "aliquot-54-autoimmune-diseases",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-54-autoimmune-diseases",
+      "title": "Aliquot #54: Dietary and environmental factors that may impact autoimmune diseases"
+    },
+    {
+      "slug": "aliquot-53-intestinal-permeability",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-53-intestinal-permeability",
+      "title": "Aliquot #53: Intestinal permeability"
+    },
+    {
+      "slug": "robbins-diamandis",
+      "url": "https://www.foundmyfitness.com/episodes/robbins-diamandis",
+      "title": "Peter Diamandis, MD, and Tony Robbins: Strategies that promote longevity now – and in the very near future"
+    },
+    {
+      "slug": "qa-33-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-33-dr-rhonda-patrick",
+      "title": "Q&A #33: Do Resveratrol and Berberine Blunt Exercise Benefits?—Plus Cardio Zones"
+    },
+    {
+      "slug": "aliquot-52-unconventional-effects-omega3s",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-52-unconventional-effects-omega3s",
+      "title": "Aliquot #52: Unconventional effects of omega-3s"
+    },
+    {
+      "slug": "eran-elinav",
+      "url": "https://www.foundmyfitness.com/episodes/eran-elinav",
+      "title": "Dr. Eran Elinav: Microbiome Insights into Personalized Response to Diet, Obesity, and Leaky Gut"
+    },
+    {
+      "slug": "aliquot-51-omega-3-dosage",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-51-omega-3-dosage",
+      "title": "Aliquot #51: What's the correct omega-3 dosage for maximum benefits?"
+    },
+    {
+      "slug": "qa-32-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-32-dr-rhonda-patrick",
+      "title": "Q&A #32: Protein, mTOR & IGF-1—Plus Rhonda’s Skincare Routine"
+    },
+    {
+      "slug": "aliquot-50-new-year-pt-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-50-new-year-pt-2",
+      "title": "Aliquot #50: New Year's Resolutions: Living healthier and longer, Part II"
+    },
+    {
+      "slug": "aliquot-49-new-year-pt-1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-49-new-year-pt-1",
+      "title": "Aliquot #49: New Year's Resolutions: Living healthier and longer, Part I"
+    },
+    {
+      "slug": "qa-31-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-31-dr-rhonda-patrick",
+      "title": "Q&A #31: Cholesterol Tests, Statins & PCSK9 Inhibitors—Plus Long COVID"
+    },
+    {
+      "slug": "aliquot-48-insomnia-getting-sleep",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-48-insomnia-getting-sleep",
+      "title": "Aliquot #48: Beating Insomnia To Sleep at Night"
+    },
+    {
+      "slug": "aliquot-47-food-circadian-rhythm",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-47-food-circadian-rhythm",
+      "title": "Aliquot #47: Aligning food intake with the body's circadian rhythms"
+    },
+    {
+      "slug": "psilocybin-depression",
+      "url": "https://www.foundmyfitness.com/episodes/psilocybin-depression",
+      "title": "Can Psilocybin Treat Depression?"
+    },
+    {
+      "slug": "aliquot-46-mindfulness-overeating",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-46-mindfulness-overeating",
+      "title": "Aliquot #46: Mindfulness to prevent overeating"
+    },
+    {
+      "slug": "aliquot-44-longhaul-covid",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-44-longhaul-covid",
+      "title": "Aliquot #45: Long-haul COVID-19"
+    },
+    {
+      "slug": "bill-harris",
+      "url": "https://www.foundmyfitness.com/episodes/bill-harris",
+      "title": "Dr. Bill Harris on the Omega-3 Index, Increasing Omega-3 to Improve Longevity & Heart Disease Risk"
+    },
+    {
+      "slug": "qa-30-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-30-dr-rhonda-patrick",
+      "title": "Q&A #30: Can Rapamycin Extend Lifespan—and Should You Take Daily Aspirin?"
+    },
+    {
+      "slug": "aliquot-44-covid-19-mrna-vaccines",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-44-covid-19-mrna-vaccines",
+      "title": "Aliquot #44: COVID-19 mRNA vaccines"
+    },
+    {
+      "slug": "qa-29-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-29-dr-rhonda-patrick",
+      "title": "Q&A #29: Does Dairy Raise Cancer Risk—and Are Artificial Sweeteners Harmful?"
+    },
+    {
+      "slug": "aliquot-43-protein-consumption",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-43-protein-consumption",
+      "title": "Aliquot #43: Protein consumption: Finding the Balance"
+    },
+    {
+      "slug": "ashley-mason",
+      "url": "https://www.foundmyfitness.com/episodes/ashley-mason",
+      "title": "Dr. Ashley Mason on Sauna Use for Depression, Conquering Insomnia, and Mindfully Breaking Bad Habits"
+    },
+    {
+      "slug": "aliquot-42-ketogenic-diet-tips-tricks-pt-3",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-42-ketogenic-diet-tips-tricks-pt-3",
+      "title": "Aliquot #42: Ketogenic Diet Part III: Tips & Tricks"
+    },
+    {
+      "slug": "aliquot-5-light-exposure",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-5-light-exposure",
+      "title": "Aliquot #5: Light exposure: Striking a balance for sleep and mental health"
+    },
+    {
+      "slug": "aliquot-40-ketogenic-diet-longevity-pt2-members",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-40-ketogenic-diet-longevity-pt2-members",
+      "title": "Aliquot #40: Ketogenic Diet Part II: Longevity"
+    },
+    {
+      "slug": "aliquot-39-keto-brain-benefits-pt1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-39-keto-brain-benefits-pt1",
+      "title": "Aliquot #39: Ketogenic Diet Part I: Brain Benefits"
+    },
+    {
+      "slug": "aliquot-38-zinc-brain-immune",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-38-zinc-brain-immune",
+      "title": "Aliquot #38: Zinc's role in brain and immune health."
+    },
+    {
+      "slug": "aliquot-37-deoression-anxiety-pt2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-37-deoression-anxiety-pt2",
+      "title": "Aliquot #37: Lifestyle interventions for depression and anxiety, part 2 (adding to aliquot #8)"
+    },
+    {
+      "slug": "aliquot-36-inflammation-depression",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-36-inflammation-depression",
+      "title": "Aliquot #36: Inflammation and Depression, part 2 (adding to aliquot #4)"
+    },
+    {
+      "slug": "aliquot-35-sauna-mimics-exercise",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-35-sauna-mimics-exercise",
+      "title": "Aliquot #35: Sauna use mimics the physiological effects of exercise"
+    },
+    {
+      "slug": "aliquot-34-fasting-immune",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-34-fasting-immune",
+      "title": "Aliquot #34: How fasting influences immune function"
+    },
+    {
+      "slug": "aliquot-33-cholesterol-statins",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-33-cholesterol-statins",
+      "title": "Aliquot #33: Pros and cons of statins for lowering cholesterol"
+    },
+    {
+      "slug": "aliquot-29-vitamin-d-covid-19",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-29-vitamin-d-covid-19",
+      "title": "Aliquot #29: Vitamin D & COVID-19"
+    },
+    {
+      "slug": "aliquot-32-covid-19-airplane",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-32-covid-19-airplane",
+      "title": "Aliquot #32: Examining the risk for COVID-19 transmission during air travel"
+    },
+    {
+      "slug": "aliquot-31-cholesterol-ion-mobility",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-31-cholesterol-ion-mobility",
+      "title": "Aliquot #31: A powerful tool for assessing cholesterol levels: The ion mobility particle test"
+    },
+    {
+      "slug": "aliquot-30-enhance-immune-health",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-30-enhance-immune-health",
+      "title": "Aliquot #30: Lifestyle modifications that enhance immune health"
+    },
+    {
+      "slug": "aliquot-28-sleep-deprivation-pt2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-28-sleep-deprivation-pt2",
+      "title": "Aliquot #28: Health consequences of sleep deprivation, Part 2: Mental & cognitive health"
+    },
+    {
+      "slug": "aliquot-27-sleep-deprivation-pt1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-27-sleep-deprivation-pt1",
+      "title": "Aliquot #27: Health consequences of sleep deprivation, part I: Metabolic & immune health"
+    },
+    {
+      "slug": "aliquot-26-mrna-vaccines",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-26-mrna-vaccines",
+      "title": "Aliquot #26: How mRNA COVID-19 Vaccines Work"
+    },
+    {
+      "slug": "aliquot-25-coffee-caffeine-sleep",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-25-coffee-caffeine-sleep",
+      "title": "Aliquot #25: Coffee, caffeine, and sleep"
+    },
+    {
+      "slug": "aliquot-24-sharp-brain",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-24-sharp-brain",
+      "title": "Aliquot #24: Keeping the brain sharp"
+    },
+    {
+      "slug": "aliquot-23-slow-epigenetic-clock",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-23-slow-epigenetic-clock",
+      "title": "Aliquot #23: Altering the rate of your epigenetic clock"
+    },
+    {
+      "slug": "aliquot-22-rhonda-supplement",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-22-rhonda-supplement",
+      "title": "Aliquot #22: Q&A Mashup - Rhonda's personal supplement routine"
+    },
+    {
+      "slug": "aliquot-21-exercise-parkinsons",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-21-exercise-parkinsons",
+      "title": "Aliquot #21: Exercise to Fight Parkinson's Disease"
+    },
+    {
+      "slug": "aliquot-20-fasting-athletic-performance",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-20-fasting-athletic-performance",
+      "title": "Aliquot #20: Fasting and athletic performance"
+    },
+    {
+      "slug": "aliquot-17-tre-pt2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-17-tre-pt2",
+      "title": "Aliquot #17: Time restricted eating for better metabolic health, part 2"
+    },
+    {
+      "slug": "aliquot-15-autophagy",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-15-autophagy",
+      "title": "Aliquot #15: Autophagy: A cellular recycling program with implications for health and longevity"
+    },
+    {
+      "slug": "aliquot-14-sleep-health",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-14-sleep-health",
+      "title": "Aliquot #14: Sleep is foundational to mental and physical wellness"
+    },
+    {
+      "slug": "aliquot-11-unconventional-sfn-pt-2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-11-unconventional-sfn-pt-2",
+      "title": "Aliquot #11: Unconventional effects of sulforaphane on human health: Part II"
+    },
+    {
+      "slug": "aliquot-41-lab-work",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-41-lab-work",
+      "title": "Aliquot #41: Q&A and Interview Mashup: Blood Tests, Biomarkers, and Lab Work"
+    },
+    {
+      "slug": "mark-mattson",
+      "url": "https://www.foundmyfitness.com/episodes/mark-mattson",
+      "title": "Dr. Mark Mattson on the Benefits of Stress, Metabolic Switching, Fasting, and Hormesis"
+    },
+    {
+      "slug": "qa-28-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-28-dr-rhonda-patrick",
+      "title": "Q&A #28: Lowering Heart Disease Risk—Functional Foods, Statins, & Cholesterol"
+    },
+    {
+      "slug": "medcram-covid-19-vaccines",
+      "url": "https://www.foundmyfitness.com/episodes/medcram-covid-19-vaccines",
+      "title": "COVID-19 Vaccines and Ivermectin with MedCram and Dr. Roger Seheult"
+    },
+    {
+      "slug": "qa-27-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-27-dr-rhonda-patrick",
+      "title": "Q&A #27: Rhonda’s Ketogenic Diet—CGMs, Ketone Levels, & Exercise"
+    },
+    {
+      "slug": "omega-3-heart",
+      "url": "https://www.foundmyfitness.com/episodes/omega-3-heart",
+      "title": "Omega-3 may reduce risk of premature death"
+    },
+    {
+      "slug": "qa-26-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-26-dr-rhonda-patrick",
+      "title": "Q&A #26: Do Omega-3s Raise Atrial Fibrillation Risk—and Is Acarbose a Longevity Drug?"
+    },
+    {
+      "slug": "qa-25-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-25-dr-rhonda-patrick",
+      "title": "Q&A #25: COVID-19 Vaccines—Spike Protein, Ivermectin, & Pregnancy"
+    },
+    {
+      "slug": "aliquot-7-late-eating",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-7-late-eating",
+      "title": "Aliquot #7: How late-night eating dysregulates metabolism"
+    },
+    {
+      "slug": "aliquot-19-fasting-cancer",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-19-fasting-cancer",
+      "title": "Aliquot #19: Fasting as a tool for fighting cancer"
+    },
+    {
+      "slug": "satchin-panda-3",
+      "url": "https://www.foundmyfitness.com/episodes/satchin-panda-3",
+      "title": "Dr. Satchin Panda on Circadian Insights into Exercise Timing, Melatonin Biology, and Peak Cognition"
+    },
+    {
+      "slug": "qa-24-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-24-dr-rhonda-patrick",
+      "title": "Q&A #24: How to Improve Memory—Exercise, Ketosis, DHA, & Brain Health"
+    },
+    {
+      "slug": "aliquot-10-sfn-unconventional-1",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-10-sfn-unconventional-1",
+      "title": "Aliquot #10: Unconventional effects of sulforaphane on human health: Part I"
+    },
+    {
+      "slug": "aliquot-12-broc-food-prep",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-12-broc-food-prep",
+      "title": "Aliquot #12: Food prep techniques that alter sulforaphane production in broccoli sprouts"
+    },
+    {
+      "slug": "aliquot-9-sulforaphane",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-9-sulforaphane",
+      "title": "Aliquot #9: Sulforaphane: Discovery, research, and health effects"
+    },
+    {
+      "slug": "aliquot-13-broc-vs-supp",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-13-broc-vs-supp",
+      "title": "Aliquot #13: Sulforaphane from broccoli sprouts versus supplements"
+    },
+    {
+      "slug": "aliquot-18-igf-1-dual-nature",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-18-igf-1-dual-nature",
+      "title": "Aliquot #18: The dual nature of IGF-1: Striking a balance for optimal health"
+    },
+    {
+      "slug": "aliquot-16-tre-metabolic-pt2",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-16-tre-metabolic-pt2",
+      "title": "Aliquot #16: Time-restricted eating for better metabolic health, part 1"
+    },
+    {
+      "slug": "aliquot-8-lifestyle-interventions-depression-and-anxiety",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-8-lifestyle-interventions-depression-and-anxiety",
+      "title": "Aliquot #8: Lifestyle interventions for depression and anxiety"
+    },
+    {
+      "slug": "aliquot-6-alzheimers-genetic-lifestyle",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-6-alzheimers-genetic-lifestyle",
+      "title": "Aliquot #6: Genetic and lifestyle risk factors for Alzheimer's disease"
+    },
+    {
+      "slug": "aliquot-4-exercise-inflammation-depression",
+      "url": "https://www.foundmyfitness.com/episodes/aliquot-4-exercise-inflammation-depression",
+      "title": "Aliquot #4: Exercise, Inflammation and Depression"
+    },
+    {
+      "slug": "q-a-mashup-3-fasting",
+      "url": "https://www.foundmyfitness.com/episodes/q-a-mashup-3-fasting",
+      "title": "Q&A Mashup #3: Fasting"
+    },
+    {
+      "slug": "q-a-mashup-2-sauna",
+      "url": "https://www.foundmyfitness.com/episodes/q-a-mashup-2-sauna",
+      "title": "Q&A Mashup #2: Sauna"
+    },
+    {
+      "slug": "q-a-mashup-1-pregnancy-and-child-development",
+      "url": "https://www.foundmyfitness.com/episodes/q-a-mashup-1-pregnancy-and-child-development",
+      "title": "Q&A Mashup #1: Pregnancy and child development"
+    },
+    {
+      "slug": "michael-snyder",
+      "url": "https://www.foundmyfitness.com/episodes/michael-snyder",
+      "title": "Dr. Michael Snyder on Continuous Glucose Monitoring and Deep Profiling for Personalized Medicine"
+    },
+    {
+      "slug": "qa-23-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-23-dr-rhonda-patrick",
+      "title": "Q&A #23: Is Kale Healthy?—Oxalates, Thallium, & Kidney Stones"
+    },
+    {
+      "slug": "sleep-dementia-risk",
+      "url": "https://www.foundmyfitness.com/episodes/sleep-dementia-risk",
+      "title": "The Hidden Connection Between Sleep and Dementia"
+    },
+    {
+      "slug": "qa-22-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-22-dr-rhonda-patrick",
+      "title": "Q&A #22: Alcohol and Longevity—Plus Zone 2 Training"
+    },
+    {
+      "slug": "qa-21-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-21-dr-rhonda-patrick",
+      "title": "Q&A #21: Fermented Foods and Gut Health—Yogurt, Natto, Kimchi, & Kombucha"
+    },
+    {
+      "slug": "qa-20-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-20-dr-rhonda-patrick",
+      "title": "Q&A #20: Rhonda’s 2021 Supplement Routine—Omega-3 Dosing, Brands, & Safety"
+    },
+    {
+      "slug": "roger-seheult",
+      "url": "https://www.foundmyfitness.com/episodes/roger-seheult",
+      "title": "Dr. Roger Seheult from MedCram on COVID-19 Vaccines, Vitamin D, and Heat Hydrotherapy"
+    },
+    {
+      "slug": "qa-19-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-19-dr-rhonda-patrick",
+      "title": "Q&A #19: Rhonda’s Time-Restricted Eating Window—Inflammation & Longer Fasts"
+    },
+    {
+      "slug": "steve-horvath",
+      "url": "https://www.foundmyfitness.com/episodes/steve-horvath",
+      "title": "Dr. Steve Horvath on epigenetic aging to predict healthspan: the DNA PhenoAge and GrimAge clocks"
+    },
+    {
+      "slug": "epigenetic-clock",
+      "url": "https://www.foundmyfitness.com/episodes/epigenetic-clock",
+      "title": "Epigenetic Aging: How old is your DNA?"
+    },
+    {
+      "slug": "qa-18-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-18-dr-rhonda-patrick",
+      "title": "Q&A #18: How to Test Blood Lipids—and Which Magnesium Form Is Best?"
+    },
+    {
+      "slug": "how-to-grow-broccoli-sprouts",
+      "url": "https://www.foundmyfitness.com/episodes/how-to-grow-broccoli-sprouts",
+      "title": "How to Grow Broccoli Sprouts"
+    },
+    {
+      "slug": "jed-fahey-q-a",
+      "url": "https://www.foundmyfitness.com/episodes/jed-fahey-q-a",
+      "title": "Q&A #17: Dr. Jed Fahey on Sulforaphane & Moringa—Dosing, Thyroid, & Cancer Prevention"
+    },
+    {
+      "slug": "giselle-petzinger",
+      "url": "https://www.foundmyfitness.com/episodes/giselle-petzinger",
+      "title": "Dr. Giselle Petzinger on Exercise for Parkinson's Disease"
+    },
+    {
+      "slug": "qa-16-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-16-dr-rhonda-patrick",
+      "title": "Q&A #16: Why Rhonda Limits Whole Grains—Glucose, Gluten, & Arsenic"
+    },
+    {
+      "slug": "qa-15-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-15-dr-rhonda-patrick",
+      "title": "Q&A #15: Is Organic Food Worth It—and Are Dietary Oxalates Harmful?"
+    },
+    {
+      "slug": "breast-milk",
+      "url": "https://www.foundmyfitness.com/episodes/breast-milk",
+      "title": "The Biology of Breast Milk"
+    },
+    {
+      "slug": "qa-14-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-14-dr-rhonda-patrick",
+      "title": "Q&A #14: Berberine for Metabolic Health—Plus Curcumin vs. NSAIDs"
+    },
+    {
+      "slug": "qa-13-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-13-dr-rhonda-patrick",
+      "title": "Q&A #13: How Can You Measure Fasting and Autophagy in Humans?"
+    },
+    {
+      "slug": "covid-19-episode-2",
+      "url": "https://www.foundmyfitness.com/episodes/covid-19-episode-2",
+      "title": "COVID-19 Q&A #2 - Antibody-Dependent Enhancement, Cross-Immunity, Immunity Duration & More"
+    },
+    {
+      "slug": "qa-12-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-12-dr-rhonda-patrick",
+      "title": "Q&A #12: Which Cholesterol Tests Matter—and How Diet Changes LDL Particles"
+    },
+    {
+      "slug": "jre-1474",
+      "url": "https://www.foundmyfitness.com/episodes/jre-1474",
+      "title": "Joe Rogan Experience #1474 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "vitamin-c",
+      "url": "https://www.foundmyfitness.com/episodes/vitamin-c",
+      "title": "Vitamin C: Oral vs. Intravenous, Immune Effects, Cancer, Exercise Adaptation & More"
+    },
+    {
+      "slug": "qa-11-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-11-dr-rhonda-patrick",
+      "title": "Q&A #11: What Prevents Migraines—and How Do Heat and Cold Affect Health?"
+    },
+    {
+      "slug": "covid-19-episode-1",
+      "url": "https://www.foundmyfitness.com/episodes/covid-19-episode-1",
+      "title": "COVID-19 Q&A #1 with Rhonda Patrick, Ph.D."
+    },
+    {
+      "slug": "qa-10-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-10-dr-rhonda-patrick",
+      "title": "Q&A #10: COVID-19 Immunity—Vitamin D, Vitamin C, Cytokine Storms, & Sauna"
+    },
+    {
+      "slug": "qa-9-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-9-dr-rhonda-patrick",
+      "title": "Q&A #9: Viral Defense—Sulforaphane, NAC, Glutathione, & Vitamin D"
+    },
+    {
+      "slug": "qa-8-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-8-dr-rhonda-patrick",
+      "title": "Q&A #8: Curcumin Bioavailability and Exercise—Plus Coffee and Brain Health"
+    },
+    {
+      "slug": "nad-nr-nmn",
+      "url": "https://www.foundmyfitness.com/episodes/nad-nr-nmn",
+      "title": "NAD+ in Aging: Role of Nicotinamide Riboside and Nicotinamide Mononucleotide"
+    },
+    {
+      "slug": "rhonda-krs-2",
+      "url": "https://www.foundmyfitness.com/episodes/rhonda-krs-2",
+      "title": "New Omega-3, sulforaphane research, and more! [Kevin Rose Show]"
+    },
+    {
+      "slug": "qa-7-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-7-dr-rhonda-patrick",
+      "title": "Q&A #7: How Long Should You Breastfeed?—Infant Nutrition & Vitamin D"
+    },
+    {
+      "slug": "resveratrol-longevity",
+      "url": "https://www.foundmyfitness.com/episodes/resveratrol-longevity",
+      "title": "Is Resveratrol a Longevity Compound?"
+    },
+    {
+      "slug": "qa-6-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-6-dr-rhonda-patrick",
+      "title": "Q&A #6: Fasting, Omega-3s, & Continuous Glucose Monitoring"
+    },
+    {
+      "slug": "david-sinclair",
+      "url": "https://www.foundmyfitness.com/episodes/david-sinclair",
+      "title": "Dr. David Sinclair on Informational Theory of Aging, Nicotinamide Mononucleotide, Resveratrol & More"
+    },
+    {
+      "slug": "sauna-heart-presentation",
+      "url": "https://www.foundmyfitness.com/episodes/sauna-heart-presentation",
+      "title": "Sauna Use as an Exercise Mimetic for Heart and Healthspan"
+    },
+    {
+      "slug": "exercise-depression",
+      "url": "https://www.foundmyfitness.com/episodes/exercise-depression",
+      "title": "Exercise as a Treatment for Depression"
+    },
+    {
+      "slug": "elissa-epel",
+      "url": "https://www.foundmyfitness.com/episodes/elissa-epel",
+      "title": "Dr. Elissa Epel on Telomeres and the Role of Stress Biology in Cellular Aging"
+    },
+    {
+      "slug": "qa-5-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-5-dr-rhonda-patrick",
+      "title": "Q&A #5: How to Improve Sleep—and What Nutrition Matters During Pregnancy?"
+    },
+    {
+      "slug": "melatonin-insulin-response",
+      "url": "https://www.foundmyfitness.com/episodes/melatonin-insulin-response",
+      "title": "Late-night eating and melatonin may impair insulin response"
+    },
+    {
+      "slug": "sleep-loss-glucose-regulation",
+      "url": "https://www.foundmyfitness.com/episodes/sleep-loss-glucose-regulation",
+      "title": "Sleep loss impairs glucose regulation (but exercise helps)"
+    },
+    {
+      "slug": "matthew-walker",
+      "url": "https://www.foundmyfitness.com/episodes/matthew-walker",
+      "title": "Dr. Matthew Walker on Sleep for Enhancing Learning, Creativity, Immunity, and Glymphatic System"
+    },
+    {
+      "slug": "zero-fasting-qa",
+      "url": "https://www.foundmyfitness.com/episodes/zero-fasting-qa",
+      "title": "Fasting Q&A with Dr. Rhonda Patrick and Mike Maser"
+    },
+    {
+      "slug": "cooked-broccoli-myrosinase",
+      "url": "https://www.foundmyfitness.com/episodes/cooked-broccoli-myrosinase",
+      "title": "STUDY: Increasing sulforaphane bioavailability from broccoli through exogenous myrosinase."
+    },
+    {
+      "slug": "jre-1178",
+      "url": "https://www.foundmyfitness.com/episodes/jre-1178",
+      "title": "Joe Rogan Experience #1178 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "dale-bredesen",
+      "url": "https://www.foundmyfitness.com/episodes/dale-bredesen",
+      "title": "Dr. Dale Bredesen on Preventing and Reversing Alzheimer's Disease"
+    },
+    {
+      "slug": "salmon-roe-stacks",
+      "url": "https://www.foundmyfitness.com/episodes/salmon-roe-stacks",
+      "title": "Salmon Roe Stacks Recipe"
+    },
+    {
+      "slug": "qa-4-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-4-dr-rhonda-patrick",
+      "title": "Q&A #4: Fasting, Autophagy, & Fat Loss—Plus the Carnivore Diet"
+    },
+    {
+      "slug": "valter-longo-2",
+      "url": "https://www.foundmyfitness.com/episodes/valter-longo-2",
+      "title": "Dr. Valter Longo on Resetting Autoimmunity and Rejuvenating Systems with Prolonged Fasting & the FMD"
+    },
+    {
+      "slug": "charles-raison",
+      "url": "https://www.foundmyfitness.com/episodes/charles-raison",
+      "title": "Dr. Charles Raison on Depression, the Immune-Brain Interface & Whole-Body Hyperthermia"
+    },
+    {
+      "slug": "qa-3-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-3-dr-rhonda-patrick",
+      "title": "Q&A #3: Cancer, Fasting, & Probiotics—Plus PQQ, CoQ10, & Brain Energy"
+    },
+    {
+      "slug": "jre-1054",
+      "url": "https://www.foundmyfitness.com/episodes/jre-1054",
+      "title": "Joe Rogan Experience #1054 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "eric-verdin",
+      "url": "https://www.foundmyfitness.com/episodes/eric-verdin",
+      "title": "Dr. Eric Verdin on Ketogenic Diet, Longevity, Beta-Hydroxybutyrate, HDAC Inhibitors, & NAD+"
+    },
+    {
+      "slug": "qa-2-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-2-dr-rhonda-patrick",
+      "title": "Q&A #2: Protein After 65, Saturated Fat & Longevity—Plus Whole Grains"
+    },
+    {
+      "slug": "saturated-fat",
+      "url": "https://www.foundmyfitness.com/episodes/saturated-fat",
+      "title": "Does Saturated Fat Cause Heart Disease?"
+    },
+    {
+      "slug": "sfn-maximize",
+      "url": "https://www.foundmyfitness.com/episodes/sfn-maximize",
+      "title": "How To Increase Sulforaphane in Broccoli Sprouts by ~3.5-fold"
+    },
+    {
+      "slug": "ihmc-talk-1",
+      "url": "https://www.foundmyfitness.com/episodes/ihmc-talk-1",
+      "title": "Nutrigenomics, Epigenetics, and Stress Tolerance (IHMC Talk #1)"
+    },
+    {
+      "slug": "lemon-tart",
+      "url": "https://www.foundmyfitness.com/episodes/lemon-tart",
+      "title": "Low-Carb Lemon Tart Dessert (High Citrate & Choline)"
+    },
+    {
+      "slug": "dan-pardi",
+      "url": "https://www.foundmyfitness.com/episodes/dan-pardi",
+      "title": "Sleep, Daylight Anchoring, and Effects on Memory & Obesity with Dan Pardi"
+    },
+    {
+      "slug": "hack-your-genes-sf-nerd-nite",
+      "url": "https://www.foundmyfitness.com/episodes/hack-your-genes-sf-nerd-nite",
+      "title": "\"Hacking Your Genes\" at SF Nerd Nite"
+    },
+    {
+      "slug": "satchin-round-2",
+      "url": "https://www.foundmyfitness.com/episodes/satchin-round-2",
+      "title": "Dr. Satchin Panda on Practical Implementation of Time-Restricted Eating & Shift Work Strategies"
+    },
+    {
+      "slug": "qa-1-dr-rhonda-patrick",
+      "url": "https://www.foundmyfitness.com/episodes/qa-1-dr-rhonda-patrick",
+      "title": "Q&A #1: Fasting and Autophagy—Plus Pregnancy and Postpartum Supplements"
+    },
+    {
+      "slug": "guido-kroemer",
+      "url": "https://www.foundmyfitness.com/episodes/guido-kroemer",
+      "title": "Dr. Guido Kroemer on Autophagy, Caloric Restriction Mimetics, Fasting & Protein Acetylation"
+    },
+    {
+      "slug": "jari-laukkanen",
+      "url": "https://www.foundmyfitness.com/episodes/jari-laukkanen",
+      "title": "Dr. Jari Laukkanen on Sauna Use for the Prevention of Cardiovascular & Alzheimer’s Disease"
+    },
+    {
+      "slug": "judy-campisi",
+      "url": "https://www.foundmyfitness.com/episodes/judy-campisi",
+      "title": "Judith Campisi, Ph.D., on Cellular Senescence, Mitochondrial Dysfunction, Cancer & Aging"
+    },
+    {
+      "slug": "gordon-j-lithgow",
+      "url": "https://www.foundmyfitness.com/episodes/gordon-j-lithgow",
+      "title": "Gordon Lithgow, Ph.D. on Protein Aggregation, Iron Overload & the Search for Longevity Compounds"
+    },
+    {
+      "slug": "refined-sugar",
+      "url": "https://www.foundmyfitness.com/episodes/refined-sugar",
+      "title": "Refined Sugar and Its Effects on Mortality, the Brain, Cancer, Hormones, & More"
+    },
+    {
+      "slug": "inflammation-depression",
+      "url": "https://www.foundmyfitness.com/episodes/inflammation-depression",
+      "title": "The Underlying Mechanisms of Depression"
+    },
+    {
+      "slug": "jed-w-fahey",
+      "url": "https://www.foundmyfitness.com/episodes/jed-w-fahey",
+      "title": "Jed Fahey, ScD, on Isothiocyanates, the Nrf2 Pathway, Moringa, & Sulforaphane Supplementation"
+    },
+    {
+      "slug": "roland-griffiths",
+      "url": "https://www.foundmyfitness.com/episodes/roland-griffiths",
+      "title": "Roland Griffiths, Ph.D. on Psilocybin, Psychedelic Therapies & Mystical Experiences"
+    },
+    {
+      "slug": "jre-901",
+      "url": "https://www.foundmyfitness.com/episodes/jre-901",
+      "title": "Joe Rogan Experience #901 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "sulforaphane",
+      "url": "https://www.foundmyfitness.com/episodes/sulforaphane",
+      "title": "Sulforaphane and Its Effects on Cancer, Mortality, Aging, Brain and Behavior, Heart Disease, & More"
+    },
+    {
+      "slug": "valter-longo",
+      "url": "https://www.foundmyfitness.com/episodes/valter-longo",
+      "title": "Valter Longo, Ph.D. on the Fasting-Mimicking Diet & Fasting for Longevity, Cancer & Multiple Sclerosis"
+    },
+    {
+      "slug": "ruth-patterson",
+      "url": "https://www.foundmyfitness.com/episodes/ruth-patterson",
+      "title": "Ruth Patterson, PhD, on Time-Restricted Eating in Humans & Breast Cancer Prevention"
+    },
+    {
+      "slug": "satchin-panda",
+      "url": "https://www.foundmyfitness.com/episodes/satchin-panda",
+      "title": "Satchin Panda, Ph.D. on Time-Restricted Feeding and Its Effects on Obesity, Muscle Mass & Heart Health"
+    },
+    {
+      "slug": "micronutrient-smoothie-2",
+      "url": "https://www.foundmyfitness.com/episodes/micronutrient-smoothie-2",
+      "title": "Smoothie #2: Prebiotics, Phytochemicals, \"Anti-Nutrients\" & Hydrolyzed Collagen"
+    },
+    {
+      "slug": "ray-cronise",
+      "url": "https://www.foundmyfitness.com/episodes/ray-cronise",
+      "title": "Ray Cronise on Cold Thermogenesis, Intermittent Fasting, Weight Loss & Healthspan"
+    },
+    {
+      "slug": "dominic-dagostino",
+      "url": "https://www.foundmyfitness.com/episodes/dominic-dagostino",
+      "title": "Dominic D'Agostino, Ph.D. on Modified Atkins Diet, Ketosis, Supplemental Ketones and More"
+    },
+    {
+      "slug": "peter-attia",
+      "url": "https://www.foundmyfitness.com/episodes/peter-attia",
+      "title": "Peter Attia, M.D. on Macronutrient Thresholds for Longevity and Performance, Cancer & More"
+    },
+    {
+      "slug": "cold-stress-hormesis",
+      "url": "https://www.foundmyfitness.com/episodes/cold-stress-hormesis",
+      "title": "How Cryotherapy Affects the Brain, the Immune System, Metabolism, and Athletic Performance"
+    },
+    {
+      "slug": "rich-roll",
+      "url": "https://www.foundmyfitness.com/episodes/rich-roll",
+      "title": "Rich Roll on Self-Transformation, Environmental Impact of Food, and the Plant-Based Diet"
+    },
+    {
+      "slug": "darya-and-kevin-rose",
+      "url": "https://www.foundmyfitness.com/episodes/darya-and-kevin-rose",
+      "title": "Dr. Darya and Kevin Rose Talk Meditation Retreats, Diet, Seasonal Eating, and More"
+    },
+    {
+      "slug": "pierre-capel",
+      "url": "https://www.foundmyfitness.com/episodes/pierre-capel",
+      "title": "Dr. Pierre Capel on the Power of the Mind & the Science of Wim Hof"
+    },
+    {
+      "slug": "wim-hof",
+      "url": "https://www.foundmyfitness.com/episodes/wim-hof",
+      "title": "Wim Hof (the Iceman) on Defeating Extreme Cold & Attenuating the Immune Response"
+    },
+    {
+      "slug": "orthomolecular-congress-bussum-2015",
+      "url": "https://www.foundmyfitness.com/episodes/orthomolecular-congress-bussum-2015",
+      "title": "PRESENTATION: Rhonda Speaks at the Orthomolecular Congress in Bussum, Netherlands"
+    },
+    {
+      "slug": "biohacker-summit-2016",
+      "url": "https://www.foundmyfitness.com/episodes/biohacker-summit-2016",
+      "title": "Sauna Use and Building Resilience to Stress with Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "the-sonnenburgs",
+      "url": "https://www.foundmyfitness.com/episodes/the-sonnenburgs",
+      "title": "How The Gut Microbiota Affects Our Health with Dr. Erica & Dr. Justin Sonnenburg"
+    },
+    {
+      "slug": "ronald-krauss",
+      "url": "https://www.foundmyfitness.com/episodes/ronald-krauss",
+      "title": "Dr. Ronald Krauss on LDL Cholesterol, Particle Size, Heart Disease & Atherogenic Dyslipidemia"
+    },
+    {
+      "slug": "meditation-solocast",
+      "url": "https://www.foundmyfitness.com/episodes/meditation-solocast",
+      "title": "Buffering the Negative Effects of Chronic Stress with Meditation"
+    },
+    {
+      "slug": "aubrey-de-grey",
+      "url": "https://www.foundmyfitness.com/episodes/aubrey-de-grey",
+      "title": "Dr. Aubrey de Grey and Dr. Rhonda Patrick Talk Aging"
+    },
+    {
+      "slug": "tim-ferriss",
+      "url": "https://www.foundmyfitness.com/episodes/tim-ferriss",
+      "title": "Tim Ferriss on Biomarkers, Ketosis, Microbiome, and Lyme Disease"
+    },
+    {
+      "slug": "jim-kean",
+      "url": "https://www.foundmyfitness.com/episodes/jim-kean",
+      "title": "Jim Kean Talks Biomarkers, Building a Spectator Sport"
+    },
+    {
+      "slug": "sauna-longevity",
+      "url": "https://www.foundmyfitness.com/episodes/sauna-longevity",
+      "title": "How Sauna Use May Boost Longevity"
+    },
+    {
+      "slug": "personalize-your-nutrition-based-on-genetics",
+      "url": "https://www.foundmyfitness.com/episodes/personalize-your-nutrition-based-on-genetics",
+      "title": "Personalize Your Nutrition Based On Genetics"
+    },
+    {
+      "slug": "cancer-bad-luck",
+      "url": "https://www.foundmyfitness.com/episodes/cancer-bad-luck",
+      "title": "DEBUNKED: 2/3rds of Cancer \"Just Bad Luck\""
+    },
+    {
+      "slug": "bruce-ames",
+      "url": "https://www.foundmyfitness.com/episodes/bruce-ames",
+      "title": "Bruce Ames on Triage Theory, Longevity Vitamins & Micronutrients"
+    },
+    {
+      "slug": "frans-kuypers",
+      "url": "https://www.foundmyfitness.com/episodes/frans-kuypers",
+      "title": "Dr. Frans Kuypers on Placenta as a Source of Bankable Stem Cells"
+    },
+    {
+      "slug": "george-brooks",
+      "url": "https://www.foundmyfitness.com/episodes/george-brooks",
+      "title": "Dr. George Brooks on Lactate Shuttle Theory, Relevance for Traumatic Brain Injury, & More"
+    },
+    {
+      "slug": "jre-568",
+      "url": "https://www.foundmyfitness.com/episodes/jre-568",
+      "title": "Joe Rogan Experience #568 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "dha-krill-oil",
+      "url": "https://www.foundmyfitness.com/episodes/dha-krill-oil",
+      "title": "The Phospholipid Brain-DHA Advantage"
+    },
+    {
+      "slug": "do-antioxidants-cause-cancer",
+      "url": "https://www.foundmyfitness.com/episodes/do-antioxidants-cause-cancer",
+      "title": "Do Antioxidants Cause Cancer?"
+    },
+    {
+      "slug": "terry-wahls",
+      "url": "https://www.foundmyfitness.com/episodes/terry-wahls",
+      "title": "Dr. Terry Wahls Discusses Her Multiple Sclerosis Protocol"
+    },
+    {
+      "slug": "3-mechanisms-for-magnesium-deficiency",
+      "url": "https://www.foundmyfitness.com/episodes/3-mechanisms-for-magnesium-deficiency",
+      "title": "3 Mechanisms for Magnesium Deficiency"
+    },
+    {
+      "slug": "maximizing-mitochondria-with-magnesium",
+      "url": "https://www.foundmyfitness.com/episodes/maximizing-mitochondria-with-magnesium",
+      "title": "Maximizing Your Mitochondria with Magnesium"
+    },
+    {
+      "slug": "jre-502",
+      "url": "https://www.foundmyfitness.com/episodes/jre-502",
+      "title": "Joe Rogan Experience #502 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "hyperthermic-conditioning",
+      "url": "https://www.foundmyfitness.com/episodes/hyperthermic-conditioning",
+      "title": "Hyperthermic Conditioning for Hypertrophy, Endurance, and Neurogenesis"
+    },
+    {
+      "slug": "jre-459",
+      "url": "https://www.foundmyfitness.com/episodes/jre-459",
+      "title": "Joe Rogan Experience #459 - Dr. Rhonda Patrick"
+    },
+    {
+      "slug": "rebuttal-to-editorial-enough-is-enough",
+      "url": "https://www.foundmyfitness.com/episodes/rebuttal-to-editorial-enough-is-enough",
+      "title": "Rebuttal to Anti-Vitamin Editorial: \"Enough is Enough\""
+    }
+  ]
+}
