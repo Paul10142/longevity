@@ -57,3 +57,6 @@ eval/dedup-eval-pairs.json
 eval/dedup-run-*.json
 eval/article-eval-baseline.json
 eval/article-sentence-baseline.json
+
+# Deepgram spend ledger (local billing state, not source)
+.deepgram-spend.json

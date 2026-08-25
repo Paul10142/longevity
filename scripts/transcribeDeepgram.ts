@@ -44,8 +44,14 @@ const RATE_PER_HOUR = 0.34
  *
  * It is a FILE, not an in-memory counter, because the counter resets to zero
  * every time the script restarts — and a budget that forgets what it already
- * spent is not a budget. Appended before nothing and after every success, so a
- * crash loses at most the last episode's record.
+ * spent is not a budget. Appended after every success, so a crash loses at most
+ * the last episode's record.
+ *
+ * ONE ledger for the whole account, NOT one per output folder. Spend is billed
+ * per account, so a per-folder ledger hands every new folder a fresh $200 —
+ * which is not a cap, it is a cap-shaped decoration. Lives next to the repo by
+ * default; override with DEEPGRAM_LEDGER when transcribing for a different
+ * account.
  */
 type LedgerEntry = { key: string; model: string; hours: number; est_usd: number; at: string }
 
@@ -197,7 +203,9 @@ async function main() {
   if (files.length === 0) throw new Error(`no audio files found in ${target}`)
 
   const outDir = flag('--out') ?? (info.isDirectory() ? target : path.dirname(target))
-  const ledgerPath = path.join(outDir, 'spend-ledger.json')
+  const ledgerPath =
+    process.env.DEEPGRAM_LEDGER ??
+    path.join(path.dirname(new URL('..', import.meta.url).pathname), '.deepgram-spend.json')
   const ledger = await readLedger(ledgerPath)
   const spent = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
 
