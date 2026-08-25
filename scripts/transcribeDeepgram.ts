@@ -65,7 +65,7 @@ type DeepgramUtterance = {
   end?: number
 }
 
-async function transcribeOne(file: string, outDir: string, keyterms: string[]): Promise<void> {
+async function transcribeOne(file: string, outDir: string, keyterms: string[], model: string, suffix: string): Promise<void> {
   const key = process.env.DEEPGRAM_API_KEY
   if (!key) throw new Error('DEEPGRAM_API_KEY is not set (it belongs in .env.local — it is billable)')
 
@@ -73,7 +73,7 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[]): 
   const audio = await readFile(file)
 
   const params = new URLSearchParams({
-    model: 'nova-3',
+    model,
     diarize: 'true',      // the whole point — who spoke when
     utterances: 'true',   // speaker-homogeneous spans (see header)
     smart_format: 'true', // punctuation + casing, included at no cost
@@ -129,7 +129,7 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[]): 
     segments,
   }
 
-  const dest = path.join(outDir, `${base}.deepgram.json`)
+  const dest = path.join(outDir, `${base}${suffix}.deepgram.json`)
   await writeFile(dest, JSON.stringify(out, null, 2))
 
   const mins = (out.duration_seconds ?? 0) / 60
@@ -143,9 +143,15 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[]): 
 }
 
 async function main() {
-  const target = args.find(a => !a.startsWith('--') && args[args.indexOf(a) - 1] !== '--out' && args[args.indexOf(a) - 1] !== '--keyterm')
+  const target = args.find(
+    a => !a.startsWith('--') && !['--out', '--keyterm', '--model'].includes(args[args.indexOf(a) - 1])
+  )
   if (!target) throw new Error('usage: transcribeDeepgram.ts <file.mp3 | dir> [--out DIR] [--keyterm "Name"]…')
 
+  // nova-3-medical is a domain-specialised variant; worth comparing against
+  // nova-3 (general) on this corpus rather than assuming the medical one wins.
+  const model = flag('--model') ?? 'nova-3'
+  const suffix = model === 'nova-3' ? '' : `.${model}`
   const keyterms = [...BASE_KEYTERMS, ...multi('--keyterm')]
   const info = await stat(target)
   const files = info.isDirectory()
@@ -158,7 +164,7 @@ async function main() {
 
   for (const f of files) {
     try {
-      await transcribeOne(f, outDir, keyterms)
+      await transcribeOne(f, outDir, keyterms, model, suffix)
     } catch (err) {
       process.stdout.write(`  ${path.basename(f)} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
     }
