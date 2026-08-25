@@ -221,7 +221,44 @@ async function main() {
   const ledgerPath =
     process.env.DEEPGRAM_LEDGER ??
     path.join(fileURLToPath(new URL('..', import.meta.url)), '.deepgram-spend.json')
-  const ledger = await readLedger(ledgerPath)
+  let ledger = await readLedger(ledgerPath)
+
+  // RECONCILE AGAINST DISK FIRST. Every transcript that exists was BILLED,
+  // whether or not the run that made it survived to record the fact. An aborted
+  // run therefore leaves spend the ledger cannot see, and the cap silently
+  // drifts under the real balance — it read $3.31 against a real $6.26 on
+  // 2026-08-24 because four transcripts from killed runs were never recorded.
+  // The transcripts on disk are the ground truth; the ledger is a cache of them.
+  const known = new Set(ledger.map(e => `${e.key}|${e.model}`))
+  const onDisk = (await readdir(outDir)).filter(f => f.endsWith('.deepgram.json'))
+  let recovered = 0
+  for (const f of onDisk) {
+    try {
+      const d = JSON.parse(await readFile(path.join(outDir, f), 'utf8')) as {
+        key?: string
+        model?: string
+        duration_seconds?: number
+      }
+      // The file records the SERVER's model name (`medical-nova-3`); the ledger
+      // keys on the requested one, so normalise via the filename suffix.
+      const m = f.includes('.nova-3-medical.') ? 'nova-3-medical' : (d.model ?? 'unknown')
+      const id = `${d.key ?? f}|${m}`
+      if (known.has(id)) continue
+      const hours = (d.duration_seconds ?? 0) / 3600
+      ledger.push({ key: d.key ?? f, model: m, hours, est_usd: hours * RATE_PER_HOUR, at: new Date().toISOString() })
+      known.add(id)
+      recovered++
+    } catch {
+      // An unreadable transcript is not evidence of no spend, but it gives no
+      // duration to charge either. Surface it rather than silently ignoring.
+      process.stdout.write(`  warning: could not read ${f} while reconciling spend\n`)
+    }
+  }
+  if (recovered > 0) {
+    await writeLedger(ledgerPath, ledger)
+    process.stdout.write(`reconciled ${recovered} untracked transcript(s) into the spend ledger\n`)
+  }
+
   const spent = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
 
   process.stdout.write(
