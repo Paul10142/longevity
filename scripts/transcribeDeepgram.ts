@@ -28,9 +28,37 @@
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
 import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
+import { existsSync } from 'node:fs'
 import path from 'node:path'
 
 const API = 'https://api.deepgram.com/v1/listen'
+
+/** $0.26/h nova-3 + $0.08/h keyterm prompting, pre-recorded pay-as-you-go. */
+const RATE_PER_HOUR = 0.34
+
+/**
+ * Spend ledger. The API key issued for this project lacks `usage:read`, so the
+ * real balance CANNOT be queried — this is a self-tracked ESTIMATE from audio
+ * duration times the published rate, and it is only as right as that rate.
+ * Verify against the Deepgram dashboard before trusting it near the limit.
+ *
+ * It is a FILE, not an in-memory counter, because the counter resets to zero
+ * every time the script restarts — and a budget that forgets what it already
+ * spent is not a budget. Appended before nothing and after every success, so a
+ * crash loses at most the last episode's record.
+ */
+type LedgerEntry = { key: string; model: string; hours: number; est_usd: number; at: string }
+
+async function readLedger(file: string): Promise<LedgerEntry[]> {
+  if (!existsSync(file)) return []
+  try {
+    return JSON.parse(await readFile(file, 'utf8')) as LedgerEntry[]
+  } catch {
+    // A corrupt ledger must NOT read as $0 spent — that would silently uncap the
+    // budget. Fail loudly instead.
+    throw new Error(`spend ledger at ${file} is unreadable; refusing to run with an unknown balance`)
+  }
+}
 
 /**
  * Keyterm prompting ($0.08/h) biases recognition toward terms we KNOW recur.
@@ -65,7 +93,7 @@ type DeepgramUtterance = {
   end?: number
 }
 
-async function transcribeOne(file: string, outDir: string, keyterms: string[], model: string, suffix: string): Promise<void> {
+async function transcribeOne(file: string, outDir: string, keyterms: string[], model: string, suffix: string): Promise<number> {
   const key = process.env.DEEPGRAM_API_KEY
   if (!key) throw new Error('DEEPGRAM_API_KEY is not set (it belongs in .env.local — it is billable)')
 
@@ -138,8 +166,9 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[], m
       `${mins.toFixed(1)} min audio, ${((Date.now() - started) / 1000).toFixed(0)}s wall ` +
       `(${(mins * 60 / Math.max(1, (Date.now() - started) / 1000)).toFixed(0)}x realtime), ` +
       `model ${out.model}, diarized=${out.diarized}, ` +
-      `~$${(((out.duration_seconds ?? 0) / 3600) * 0.34).toFixed(2)}\n  → ${dest}\n`
+      `~$${(((out.duration_seconds ?? 0) / 3600) * RATE_PER_HOUR).toFixed(2)}\n  → ${dest}\n`
   )
+  return (out.duration_seconds ?? 0) / 3600
 }
 
 async function main() {
@@ -153,22 +182,74 @@ async function main() {
   const model = flag('--model') ?? 'nova-3'
   const suffix = model === 'nova-3' ? '' : `.${model}`
   const keyterms = [...BASE_KEYTERMS, ...multi('--keyterm')]
+  const budget = Number(flag('--budget')) || 200
   const info = await stat(target)
   const files = info.isDirectory()
-    ? (await readdir(target)).filter(f => /\.(mp3|m4a|wav)$/i.test(f)).map(f => path.join(target, f))
+    ? (await readdir(target))
+        .filter(f => /\.(mp3|m4a|wav)$/i.test(f))
+        // NEWEST FIRST. readdir is alphabetical, which for `attia-0001` …
+        // `attia-0405` means OLDEST first — the opposite of what is wanted, and
+        // a silent one: a budget-limited run would spend the whole balance on
+        // 2018 episodes and never reach this year's.
+        .sort((a, b) => b.localeCompare(a))
+        .map(f => path.join(target, f))
     : [target]
   if (files.length === 0) throw new Error(`no audio files found in ${target}`)
 
   const outDir = flag('--out') ?? (info.isDirectory() ? target : path.dirname(target))
-  process.stdout.write(`transcribing ${files.length} file(s) with ${keyterms.length} keyterms\n`)
+  const ledgerPath = path.join(outDir, 'spend-ledger.json')
+  const ledger = await readLedger(ledgerPath)
+  const spent = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
 
+  process.stdout.write(
+    `${files.length} file(s), model ${model}, ${keyterms.length} keyterms\n` +
+      `budget $${budget.toFixed(2)} | already spent ~$${spent.toFixed(2)} | ` +
+      `remaining ~$${Math.max(0, budget - spent).toFixed(2)}\n` +
+      `(estimated from duration x $${RATE_PER_HOUR}/h — this key cannot read real usage, ` +
+      `so check the Deepgram dashboard near the limit)\n`
+  )
+  if (spent >= budget) {
+    process.stdout.write('budget already reached — nothing to do. Raise it with --budget once funded.\n')
+    return
+  }
+
+  let running = spent
+  let done = 0
+  let stoppedForBudget = false
   for (const f of files) {
+    const base = path.basename(f).replace(/\.[^.]+$/, '')
+    if (existsSync(path.join(outDir, `${base}${suffix}.deepgram.json`))) continue // already transcribed
+
+    // Estimate BEFORE spending. A file whose cost would cross the limit stops
+    // the run rather than being skipped, so the ledger stays contiguous and
+    // resuming picks up exactly where this left off.
+    const bytes = (await stat(f)).size
+    const estHours = (bytes * 8) / 128_000 / 3600
+    if (running + estHours * RATE_PER_HOUR > budget) {
+      process.stdout.write(
+        `\nstopping before ${base}: it would cost ~$${(estHours * RATE_PER_HOUR).toFixed(2)} ` +
+          `and take the total past $${budget.toFixed(2)}\n`
+      )
+      stoppedForBudget = true
+      break
+    }
+
     try {
-      await transcribeOne(f, outDir, keyterms, model, suffix)
+      const hours = await transcribeOne(f, outDir, keyterms, model, suffix)
+      const est = hours * RATE_PER_HOUR
+      running += est
+      done++
+      ledger.push({ key: base, model, hours, est_usd: est, at: new Date().toISOString() })
+      await writeFile(ledgerPath, JSON.stringify(ledger, null, 2))
     } catch (err) {
-      process.stdout.write(`  ${path.basename(f)} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
+      process.stdout.write(`  ${base} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
     }
   }
+
+  process.stdout.write(
+    `\ntranscribed ${done} | estimated total spend ~$${running.toFixed(2)} of $${budget.toFixed(2)}\n`
+  )
+  if (stoppedForBudget) process.stdout.write('stopped on budget, not on error — re-run with a higher --budget to continue\n')
 }
 
 main().catch(e => {
