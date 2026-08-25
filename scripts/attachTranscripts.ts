@@ -136,7 +136,6 @@ async function main() {
 
     const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [])
     const hasRealName = [...names.values()].some(n => n !== HOST && !n.startsWith('Speaker '))
-    if (hasRealName) named++
 
     const timed = buildLabelledSegments(dg.segments, names)
     const transcript = timed.map(s => s.text).join(' ')
@@ -146,6 +145,7 @@ async function main() {
         `  ${key}: ${timed.length} turns, ${transcript.length} chars, speakers: ${[...names.values()].join(', ')}\n`
       )
       attached++
+      if (hasRealName) named++
       continue
     }
 
@@ -158,13 +158,16 @@ async function main() {
         // Diarized, punctuated, cased, medical-model — a different class from the
         // 'medium' YouTube auto-captions this replaces.
         transcript_quality: 'high',
-        media_duration_sec: dg.duration_seconds ?? null,
+        // Integer column — Deepgram returns fractional seconds (7474.1626),
+        // which Postgres rejects outright rather than truncating.
+        media_duration_sec: dg.duration_seconds != null ? Math.round(dg.duration_seconds) : null,
         processing_status: 'pending',
         processing_error: null,
       })
       .eq('id', row.id)
     if (upErr) { process.stdout.write(`  ${key} FAILED: ${upErr.message}\n`); continue }
     attached++
+    if (hasRealName) named++
   }
 
   process.stdout.write(

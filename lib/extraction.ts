@@ -714,16 +714,31 @@ export async function extractSource(
     // Insert in chunk order, in one call — the rows are keyed by run_id+locator,
     // and the checkpoint has not moved yet, so a retry after a failed insert
     // re-does this batch without duplicating it.
+    // Insert in SLICES, not one request. Each row carries a 1536-float
+    // embedding, so a 16-chunk batch is megabytes in a single call — the serial
+    // version inserted one chunk at a time and never approached that. A 74-min
+    // episode failed here with `TypeError: fetch failed`, which is the transport
+    // giving up on the payload rather than a rejection we could read.
+    // Slicing keeps each request the size the serial path used, while extraction
+    // itself stays concurrent.
     const rows = perChunk.flat()
-    if (rows.length > 0) {
-      const { error: insErr } = await db().from('raw_insights').insert(rows)
+    const INSERT_SLICE = 25
+    for (let i = 0; i < rows.length; i += INSERT_SLICE) {
+      const slice = rows.slice(i, i + INSERT_SLICE)
+      const { error: insErr } = await db().from('raw_insights').insert(slice)
       if (insErr) {
+        // The checkpoint has not moved, so the whole batch is redone on retry.
+        // Rows already inserted from earlier slices are re-inserted with the
+        // same run_id + locator, which is exactly what a fresh-run delete
+        // reconciles — the alternative, advancing past a partial batch, would
+        // lose chunks silently.
         throw new Error(
-          `Failed to insert raw_insights for chunks ${batchStart + 1}-${batchEnd}/${total}: ${insErr.message}`
+          `Failed to insert raw_insights for chunks ${batchStart + 1}-${batchEnd}/${total} ` +
+            `(slice ${i / INSERT_SLICE + 1}): ${insErr.message}`
         )
       }
-      cp.insights_created += rows.length
     }
+    cp.insights_created += rows.length
 
     cp = { ...cp, chunk_index: batchEnd }
     await onProgress(cp, runId)
