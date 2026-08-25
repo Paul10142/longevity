@@ -257,7 +257,7 @@ async function main() {
   const ledgerPath =
     process.env.DEEPGRAM_LEDGER ??
     path.join(fileURLToPath(new URL('..', import.meta.url)), '.deepgram-spend.json')
-  let ledger = await readLedger(ledgerPath)
+  const ledger = await readLedger(ledgerPath)
 
   // RECONCILE AGAINST DISK FIRST. Every transcript that exists was BILLED,
   // whether or not the run that made it survived to record the fact. An aborted

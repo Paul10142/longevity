@@ -172,7 +172,31 @@ export default async function AdminSourcesPage() {
                   <TableBody>
                     {sources.map((source: any) => (
                       <TableRow key={source.id}>
-                        <TableCell className="font-medium">{source.title}</TableCell>
+                        <TableCell className="font-medium">
+                          {/* Link out to the episode itself. Without this the
+                              table named a source with no way to reach it, so
+                              confirming "is this the episode I think it is?"
+                              meant leaving the page. Sources ingested before the
+                              feed have no url, hence the fallback to plain text. */}
+                          {source.url ? (
+                            <a
+                              href={source.url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="hover:underline"
+                            >
+                              {source.title}
+                              <span className="ml-1 text-xs text-muted-foreground">&#8599;</span>
+                            </a>
+                          ) : (
+                            source.title
+                          )}
+                          {source.transcript_origin === 'deepgram' && (
+                            <span className="ml-2 inline-block rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
+                              speakers
+                            </span>
+                          )}
+                        </TableCell>
                         <TableCell className="capitalize">{source.type}</TableCell>
                         <TableCell>
                           {source.authors && source.authors.length > 0
