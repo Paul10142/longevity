@@ -32,6 +32,10 @@ const SERIES = 'FoundMyFitness'
 const HOST = 'Rhonda Patrick'
 /** Below this share of the episode covered by anchors, timing is not trustworthy. */
 const MIN_COVERAGE = 0.8
+/** Pace. The caption API returned 429 at roughly one request per second, so this
+ *  is deliberately unhurried — an unattended run has time, and being throttled
+ *  mid-run corrupts the results rather than merely slowing them. */
+const SLOW_MS = Number(process.env.FMF_DELAY_MS) || 6000
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(f)
@@ -77,16 +81,44 @@ function guestFromTitle(title: string): string[] {
   return name.length > 2 && /^[A-Z]/.test(name) ? [name] : []
 }
 
+/**
+ * The caption API rate-limits (HTTP 429 / Cloudflare 1015) and, when it does,
+ * answers with an HTML error page rather than JSON. Both must be handled, and
+ * NEITHER may be treated as "this episode has no captions": that would record a
+ * throttle as a property of the episode and skip it permanently. A 429 is
+ * retried with growing backoff, and exhausting the retries THROWS so the caller
+ * skips the episode for a reason that names the throttle.
+ */
 async function fetchCaptions(ids: string[]): Promise<TimedCaption[]> {
   const token = process.env.YOUTUBE_TRANSCRIPT_API_TOKEN
   if (!token) throw new Error('YOUTUBE_TRANSCRIPT_API_TOKEN missing')
-  const res = await fetch('https://www.youtube-transcript.io/api/transcripts', {
-    method: 'POST',
-    headers: { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' },
-    body: JSON.stringify({ ids }),
-  })
-  if (!res.ok) throw new Error(`caption fetch failed: HTTP ${res.status}`)
-  const data = await res.json()
+
+  let data: unknown = null
+  for (let attempt = 0; attempt < 5; attempt++) {
+    const res = await fetch('https://www.youtube-transcript.io/api/transcripts', {
+      method: 'POST',
+      headers: { Authorization: `Basic ${token}`, 'Content-Type': 'application/json' },
+      body: JSON.stringify({ ids }),
+    })
+    if (res.status === 429) {
+      const wait = 30_000 * 2 ** attempt
+      process.stdout.write(`    rate limited — waiting ${Math.round(wait / 1000)}s\n`)
+      await sleep(wait)
+      continue
+    }
+    if (!res.ok) throw new Error(`caption fetch failed: HTTP ${res.status}`)
+    const body = await res.text()
+    if (!body.trim().startsWith('[') && !body.trim().startsWith('{')) {
+      // An HTML body is the throttle wearing a different hat.
+      const wait = 30_000 * 2 ** attempt
+      process.stdout.write(`    non-JSON response — waiting ${Math.round(wait / 1000)}s\n`)
+      await sleep(wait)
+      continue
+    }
+    data = JSON.parse(body)
+    break
+  }
+  if (data === null) throw new Error('caption API throttled; giving up on this episode for now')
   // The page links clips as well as the episode; the full episode is simply the
   // longest caption track.
   let best: TimedCaption[] = []
@@ -158,7 +190,7 @@ async function main() {
           `${anchors} anchors, ${Math.round(coverage * 100)}% covered, ${Math.round(durationSec / 60)} min\n`
       )
 
-      if (dryRun) { done++; await sleep(1200); continue }
+      if (dryRun) { done++; await sleep(SLOW_MS); continue }
 
       const { error } = await db.from('sources').insert({
         external_id: key,
@@ -184,7 +216,7 @@ async function main() {
       skipped++
       note(`error: ${(err instanceof Error ? err.message : String(err)).slice(0, 60)}`)
     }
-    await sleep(1200) // someone else's server
+    await sleep(SLOW_MS) // someone else's server, and the caption API throttles
   }
 
   process.stdout.write(`\n${dryRun ? 'would ingest' : 'ingested'} ${done} | skipped ${skipped}\n`)
