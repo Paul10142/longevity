@@ -9,11 +9,19 @@ import { Sheet, SheetContent, SheetTitle, SheetTrigger } from "@/components/ui/s
 import { SearchBar } from "@/components/SearchBar"
 import { cn } from "@/lib/utils"
 
+// What every visitor sees. The site is public and patients may land on it, so
+// this stays a single landing page until the rest is ready to be shown.
 const publicNav = [
-  { name: "Medical Library", href: "/topics" },
-  { name: "Search", href: "/search" },
   { name: "Resources", href: "#resources" },
   { name: "About", href: "#about" },
+] as const
+
+// Shown only to a signed-in admin. These point at the unreleased product; the
+// middleware gates the routes themselves, so this only controls whether the
+// entry points are visible — the two must be released together.
+const previewNav = [
+  { name: "Medical Library", href: "/topics" },
+  { name: "Search", href: "/search" },
 ] as const
 
 // The Admin hover menu. One flat list of the main admin destinations so the
@@ -58,9 +66,11 @@ export function Header() {
     }
   }, [pathname])
 
-  // Topic tree for the Medical Library mega-menu. The unified header renders the
-  // same nav everywhere, so load it on every route (public and admin alike).
+  // Topic tree for the Medical Library mega-menu. Only fetched once an admin
+  // session is confirmed: the menu is hidden from visitors, so requesting the
+  // topic list for them would leak the shape of an unreleased product.
   useEffect(() => {
+    if (!showAdmin) { setPillars([]); return }
     let cancelled = false
     fetch("/api/topics/nav", { cache: "no-store" })
       .then((r) => (r.ok ? r.json() : { pillars: [] }))
@@ -71,7 +81,7 @@ export function Header() {
     return () => {
       cancelled = true
     }
-  }, [])
+  }, [showAdmin])
 
   const handleNavigation = (href: string) => {
     if (href.startsWith("#")) {
@@ -128,7 +138,7 @@ export function Header() {
         {/* Desktop */}
         <div className="hidden md:flex items-center gap-6">
           <nav className="flex items-center gap-6">
-            {publicNav.map((item) =>
+            {[...(showAdmin ? previewNav : []), ...publicNav].map((item) =>
               item.href === "/topics" && pillars.length > 0 ? (
                 <div key={item.name} className="group">
                   <Link href={item.href} className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
@@ -209,33 +219,36 @@ export function Header() {
             )}
           </nav>
 
-          <SearchBar className="w-56" />
+          {/* Search reads the unreleased library, so it is hidden with it. */}
+          {showAdmin && <SearchBar className="w-56" />}
 
-          {/* Admin: always visible as a login entry point. The middleware is the
-              real gate — clicking through sends non-admins to the login screen.
-              Log out only appears once an admin session is present. */}
-          <div className="relative group">
-            <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
-              Admin
-              <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
-              <span className={underlineClass} />
-            </Link>
-            <div
-              className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
-              role="menu"
-            >
-              <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
-                {adminMenu.map((sub) => (
-                  <Link
-                    key={sub.href}
-                    href={sub.href}
-                    className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
-                    role="menuitem"
-                  >
-                    {sub.name}
-                  </Link>
-                ))}
-                {showAdmin && (
+          {/* Signed out this is a plain "Login" link with no menu: a patient
+              should see one unremarkable word, not a dropdown of internal
+              tools. Signed in it becomes the Admin menu. showAdmin defaults to
+              false and is confirmed by a fetch, so the closed state renders
+              first — the safe way round. */}
+          {showAdmin ? (
+            <div className="relative group">
+              <Link href="/admin" className={cn(navLinkClass, "gap-0.5 pr-0.5")}>
+                Admin
+                <ChevronDown className="h-4 w-4 shrink-0 opacity-70" aria-hidden />
+                <span className={underlineClass} />
+              </Link>
+              <div
+                className="absolute right-0 top-full pt-2 opacity-0 invisible group-hover:opacity-100 group-hover:visible group-focus-within:opacity-100 group-focus-within:visible z-50 min-w-[11rem] transition-[opacity,visibility] duration-150"
+                role="menu"
+              >
+                <div className="rounded-md border border-border/60 bg-popover text-popover-foreground shadow-md py-1">
+                  {adminMenu.map((sub) => (
+                    <Link
+                      key={sub.href}
+                      href={sub.href}
+                      className="block px-3 py-2 text-sm text-muted-foreground hover:bg-muted hover:text-foreground"
+                      role="menuitem"
+                    >
+                      {sub.name}
+                    </Link>
+                  ))}
                   <button
                     type="button"
                     onClick={handleLogout}
@@ -244,10 +257,15 @@ export function Header() {
                   >
                     Log out
                   </button>
-                )}
+                </div>
               </div>
             </div>
-          </div>
+          ) : (
+            <Link href="/admin/login" className={navLinkClass}>
+              Login
+              <span className={underlineClass} />
+            </Link>
+          )}
         </div>
 
         {/* Mobile */}
@@ -261,7 +279,7 @@ export function Header() {
             <SheetContent side="right" className="w-[300px] sm:w-[400px] bg-background/95 backdrop-blur-md">
               <SheetTitle className="sr-only">Navigation Menu</SheetTitle>
               <nav className="flex flex-col space-y-6 mt-8">
-                {publicNav.map((item) =>
+                {[...(showAdmin ? previewNav : []), ...publicNav].map((item) =>
                   item.href === "/topics" && pillars.length > 0 ? (
                     <div key={item.name} className="border-b border-border/40 pb-2">
                       <Link
@@ -305,30 +323,34 @@ export function Header() {
                   )
                 )}
 
-                <div className="pb-4 border-b border-border/40">
-                  <SearchBar />
-                </div>
+                {showAdmin && (
+                  <div className="pb-4 border-b border-border/40">
+                    <SearchBar />
+                  </div>
+                )}
 
-                <div>
-                  <Link
-                    href="/admin"
-                    onClick={() => setIsOpen(false)}
-                    className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
-                  >
-                    Admin
-                  </Link>
-                  <div className="flex flex-col">
-                    {adminMenu.map((sub) => (
-                      <Link
-                        key={sub.href}
-                        href={sub.href}
-                        className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
-                        onClick={() => setIsOpen(false)}
-                      >
-                        {sub.name}
-                      </Link>
-                    ))}
-                    {showAdmin && (
+                {/* Mirrors the desktop rule: one plain "Login" link when
+                    signed out, the tool list only once signed in. */}
+                {showAdmin ? (
+                  <div>
+                    <Link
+                      href="/admin"
+                      onClick={() => setIsOpen(false)}
+                      className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                    >
+                      Admin
+                    </Link>
+                    <div className="flex flex-col">
+                      {adminMenu.map((sub) => (
+                        <Link
+                          key={sub.href}
+                          href={sub.href}
+                          className="text-base text-muted-foreground hover:text-primary transition-colors py-1.5 pl-3"
+                          onClick={() => setIsOpen(false)}
+                        >
+                          {sub.name}
+                        </Link>
+                      ))}
                       <button
                         type="button"
                         onClick={() => {
@@ -339,9 +361,17 @@ export function Header() {
                       >
                         Log out
                       </button>
-                    )}
+                    </div>
                   </div>
-                </div>
+                ) : (
+                  <Link
+                    href="/admin/login"
+                    onClick={() => setIsOpen(false)}
+                    className="block text-lg font-medium text-muted-foreground hover:text-primary transition-colors py-2"
+                  >
+                    Login
+                  </Link>
+                )}
               </nav>
             </SheetContent>
           </Sheet>
