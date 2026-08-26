@@ -16,10 +16,6 @@
  * episode (lib/transcriptAlignment.ts). Timing is therefore DERIVED, not
  * measured, and `transcript_origin = 'published'` records that.
  *
- * MOST EPISODES DO NOT QUALIFY, and that is the honest headline. On a 15-episode
- * spread only 3 published a full transcript at all; the rest serve a ~55k-char
- * summary pane that is not dialogue. A full run ingested 8 of 142.
- *
  * An episode is SKIPPED rather than half-ingested when it has no transcript, no
  * linked video, or alignment covers less than most of the episode. A source with
  * plausible but wrong timestamps is worse than an absent one: every claim
@@ -37,15 +33,11 @@ const HOST = 'Rhonda Patrick'
 /** Below this share of the episode covered by anchors, timing is not trustworthy. */
 const MIN_COVERAGE = 0.8
 /**
- * Minimum characters for a pane to BE a transcript.
- *
- * Most episodes do not publish one. Measured on a 15-episode spread: only 3 had
- * a transcript pane (92k-138k chars); the other 12 topped out around 55k, which
- * is the summary/timeline content, not dialogue. Anything under this is not a
- * short transcript, it is a different thing entirely — and treating it as one
- * produced the misleading "no speaker labels" skip reason on 125 episodes.
+ * Minimum characters to count as a transcript. Low, because a genuinely short
+ * episode has a genuinely short transcript — the earlier 80k bar was chosen to
+ * work around a broken parser and would have excluded real ones.
  */
-const MIN_TRANSCRIPT_CHARS = 80_000
+const MIN_TRANSCRIPT_CHARS = 20_000
 /** Pace. The caption API returned 429 at roughly one request per second, so this
  *  is deliberately unhurried — an unattended run has time, and being throttled
  *  mid-run corrupts the results rather than merely slowing them. */
@@ -72,14 +64,35 @@ function decode(s: string): string {
 
 const strip = (s: string) => decode(s.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
 
-/** The transcript is the largest `class="hidden"` pane: the tabs toggle
- *  visibility, so it ships in the delivered HTML. */
-function extractTranscript(html: string): string {
-  return html
-    .split(/<div[^>]*class="[^"]*hidden/)
-    .filter(p => p.length > 20_000)
-    .map(strip)
-    .sort((a, b) => b.length - a.length)[0] ?? ''
+/**
+ * The transcript, located by its SPEAKER LABELS rather than by markup.
+ *
+ * The first version split the HTML on `<div class="…hidden` and took the largest
+ * fragment. That is not parsing — string-splitting a document fragments it at
+ * arbitrary points, and the "largest pane" it produced was 55k characters of
+ * something else entirely. It reported that most episodes publish no transcript;
+ * a browser reading the same page found 228k characters and 379 speaker labels.
+ * The site was fine. The parser was wrong.
+ *
+ * So: strip scripts and tags from the WHOLE page, then take the span from the
+ * first speaker label to the end of the last one. Labels are the one structural
+ * feature a transcript reliably has and the surrounding page does not, and they
+ * survive any redesign of the markup around them.
+ */
+function extractTranscript(html: string, speakers: string[]): string {
+  const body = strip(
+    html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
+  )
+  if (speakers.length === 0) return ''
+  const alt = speakers.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
+  const re = new RegExp(`(?:${alt}):\\s`, 'g')
+  const hits = [...body.matchAll(re)]
+  if (hits.length < 5) return ''
+  const first = hits[0].index ?? 0
+  // End at the last label's turn: everything after it is page footer.
+  const last = hits[hits.length - 1].index ?? body.length
+  const tailEnd = Math.min(body.length, last + 4000)
+  return body.slice(first, tailEnd).trim()
 }
 
 function pageTitle(html: string): string {
@@ -174,15 +187,17 @@ async function main() {
 
     try {
       const html = await (await fetch(ep.url, { headers: { 'User-Agent': UA } })).text()
-      const transcript = extractTranscript(html)
+      // Speakers first: they are how the transcript is found at all.
+      const pageText = strip(html.replace(/<script[\s\S]*?<\/script>/gi, ' '))
+      const speakers = detectSpeakers(pageText, 5)
+      if (speakers.length === 0) { skipped++; note('no speaker labels anywhere on the page'); continue }
+
+      const transcript = extractTranscript(html, speakers)
       if (transcript.length < MIN_TRANSCRIPT_CHARS) {
         skipped++
-        note('no full transcript published for this episode')
+        note(`transcript too short (${Math.round(transcript.length / 1000)}k chars)`)
         continue
       }
-
-      const speakers = detectSpeakers(transcript)
-      if (speakers.length === 0) { skipped++; note('transcript present but unlabelled'); continue }
 
       const ids = [...new Set([...html.matchAll(/(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})/g)].map(m => m[1]))]
       if (ids.length === 0) { skipped++; note('no YouTube video linked'); continue }

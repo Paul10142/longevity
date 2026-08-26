@@ -131,42 +131,79 @@ export function alignTurns(turns: Turn[], captions: TimedCaption[], durationMs?:
 }
 
 /**
+ * Words that end in a colon but are not people.
+ *
+ * Single-name labels ("Rhonda:") are common and must be supported, which makes
+ * this list necessary: without it, section headings and editorial asides become
+ * speakers, and a phantom speaker is not cosmetic — corroboration counts
+ * DISTINCT SPEAKERS, so an invented one manufactures agreement.
+ */
+const NOT_A_NAME = new Set([
+  'warning', 'note', 'notes', 'introduction', 'intro', 'outro', 'summary', 'timeline',
+  'transcript', 'transcription', 'clips', 'glossary', 'update', 'updates', 'correction',
+  'disclaimer', 'references', 'reference', 'episode', 'topics', 'topic', 'chapter',
+  'background', 'conclusion', 'takeaway', 'takeaways', 'example', 'question', 'answer',
+  'source', 'sources', 'study', 'studies', 'results', 'result', 'method', 'methods',
+  'tip', 'tips', 'caution', 'important', 'key', 'bottom line', 'summary of',
+])
+
+/**
+ * Speaker names that appear as inline labels, most frequent first.
+ *
+ * Accepts ONE to THREE capitalised words. Requiring two was a real bug: shows
+ * label turns by first name as often as by full name ("Judith:", "Rhonda:",
+ * "Peter:"), and demanding a surname silently rejected most FoundMyFitness
+ * episodes as unlabelled — 125 of 142 — when they were labelled all along.
+ *
+ * Three guards keep the looser rule honest:
+ *   - the label must recur at least `min` times, so a one-off colon is not a
+ *     speaker;
+ *   - it must not be a known non-name (see NOT_A_NAME);
+ *   - and at least TWO distinct labels must survive, because a transcript with
+ *     exactly one "speaker" is a document with headings, not a dialogue.
+ */
+export function detectSpeakers(text: string, min = 3): string[] {
+  const counts = new Map<string, number>()
+  // Anchored to a sentence boundary or the start, so a mid-sentence phrase
+  // ending in a colon cannot masquerade as a label.
+  for (const m of text.matchAll(/(?:^|[.!?"'\u201d\u2019]\s+|\n\s*)([A-Z][a-zA-Z.'\u2019-]+(?:\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}):\s/g)) {
+    const n = m[1].trim()
+    if (NOT_A_NAME.has(n.toLowerCase())) continue
+    counts.set(n, (counts.get(n) ?? 0) + 1)
+  }
+  const found = [...counts.entries()]
+    .filter(([, n]) => n >= min)
+    .sort((a, b) => b[1] - a[1])
+    .map(([n]) => n)
+  return found.length >= 2 ? found : []
+}
+
+/**
  * Split a published transcript into turns on inline `Name:` labels.
  *
- * Labels are matched only when they look like a person's name — up to three
- * capitalised words. A looser rule swallows ordinary mid-sentence colons
- * ("The result: nothing") and would silently invent a speaker.
+ * Only the names in `knownSpeakers` start a turn. That is deliberate: with
+ * single-name labels allowed, a permissive rule would split on any capitalised
+ * word before a colon and shatter the transcript into fragments attributed to
+ * nobody.
  */
-export function splitTurns(text: string, knownSpeakers: string[] = []): Turn[] {
-  const known = new Set(knownSpeakers.map(s => s.toLowerCase()))
-  const re = /([A-Z][a-z]+(?:\s+[A-Z][a-z]+){0,2}):\s/g
+export function splitTurns(text: string, knownSpeakers: string[]): Turn[] {
+  if (knownSpeakers.length === 0) return [{ speaker: null, text }]
+  const alt = knownSpeakers
+    .slice()
+    .sort((a, b) => b.length - a.length) // longest first: "Rhonda Patrick" before "Rhonda"
+    .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
+    .join('|')
+  const re = new RegExp(`(${alt}):\\s`, 'g')
   const turns: Turn[] = []
   let cursor = 0
   let speaker: string | null = null
   for (const m of text.matchAll(re)) {
-    const name = m[1].trim()
-    // When the speaker list is known, trust only those names; a stray
-    // capitalised phrase followed by a colon is not a turn.
-    if (known.size > 0 && !known.has(name.toLowerCase())) continue
     const body = text.slice(cursor, m.index).trim()
     if (body) turns.push({ speaker, text: body })
-    speaker = name
+    speaker = m[1].trim()
     cursor = (m.index ?? 0) + m[0].length
   }
   const tail = text.slice(cursor).trim()
   if (tail) turns.push({ speaker, text: tail })
   return turns.filter(t => t.text.length > 0)
-}
-
-/** Speaker names that appear as inline labels, most frequent first. */
-export function detectSpeakers(text: string, min = 3): string[] {
-  const counts = new Map<string, number>()
-  for (const m of text.matchAll(/([A-Z][a-z]+(?:\s+[A-Z][a-z]+){1,2}):\s/g)) {
-    const n = m[1].trim()
-    counts.set(n, (counts.get(n) ?? 0) + 1)
-  }
-  return [...counts.entries()]
-    .filter(([, n]) => n >= min)
-    .sort((a, b) => b[1] - a[1])
-    .map(([n]) => n)
 }
