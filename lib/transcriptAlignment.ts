@@ -138,6 +138,27 @@ export function alignTurns(turns: Turn[], captions: TimedCaption[], durationMs?:
  * speakers, and a phantom speaker is not cosmetic — corroboration counts
  * DISTINCT SPEAKERS, so an invented one manufactures agreement.
  */
+/** Abbreviations that legitimately end a name-token with a period. Anything
+ *  else ending in '.' before the name is the tail of the previous sentence. */
+const HONORIFICS = new Set(['dr.', 'mr.', 'mrs.', 'ms.', 'prof.', 'sr.', 'jr.', 'st.'])
+
+/**
+ * Strip a leading sentence-end that the label regex swallowed.
+ *
+ * "So. Rhonda:" is not a person called "So. Rhonda" — it is the end of one
+ * sentence followed by a speaker label, and left alone it becomes a THIRD
+ * speaker on a two-person episode. That matters beyond tidiness: corroboration
+ * counts distinct speakers, so a phantom manufactures agreement that never
+ * happened. "Dr. Patrick" must survive, hence the honorific list.
+ */
+function trimSentenceLead(name: string): string {
+  const parts = name.split(/\s+/)
+  while (parts.length > 1 && parts[0].endsWith('.') && !HONORIFICS.has(parts[0].toLowerCase())) {
+    parts.shift()
+  }
+  return parts.join(' ')
+}
+
 const NOT_A_NAME = new Set([
   'warning', 'note', 'notes', 'introduction', 'intro', 'outro', 'summary', 'timeline',
   'transcript', 'transcription', 'clips', 'glossary', 'update', 'updates', 'correction',
@@ -167,8 +188,11 @@ export function detectSpeakers(text: string, min = 3): string[] {
   // Anchored to a sentence boundary or the start, so a mid-sentence phrase
   // ending in a colon cannot masquerade as a label.
   for (const m of text.matchAll(/(?:^|[.!?"'\u201d\u2019]\s+|\n\s*)([A-Z][a-zA-Z.'\u2019-]+(?:\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}):\s/g)) {
-    const n = m[1].trim()
-    if (NOT_A_NAME.has(n.toLowerCase())) continue
+    const n = trimSentenceLead(m[1].trim())
+    if (!n || NOT_A_NAME.has(n.toLowerCase())) continue
+    // A bare token ending in '.' that survived the trim is an abbreviation on
+    // its own, not a name.
+    if (!n.includes(' ') && n.endsWith('.')) continue
     counts.set(n, (counts.get(n) ?? 0) + 1)
   }
   const found = [...counts.entries()]
