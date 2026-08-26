@@ -128,6 +128,26 @@ function claudeCodeText(
         resolve(stdout)
       }
     )
+    // The prompt goes in on stdin, and the child can be GONE before that write
+    // lands — a usage-limit exit, a crash, a kill. Writing to a dead child's
+    // stdin emits an 'error' EVENT on the socket, not a thrown exception, so
+    // nothing in the async chain can catch it and Node treats an unhandled
+    // 'error' as fatal. That is how one dying CLI child took down a whole
+    // unattended 9-hour extraction run with `write EPIPE` (2026-08-26).
+    //
+    // Handling it here turns a process-killing event into an ordinary rejection,
+    // which the caller already knows how to retry. EPIPE specifically is not
+    // worth reporting on its own: the execFile callback above will reject with
+    // the child's real exit reason a moment later, and that is the useful
+    // message. Any other stdin error is surfaced.
+    child.stdin?.on('error', (err: NodeJS.ErrnoException) => {
+      if (err.code === 'EPIPE') return
+      reject(new Error(`claude CLI stdin failed (${cliAlias(model)}): ${err.code ?? err.message}`))
+    })
+    // Likewise a spawn failure (binary missing, fork limit) arrives as an event.
+    child.on('error', (err: NodeJS.ErrnoException) => {
+      reject(new Error(`claude CLI could not run (${cliAlias(model)}): ${err.code ?? err.message}`))
+    })
     child.stdin?.end(user)
   })
 }
