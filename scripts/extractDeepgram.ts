@@ -3,16 +3,19 @@
  *
  *   npx tsx --env-file=.env.local scripts/extractDeepgram.ts [--hours N] [--batch N]
  *
+ * Covers both good transcript origins: 'deepgram' (ours, diarised) and
+ * 'published' (the show's own, publisher-labelled).
+ *
  * Why not `overnightExtract.ts`: that one queues every pending source with no
- * insights, which today would sweep in the 142 sources still carrying YouTube
+ * insights, which today would sweep in the sources still carrying YouTube
  * auto-captions. Those are the ones we have decided to re-transcribe, so
  * extracting them now produces claims that must be thrown away — and worse,
  * they are OLDER than the Deepgram rows, and `claim_next_job()` is FIFO within a
  * tier, so they would run FIRST and starve the good work indefinitely. Four such
  * jobs had already been queued and were dequeued by hand on 2026-08-24.
  *
- * So the filter is the whole point: `transcript_origin = 'deepgram'`. Never
- * relax it to "pending" alone.
+ * So the origin filter is the whole point. Widen it only to another origin that
+ * carries real speaker attribution — never relax it to "pending" alone.
  *
  * Deliberately deferred, matching overnightExtract: tagging, article regen, and
  * the reference pass. All reversible later passes.
@@ -55,12 +58,16 @@ async function main() {
     return new Set(rows.map(r => r.source_id))
   }
 
-  async function pendingDeepgram(extracted: Set<string>): Promise<string[]> {
+  async function pendingGoodTranscripts(extracted: Set<string>): Promise<string[]> {
     const rows = await selectAllPaged<{ id: string }>((from, to) =>
       db
         .from('sources')
         .select('id')
-        .eq('transcript_origin', 'deepgram') // THE filter — see the header
+        // THE filter — see the header. Both values mean "a transcript with real
+        // speaker attribution": 'deepgram' is ours (diarised), 'published' is
+        // the show's own (publisher-labelled). What is excluded is 'other',
+        // i.e. YouTube auto-captions, which is the whole point.
+        .in('transcript_origin', ['deepgram', 'published'])
         .eq('processing_status', 'pending')
         .order('date', { ascending: false }) // newest first, as asked
         .range(from, to)
@@ -96,7 +103,7 @@ async function main() {
       if (healed) console.log(`[${now()}] healed ${healed} failed job(s)`)
 
       const extracted = await extractedIds()
-      const remaining = await pendingDeepgram(extracted)
+      const remaining = await pendingGoodTranscripts(extracted)
 
       // Back-pressure: if the last round healed failures and completed nothing,
       // the CLI is probably in a usage-limit window. Drain what exists rather
@@ -110,11 +117,11 @@ async function main() {
 
       const open = await openJobs()
       console.log(
-        `[${now()}] round ${round}: ${remaining.length} deepgram source(s) left, ` +
+        `[${now()}] round ${round}: ${remaining.length} source(s) left, ` +
           `${fresh.length} enqueued, ${open} open job(s)`
       )
       if (open === 0 && fresh.length === 0) {
-        console.log(`[${now()}] no remaining deepgram work — done.`)
+        console.log(`[${now()}] no remaining work — done.`)
         break
       }
 
