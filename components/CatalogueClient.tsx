@@ -25,6 +25,8 @@ export type CatalogueRow = {
   episode_number: number | null
   date: string | null
   url: string | null
+  youtube_url: string | null
+  article_url: string | null
   processing_status: string | null
   transcript_origin: string | null
   word_count: number
@@ -178,13 +180,18 @@ export function CatalogueClient({ rows }: { rows: CatalogueRow[] }) {
                     <td className="px-3 py-2 whitespace-nowrap">
                       <div className="flex gap-2">
                         {r.url && (
-                          <a
-                            href={r.url}
-                            target="_blank"
-                            rel="noopener noreferrer"
-                            className="text-primary hover:underline"
-                          >
-                            Episode&nbsp;&#8599;
+                          <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            Episode
+                          </a>
+                        )}
+                        {r.youtube_url && (
+                          <a href={r.youtube_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            Video
+                          </a>
+                        )}
+                        {r.article_url && (
+                          <a href={r.article_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
+                            Notes
                           </a>
                         )}
                         {r.insights_count > 0 && (

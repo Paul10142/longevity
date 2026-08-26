@@ -50,6 +50,8 @@ export default async function AdminCataloguePage() {
       episode_number: number | null
       date: string | null
       url: string | null
+      youtube_url: string | null
+      article_url: string | null
       processing_status: string | null
       transcript_origin: string | null
       word_count: number | null
@@ -61,6 +63,8 @@ export default async function AdminCataloguePage() {
       episode_number: r.episode_number,
       date: r.date,
       url: r.url,
+      youtube_url: r.youtube_url,
+      article_url: r.article_url,
       processing_status: r.processing_status,
       transcript_origin: r.transcript_origin,
       word_count: Number(r.word_count ?? 0),
