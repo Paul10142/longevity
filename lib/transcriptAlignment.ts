@@ -185,9 +185,16 @@ const NOT_A_NAME = new Set([
  */
 export function detectSpeakers(text: string, min = 3): string[] {
   const counts = new Map<string, number>()
-  // Anchored to a sentence boundary or the start, so a mid-sentence phrase
-  // ending in a colon cannot masquerade as a label.
-  for (const m of text.matchAll(/(?:^|[.!?"'\u201d\u2019]\s+|\n\s*)([A-Z][a-zA-Z.'\u2019-]+(?:\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}):\s/g)) {
+  // Match a capitalised run before a colon ANYWHERE, then clean it up.
+  //
+  // An earlier version required the label to follow sentence punctuation. That
+  // looked safer and was strictly worse: stripped page text runs together, so a
+  // label sitting directly after other content — which is most of them — was
+  // rejected, and 113 of 142 episodes read as unlabelled while plainly carrying
+  // "Judith:" 24 times. The guards below (sentence-lead trim, NOT_A_NAME, a
+  // minimum count, and requiring two distinct speakers) do the filtering that
+  // the anchor was pretending to do.
+  for (const m of text.matchAll(/([A-Z][a-zA-Z.'\u2019-]+(?:\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}):\s/g)) {
     const n = trimSentenceLead(m[1].trim())
     if (!n || NOT_A_NAME.has(n.toLowerCase())) continue
     // A bare token ending in '.' that survived the trim is an abbreviation on
