@@ -27,6 +27,7 @@ const previewNav = [
 // The Admin hover menu. One flat list of the main admin destinations so the
 // header stays identical on public and admin pages.
 const adminMenu = [
+  { name: "Catalogue", href: "/admin/catalogue" },
   { name: "Sources", href: "/admin/sources" },
   { name: "Topics", href: "/admin/topics" },
   { name: "Merge Reviews", href: "/admin/reviews" },
