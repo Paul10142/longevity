@@ -101,8 +101,21 @@ your Claude subscription through the local `claude` CLI instead of API credits.
 
 - **Supabase client:** `lib/supabaseClient.ts` — client-side, publishable key,
   respects RLS. Never import the server client into a client component.
+  Currently imported by nothing: the whole app runs server-side.
 - **Supabase server:** `lib/supabaseServer.ts` — server-side, secret key,
   bypasses RLS.
+- **Database security posture:** this database has no public surface. Every
+  table has RLS enabled with **zero policies**, and `anon` / `authenticated`
+  hold no privilege on any table, sequence or function — so the publishable
+  key can read nothing. The Supabase advisor's `rls_enabled_no_policy` INFO
+  notices are therefore expected and correct, not a backlog.
+  Migration 027 also revoked Supabase's default `ALTER DEFAULT PRIVILEGES`
+  grants to `anon`/`authenticated` in `public`, so a **new table is closed by
+  default** even if its migration forgets `enable row level security`. That
+  default is what let `topic_proposals` (007) and `fidelity_labels` (021) sit
+  world-readable and world-writable until 2026-09-15. Still add
+  `alter table … enable row level security` to every new table — the revoked
+  defaults are the safety net, not the rule.
 - **Model providers:** every generative call goes through `lib/llm.ts`; never
   call a provider SDK directly from a pipeline stage. `lib/embeddings.ts` is
   the only module that imports the `openai` package — Anthropic ships no
