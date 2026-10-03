@@ -3,6 +3,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 // Committed eval data, bundled at build time (resolveJsonModule).
 import pairsJson from "@/eval/extraction-eval-pairs.json"
 import runJson from "@/eval/extraction-run.json"
+import { pendingRechecks } from "@/lib/fidelity"
 
 export const dynamic = "force-dynamic"
 
@@ -25,6 +26,8 @@ const VALID_LABELS = ["FAITHFUL", "ADDED_DETAIL", "DROPPED_QUALIFIER", "UNRESOLV
  *        `evalExtraction.ts score` reads (judge verdict fills unlabeled pairs,
  *        marked unconfirmed — same convention as the old static worksheet).
  * POST → { pair_id, label } upserts a ruling; { pair_id, label: null } clears it.
+ *        Re-posting the SAME label is how a re-check is confirmed: it bumps
+ *        updated_at past JUDGE_COMPARED_AT (lib/fidelity.ts).
  */
 export async function GET(request: NextRequest) {
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 })
@@ -32,10 +35,16 @@ export async function GET(request: NextRequest) {
   const pairs = pairsJson as Pair[]
   const runById = new Map((runJson as Run[]).map(r => [r.id, r]))
 
-  type LabelRow = { pair_id: string; label: string; labeled_by: string; rationale: string | null }
+  type LabelRow = {
+    pair_id: string
+    label: string
+    labeled_by: string
+    rationale: string | null
+    updated_at: string | null
+  }
   const { data: labelRows, error } = await supabaseAdmin
     .from("fidelity_labels")
-    .select("pair_id, label, labeled_by, rationale")
+    .select("pair_id, label, labeled_by, rationale, updated_at")
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   const labelById = new Map(((labelRows ?? []) as LabelRow[]).map(l => [l.pair_id, l]))
 
@@ -54,6 +63,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(goldset)
   }
 
+  const recheck = pendingRechecks(
+    (labelRows ?? []) as LabelRow[],
+    new Map([...runById].map(([id, r]) => [id, r.verdict]))
+  )
+
   const items = pairs.map((p, i) => {
     const judge = runById.get(p.id)
     const human = labelById.get(p.id)
@@ -70,6 +84,7 @@ export async function GET(request: NextRequest) {
       judge_offending: judge?.offending ?? "",
       judge_reasoning: judge?.reasoning ?? "",
       label: human?.label ?? null,
+      needs_recheck: recheck.has(p.id),
     }
   })
   return NextResponse.json({ items })
