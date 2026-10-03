@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import fidelityPairs from "@/eval/extraction-eval-pairs.json"
+import judgeRun from "@/eval/extraction-run.json"
+import { pendingRechecks, type FidelityLabel } from "@/lib/fidelity"
 
 // Counts are live — never serve a cached to-do list.
 export const dynamic = "force-dynamic"
@@ -78,7 +80,7 @@ async function loadDashboard() {
     topicProposals,
     openFlags,
     unreviewedTopics,
-    fidelityLabeled,
+    fidelityLabels,
     pendingSources,
     untaggedClaims,
     activeClaims,
@@ -91,7 +93,15 @@ async function loadDashboard() {
     countOf("topics", q =>
       q.select("id", { count: "exact", head: true }).eq("status", "active").eq("reviewed_by_human", false)
     ),
-    countOf("fidelity_labels", q => q.select("pair_id", { count: "exact", head: true })),
+    // Rows, not a count: the tile also needs which rulings disagree with the judge.
+    (async (): Promise<FidelityLabel[] | null> => {
+      const { data, error } = await db.from("fidelity_labels").select("pair_id, label, updated_at")
+      if (error) {
+        console.error("[admin dashboard] fidelity_labels read failed:", error)
+        return null
+      }
+      return (data ?? []) as FidelityLabel[]
+    })(),
     countOf("sources", q => q.select("id", { count: "exact", head: true }).eq("processing_status", "pending")),
     countOf("claims", q =>
       q.select("id", { count: "exact", head: true }).eq("status", "active").eq("needs_tagging", true)
@@ -100,6 +110,16 @@ async function loadDashboard() {
     countOf("jobs", q => q.select("id", { count: "exact", head: true }).in("status", ["queued", "running"])),
     db.rpc("database_size_bytes"),
   ])
+
+  // Labelling every pair is not the end of the worksheet: rulings that disagree
+  // with the AI judge need a second look before it can be certified. Counting
+  // only unlabelled pairs hid those 9 re-checks under "All labeled" for weeks.
+  const fidelityUnlabeled =
+    fidelityLabels === null ? null : Math.max(0, fidelityPairs.length - fidelityLabels.length)
+  const fidelityRechecks =
+    fidelityLabels === null
+      ? null
+      : pendingRechecks(fidelityLabels, new Map(judgeRun.map(r => [r.id, r.verdict]))).size
 
   const decisions: Decision[] = [
     {
@@ -133,9 +153,12 @@ async function loadDashboard() {
     {
       name: "Fidelity Labels",
       href: "/admin/fidelity",
-      // Unlabeled pairs remaining; unknown label count keeps this unknown too.
-      count: fidelityLabeled === null ? null : Math.max(0, fidelityPairs.length - fidelityLabeled),
-      description: "Rule whether extracted insights faithfully reflect the transcript. Certifies the AI accuracy judge.",
+      // Unlabelled pairs plus disagreements awaiting a re-check; unknown stays unknown.
+      count: fidelityUnlabeled === null || fidelityRechecks === null ? null : fidelityUnlabeled + fidelityRechecks,
+      description:
+        fidelityUnlabeled === 0 && (fidelityRechecks ?? 0) > 0
+          ? "Facts where your ruling and the AI judge disagree. Look again, then keep or change your ruling. Certifies the AI accuracy judge."
+          : "Rule whether extracted insights faithfully reflect the transcript. Certifies the AI accuracy judge.",
       emptyLabel: "All labeled",
     },
   ]

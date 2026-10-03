@@ -17,6 +17,8 @@ type Item = {
   judge_offending: string
   judge_reasoning: string
   label: string | null
+  /** Paul and the judge disagree and he has not looked again since they were compared. */
+  needs_recheck: boolean
 }
 
 const VERDICTS = [
@@ -47,13 +49,13 @@ export function FidelityWorksheetClient() {
   }, [])
 
   const labeled = useMemo(() => (items ?? []).filter(i => i.label).length, [items])
+  const rechecks = useMemo(() => (items ?? []).filter(i => i.needs_recheck).length, [items])
 
-  async function setLabel(item: Item, label: string) {
+  async function save(item: Item, next: string | null) {
     if (saving.current.has(item.id)) return
-    const next = item.label === label ? null : label // click again to clear
     saving.current.add(item.id)
-    // Optimistic; revert on failure.
-    setItems(prev => prev!.map(i => (i.id === item.id ? { ...i, label: next } : i)))
+    // Optimistic; revert on failure. Any save is a fresh look, so it settles a re-check.
+    setItems(prev => prev!.map(i => (i.id === item.id ? { ...i, label: next, needs_recheck: false } : i)))
     try {
       const res = await fetch("/api/admin/fidelity", {
         method: "POST",
@@ -62,15 +64,20 @@ export function FidelityWorksheetClient() {
       })
       if (!res.ok) throw new Error(`HTTP ${res.status}`)
     } catch {
-      setItems(prev => prev!.map(i => (i.id === item.id ? { ...i, label: item.label } : i)))
+      setItems(prev =>
+        prev!.map(i => (i.id === item.id ? { ...i, label: item.label, needs_recheck: item.needs_recheck } : i))
+      )
       setError("A label failed to save — check your connection and click it again.")
     } finally {
       saving.current.delete(item.id)
     }
   }
 
-  function jumpToUnlabeled() {
-    const first = (items ?? []).find(i => !i.label)
+  // Click a selected label again to clear it.
+  const setLabel = (item: Item, label: string) => save(item, item.label === label ? null : label)
+
+  function jumpTo(pred: (i: Item) => boolean) {
+    const first = (items ?? []).find(pred)
     if (!first) return
     document.getElementById(`pair-${first.n}`)?.scrollIntoView({ behavior: "smooth", block: "start" })
   }
@@ -87,9 +94,14 @@ export function FidelityWorksheetClient() {
         <div className="h-1.5 w-40 rounded-full bg-muted overflow-hidden">
           <div className="h-full bg-foreground/70 rounded-full" style={{ width: `${(100 * labeled) / items.length}%` }} />
         </div>
-        <Button size="sm" variant="outline" onClick={jumpToUnlabeled} disabled={labeled === items.length}>
+        <Button size="sm" variant="outline" onClick={() => jumpTo(i => !i.label)} disabled={labeled === items.length}>
           Next unlabeled
         </Button>
+        {rechecks > 0 && (
+          <Button size="sm" onClick={() => jumpTo(i => i.needs_recheck)}>
+            Next re-check ({rechecks} left)
+          </Button>
+        )}
         <label className="text-xs text-muted-foreground flex items-center gap-1.5 cursor-pointer">
           <input type="checkbox" checked={showJudge} onChange={e => setShowJudge(e.target.checked)} />
           reveal the AI judge&apos;s take (label first — your ruling should be independent)
@@ -101,8 +113,25 @@ export function FidelityWorksheetClient() {
       </div>
 
       {items.map(item => (
-        <Card key={item.id} id={`pair-${item.n}`} className={item.label ? "opacity-80" : ""}>
+        <Card
+          key={item.id}
+          id={`pair-${item.n}`}
+          className={item.needs_recheck ? "border-amber-500" : item.label ? "opacity-80" : ""}
+        >
           <CardContent className="pt-5 space-y-3">
+            {item.needs_recheck && (
+              <div className="text-xs rounded-md bg-amber-500/10 border border-amber-500/40 p-3 space-y-2">
+                <p>
+                  <span className="font-semibold">Re-check:</span> you ruled{" "}
+                  <strong>{item.label?.replaceAll("_", " ")}</strong>, the AI judge ruled{" "}
+                  <strong>{item.judge_verdict.replaceAll("_", " ")}</strong>. Read its reasoning below, then keep
+                  your ruling or pick a different one.
+                </p>
+                <Button size="sm" variant="outline" onClick={() => save(item, item.label)}>
+                  Keep my ruling
+                </Button>
+              </div>
+            )}
             <div className="text-xs text-muted-foreground">
               #{item.n} · {item.source}
               {!item.quote_verified && (
@@ -137,7 +166,7 @@ export function FidelityWorksheetClient() {
               ))}
             </div>
 
-            {showJudge && (
+            {(showJudge || item.needs_recheck) && (
               <div className="text-xs rounded-md bg-muted/50 p-3 space-y-1">
                 <div>
                   <span className="font-semibold">Judge:</span> {item.judge_verdict}
