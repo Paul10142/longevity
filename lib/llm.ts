@@ -118,6 +118,9 @@ function claudeCodeText(
           const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
           const detail =
             (stderr && stderr.trim().slice(0, 300)) ||
+            // An expired login prints its reason to STDOUT and exits 1, so
+            // without this every failure read as a bare "exit 1" (2026-10-03).
+            (stdout && stdout.trim().slice(0, 300)) ||
             (e.killed ? 'timed out' : '') ||
             (e.signal ? `signal ${e.signal}` : '') ||
             (e.code != null ? `exit ${e.code}` : '') ||

@@ -39,6 +39,9 @@ async function main() {
   const want = num('--n', 14)
   const lo = num('--lo', 0.75)
   const hi = num('--hi', 0.8)
+  // --full prints both statements and the reasoning, for checking SAME verdicts
+  // by eye before acting on them; the default stays the one-line summary.
+  const full = args.includes('--full')
 
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
@@ -103,6 +106,7 @@ async function main() {
       process.stdout.write(
         `${String(i + 1).padStart(3)}  sim ${p.sim.toFixed(3)}  ${v.verdict.padEnd(8)} conf ${v.confidence.toFixed(2)}  ${p.a.slice(0, 58)}\n`
       )
+      if (full) process.stdout.write(`     A: ${p.a}\n     B: ${p.b}\n     why: ${v.reasoning}\n\n`)
     } catch (err) {
       // A transport failure is a MISSING measurement, not a DISTINCT verdict —
       // counting it either way would bias the answer this script exists to give.
