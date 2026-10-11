@@ -41,10 +41,13 @@ async function main() {
   const batch = num(args, '--batch') ?? 3
   const deadline = Date.now() + hours * 3_600_000
 
+  const { startRunLog } = await import('../lib/runLog')
+  startRunLog('extractDeepgram')
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
+  const { formatCliStats } = await import('../lib/llm')
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -131,7 +134,7 @@ async function main() {
         processed += p
         if (p === 0 || Date.now() >= deadline) break
       }
-      console.log(`[${now()}] round ${round}: drained ${processed} job(s)`)
+      console.log(`[${now()}] round ${round}: drained ${processed} job(s); ${formatCliStats()}`)
 
       if (processed === 0) {
         idleStreak++
@@ -158,7 +161,7 @@ async function main() {
     db.from('raw_insights').select('*', { count: 'exact', head: true }),
     db.from('claims').select('*', { count: 'exact', head: true }).eq('status', 'active'),
   ])
-  console.log(`\n[${now()}] STOP — ${insights} raw insights, ${claims} active claims.`)
+  console.log(`\n[${now()}] STOP — ${insights} raw insights, ${claims} active claims. ${formatCliStats()}`)
 }
 
 main().catch(e => {

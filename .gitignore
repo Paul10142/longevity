@@ -60,3 +60,6 @@ eval/article-sentence-baseline.json
 
 # Deepgram spend ledger (local billing state, not source)
 .deepgram-spend.json
+
+# Unattended-run logs (lib/runLog.ts) — local evidence, not source
+scratchpad/runs/

@@ -19,7 +19,38 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
+import { existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+
+/**
+ * Per-process CLI call statistics. The 2026-08-27/28 run crawled for 16 hours
+ * and left no record of whether the CLI was failing, slow, or rate-limited —
+ * the jobs table keeps only the last error. The supervisors print these every
+ * round so the next stall is diagnosable from the log.
+ */
+export const cliStats = { calls: 0, failures: 0, wallMs: 0, lastError: '', lastErrorAt: '' }
+
+export function formatCliStats(): string {
+  const { calls, failures, wallMs, lastError, lastErrorAt } = cliStats
+  const mean = calls ? (wallMs / calls / 1000).toFixed(1) : '0.0'
+  const tail = failures ? ` — last failure ${lastErrorAt}: ${lastError.slice(0, 120)}` : ''
+  return `cli: ${calls} call(s), ${failures} failed, mean ${mean}s${tail}`
+}
+
+/**
+ * An MCP config that names no servers. Passed with --strict-mcp-config so the
+ * spawned CLI connects to nothing, whatever the user's own ~/.claude.json lists.
+ */
+let emptyMcpConfigPath: string | null = null
+function emptyMcpConfig(): string {
+  if (!emptyMcpConfigPath) {
+    const p = join(tmpdir(), 'lifestyle-academy-empty-mcp.json')
+    if (!existsSync(p)) writeFileSync(p, '{"mcpServers":{}}')
+    emptyMcpConfigPath = p
+  }
+  return emptyMcpConfigPath
+}
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
 export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-4-8'
@@ -97,18 +128,55 @@ function claudeCodeText(
   model: string,
   effort?: Effort
 ): Promise<string> {
+  // The CLI must bill the claude.ai login, never the API key. `.env.local`
+  // carries ANTHROPIC_API_KEY for the `api` backend, and a spawned CLI that sees
+  // it switches to API-key auth ("takes precedence over your claude.ai login").
+  // Measured 2026-10-11: with the key in the child's env every call died with
+  // "Credit balance is too low"; the identical call without it succeeded on the
+  // subscription. The nested-session markers are dropped for the same reason a
+  // pipeline launched from inside a Claude Code session must still spawn.
+  const env: NodeJS.ProcessEnv = { ...process.env }
+  delete env.ANTHROPIC_API_KEY
+  delete env.ANTHROPIC_AUTH_TOKEN
+  delete env.CLAUDECODE
+  delete env.CLAUDE_CODE_ENTRYPOINT
+
   return new Promise((resolve, reject) => {
+    const startedAt = Date.now()
+    cliStats.calls++
     const child = execFile(
       'claude',
       [
         '-p',
         '--model', cliAlias(model),
         ...(effort ? ['--effort', effort] : []),
+        // A BARE session, on purpose. Without these four flags every call loads
+        // the developer's whole Claude Code setup: every MCP server, every
+        // session-start hook (which make network calls), every plugin, every
+        // built-in tool definition, and the user-level instructions. Measured
+        // 2026-10-11 on the production dedup prompt with five candidates:
+        //
+        //   default           52,000 context tokens   8.6 s wall / 5.3 s API
+        //   no MCP/settings   17,000                  3.0 s / 2.1 s
+        //   + no tools         4,000                  3.3 s / 2.2 s   (same verdict)
+        //
+        // The prompt itself is ~1,100 tokens. The overhead was charged against the
+        // subscription's usage windows on all ~45,000 adjudications to date, which
+        // is the real reason overnight runs kept stalling on usage limits.
+        '--strict-mcp-config', '--mcp-config', emptyMcpConfig(),
+        '--setting-sources', '',
+        '--tools', '',
+        // Print-mode calls were also persisting a session transcript each:
+        // 17,725 files / 1.6 GB under ~/.claude/projects for the tmpdir cwd.
+        '--no-session-persistence',
         '--append-system-prompt', system,
       ],
-      { maxBuffer: 64 * 1024 * 1024, timeout: 600_000, cwd: tmpdir() },
+      { maxBuffer: 64 * 1024 * 1024, timeout: 600_000, cwd: tmpdir(), env },
       (err, stdout, stderr) => {
+        cliStats.wallMs += Date.now() - startedAt
         if (err) {
+          cliStats.failures++
+          cliStats.lastErrorAt = new Date().toISOString()
           // NEVER surface err.message: execFile sets it to
           //   `Command failed: claude -p --model opus --append-system-prompt <ENTIRE SYSTEM PROMPT>`
           // — the full argv, i.e. our whole system prompt. That leaked into
@@ -116,8 +184,17 @@ function claudeCodeText(
           // card (2026-07-25). Build a short, argv-free reason from the fields
           // that actually describe the failure (stderr / timeout / signal / code).
           const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
+          // The CLI prints advisory lines on stderr that are not the failure
+          // (e.g. the "claude.ai connectors are disabled because ANTHROPIC_API_KEY
+          // …" notice). Keep only stderr lines that are not such notices, so the
+          // reason that actually ended the call — usually on stdout — survives.
+          const stderrSignal = (stderr ?? '')
+            .split('\n')
+            .filter(l => l.trim() && !/^⚠/.test(l.trim()))
+            .join(' ')
+            .trim()
           const detail =
-            (stderr && stderr.trim().slice(0, 300)) ||
+            (stderrSignal && stderrSignal.slice(0, 300)) ||
             // An expired login prints its reason to STDOUT and exits 1, so
             // without this every failure read as a bare "exit 1" (2026-10-03).
             (stdout && stdout.trim().slice(0, 300)) ||
@@ -125,6 +202,7 @@ function claudeCodeText(
             (e.signal ? `signal ${e.signal}` : '') ||
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
+          cliStats.lastError = detail
           reject(new Error(`claude CLI failed (${cliAlias(model)}): ${detail}`))
           return
         }

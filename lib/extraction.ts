@@ -433,6 +433,11 @@ export type ExtractCheckpoint = {
   chunk_index: number      // next chunk to process
   total_chunks: number
   insights_created: number
+  // Chunks of the CURRENT batch (chunk_index .. chunk_index+concurrency) whose
+  // insights are already written. A batch that fails part-way persists this so
+  // the retry redoes only the chunks that failed, not the whole batch. Cleared
+  // when the batch completes and chunk_index advances.
+  done_chunks?: number[]
   // Participant line for speaker attribution, computed once per source (an LLM
   // read of the transcript intro when metadata lists no guest) and carried in
   // the checkpoint so resumed ticks don't re-pay the inference call.
@@ -636,7 +641,9 @@ export async function extractSource(
     total_chunks: total,
     insights_created: checkpoint?.insights_created ?? 0,
     participants,
+    done_chunks: checkpoint?.done_chunks ?? [],
   }
+  const INSERT_SLICE = 25
 
   // Chunks are independent, so they run CONCURRENTLY in batches instead of one
   // at a time. Measured 2026-08-24 on live chunks: serial ~58.5 s/chunk; 8-way
@@ -664,22 +671,57 @@ export async function extractSource(
     const indices: number[] = []
     for (let i = batchStart; i < batchEnd; i++) indices.push(i)
 
-    // One failure rejects the whole batch: extractFromChunk throws only after
-    // its own retries, and a thrown chunk is a MISSING MEASUREMENT, never an
-    // empty one. Failing here leaves the checkpoint where it was so the queue
-    // retries the batch — the same contract the serial loop had.
-    const perChunk = await Promise.all(
-      indices.map(async idx => {
+    // Chunks of this batch already written by a previous attempt. Until
+    // 2026-10-11 a batch was all-or-nothing: one chunk whose CLI call failed
+    // after its retries threw away the other fifteen chunks' finished work and
+    // the retry redid all sixteen. Under an intermittent CLI (a usage-limit
+    // window) that collapses progress super-linearly — the 2026-08-28 run
+    // managed 32 chunks in 16 hours. Now every chunk that lands is written and
+    // recorded at once; a failed batch persists `done_chunks` and the retry
+    // redoes only what is missing. `chunk_index` still advances only when the
+    // whole batch is in, so the out-of-order-completion hazard is unchanged.
+    const done = new Set(cp.done_chunks ?? [])
+    const todo = indices.filter(i => !done.has(i))
+
+    const insertChunk = async (idx: number, rows: Record<string, unknown>[]) => {
+      const locator = `seg-${String(idx + 1).padStart(3, '0')}`
+      // Idempotent: a retried chunk whose earlier insert half-landed would
+      // otherwise duplicate its rows (there is no unique key on run_id+locator).
+      // This run's rows for the chunk have no members yet — consolidation only
+      // starts after extraction completes — so clearing them is safe.
+      const { error: delErr } = await db().from('raw_insights').delete().eq('run_id', runId).eq('locator', locator)
+      if (delErr) throw new Error(`Failed to clear chunk ${idx + 1}/${total} before insert: ${delErr.message}`)
+      // Sliced: each row carries a 1536-float embedding, and a multi-megabyte
+      // request dies with `TypeError: fetch failed` (a 74-min episode, 2026-08-24).
+      for (let i = 0; i < rows.length; i += INSERT_SLICE) {
+        const { error: insErr } = await db().from('raw_insights').insert(rows.slice(i, i + INSERT_SLICE))
+        if (insErr) {
+          throw new Error(
+            `Failed to insert raw_insights for chunk ${idx + 1}/${total} (slice ${i / INSERT_SLICE + 1}): ${insErr.message}`
+          )
+        }
+      }
+    }
+
+    // allSettled, not all: with `all`, the first rejection returned while the
+    // other chunks' CLI processes were still running, and their late results
+    // were lost (or, worse, written after the job had already been failed).
+    const settled = await Promise.allSettled(
+      todo.map(async idx => {
         const label = `${idx + 1}/${total}`
         const content = chunkTexts[idx]
         const locator = `seg-${String(idx + 1).padStart(3, '0')}`
 
         const extracted = await extractFromChunk(content, label, participants)
-        if (extracted.length === 0) return []
+        if (extracted.length === 0) {
+          // A genuinely empty chunk (an ad break, a sign-off) is a real result;
+          // nothing to write, but the chunk is done.
+          return { idx, inserted: 0 }
+        }
 
         const embeddings = await generateEmbeddingsBatch(extracted.map(insightEmbeddingText))
         const timing = chunkTimings[idx]
-        return extracted.map((ins, i) => {
+        const rows = extracted.map((ins, i) => {
           const quote = resolveQuote(content, ins.direct_quote)
           return {
             source_id: sourceId,
@@ -708,39 +750,33 @@ export async function extractSource(
             extraction_model: EXTRACTION_MODEL,
           }
         })
+        await insertChunk(idx, rows)
+        return { idx, inserted: rows.length }
       })
     )
 
-    // Insert in chunk order, in one call — the rows are keyed by run_id+locator,
-    // and the checkpoint has not moved yet, so a retry after a failed insert
-    // re-does this batch without duplicating it.
-    // Insert in SLICES, not one request. Each row carries a 1536-float
-    // embedding, so a 16-chunk batch is megabytes in a single call — the serial
-    // version inserted one chunk at a time and never approached that. A 74-min
-    // episode failed here with `TypeError: fetch failed`, which is the transport
-    // giving up on the payload rather than a rejection we could read.
-    // Slicing keeps each request the size the serial path used, while extraction
-    // itself stays concurrent.
-    const rows = perChunk.flat()
-    const INSERT_SLICE = 25
-    for (let i = 0; i < rows.length; i += INSERT_SLICE) {
-      const slice = rows.slice(i, i + INSERT_SLICE)
-      const { error: insErr } = await db().from('raw_insights').insert(slice)
-      if (insErr) {
-        // The checkpoint has not moved, so the whole batch is redone on retry.
-        // Rows already inserted from earlier slices are re-inserted with the
-        // same run_id + locator, which is exactly what a fresh-run delete
-        // reconciles — the alternative, advancing past a partial batch, would
-        // lose chunks silently.
-        throw new Error(
-          `Failed to insert raw_insights for chunks ${batchStart + 1}-${batchEnd}/${total} ` +
-            `(slice ${i / INSERT_SLICE + 1}): ${insErr.message}`
-        )
+    // Record every chunk that landed BEFORE deciding about failures, so a retry
+    // after a partial batch redoes only the missing chunks. A thrown chunk is
+    // still a MISSING MEASUREMENT, never an empty one: the batch as a whole
+    // fails, the checkpoint keeps chunk_index where it was, and the queue
+    // retries with its backoff — now with done_chunks carrying the progress.
+    let failure: unknown = null
+    for (const s of settled) {
+      if (s.status === 'fulfilled') {
+        done.add(s.value.idx)
+        cp.insights_created += s.value.inserted
+      } else if (failure === null) {
+        failure = s.reason
       }
     }
-    cp.insights_created += rows.length
+    cp = { ...cp, done_chunks: [...done].sort((a, b) => a - b) }
+    if (failure !== null) {
+      // Persist the partial batch, then fail the job as before.
+      await onProgress(cp, runId)
+      throw failure instanceof Error ? failure : new Error(String(failure))
+    }
 
-    cp = { ...cp, chunk_index: batchEnd }
+    cp = { ...cp, chunk_index: batchEnd, done_chunks: [] }
     await onProgress(cp, runId)
   }
 

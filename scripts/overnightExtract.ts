@@ -49,10 +49,13 @@ async function main() {
   const maxMb = num(args, '--max-mb') ?? 6000
   const deadline = Date.now() + hours * 3_600_000
 
+  const { startRunLog } = await import('../lib/runLog')
+  startRunLog('overnightExtract')
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
+  const { formatCliStats } = await import('../lib/llm')
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -154,7 +157,7 @@ async function main() {
       if (p === 0) break
       if (Date.now() >= deadline) break
     }
-    console.log(`[${now()}] round ${round}: drained ${processed} job(s)`)
+    console.log(`[${now()}] round ${round}: drained ${processed} job(s); ${formatCliStats()}`)
 
     if (processed === 0) {
       idleStreak++
@@ -181,7 +184,7 @@ async function main() {
     db.from('raw_insights').select('*', { count: 'exact', head: true }),
     extractedSourceIds(),
   ])
-  console.log(`\n[${now()}] STOP — ${enqueuedTotal} source(s) enqueued this run; ${extractedNow.size} sources now have insights; ${insights} raw insights; ${claims} active claims.`)
+  console.log(`\n[${now()}] STOP — ${enqueuedTotal} source(s) enqueued this run; ${extractedNow.size} sources now have insights; ${insights} raw insights; ${claims} active claims. ${formatCliStats()}`)
 }
 
 function num(args: string[], flag: string): number | undefined {
