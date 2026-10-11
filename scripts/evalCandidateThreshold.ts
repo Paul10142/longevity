@@ -56,20 +56,26 @@ async function main() {
 
   for (let tries = 0; tries < 120 && pairs.length < want; tries++) {
     const offset = Math.floor(Math.random() * Math.max(1, total - 1))
+    // The vector lives in the side table (migration 029), embedded one-to-one.
     const { data: rows } = await db
       .from('claims')
-      .select('id, canonical_statement, embedding')
+      .select('id, canonical_statement, claim_embeddings(embedding)')
       .eq('status', 'active')
-      .not('embedding', 'is', null)
       .range(offset, offset)
-    const src = rows?.[0]
+    const src = rows?.[0] as { id: string; canonical_statement: string; claim_embeddings: unknown } | undefined
     if (!src) continue
+    const rel = src.claim_embeddings
+    const embedding = Array.isArray(rel)
+      ? (rel[0] as { embedding?: unknown } | undefined)?.embedding ?? null
+      : (rel as { embedding?: unknown } | null)?.embedding ?? null
+    if (!embedding) continue
 
-    const { data: hits } = await db.rpc('match_claims', {
-      query_embedding: src.embedding,
+    const { data: hits, error: hitErr } = await db.rpc('match_claims', {
+      query_embedding: embedding,
       match_threshold: lo,
       match_count: 3,
     })
+    if (hitErr) throw new Error(`match_claims failed: ${hitErr.message}`)
     const top = (hits ?? []).find((h: { id: string }) => h.id !== src.id) as
       | { id: string; canonical_statement: string; similarity: number }
       | undefined

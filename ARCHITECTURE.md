@@ -250,7 +250,15 @@ which `app/api/worker/tick/route.ts` already assumes):
 
 ### Consolidation thresholds
 
-- ANN similarity floor for candidates: **0.80** (below → automatic new claim).
+- ANN similarity floor for candidates: **0.75** (below → automatic new claim), the
+  same floor for the claim sweep, 8 candidates shown to the judge. Lowered from
+  0.80 / 0.86 / 5 on 2026-10-11 after three measurements (see
+  `docs/plan-review-2026-10-11.md` §5): 27% of claims had their nearest neighbour
+  in 0.75–0.80; on nine episodes held twice only 50% of the repeats merged, with
+  42% of the misses in that band; the judge called 26 of 31 pairs from it SAME.
+  Recall on known repeats is tracked by `scripts/evalTwinRecall.ts`. Claim
+  vectors live in `claim_embeddings` (half precision, migration 029), not on the
+  claim row, and are refreshed when enrich rewrites the canonical.
 - Adjudicator (**Opus 4.8**, `CLAUDE_JUDGMENT_MODEL` — `lib/consolidation.ts`;
   the earlier "gpt-5-mini" note was stale) verdict SAME with confidence ≥ **0.85**
   → auto-attach.

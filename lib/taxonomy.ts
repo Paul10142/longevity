@@ -46,7 +46,13 @@ export function slugify(name: string): string {
   return name.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '').slice(0, 60)
 }
 
-type ClaimForTagging = { id: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
+// `claim_embeddings` is the one-to-one side table (migration 029); PostgREST
+// returns it as an object, some client versions as a one-element array.
+type ClaimForTagging = { id: string; canonical_statement: string; context_note: string | null; claim_embeddings?: unknown }
+function embeddingOf(rel: unknown): unknown {
+  if (Array.isArray(rel)) return (rel[0] as { embedding?: unknown } | undefined)?.embedding ?? null
+  return (rel as { embedding?: unknown } | null)?.embedding ?? null
+}
 
 type TopicRow = { id: string; name: string; slug: string; parent_id: string | null; is_spine?: boolean }
 
@@ -296,7 +302,7 @@ export async function tagClaims(
     // Next batch of untagged active claims.
     const { data: batch, error } = await db()
       .from('claims')
-      .select('id, canonical_statement, context_note, embedding')
+      .select('id, canonical_statement, context_note, claim_embeddings(embedding)')
       .eq('status', 'active')
       .eq('needs_tagging', true)
       .order('created_at', { ascending: true })
@@ -308,9 +314,10 @@ export async function tagClaims(
     // Existing-topic hints per claim via ANN.
     const candidatesByClaim = new Map<number, string[]>()
     for (let i = 0; i < claims.length; i++) {
-      if (!claims[i].embedding) continue
+      const embedding = embeddingOf(claims[i].claim_embeddings)
+      if (!embedding) continue
       const { data: cands } = await db().rpc('match_topics', {
-        query_embedding: claims[i].embedding,
+        query_embedding: embedding,
         match_threshold: TOPIC_MATCH_THRESHOLD,
         match_count: CANDIDATES_PER_CLAIM,
       })

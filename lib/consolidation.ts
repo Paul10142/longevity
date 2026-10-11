@@ -22,6 +22,7 @@ import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 import { selectAllPaged } from './pagination'
+import { generateEmbedding, insightEmbeddingText } from './embeddings'
 
 // Judgment tier: deciding whether two claims are the same is the call that
 // determines whether the library deduplicates correctly.
@@ -29,13 +30,23 @@ const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 
 // Similarity floor for ANN candidates (cosine). Below this, no LLM call — so an
 // insight whose nearest claim sits under the floor becomes a singleton with no
-// dedup check at all. This is the dominant gate on the ~7% dedup rate: on the
+// dedup check at all. This is the dominant gate on the dedup rate: on the
 // 2026-07-25 corpus only 138 of 1,792 claims had a neighbour ≥0.80, while 498 sat
-// in 0.75–0.80 (gated out) and 309 more in 0.72–0.75. Env-tunable so a
-// re-consolidation experiment can lower it (e.g. 0.75) without a code edit;
-// default 0.80 keeps current behaviour until deliberately changed.
-const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.8)
-const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
+// in 0.75–0.80 (gated out) and 309 more in 0.72–0.75.
+//
+// 0.80 → 0.75 on 2026-10-11, on three measurements (docs/plan-review-2026-10-11.md
+// §5): 27% of active claims have their nearest neighbour in 0.75–0.80; on nine
+// episodes the corpus holds twice (captions, then Deepgram) only 50% of the
+// second copy's facts merged, and 42% of the misses sit in that band; and the
+// production adjudicator, shown 31 pairs from the band, called 26 SAME (84%),
+// flat across it. The 2026-08-14 "do not lower the floor" note rested on pairs
+// at 0.82–0.87 and a 0.86 sweep — a different band. Recall is now tracked by
+// scripts/evalTwinRecall.ts. Still env-tunable for experiments.
+const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.75)
+// 5 → 8 (2026-10-11): on a lower floor the shortlist fills with near-topic
+// neighbours, and the twin-episode misses included 28 pairs ABOVE 0.80 that a
+// five-deep list had pushed out. The judge sees the extra rows at trivial cost.
+const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 8)
 // Verdict confidence needed to auto-merge without human review.
 //
 // Lowered 0.85 → 0.80 (Paul, 2026-08-16) as the direct consequence of turning
@@ -52,10 +63,21 @@ const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 5)
 // richer canonicals. Below ~0.80 the verdicts are genuinely uncertain (0.60–0.78)
 // and still go to review, which is where human attention belongs.
 export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.8)
-// Claim-vs-claim floor for the periodic sweep — stricter than ingestion by
-// default, since these are already-canonical claims. Env-tunable for the same
-// re-consolidation experiment (lower it to catch the parked near-duplicates).
-const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.86)
+// Claim-vs-claim floor for the periodic sweep. Was 0.86 — "stricter than
+// ingestion, since these are already-canonical claims" — which defeated the
+// sweep's purpose: it exists to catch the duplicates ingestion could not see
+// (a later source seeding its own claim for an idea an earlier one already
+// held), and those pairs sit exactly where ingestion's gate sits, not above it.
+// At 0.86 nothing is left to find: the 2026-08-15 full sweep produced 14 merges
+// in 11,502 claims. Same floor as ingestion from 2026-10-11.
+const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.75)
+
+/** PostgREST returns a one-to-one embed as an object; some client versions wrap it
+ *  in a one-element array. Either way, hand back the vector or null. */
+function embeddingOf(rel: unknown): unknown {
+  if (Array.isArray(rel)) return (rel[0] as { embedding?: unknown } | undefined)?.embedding ?? null
+  return (rel as { embedding?: unknown } | null)?.embedding ?? null
+}
 
 /** Read a float from env, falling back to `def` on unset/blank/NaN. */
 function envNum(name: string, def: number): number {
@@ -199,7 +221,6 @@ async function createClaimFromRaw(raw: RawInsight): Promise<string> {
       primary_audience: raw.primary_audience,
       insight_type: raw.insight_type,
       qualifiers: raw.qualifiers,
-      embedding: raw.embedding,
       member_count: 1,
       source_count: 1,
       needs_tagging: true,
@@ -207,6 +228,20 @@ async function createClaimFromRaw(raw: RawInsight): Promise<string> {
     .select('id')
     .single()
   if (error || !claim) throw new Error(`Failed to create claim: ${error?.message}`)
+
+  // The vector lives in claim_embeddings (migration 029), not on the claim row,
+  // so its index entry is written once here and never rewritten by the
+  // aggregate / enrich updates that follow on every attach. A claim without a
+  // vector is invisible to match_claims forever, so a failed write must not
+  // leave the half-made claim behind: it has no members or links yet, so
+  // removing it and failing the insight (which the job retries) is the clean path.
+  const { error: embErr } = await db()
+    .from('claim_embeddings')
+    .insert({ claim_id: claim.id, embedding: raw.embedding })
+  if (embErr) {
+    await db().from('claims').delete().eq('id', claim.id)
+    throw new Error(`Failed to store claim embedding: ${embErr.message}`)
+  }
 
   const { error: memErr } = await db().from('claim_members').insert({
     claim_id: claim.id,
@@ -300,7 +335,7 @@ async function stampEnrichmentDecided(claimId: string): Promise<void> {
 export async function enrichClaimCanonical(claimId: string): Promise<EnrichResult> {
   const { data: claim, error: claimErr } = await db()
     .from('claims')
-    .select('canonical_statement')
+    .select('canonical_statement, context_note')
     .eq('id', claimId)
     .single()
   if (claimErr || !claim) throw new Error(`enrich: failed to load claim ${claimId}: ${claimErr?.message}`)
@@ -339,6 +374,19 @@ export async function enrichClaimCanonical(claimId: string): Promise<EnrichResul
     : { enriched_at: enrichedAt }
   const { error: updErr } = await db().from('claims').update(patch).eq('id', claimId)
   if (updErr) throw new Error(`enrich: failed to update claim ${claimId}: ${updErr.message}`)
+
+  if (result.changed) {
+    // The vector must follow the text it indexes. Until 2026-10-11 a claim kept
+    // its FIRST member's vector for life, so a claim that had absorbed six
+    // members was still found — or missed — by the wording of the first one.
+    const vector = await generateEmbedding(
+      insightEmbeddingText({ statement: result.canonical, context_note: claim.context_note })
+    )
+    const { error: embErr } = await db()
+      .from('claim_embeddings')
+      .upsert({ claim_id: claimId, embedding: vector, updated_at: new Date().toISOString() }, { onConflict: 'claim_id' })
+    if (embErr) throw new Error(`enrich: failed to refresh the embedding of ${claimId}: ${embErr.message}`)
+  }
 
   return result
 }
@@ -529,12 +577,13 @@ export async function sweepClaims(
   // corpus passes that quickly. Ordered by (created_at, id) — id breaks ties so
   // batch-inserted claims sharing a created_at can't be skipped or repeated by
   // the keyset resume below.
-  type SweepClaim = { id: string; created_at: string; canonical_statement: string; context_note: string | null; embedding: number[] | null }
+  type SweepClaim = { id: string; created_at: string; canonical_statement: string; context_note: string | null; claim_embeddings: unknown }
   const claims = await selectAllPaged<SweepClaim>(
     (from, to) => {
       let q = db()
         .from('claims')
-        .select('id, created_at, canonical_statement, context_note, embedding')
+        // The vector comes from the side table (migration 029), embedded one-to-one.
+        .select('id, created_at, canonical_statement, context_note, claim_embeddings(embedding)')
         .eq('status', 'active')
       // Resume strictly after the cursor: created_at > ts OR (created_at = ts AND id > id).
       // Timestamp is double-quoted because it contains a space and a `+` offset.
@@ -568,13 +617,17 @@ export async function sweepClaims(
     processed++
     lastTs = claim.created_at
     lastId = claim.id
-    if (merged.has(claim.id) || !claim.embedding) continue
+    const embedding = embeddingOf(claim.claim_embeddings)
+    if (merged.has(claim.id) || !embedding) continue
 
-    const { data: candData } = await db().rpc('match_claims', {
-      query_embedding: claim.embedding,
+    const { data: candData, error: candErr } = await db().rpc('match_claims', {
+      query_embedding: embedding,
       match_threshold: SWEEP_THRESHOLD,
       match_count: CANDIDATE_COUNT + 1,
     })
+    // Same rule as consolidateSource: a failed search must not read as "no
+    // peers" — that silently skipped the claim and moved the cursor past it.
+    if (candErr) throw new Error(`match_claims failed for claim ${claim.id}: ${candErr.message}`)
     // Exclude self and already-merged peers.
     const peers = ((candData ?? []) as Candidate[]).filter(c => c.id !== claim.id && !merged.has(c.id))
     if (peers.length === 0) continue
@@ -694,11 +747,18 @@ export async function consolidateSource(
       continue
     }
 
-    const { data: candData } = await db().rpc('match_claims', {
+    const { data: candData, error: candErr } = await db().rpc('match_claims', {
       query_embedding: raw.embedding,
       match_threshold: CANDIDATE_THRESHOLD,
       match_count: CANDIDATE_COUNT,
     })
+    // A failed search is a MISSING measurement, never "no candidates". Until
+    // 2026-10-11 the error was discarded, so a timed-out or dropped search made
+    // the insight a brand-new claim with no duplicate check at all — silently,
+    // and the job reported success. match_claims has run up to 7.9 s against an
+    // 8 s statement timeout (pg_stat_statements), so this was a live path. Throw:
+    // the job fails, backs off, and resumes from this same insight.
+    if (candErr) throw new Error(`match_claims failed for insight ${raw.id}: ${candErr.message}`)
     const candidates = (candData ?? []) as Candidate[]
 
     if (candidates.length === 0) {
