@@ -1,0 +1,214 @@
+<title>Lifestyle Academy Plan Review</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Newsreader:opsz,wght@6..72,500;6..72,600&family=Public+Sans:wght@400;500;600&display=swap">
+<style>
+  /* Layout: one reading column (≈66ch) with a summary first, evidence tables, then five decision cards. */
+  :root {
+    --bg: #f7f8fa;
+    --surface: #ffffff;
+    --fg: #16202b;
+    --muted: #5b6673;
+    --line: #d9dee5;
+    --accent: #1f6f78;      /* deep teal: the engine */
+    --accent-soft: #e3f0f1;
+    --decide: #9a5b00;      /* amber: Paul's decisions */
+    --decide-soft: #fbf1df;
+    --warn: #8a2f2f;
+    --warn-soft: #f8e6e6;
+    --display: "Newsreader", Georgia, "Times New Roman", serif;
+    --body: "Public Sans", -apple-system, "Segoe UI", Helvetica, Arial, sans-serif;
+    --mono: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0f1419; --surface: #171d24; --fg: #e6eaef; --muted: #9aa5b1; --line: #2a333d;
+      --accent: #6cc4cc; --accent-soft: #15353a; --decide: #e3a84a; --decide-soft: #3a2a10;
+      --warn: #e08585; --warn-soft: #3d1f1f; color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0f1419; --surface: #171d24; --fg: #e6eaef; --muted: #9aa5b1; --line: #2a333d;
+    --accent: #6cc4cc; --accent-soft: #15353a; --decide: #e3a84a; --decide-soft: #3a2a10;
+    --warn: #e08585; --warn-soft: #3d1f1f; color-scheme: dark;
+  }
+  body { background: var(--bg); color: var(--fg); font-family: var(--body); font-size: 16px; line-height: 1.55; }
+  .wrap { max-width: 44rem; margin: 0 auto; padding-inline: 20px; padding-block: 28px 56px; }
+  header h1 { font-family: var(--display); font-weight: 600; font-size: clamp(1.9rem, 5vw, 2.6rem); line-height: 1.1; margin: 0 0 8px; text-wrap: balance; }
+  .eyebrow { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: var(--muted); font-weight: 600; margin-bottom: 10px; }
+  .lede { font-size: 1.08rem; color: var(--fg); margin: 0 0 18px; max-width: 62ch; }
+  h2 { font-family: var(--display); font-weight: 600; font-size: 1.55rem; line-height: 1.15; margin: 40px 0 10px; text-wrap: balance; }
+  h3 { font-size: 1rem; font-weight: 600; margin: 22px 0 6px; }
+  p { margin: 0 0 12px; max-width: 66ch; }
+  ul, ol { padding-left: 1.2rem; margin: 0 0 12px; max-width: 66ch; }
+  li { margin-bottom: 6px; }
+  strong { font-weight: 600; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 10px; margin: 18px 0 8px; }
+  .kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+  .kpi .n { font-family: var(--display); font-size: 1.7rem; font-weight: 600; line-height: 1; font-variant-numeric: tabular-nums; }
+  .kpi .l { font-size: 0.8rem; color: var(--muted); margin-top: 6px; }
+  .verdict { display: grid; gap: 10px; margin: 14px 0 18px; }
+  .finding { border-left: 3px solid var(--accent); padding: 8px 14px; background: var(--accent-soft); border-radius: 0 6px 6px 0; }
+  .finding.bad { border-left-color: var(--warn); background: var(--warn-soft); }
+  .finding b { display: block; font-weight: 600; margin-bottom: 2px; }
+  .tablewrap { overflow-x: auto; margin: 10px 0 16px; border: 1px solid var(--line); border-radius: 6px; background: var(--surface); }
+  table { border-collapse: collapse; width: 100%; min-width: 440px; font-size: 0.92rem; }
+  th, td { text-align: left; padding: 8px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  th { font-size: 0.78rem; letter-spacing: 0.04em; text-transform: uppercase; color: var(--muted); font-weight: 600; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; white-space: nowrap; }
+  .note { font-size: 0.88rem; color: var(--muted); }
+  .phases { display: grid; gap: 10px; margin: 12px 0 16px; }
+  .phase { background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 12px 14px; min-width: 0; }
+  .phase .tag { font-family: var(--mono); font-size: 0.78rem; color: var(--accent); font-weight: 600; }
+  .phase h3 { margin: 4px 0 6px; }
+  .decisions { display: grid; gap: 12px; margin: 12px 0 20px; }
+  .decision { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--decide); border-radius: 6px; padding: 14px 16px; min-width: 0; }
+  .decision h3 { margin: 0 0 6px; font-size: 1.02rem; }
+  .decision .rec { display: inline-block; font-size: 0.78rem; font-weight: 600; letter-spacing: 0.03em; text-transform: uppercase; color: var(--decide); background: var(--decide-soft); padding: 3px 8px; border-radius: 4px; margin-top: 6px; }
+  code { font-family: var(--mono); font-size: 0.86em; background: var(--accent-soft); padding: 1px 5px; border-radius: 3px; }
+  footer { margin-top: 36px; padding-top: 14px; border-top: 1px solid var(--line); font-size: 0.85rem; color: var(--muted); }
+  a { color: var(--accent); }
+  a:focus-visible, .decision:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { scroll-behavior: auto !important; } }
+</style>
+
+<div class="wrap">
+  <header>
+    <div class="eyebrow">Lifestyle Academy · Medical Library · 11 October 2026</div>
+    <h1>Is the engine designed properly? Mostly. Three things are not.</h1>
+    <p class="lede">Everything here was re-measured today against the live database, the code, and the AI command-line tool. Nothing was changed and nothing was run except read-only checks.</p>
+  </header>
+
+  <div class="kpis">
+    <div class="kpi"><div class="n">567</div><div class="l">sources, 199 extracted</div></div>
+    <div class="kpi"><div class="n">31,574</div><div class="l">active claims, 89% single-source</div></div>
+    <div class="kpi"><div class="n">50%</div><div class="l">of known duplicates caught</div></div>
+    <div class="kpi"><div class="n">13×</div><div class="l">context overhead per AI call</div></div>
+    <div class="kpi"><div class="n">0</div><div class="l">new-style articles produced</div></div>
+    <div class="kpi"><div class="n">44 days</div><div class="l">since anything ran</div></div>
+  </div>
+
+  <h2>The short answer</h2>
+  <div class="verdict">
+    <div class="finding bad"><b>1. The duplicate check misses about half of real duplicates.</b> Nine episodes are in the library twice (YouTube captions, then a Deepgram transcript). Only 50% of the second copy's facts merged into the first. 42% of the misses sit just under the 0.80 similarity gate, in a band the engine never looks at.</div>
+    <div class="finding bad"><b>2. Every AI call carries 13× the context it needs.</b> Each call runs as a full Claude Code session with hooks, plugins and tool definitions. One dedup judgement: 52,000 tokens and 8.6 s. Stripped down: 4,000 tokens and 3.3 s, same verdict. This is what kept hitting the subscription's usage limits overnight.</div>
+    <div class="finding bad"><b>3. The plan ingests everything before producing a single new-style article.</b> The physician reference and protocols, the reason the engine exists, have never been generated by the engine the plan is built around.</div>
+    <div class="finding"><b>The August "database timeout" was not the database.</b> The database never recorded a pipeline statement over 8 seconds. The run was starved by the AI-call path; the two timeouts at the end were the last symptom.</div>
+  </div>
+  <p><strong>Recommendation in one sentence:</strong> fix the call path and the vector storage this week (small, no spend), reorder the plan so the caption redo comes before any re-sweep and before the review push, pull the new synthesis forward onto the 92 clean sources, and decide whether to fund the API for the bulk work (about $60–370 all-in) or keep the laptop as the only engine.</p>
+
+  <h2>Where things stand</h2>
+  <div class="tablewrap"><table>
+    <tr><th>What</th><th>Today</th></tr>
+    <tr><td>Sources</td><td>567; 199 extracted (102 YouTube-caption, 75 Deepgram, 17 FoundMyFitness, 5 manual)</td></tr>
+    <tr><td>Facts extracted</td><td>36,375; 55% of them from caption transcripts</td></tr>
+    <tr><td>Claims</td><td>31,574 active; 53% caption-only, 4% mixed, 42% good-transcript-only</td></tr>
+    <tr><td>Speaker named</td><td>captions 30%, Deepgram 73%, FoundMyFitness 79%</td></tr>
+    <tr><td>Merge reviews waiting</td><td>213; 117 involve a claim the caption redo would retire</td></tr>
+    <tr><td>Claims not yet filed into topics</td><td>29,841 (filing paused since 4 Aug)</td></tr>
+    <tr><td>Database</td><td>958 MB on the smallest tier (1 GB memory); vector index alone 251 MB</td></tr>
+    <tr><td>Last activity</td><td>28 Aug 13:56. Code type-checks, 95/95 tests pass, the CLI is signed in.</td></tr>
+  </table></div>
+
+  <h2>What actually stopped the August run</h2>
+  <p>Two errors were recorded on 28 August, both the app's own 30-second give-up plus one dropped connection. A real database timeout reads differently and none was recorded. The database has run without restart since 30 July. Its statement statistics show slow tails, not failures:</p>
+  <div class="tablewrap"><table>
+    <tr><th>Statement</th><th class="num">Calls</th><th class="num">Typical</th><th class="num">Worst</th></tr>
+    <tr><td>Similarity search for duplicates</td><td class="num">44,897</td><td class="num">0.17 s</td><td class="num">7.9 s</td></tr>
+    <tr><td>Insert a claim</td><td class="num">28,002</td><td class="num">0.13 s</td><td class="num">5.4 s</td></tr>
+    <tr><td>Rewrite a claim after a merge</td><td class="num">2,918</td><td class="num">0.33 s</td><td class="num">2.5 s</td></tr>
+    <tr><td>Recount every claim before an extraction</td><td class="num">511</td><td class="num">1.2 s</td><td class="num">7.8 s</td></tr>
+  </table></div>
+  <p>The slow tails come from size: the vector index and the vectors themselves (about 800 MB) no longer fit in a 224 MB cache, and every merge rewrites the index entry for a vector that did not change. That grows with the corpus and must be fixed before the big ingestion, but it is not what produced two claims an hour.</p>
+  <p>The throughput tells the real story. On 27 August consolidation ran at 8–56 facts per minute all day. From 21:00 it fell to 13, 11, 15, 4, 2, 1, 2 claims <em>per hour</em>, then nothing from 04:00 to 10:00. Extraction created zero facts for 13 hours and restarted one source from scratch three times. Only the AI-call path can produce that shape. The run's log was not kept, so the exact failure that night is unrecorded.</p>
+  <p>Two code behaviours made it worse: a failed similarity search is silently treated as "no duplicates", so the fact becomes a new claim unchecked; and extraction runs 16 chunks as one all-or-nothing batch, so one failed call throws away fifteen good ones.</p>
+
+  <h2>Each AI call carries 13× the context it needs</h2>
+  <p>Measured today with the real dedup prompt and five candidate claims:</p>
+  <div class="tablewrap"><table>
+    <tr><th>How the CLI is called</th><th class="num">Context tokens</th><th class="num">Wall / API time</th><th class="num">Cost-equivalent</th><th>Verdict</th></tr>
+    <tr><td>As the pipeline does today</td><td class="num">52,000</td><td class="num">8.6 s / 5.3 s</td><td class="num">$0.34</td><td>same, enrich</td></tr>
+    <tr><td>Without plugins, hooks, settings</td><td class="num">17,000</td><td class="num">3.0 s / 2.1 s</td><td class="num">$0.06</td><td>same, enrich</td></tr>
+    <tr><td>Also without built-in tools</td><td class="num">4,000</td><td class="num">3.3 s / 2.2 s</td><td class="num">$0.03</td><td>same, enrich</td></tr>
+  </table></div>
+  <p>The prompt the call needs is about 1,100 tokens. Across the ~45,000 dedup calls made so far that is on the order of 2 billion tokens of overhead charged against subscription usage windows. The fix is four flags on the command the pipeline runs.</p>
+
+  <h2>How much the duplicate check misses</h2>
+  <h3>Nearest neighbours, 200 random claims</h3>
+  <div class="tablewrap"><table>
+    <tr><th>Closest other claim</th><th class="num">Claims</th><th>Examined by the engine?</th></tr>
+    <tr><td>Similarity 0.80 or above</td><td class="num">9 (4.5%)</td><td>yes; 6 carry a "near-duplicate" link</td></tr>
+    <tr><td>0.75 to 0.80</td><td class="num">54 (27%)</td><td>never</td></tr>
+    <tr><td>0.70 to 0.75</td><td class="num">64 (32%)</td><td>never</td></tr>
+    <tr><td>Below 0.70</td><td class="num">73 (36%)</td><td>never</td></tr>
+  </table></div>
+
+  <h3>Twin episodes: the same episode, two transcripts</h3>
+  <p>Nine episodes were extracted twice, first from captions and later from Deepgram. The second copy's facts should mostly merge into the first.</p>
+  <div class="tablewrap"><table>
+    <tr><th>Deepgram facts on the 9 twins</th><th class="num">Count</th></tr>
+    <tr><td>Merged with the caption copy</td><td class="num">782 of 1,569 (50%)</td></tr>
+    <tr><td>Not merged, best match 0.80 or above</td><td class="num">28</td></tr>
+    <tr><td>Not merged, best match 0.75 to 0.80</td><td class="num">327 (42% of misses)</td></tr>
+    <tr><td>Not merged, best match 0.70 to 0.75</td><td class="num">196</td></tr>
+    <tr><td>Not merged, best match below 0.70</td><td class="num">236</td></tr>
+  </table></div>
+  <p class="note">Two transcripts of one episode do not yield identical facts, so 100% is not the ceiling. A gate at 0.75 would have put 327 more known duplicates in front of the judge.</p>
+
+  <h3>Asking the judge about the excluded band</h3>
+  <p id="eval">Today the production judge was shown 31 pairs from the 0.75–0.80 band (read-only; nothing merged). <strong>26 of 31 (84%) are the same fact</strong>, 5 are different, none unsure, and the result is flat across the band (15 of 17 at 0.750–0.775, 11 of 14 at 0.775–0.800). The five "different" verdicts read correctly; one is a 10-year versus 5-year colonoscopy interval, a contradiction to surface rather than merge. With 27% of claims sitting in this band, roughly a fifth of the library is un-merged duplicates kept apart by the gate alone. This reverses August's "do not lower the threshold", which rested on pairs at 0.82–0.87 and a sweep at 0.86, a different band.</p>
+
+  <h3>What to change</h3>
+  <ul>
+    <li>Gate at 0.75 for ingestion <em>and</em> for the corpus sweep. The sweep runs at 0.86 today, stricter than ingestion, which is why August's sweep found 14 merges in 11,502 claims.</li>
+    <li>Show the judge 8–10 candidates instead of 5.</li>
+    <li>A failed search is a failure, never "no duplicates".</li>
+    <li>Refresh a claim's vector after its wording is rewritten; today a six-member claim is still found by its first member's vector.</li>
+    <li>Move vectors out of the hot claim row (or store them half-size) so merges stop rewriting the index and it fits in cache. Upgrade the database tier ($15/month) only if still needed.</li>
+  </ul>
+
+  <h2>The caption redo is bigger and simpler than the notes say</h2>
+  <ul>
+    <li>243 caption sources exist. 122 are "unlinked" to the podcast feed, but 102 of them have a pending feed row for the same episode: duplicate rows, created because the linking step keyed on a field these rows never had. The truly YouTube-only set is 4 videos.</li>
+    <li>20 caption sources already have a Deepgram twin; 9 are extracted twice today. Their caption claims are already superseded.</li>
+    <li>So the redo is: transcribe the remaining 329 feed episodes, extract them, retire the caption claims. No separate YouTube-audio path is needed.</li>
+  </ul>
+  <p><strong>Retirement needs three rules the notes lack.</strong> Removing caption members retires the 16,850 caption-only claims (fine). The 1,318 mixed claims had their wording rewritten to include the caption member's detail, so after removal the text may say something no surviving source says; they must be re-derived from survivors. And a claim's vector is its first member's, so where that member goes, re-seed from a survivor. Hold the 213 merge reviews until after: 117 of them involve claims this retires.</p>
+  <p><strong>Deepgram cost:</strong> 329 episodes, 490–590 hours, $165–200 at $0.34/hour. About $141 of credit remains.</p>
+
+  <h2>Proposed order of work</h2>
+  <p>The 10-03 order (fix timeout → lower gate and re-sweep everything → caption redo → Huberman) re-sweeps 16,850 claims that the next step retires, and produces no article until all of it is done. Proposed instead:</p>
+  <div class="phases">
+    <div class="phase"><div class="tag">A · this week · no spend</div><h3>Make the engine safe to run</h3><p>The CLI call fix; logs kept on disk; failed searches fail loudly; per-chunk retry; vector storage change; gate 0.75 on both paths with a larger candidate list. Prove it on the 18 Deepgram sources already transcribed and waiting.</p></div>
+    <div class="phase"><div class="tag">B · background</div><h3>Ingestion</h3><p>Transcribe and extract the 329 feed episodes; retire caption claims under the rules above; one sweep at the new gate over a corpus that is all good transcripts.</p></div>
+    <div class="phase"><div class="tag">C · in parallel with B</div><h3>The product</h3><p>File the clean claims into topics; build the sentence-level synthesis from the v4 spec on the 92 good sources; get 3–5 clinician articles and protocols through the gate; you read them as the reviewing physician. This checkpoint has never happened.</p></div>
+    <div class="phase"><div class="tag">D · only after C passes</div><h3>Huberman and further feeds, then the full build</h3></div>
+  </div>
+
+  <h2>What it costs</h2>
+  <p>Remaining: about 350 sources, 16,000 extraction calls, 58,000 new facts, and about 30,000 dedup judgements at the 0.75 gate (including re-checking the existing clean facts).</p>
+  <div class="tablewrap"><table>
+    <tr><th>On the API</th><th class="num">Current models</th><th class="num">Same, with Batch</th><th class="num">Newest cheaper models, Batch</th></tr>
+    <tr><td>Extraction</td><td class="num">$110</td><td class="num">$45</td><td class="num">$6</td></tr>
+    <tr><td>Dedup judgements</td><td class="num">$240</td><td class="num">$120</td><td class="num">$50</td></tr>
+    <tr><td>Merge rewrites</td><td class="num">$15</td><td class="num">$8</td><td class="num">$1</td></tr>
+    <tr><td><strong>Total</strong></td><td class="num"><strong>$370</strong></td><td class="num"><strong>$175</strong></td><td class="num"><strong>$60</strong></td></tr>
+  </table></div>
+  <p>The Batch path is one to two days of work and nothing here is latency-sensitive. On the laptop CLI after the fix: 8–10 days of continuous uptime for 350 sources, assuming no sleep, network drop or usage stall; August lost about a third of its nights to those.</p>
+
+  <h2>Design verdict</h2>
+  <p><strong>Keep:</strong> the layered model (immutable facts, re-derivable claims, reversible merges, member-level provenance); the checkpointed job queue; enrich-merge with its fidelity guard; speaker-attributed Deepgram transcripts; the human-owned topic spine; the paging discipline; shadow-mode fidelity flags; the visibility gate on thin topics.</p>
+  <p><strong>Change:</strong> the dedup items above; the retirement rules; the call path; batch-level retry in extraction; supervisor logging; the sweep gate.</p>
+  <p><strong>Defer, so nobody builds them early:</strong> corroboration counting (needs per-episode speaker ids first); the experts table; consensus labels; Huberman and other feeds; the mobile review inbox; the taxonomy maintenance job.</p>
+  <p><strong>Still unmeasured:</strong> the extraction-fidelity judge failed certification and the 9 re-checks are still yours. Until a judge is certified, the synthesis gate in C is the only check between an invented detail and a physician.</p>
+
+  <h2>Your decisions</h2>
+  <div class="decisions">
+    <div class="decision"><h3>1. Engine for the bulk work</h3><p>Fund the API ($60–370 depending on model and Batch; runs unattended in a day or two), or keep the laptop CLI only (free, 8–10 days of uptime, fragile).</p><span class="rec">Recommendation: fix the CLI regardless, fund the API for bulk runs</span></div>
+    <div class="decision"><h3>2. Deepgram budget</h3><p>Top up about $60, or stop 50–70 episodes short of the full catalogue.</p><span class="rec">Recommendation: top up</span></div>
+    <div class="decision"><h3>3. Order of work</h3><p>A, then B and C in parallel, then D. Caption redo before any re-sweep.</p><span class="rec">Recommendation: yes</span></div>
+    <div class="decision"><h3>4. Duplicate gate</h3><p>0.75 on ingestion and sweep, 8–10 candidates shown to the judge.</p><span class="rec">Recommendation: yes</span></div>
+    <div class="decision"><h3>5. Merge reviews</h3><p>Hold the 213 until after the caption redo.</p><span class="rec">Recommendation: hold</span></div>
+  </div>
+
+  <footer>Full detail, including how every number was obtained, is in <code>docs/plan-review-2026-10-11.md</code> in the repository. Prices are Anthropic list prices as of 6 October 2026; Deepgram at the measured $0.34 per hour.</footer>
+</div>

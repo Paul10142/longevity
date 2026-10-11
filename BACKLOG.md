@@ -15,6 +15,26 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🔎 2026-10-11 (evening) — PLAN & DESIGN REVIEW DONE. Nothing was changed or run. Paul's five decisions are pending.
+> Read [`docs/plan-review-2026-10-11.md`](docs/plan-review-2026-10-11.md) (phone version: https://claude.ai/artifact/EJBPiNJZHaM5RiZrtYFhw6) before touching anything.**
+>
+> - **The blocker is the AI-call path, not the database.** The 08-28 errors were the app's own 30 s fetch aborts plus one
+>   `fetch failed`; statement statistics since 07-30 show no pipeline statement over 8 s. Consolidation fell from ~15
+>   insights/min to ~2 claims/hour from 21:00 on 08-27 and one extraction restarted from scratch three times. No supervisor
+>   log exists for that night. The database (Micro, 224 MB cache, 251 MB vector index) has slow tails that grow with the
+>   corpus; fix vector storage before bulk ingestion.
+> - **Each `claude -p` call carries ~52k tokens of context for a 1.1k-token prompt** (hooks, plugins, tools). Stripped
+>   (`--strict-mcp-config --mcp-config <empty> --setting-sources "" --tools ""`): 4k tokens, 2.7× faster, same verdict.
+>   Not yet applied.
+> - **Dedup misses about half of real duplicates.** Twin episodes (9 extracted twice): 50% merged, 42% of misses in
+>   0.75–0.80. 40-pair adjudication of that band: 26/31 SAME (84%), `scratchpad/gated-pairs-eval-20261011.txt`. Reverses
+>   the 08-14 "do not lower the threshold" verdict. Sweep gate (0.86) must equal the ingestion gate.
+> - **Caption redo = the 329 remaining feed episodes** (102 "unlinked" caption rows have a pending feed row for the same
+>   episode; 20 already have a Deepgram twin). ~$165–200 Deepgram vs ~$141 credit. Retirement must re-derive the 1,318
+>   mixed claims and re-seed vectors. Hold the 213 reviews (117 touch caption-era claims).
+> - **Proposed order:** A engine fixes (no spend) → B ingestion ∥ C v4 synthesis on the 92 good sources → D Huberman.
+>   API cost all-in ~$60–370. Decisions: harness, Deepgram top-up, order, gate 0.75 + 8–10 candidates, hold reviews.
+
 > **🪟 2026-10-11 — HANDOFF (read this FIRST; supersedes every block below for live state).**
 >
 > Full detail lives in the `v4-build-state` memory (2026-10-11 and 2026-10-03 blocks). Summary:

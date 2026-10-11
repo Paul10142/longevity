@@ -1,0 +1,161 @@
+found 31 pair(s) in the excluded 0.75-0.8 band; asking the adjudicator
+
+  1  sim 0.791  SAME     conf 0.93  In early-stage hypothyroidism, TSH begins to rise and T4 b
+     A: In early-stage hypothyroidism, TSH begins to rise and T4 begins to decline, while T3 remains in the normal range. Free T4 and TSH are the diagnostic markers for hypothyroidism; T3 is not useful for diagnosis.
+     B: In hypothyroidism, TSH rises and free T4 falls while T3 remains normal, as the body's negative feedback system prioritizes T3 conservation to maintain metabolic function; this T3 preservation persists even at significantly elevated TSH levels (e.g., TSH of 10) and represents the same mechanism seen in iodine-deprivation-induced hypothyroidism.
+     why: Both describe the same pattern in hypothyroidism (TSH rises, free T4 falls, T3 stays normal); the new insight adds two things the existing claim lacks: that this pattern belongs to early-stage disease, and that free T4 and TSH are the tests to use for diagnosis because T3 is not useful.
+
+  2  sim 0.798  SAME     conf 0.93  Spinal MRI findings show poor correlation with actual pain
+     A: Spinal MRI findings show poor correlation with actual pain levels and functional capacity. Significant structural abnormalities visible on imaging may coexist with minimal or absent symptoms.
+     B: The severity of degenerative changes visible on spinal MRI does not reliably predict whether a patient will have symptoms; significant imaging pathology can coexist with no symptoms, while minimal imaging findings can coexist with severe pain.
+     why: Both state that spinal MRI findings correlate poorly with symptoms, and that significant structural abnormalities can exist with few or no symptoms; the new insight adds that MRI findings also correlate poorly with functional capacity, which the existing claim does not mention.
+
+  3  sim 0.754  SAME     conf 0.72  Type 2 diabetes is associated with approximately 50% incre
+     A: Type 2 diabetes is associated with approximately 50% increased dementia risk; for every 5 years of diabetes duration, dementia risk increases by approximately 25%.
+     B: Type 2 diabetes approximately doubles the risk of Alzheimer's disease.
+     why: Both claims say type 2 diabetes raises dementia risk. The new insight adds a separate figure for all-cause dementia (about 50% higher risk), which can sit alongside the existing doubling of Alzheimer's risk because they measure different outcomes. It also adds a duration effect: risk rises about 25% for every 5 years of diabetes.
+
+  4  sim 0.779  DIFFERENT conf 0.68  For Zone 2 training, cycling and incline treadmill walking
+     A: For Zone 2 training, cycling and incline treadmill walking are easier for most people to sustain at zone two intensity without technical oversight, whereas running and rowing require higher fitness and movement efficiency levels to maintain zone two effort without drifting into higher intensities; specifically on a treadmill, brisk incline walking is preferable to running because running causes most people to exit Zone 2 too quickly.
+     B: A common starting point for Zone 2 incline walking on a treadmill is 10–15 degrees incline at 2.5–3 mph, though the exact values should be empirically determined for each individual based on heart rate response.
+     why: The existing claim gives starting treadmill settings for incline walking (10–15° incline, 2.5–3 mph, adjusted by heart rate), while the new insight is about which exercise to choose: cycling and incline walking keep people in Zone 2 more easily than running or rowing. They are related but separate recommendations, not the same fact at different levels of detail.
+
+  5  sim 0.794  SAME     conf 0.93  Bone tissue is mechanosensitive, remodeling in proportion 
+     A: Bone tissue is mechanosensitive, remodeling in proportion to the amount of mechanical stress applied to it.
+     B: Bone cells sense mechanical load and respond by remodeling and increasing bone tissue deposition; bone mass increases in response to stress from activities such as weight lifting and stair climbing.
+     why: Both say bone senses mechanical load and remodels in response; the new insight adds a dose-response point the existing claim lacks: remodeling scales with how much stress the bone receives.
+
+  6  sim 0.789  DIFFERENT conf 0.70  Standard guidelines recommend 10-year repeat intervals aft
+     A: Standard guidelines recommend 10-year repeat intervals after a completely normal initial colonoscopy; this applies specifically to average-risk patients with no family or hereditary risk factors, provided the baseline exam achieved excellent adenoma detection rate, complete cecal intubation, ideal bowel preparation, and long withdrawal time, performed by a high-quality endoscopist.
+     B: For patients with negative colonoscopy, repeat colonoscopy is recommended every 5 years, combined with fecal testing in years 2–3 of the interval.
+     why: The two give conflicting repeat intervals for the same patients (people with a normal colonoscopy): 10 years versus every 5 years plus a stool test in years 2–3. Because the existing claim names no population that would set it apart, the two values cannot both hold, so this is a contradiction rather than two facets of one recommendation.
+
+  7  sim 0.754  SAME     conf 0.88  Over 80 senolytic compounds in early clinical development 
+     A: Over 80 senolytic compounds in early clinical development are currently in Phase 1 trials designed exclusively to assess safety, with no studies powered to evaluate effects on aging-rate indicators in human populations.
+     B: Senolytic drugs have been in phase 1 clinical trials for approximately one decade (since ~2017), designed solely for safety assessment, with no progression to phase 2 or 3 trials to test efficacy.
+     why: Both say senolytics are still in safety-only Phase 1 trials with no efficacy testing; the new insight adds that over 80 compounds are in early development and that no study is powered to measure effects on aging-rate markers in humans.
+
+  8  sim 0.756  DIFFERENT conf 0.72  In undiagnosed bipolar II disorder, patients typically rep
+     A: In undiagnosed bipolar II disorder, patients typically report depression as more troubling than hypomanic symptoms.
+     B: Hypomanic episodes in bipolar II can be adaptive and productive; approximately one-third of patients with bipolar II in one clinician's practice have been highly successful, channeling their hypomanic drive to achieve remarkable things.
+     why: The two claims fit together but state different facts. The new one says undiagnosed bipolar II patients report depression as their main complaint. The existing one says hypomania can be adaptive and that about a third of one clinician's patients became highly successful.
+
+  9  sim 0.757  SAME     conf 0.80  Decades of promotion without convincing human efficacy dat
+     A: Decades of promotion without convincing human efficacy data, despite clear commercial incentive, should lower confidence that the claimed effects are as dramatic as advertised; the pharmaceutical industry's conspicuous absence of competitive development for marketed wellness peptides indicates their efficacy is overstated compared to the claimed benefits.
+     B: While some peptides represent legitimate therapeutics that have undergone rigorous validation, most peptides encountered in the wellness market have not undergone such validation and are dominated by hype, incomplete evidence, and poor regulation.
+     why: Both say wellness-market peptides lack rigorous validation and are overhyped; the new insight adds two supporting points the existing claim lacks: decades of promotion have produced no convincing human efficacy data despite a clear commercial incentive, and drug companies have notably not competed to develop these peptides, which suggests their benefits are overstated.
+
+ 10  sim 0.799  DIFFERENT conf 0.80  Genetic removal of serotonin from the enteric nervous syst
+     A: Genetic removal of serotonin from the enteric nervous system results in a gut with too few neurons, leading to impaired gut function.
+     B: Genetic removal of serotonin from the gut epithelium impairs signaling from the gastrointestinal tract to the brain and impairs the peristalsis reflex.
+     why: These are two separate findings. The new insight is about serotonin made by the gut's own nerve cells (the enteric nervous system), which helps those nerve cells form. Without it the gut ends up with too few neurons. The existing claim is about serotonin from the gut lining (the epithelium) and its role in gut-to-brain signalling and the peristalsis reflex. Each claim concerns a different source of serotonin and a different effect.
+
+ 11  sim 0.759  SAME     conf 0.90  Unlike most sedatives, trazodone preserves or increases de
+     A: Unlike most sedatives, trazodone preserves or increases deep sleep and causes less morning hangover, making it one of the best options for long-term sleep medication use.
+     B: Trazodone, a medication originally developed for depression, increases total sleep time and N3 slow-wave sleep rather than suppressing it—a property most sleep medications do not share.
+     why: Same claim that trazodone preserves or increases deep sleep where most sedatives do not; the new insight adds two things the existing claim lacks: less morning hangover, and suitability for long-term use.
+
+ 12  sim 0.787  SAME     conf 0.90  The feeling of progress is one of the most universally mot
+     A: The feeling of progress is one of the most universally motivating feelings for humans. This motivation occurs at a base level and applies across all goal types and magnitudes.
+     B: The feeling of making progress toward a goal generally feels good, and this positive feeling appears universal across different goal types—from basic needs like food and water to modern goals like career advancement or weight loss.
+     why: Both say that feeling progress toward a goal is universally positive across goal types; the new insight adds that this feeling motivates people, that it works at a basic level, and that it holds for goals of any size, none of which the existing claim states.
+
+ 13  sim 0.773  SAME     conf 0.90  First-generation biological clocks estimated chronological
+     A: First-generation biological clocks estimated chronological age, which provided no clinical value since age was already known; they served as proof-of-concept for using methylation patterns to assess aging.
+     B: Epigenetic aging clocks are constructed through regression analysis, in which each methylation site is regressed onto chronological age in a dataset containing people of various ages and an average effect is calculated across sites. These clocks have evolved through multiple design generations: the first generation regressed methylation patterns onto chronological age, producing high correlation coefficients because the model was built to predict the outcome it was tested against; subsequent generations shifted to regressing against life expectancy and morbidity outcomes, representing a third or fourth generation of this evolution. First-generation clocks trained to predict chronological age are less effective at predicting mortality and disease risk than second-generation clocks such as GrimAge and PhenoAge.
+     why: Both describe first-generation clocks trained on chronological age; the new insight adds two points the existing claim lacks: these clocks had no clinical value because a person's age is already known, and they served as a proof of concept that methylation patterns can be used to assess aging.
+
+ 14  sim 0.763  SAME     conf 0.93  In children, functional impairment is evaluated across pri
+     A: In children, functional impairment is evaluated across primary life domains: academic learning and school attendance, peer relationships and friendships, communication and social interaction skills, and positive contribution to their community.
+     B: For children, functional domains relevant to diagnostic assessment include learning, school attendance, making friends, peer communication, and positive community contribution within school settings.
+     why: Both list the same childhood functional domains (learning, school attendance, friendships, communication, community contribution). The new insight widens 'peer communication' to communication and social interaction skills more generally, and it frames these as the primary domains for assessing functional impairment.
+
+ 15  sim 0.771  DIFFERENT conf 0.78  Mask-based indirect calorimetry is impractical for measure
+     A: Mask-based indirect calorimetry is impractical for measurements lasting 24 hours or longer due to physical discomfort and feasibility constraints.
+     B: Whole-room indirect calorimetry chambers can be equipped with prepared meals and exercise equipment to enable measurement of energy expenditure during realistic daily activities, improving comparability with real-world conditions.
+     why: The two claims are unrelated. The new insight is about a limitation of mask-based calorimetry: it is impractical for measurements of 24 hours or longer because of discomfort and feasibility. The existing claim is about equipping whole-room chambers with meals and exercise equipment so that measurements reflect realistic daily activity.
+
+ 16  sim 0.777  SAME     conf 0.60  Muscle loss is flagged as a specific concern with GLP-1 ag
+     A: Muscle loss is flagged as a specific concern with GLP-1 agonists in elderly populations, with potential for clinically significant consequences.
+     B: Among patients taking GLP-1 receptor agonists, 36% express moderate-to-high concern about muscle loss, and 55% report making lifestyle changes in response, with approximately one-third following a high-protein diet and 38% engaging in resistance training.
+     why: Both describe muscle loss as a concern with GLP-1 receptor agonists. The new insight adds two details the existing claim lacks: it names elderly patients as a group at particular risk, and it says the muscle loss could have clinically significant consequences.
+
+ 17  sim 0.766  SAME     conf 0.95  Broad jump (standing long jump) can measure power without 
+     A: Broad jump (standing long jump) can measure power without requiring weights. A practical benchmark is the ability to jump at least one's own height in distance.
+     B: Standing broad jump (standing long jump), performed when warmed up (not when cold), assesses two distinct qualities in a single movement: maximum concentric power during takeoff and eccentric strength control during landing, including braking capacity. This makes it a comprehensive lower-body functional power metric and provides a practical metric for tracking strength progress. Maintaining the ability to broad jump a distance equal to or exceeding one's height serves as a practical aging metric for functional power retention.
+     why: Both claims say the standing broad jump measures lower-body power, with jumping at least one's own height as the benchmark. The new insight adds one practical point the existing claim lacks: the test needs no weights or equipment.
+
+ 18  sim 0.762  SAME     conf 0.88  Increasing serum testosterone above saturation levels prod
+     A: Increasing serum testosterone above saturation levels produces positive anabolic effects in muscle but has limited additional impact on prostate growth or the initiation and progression of prostate cancer.
+     B: Muscle tissue requires substantially higher serum testosterone levels to achieve anabolic effects (muscle growth and mass) than the levels needed to saturate androgen receptors in prostate.
+     why: Both describe the same muscle-versus-prostate androgen-saturation difference; the new insight adds that raising testosterone above saturation has limited further effect on prostate growth and on the start or progression of prostate cancer.
+
+ 19  sim 0.758  SAME     conf 0.90  In bipolar depression, mood stabilizers are initiated firs
+     A: In bipolar depression, mood stabilizers are initiated first as the treatment approach, sometimes effective as monotherapy; antidepressants are added only after mood stabilization is achieved.
+     B: Mood stabilizers such as lamotrigine and lithium can effectively treat depression in bipolar disorder as monotherapy, making them the appropriate first-line pharmacotherapy rather than antidepressants.
+     why: Both say mood stabilizers come first and can work alone in bipolar depression. The new insight adds two things the existing claim lacks: antidepressants are added only once mood is stabilized, and this sets the order of treatment.
+
+ 20  sim 0.796  SAME     conf 0.85  Achilles tears occur when connective tissue progresses sud
+     A: Achilles tears occur when connective tissue progresses suddenly from prolonged sub-maximal loading (below 50% of maximum contraction) to maximal eccentric contraction under load and deceleration.
+     B: Achilles tendon tears commonly occur when muscle strength exceeds connective tissue capacity, particularly in athletic or formerly athletic individuals who return to explosive movements.
+     why: Both describe Achilles tears caused by a sudden jump in load that the connective tissue is not ready for; the new insight adds the specific mechanism: prolonged sub-maximal loading (below 50% of maximum contraction) followed by a maximal eccentric contraction under load during deceleration.
+
+ 21  sim 0.750  SAME     conf 0.80  US traffic fatalities have declined approximately 90% over
+     A: US traffic fatalities have declined approximately 90% over the past 100 years, with peak rates occurring in the 1950s–1960s before beginning a sustained decline.
+     B: The rate of traffic deaths per 100 million miles traveled has decreased dramatically from approximately 18.5 deaths per 100 million miles in 1923 to approximately 1.5 deaths per 100 million miles currently, demonstrating significant safety improvement over a century.
+     why: Both describe the same century-long fall in US traffic deaths; the new insight adds the ~90% figure (consistent with 18.5→1.5) and says the peak came in the 1950s–60s before the decline. That peak claim needs a check before merging: the per-mile death rate was highest in the 1920s, while total deaths peaked around 1969–72.
+
+ 22  sim 0.766  SAME     conf 0.85  Humans across all ethnicities and cultures show consistent
+     A: Humans across all ethnicities and cultures show consistent appreciation for three main facial features: symmetry, facial proportion (averageness), and sexual dimorphism.
+     B: Faces recognized as beautiful across different racial and ethnic groups exhibit consistent geometric proportions, including facial symmetry and specific spatial ratios (facial thirds and fifths), suggesting a universal standard of facial beauty that transcends racial variation.
+     why: Both state that standards of facial beauty are shared across ethnic groups and both include symmetry; the new insight adds averageness and sexual dimorphism as further universally preferred features, which the existing claim does not mention.
+
+ 23  sim 0.790  SAME     conf 0.88  Aerobic capacity (VO2 max) built through training in youth
+     A: Aerobic capacity (VO2 max) built through training in youth persists into later life at higher levels than current training volume would predict, indicating durable physiological adaptations from early training.
+     B: Hard training during formative years (ages ~13–19) to reach genetic potential in aerobic capacity and bone density establishes a higher lifelong baseline, allowing you to maintain relatively high performance even as age-related decline occurs.
+     why: Both describe the same idea: aerobic capacity built in youth gives a higher lifelong baseline. The new insight adds two details the existing claim lacks: later-life VO2 max stays above what current training volume alone would predict, and this is attributed to durable physiological adaptations.
+
+ 24  sim 0.799  SAME     conf 0.95  Basal or resting metabolic rate (BMR/RMR) typically accoun
+     A: Basal or resting metabolic rate (BMR/RMR) typically accounts for 50–70% of total daily energy expenditure, representing the energy cost of maintaining basic physiological function at complete rest.
+     B: For most people, basal metabolic rate comprises 50-70% of total daily energy expenditure, with the thermic effect of food (diet-induced thermogenesis) contributing 5-10%; the relative proportion of basal metabolic rate decreases substantially with higher daily training volume.
+     why: Both state that basal metabolic rate makes up 50–70% of total daily energy expenditure. The new insight adds what the existing claim lacks: it names resting metabolic rate (RMR) as an equivalent term and defines BMR as the energy cost of keeping basic body functions running at complete rest.
+
+ 25  sim 0.773  SAME     conf 0.96  Multivitamin supplementation delayed episodic memory aging
+     A: Multivitamin supplementation delayed episodic memory aging by five years in a 3.6-year trial.
+     B: A daily Centrum Silver multivitamin in older adults slowed global brain aging by 2.1 years and episodic memory aging by almost 5 years compared to placebo over approximately 3.6 years in randomized controlled trials, with older adults performing better on cognitive function tests.
+     why: Fully redundant: the existing claim already states that the multivitamin delayed episodic memory aging by almost 5 years over about 3.6 years, along with the product, the population and the 2.1-year global brain aging figure.
+
+ 26  sim 0.800  SAME     conf 0.75  For individuals not currently consuming diet sodas, initia
+     A: For individuals not currently consuming diet sodas, initiating regular consumption is likely a net negative for metabolic health compared to continuing with water and soda water; occasional consumption may be acceptable.
+     B: For lean individuals who already avoid sugar-sweetened beverages, the risk-benefit of consuming diet soda (even at low frequencies like one per day) remains unclear and differs substantially from the established benefit for people replacing regular sodas.
+     why: Both address whether people who don't drink sugary sodas should take up diet soda; the new insight adds a practical recommendation the existing claim lacks: starting regular diet soda is probably a net negative compared with sticking to water or soda water, while occasional use may be acceptable.
+
+ 27  sim 0.753  SAME     conf 0.88  Microneedling appears to primarily enhance the absorption 
+     A: Microneedling appears to primarily enhance the absorption or penetration of topical hair-loss treatments to the hair follicle, rather than independently stimulating endogenous growth factors. Microneedling combined with minoxidil produces substantially better outcomes than either treatment alone—suggesting its primary mechanism is improving drug delivery and assimilation rather than recruiting dramatic local growth factor production.
+     B: Microneedling combined with minoxidil significantly enhances minoxidil efficacy, converting non-responders into responders and magnifying effects multiple-fold in partial responders, and benefiting individuals who are poor responders to minoxidil monotherapy or who have low sulfotransferase enzyme activity in the scalp; the mechanism may involve upregulating sulfotransferase activity and improving drug absorption.
+     why: Both claims say microneedling boosts minoxidil mainly by improving drug absorption. The new insight adds three details the existing claim lacks: the combination beats microneedling alone as well as minoxidil alone, the benefit is framed as delivering topical drugs to the hair follicle, and microneedling probably does not work mainly by triggering the scalp's own growth factors.
+
+ 28  sim 0.795  SAME     conf 0.93  The RDA (Recommended Daily Allowance) for protein was deve
+     A: The RDA (Recommended Daily Allowance) for protein was developed to provide adequate intake for a sedentary population, but its terminology confuses people into thinking it represents optimal intake when it is technically the minimal daily allowance; it represents a minimum rather than an optimal amount and varies based on lifestyle and lean body mass.
+     B: The RDA of 0.8 g/kg/day (approximately 0.4 g/lb), established through nitrogen balance studies to identify the minimum needed for survival and nitrogen equilibrium, prevents malnutrition but is insufficient for muscle building, preservation, strength gains, and longevity. The RDA represents the minimum protein intake needed to replace daily protein losses (primarily through urine as urea) and does not define an optimal or maximum intake level. For lean mass gain and sarcopenia prevention, 1.2–2.2 g/kg/day is evidence-supported, with 2.2 g/kg/day (or approximately 1 g per pound body weight) as an evidence-based practice target. For muscle growth and age-related preservation, 1.6–2.4 g/kg/day (approximately 0.8–1 g per pound body weight) is recommended; individuals over 60 may require higher intake due to anabolic resistance. The minimum effective dose for optimizing health outcomes beyond basic survival—including sarcopenia prevention and peak physical performance—is 1.2–1.6 g/kg/day, potentially extending to 2 g/kg depending on individual goals. Optimal protein intake is closer to 1.2 g/kg per day; athletes and older adults potentially benefit from up to 1.6 g/kg per day. Most people benefit from intake around 1.6 g/kg (approximately 150–160 g daily for a 100 kg person) rather than the minimal RDA threshold. For strength gains and longevity, approximately 2 g/kg daily, spaced throughout the day, is recommended. Increasing from the RDA to approximately double that amount (1.6–2.0 g/kg) shows no evidence of harm in virtually all populations and likely produces better outcomes than the RDA minimum in most cases. The body has an upper limit to protein utilization beyond which excess is excreted. Recommendations based on minimal evidence may not account for meaningful dose–response relationships; recommending minimal intake based on underpowered studies is analogous to expecting mastery of a skill with minimal practice.
+     why: Both claims say the protein RDA is a minimum rather than an optimal intake; the new insight adds three details the existing claim lacks: the RDA was set for a sedentary population, its 'allowance' wording leads people to read it as optimal, and needs vary with lifestyle and lean body mass.
+
+ 29  sim 0.761  SAME     conf 0.90  Statins have three well-documented side effects: muscle ac
+     A: Statins have three well-documented side effects: muscle aches, elevations in transaminases (liver function tests), and insulin resistance. While these effects are relatively small, they are measurable and should not be dismissed, with two of the three being objectively measurable.
+     B: Statins cause off-target adverse effects including hepatic dysfunction, insulin resistance, and muscle pain; approximately 5–10% of patients cannot tolerate them due to these side effects.
+     why: Both describe the same three statin side effects (muscle pain, liver effects, insulin resistance); the new insight adds that the liver effect shows up as raised transaminases on liver function tests, that the effects are small but measurable and should not be dismissed, and that two of the three can be measured objectively.
+
+ 30  sim 0.750  SAME     conf 0.62  Phage therapies are being explored as newer approaches to 
+     A: Phage therapies are being explored as newer approaches to achieve targeted elimination of specific pathogenic bacteria without destroying the entire microbiome and its beneficial communities, thereby avoiding the widespread collateral damage caused by broad-spectrum antibiotics.
+     B: Phage cocktails—multiple phages targeting the same bacteria through different receptors or mechanisms—prevent bacteria from developing antiphage resistance, enabling successful targeted therapy. This approach is currently in clinical trials.
+     why: Both describe phage therapy as a targeted antibacterial approach that is under clinical investigation. The new insight adds what the existing claim lacks: phages kill specific pathogens while sparing the beneficial microbiome, avoiding the collateral damage of broad-spectrum antibiotics.
+
+ 31  sim 0.791  SAME     conf 0.96  Homozygous ApoE4 carriers do not inevitably develop Alzhei
+     A: Homozygous ApoE4 carriers do not inevitably develop Alzheimer's disease, and approximately 50% of people with Alzheimer's disease lack ApoE4 alleles.
+     B: APOE4/E4 genotype increases Alzheimer's disease risk approximately 60% relative to wild-type APOE3/E3, is the strongest common genetic risk factor for the disease, and functions as a major but non-deterministic risk modifier and susceptibility factor—distinct from fully penetrant mutations in PSN1, PSN2, or APP genes—that can meaningfully shift risk; even in double-copy form (APOE4/4, representing highest genetic risk), it is neither necessary nor sufficient for Alzheimer's disease: many APOE4 carriers never develop Alzheimer's disease, many individuals carrying one or two copies of the gene maintain normal cognitive function into advanced age, some individuals with APOE4/4 remain amyloid-negative into their 70s (suggesting strong protective factors beyond genetic predisposition), approximately one-third of Alzheimer's disease cases occur in people without APOE4, and approximately 50% of people with Alzheimer's disease do not carry an APOE4 allele; lifestyle and other genetic factors substantially modify APOE4's effect and phenotypic impact—which varies based on broader genetic background—and individuals with APOE4 genotypes must work harder to manage modifiable risk factors to reduce their Alzheimer's disease risk.
+     why: The new insight adds nothing: claim 1 already says APOE4/4 is neither necessary nor sufficient, that many carriers never develop Alzheimer's, and that about 50% of people with Alzheimer's carry no APOE4 allele.
+
+
+judged 31 of 31 | SAME 26 | DIFFERENT 5 | UNSURE 0
+84% of this excluded band are duplicates the library currently keeps apart.
+exit=0
