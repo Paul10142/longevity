@@ -1,11 +1,15 @@
 # Retiring the YouTube-caption sources — the written plan (2026-10-11)
 
-Paul's rule (2026-08-24, reaffirmed 2026-10-11): the 243 sources extracted from
-YouTube auto-captions are to be replaced by Deepgram transcripts of the same
-episodes, and their claims retired **by removing members, never by deleting
-claims**. This is the plan that has to exist before any of that data is touched.
-It is written for the agent that runs Phase B; every number was verified on
-2026-10-11.
+Paul's rule, restated 2026-10-11 evening: the 243 sources extracted from
+YouTube auto-captions are **replaced** by Deepgram transcripts of the same
+episodes. Caption-derived information is known to be inaccurate, so once an
+episode has its Deepgram version the caption version is **deleted** — its
+facts, its text chunks, its transcript — not kept in an excluded state that
+every reader has to filter correctly. The only caption-era things that survive
+are empty retired claim shells (other tables point at their ids) and one frozen
+benchmark snapshot. This is the plan that has to exist before any of that data
+is touched. It is written for the agent that runs Phase B; every number was
+verified on 2026-10-11.
 
 ## 1. What is actually there
 
@@ -25,63 +29,75 @@ Budget: 329 episodes ≈ 490–590 h ≈ $165–200 at the measured $0.34/h; ~$1
 credit remains, so the run stops roughly 50–70 episodes short until Paul tops up
 (his decision 2026-10-11: top up later, when it runs out).
 
-## 2. Why "remove the members" is not enough on its own
+## 2. Why a plain delete is not enough on its own
 
-Three things the retirement has to handle that the earlier notes did not:
+Three things the replacement has to handle that the earlier notes did not:
 
 1. **Mixed claims (1,318 today).** A claim with members from a caption source
    AND a good source had its canonical rewritten by enrich-merge to carry every
    member's detail, including the caption member's, and caption transcripts
-   carry transcription errors. After the caption member is removed the text can
-   assert something no surviving source says. Those claims must be re-derived
-   from survivors.
+   carry transcription errors. Deleting the caption member alone leaves text
+   that asserts something no surviving source says. Those claims must be
+   re-derived from survivors. (782 Deepgram facts sit in such claims today, on
+   the nine episodes already held twice.)
 2. **Vectors.** A claim's vector is refreshed only on enrich rewrites; many
    mixed claims still carry their first member's vector, which may be the
-   caption member's. Re-seed from the surviving canonical.
-3. **The existing re-extraction path already does a lossy retirement.** A fresh
-   `extract_source` run deletes the source's `raw_insights`, which cascades its
-   `claim_members` away, then `reconcile_claim_membership()` retires memberless
-   claims and recounts the rest. It does **not** re-derive mixed claims and it
-   keeps no record of which members went. For the 121 linked rows that is the
-   path a Deepgram re-extraction would take today.
+   caption member's. Re-seed from the re-derived canonical.
+3. **The existing re-extraction path already does a lossy version of this.** A
+   fresh `extract_source` run deletes the source's `raw_insights`, which
+   cascades its `claim_members` away, then `reconcile_claim_membership()` retires
+   memberless claims and recounts the rest. It does **not** re-derive mixed
+   claims. For the 121 linked rows that is the path a Deepgram re-extraction
+   would take today, so the guard in §3 matters.
 
-## 3. The retirement procedure (one script, `scripts/retireSourceClaims.ts`)
+## 3. The replacement procedure (one script, `scripts/retireSourceClaims.ts`)
 
-Run per caption source `S`, only after its Deepgram twin `D` is extracted and
-fully consolidated (0 unconsolidated insights for `D`, no running jobs). Dry-run
-by default; `--apply` writes. Backed up before apply (JSON of every row it will
-change, in `scratchpad/`).
+Run per caption source `S`. Dry-run by default; `--apply` writes. Before apply
+it writes a JSON backup of every row it will change or delete to
+`scratchpad/backups/`, as the review-queue scripts already do.
 
-1. **Log, then remove.** Copy every `claim_members` row whose `raw_insight_id`
-   belongs to `S` into `claim_members_retired` (new table, migration 031:
-   same columns plus `source_id`, `retired_at`, `reason`), then delete them.
-   The raw insights themselves are immutable and stay.
+0. **Once, before the first run: freeze the benchmark.** Export the nine
+   double-held episodes' caption facts (statement, context, quote, embedding,
+   claim membership) to `eval/twin-benchmark-20261011.json`, and teach
+   `scripts/evalTwinRecall.ts` to read that file when the live rows are gone.
+   Recall must stay measurable after the captions are deleted.
+1. **Unhook.** Delete every `claim_members` row whose `raw_insight_id` belongs
+   to `S` (the backup holds the list).
 2. **Retire the emptied claims.** Any claim left with no members →
    `status = 'retired'`, `member_count = 0`, `source_count = 0` (the same rule
-   `reconcile_claim_membership()` applies). Their `claim_topics` stay; readers
-   filter on status.
+   `reconcile_claim_membership()` applies). The shell stays because
+   `merge_reviews`, `claim_links`, `claim_topics` and the old articles point at
+   its id; with no members it is invisible to the library.
 3. **Re-derive the mixed claims.** For each claim that lost some but not all
    members: set `canonical_statement` and `context_note` back to the oldest
    surviving member's statement/context (the new seed), recompute aggregates,
-   then run `enrichClaimCanonical()` so the survivors' detail is folded back in
-   under the fidelity guard, then refresh the vector from the new canonical.
-   `enriched_at` is re-stamped by that call.
+   run `enrichClaimCanonical()` so the survivors' detail is folded back in under
+   the fidelity guard, and refresh the vector from the new canonical.
 4. **Close the reviews.** `merge_reviews` rows (`pending`) where either claim
    is now retired → `status = 'rejected'`, `decided_by = 'retired-source'`,
    `decided_at = now()`. Never deleted, so the history stays readable.
-5. **Mark the source.** `S.processing_status = 'superseded'` (migration 031
-   widens the CHECK, which today allows only pending / processing / succeeded /
-   failed) and `S.transcript_quality = 'low'`. The row stays so the catalogue
-   can show the episode once with its two transcripts.
-6. **Verify, in SQL, before moving on:** no active claim has a member from `S`;
-   no active claim has `member_count = 0`; every re-derived claim has a vector
-   row; the counts of retired / re-derived / closed match the dry run.
+5. **Delete the caption version.** `S`'s `raw_insights` and `chunks` rows go.
+   Then, by row type: a **duplicate row** (no feed link, a feed row exists for
+   the same episode) is deleted outright; a **linked row** keeps its id and feed
+   fields but has `transcript` and `timed_transcript` cleared and
+   `processing_status = 'pending'`, so the Deepgram transcript lands on a clean
+   row. Nothing else references chunks or insights once the members are gone.
+6. **Verify, in SQL, before moving on:** no active claim has a member from `S`
+   (or from a deleted row); no active claim has `member_count = 0`; every
+   re-derived claim has a vector row; no `raw_insights` remain for `S`; the
+   counts of retired / re-derived / closed / deleted match the dry run.
 
-Order of operations for a linked row (the 121): run the retirement script **on
-the caption extraction first**, then attach the Deepgram transcript, then
-extract. Add a guard in `extractSource`: a fresh run on a source that still has
+**Order per episode:** retire and delete the caption version **first**, then
+transcribe, attach and extract the Deepgram version. Deepgram facts then seed
+fresh claims or merge into good-transcript claims; nothing is ever seeded by
+caption text again. For the nine episodes already held twice, step 3 is what
+repairs the claims that were seeded by captions and later gained Deepgram
+members.
+
+Add a guard in `extractSource`: a fresh run on a source that still has
 `claim_members` throws unless `ALLOW_MEMBERED_REEXTRACT=1`, so nobody can skip
-step 1 by accident.
+steps 1–5 by accident. Migration 031 then only has to drop `claims.embedding`;
+no `superseded` status and no retired-members table are needed.
 
 ## 4. Order of transcription (what to spend the credit on first)
 
@@ -96,16 +112,16 @@ once the script exists, because nothing has to be transcribed for them.
 
 ## 5. What this does to the library
 
-Today: 31,574 active claims, 16,850 caption-only, 1,318 mixed. After the full
-redo roughly 16,850 claims retire and are replaced by the Deepgram extractions'
-claims, which merge into the good-transcript corpus at the new gate. The 213
-pending merge reviews shrink by the 117 that touch caption-era claims. Topic
-counts and the admin dashboard recompute from status, nothing else.
+Today: 31,574 active claims, 16,850 caption-only, 1,318 mixed; 19,887 caption
+facts (132 MB) and 39 MB of caption transcripts. After the full redo roughly
+16,850 claims retire to empty shells and are replaced by the Deepgram
+extractions' claims, which merge into the good-transcript corpus at the new
+gate; the caption facts and transcripts are gone. The 213 pending merge reviews
+shrink by the 117 that touch caption-era claims. Topic counts and the admin
+dashboard recompute from status, nothing else.
 
 ## 6. Still to decide
 
-- Whether the 4 un-numbered caption videos (AMA previews) are retired without
-  replacement or kept. Recommendation: retire; the AMA full episodes are in the
+- Whether the 4 un-numbered caption videos (AMA previews) are deleted without
+  replacement or kept. Recommendation: delete; the AMA full episodes are in the
   feed.
-- Whether the catalogue should hide superseded rows by default. Recommendation:
-  show them collapsed under the episode, with "superseded" on the pill.
