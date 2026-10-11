@@ -27,11 +27,12 @@ there.
 >   27/30 below 0.70 on the twins; 18/23 on random corpus pairs in 0.70–0.75). Expect the review queue to grow with
 >   sub-0.80-confidence SAME verdicts; Paul holds reviews until the caption redo anyway.
 > - **Vectors live in `claim_embeddings`** (migrations 029/030 applied). `claims.embedding` is a rollback copy: drop it
->   after the first full ingestion through the new path (migration 031, together with the `superseded` status and the
->   `claim_members_retired` log the retirement plan needs).
-> - **Phase B prerequisites (not built yet):** `scripts/retireSourceClaims.ts` + migration 031 + the fresh-run guard in
->   `extractSource`, per `docs/caption-retirement-plan.md`. Then retire the 20 caption rows that already have a Deepgram
->   twin, then transcribe the twins of the 98 extracted caption rows first.
+>   after the first full ingestion through the new path (migration 031).
+> - **Phase B prerequisites (not built yet):** `scripts/retireSourceClaims.ts` (unhook → retire shells → re-derive mixed
+>   claims → close reviews → DELETE the caption facts/chunks/transcript; Paul's call 2026-10-11: caption versions are
+>   replaced, not kept), the frozen twin-benchmark export in `eval/`, and the fresh-run guard in `extractSource`, per
+>   `docs/caption-retirement-plan.md`. Then the 20 caption rows that already have a Deepgram twin, then transcribe the
+>   twins of the 98 extracted caption rows first.
 > - **Phase C (parallel):** un-park tagging for clean claims only, then the v4 sentence-level synthesis on the 92 good
 >   sources. Not started.
 > - **Next small change for patient care:** a `contradicts` relation from the adjudicator stored in `claim_links`.
