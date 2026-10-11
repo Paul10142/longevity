@@ -80,8 +80,8 @@ history; do not treat it as current.
    `claim_ids` cited per paragraph.
 
    Long-running work never happens inline in a request handler. The worker is
-   `app/api/worker/tick`, driven by Vercel cron, a fire-and-forget ping after
-   enqueue, or the admin UI. See `ARCHITECTURE.md` for the full stage table.
+   `app/api/worker/tick` (bearer-token protected), driven by a fire-and-forget
+   ping after enqueue or the admin UI. See `ARCHITECTURE.md` for the full stage table.
 
 3. **Read.** Articles cite claims, claims resolve to raw insights, and raw
    insights carry a locator back to the source segment and timestamp, so every
