@@ -20,7 +20,7 @@ there.
 > Full detail lives in the `v4-build-state` memory (2026-10-11 and 2026-10-03 blocks). Summary:
 >
 > - **Nothing has run since 2026-08-28.** 567 sources; 36,375 insights; 31,574 active claims; 213 pending
->   merge reviews; 18 Deepgram-transcribed sources not yet extracted. `main`@`dbcb8a0`.
+>   merge reviews; 18 Deepgram-transcribed sources not yet extracted. `main`@`38f6d2e`.
 > - **Blocker:** consolidation (dedup) hits DB timeouts in the enrich step at 31k claims — the last run
 >   produced ~95 insights in 10.5 h. Stuck job `c5e951f1-062a-4369-93b3-6574c0ba024d` is queued. Fix this
 >   before restarting extraction.
