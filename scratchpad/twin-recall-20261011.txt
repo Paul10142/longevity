@@ -1,0 +1,147 @@
+twin episodes: 9 — #395, #288, #375, #374, #373, #396, #287, #378, #330
+
+#395   161 deepgram insights,   98 merged with the caption twin (61%)  #395 - Brain lipidology: understanding APOE, cholesterol hom
+#288    66 deepgram insights,   14 merged with the caption twin (21%)  The impact of gratitude, serving others, embracing mortality
+#375   222 deepgram insights,  124 merged with the caption twin (56%)  #375 - The ketogenic diet, ketosis, and hyperbaric oxygen: m
+#374   183 deepgram insights,   81 merged with the caption twin (44%)  #374 - The evolutionary biology of testosterone: how it shap
+#373   225 deepgram insights,  135 merged with the caption twin (60%)  #373 – Thyroid function and hypothyroidism: why current diag
+#396   108 deepgram insights,   71 merged with the caption twin (66%)  #396 ‒ Breast cancer screening: understanding risk, deciding
+#287   173 deepgram insights,   67 merged with the caption twin (39%)  Lower back pain: causes, treatment, and prevention of lower 
+#378   234 deepgram insights,  107 merged with the caption twin (46%)  #378 ‒ Women’s health and performance: how training, nutriti
+#330   197 deepgram insights,   85 merged with the caption twin (43%)  #330 – Autism, ADHD, and Anxiety: Understanding the rise in 
+
+TOTAL: 1569 deepgram insights, 782 merged (49.8% recall at today's gate), 787 not merged
+misses by best caption-twin similarity:
+  >=0.86         8
+  0.80-0.86     20
+  0.75-0.80    327
+  0.70-0.75    196
+  <0.70        236
+
+judging up to 30 misses per band with the production adjudicator (top 8 caption-twin claims shown)…
+  >=0.86     best 0.883  SAME      conf 0.95  Medication decisions for children with autism are based on the presenc
+  >=0.86     best 0.872  SAME      conf 0.90  The core features of autism do not respond to pharmacological treatmen
+  >=0.86     best 0.875  SAME      conf 0.95  In children with autism, rigidity and difficulty with transitions are 
+  >=0.86     best 0.916  SAME      conf 0.95  Repeated practice of skills develops new behavioral strategies and hab
+  >=0.86     best 0.906  SAME      conf 0.97  Non-stimulant ADHD medications must be taken daily and maintained at s
+  >=0.86     best 0.887  SAME      conf 0.85  Some children with ADHD are able to reduce or discontinue medication i
+  >=0.86     best 0.914  SAME      conf 0.95  Behavioral parent training is now a standard clinical recommendation f
+  >=0.86     best 0.888  SAME      conf 0.95  ADHD medication management is an iterative process: when side effects 
+  0.80-0.86  best 0.803  SAME      conf 0.93  Lipoproteins enable cholesterol transport in aqueous environments thro
+  0.80-0.86  best 0.819  SAME      conf 0.90  Subjective responses to identical testosterone levels vary markedly be
+  0.80-0.86  best 0.833  SAME      conf 0.85  Without the SRY gene, the undifferentiated gonad undergoes an active d
+  0.80-0.86  best 0.819  SAME      conf 0.72  Reverse T3 is biologically inactive but competes with T3 at receptors,
+  0.80-0.86  best 0.855  SAME      conf 0.85  Reverse T3 has a half-life of only a few hours, shorter than T3, makin
+  0.80-0.86  best 0.837  SAME      conf 0.80  Disc bulge location reflects underlying spinal adaptation: in yoga-ada
+  0.80-0.86  best 0.811  SAME      conf 0.85  Dynamic core exercises increase closing velocity (the time interval be
+  0.80-0.86  best 0.819  SAME      conf 0.72  When time-constrained, strategic nutrient timing (before, during, and 
+  0.80-0.86  best 0.813  SAME      conf 0.90  Power and explosiveness decline first with aging, followed later by re
+  0.80-0.86  best 0.831  SAME      conf 0.93  Guanfacine and clonidine are alpha-2 agonists that treat ADHD through 
+  0.80-0.86  best 0.830  SAME      conf 0.93  Rapid growth in the autism treatment industry has not been matched by 
+  0.80-0.86  best 0.817  SAME      conf 0.85  Stimulant medications show observable improvements quickly in children
+  0.80-0.86  best 0.819  SAME      conf 0.80  Anxiety, autism, and ADHD show significant overlap; diagnostic definit
+  0.80-0.86  best 0.815  SAME      conf 0.90  High school students taking ADHD medication may experience reduced soc
+  0.80-0.86  best 0.821  SAME      conf 0.96  Expanding specialist capacity can be achieved through creative team co
+  0.80-0.86  best 0.838  SAME      conf 0.90  Applied Behavior Analysis breaks down complex skills into smaller comp
+  0.80-0.86  best 0.816  SAME      conf 0.68  Comorbidity patterns are directionally asymmetric: children with ADHD 
+  0.80-0.86  best 0.851  SAME      conf 0.93  Autistic individuals at autism class 1 more readily demonstrate observ
+  0.80-0.86  best 0.828  SAME      conf 0.93  The core features of autism do not respond to medication and require t
+  0.80-0.86  best 0.821  SAME      conf 0.85  Psychiatric medications for children with autism are selected based on
+  0.75-0.80  best 0.761  SAME      conf 0.80  Although mature neurons normally cease cholesterol synthesis after age
+  0.75-0.80  best 0.799  SAME      conf 0.93  Cholesterol accumulates in artery walls not through local synthesis wi
+  0.75-0.80  best 0.789  SAME      conf 0.96  Excess cholesterol accumulation within a cell can crystallize, which i
+  0.75-0.80  best 0.775  SAME      conf 0.90  Multiple metabolic and inflammatory factors accelerate atherosclerotic
+  0.75-0.80  best 0.781  SAME      conf 0.93  Memorial services and celebrations of life are not the appropriate mom
+  0.75-0.80  best 0.777  SAME      conf 0.93  Ketogenic diets produce natriuretic and diuretic effects, causing sodi
+  0.75-0.80  best 0.771  SAME      conf 0.80  Simultaneous aggressive pharmacologic targeting of both glucose/glycol
+  0.75-0.80  best 0.773  SAME      conf 0.88  Ketogenic diet treatment for anorexia contradicts traditional clinical
+  0.75-0.80  best 0.788  SAME      conf 0.80  Liver enzyme elevation from 1,3-butanediol occurs through a mechanism 
+  0.75-0.80  best 0.782  SAME      conf 0.95  Egg production requires more energy per gamete than sperm production, 
+  0.75-0.80  best 0.765  SAME      conf 0.92  Men show greater drive to pursue narrow, specific goals and achieve do
+  0.75-0.80  best 0.794  SAME      conf 0.95  Female gametes are produced and stored during fetal development, remai
+  0.75-0.80  best 0.765  SAME      conf 0.85  No guidelines recommend T3 as a standalone treatment for hypothyroidis
+  0.75-0.80  best 0.785  SAME      conf 0.93  Radioactive iodine treatment for Graves' disease is associated with in
+  0.75-0.80  best 0.769  SAME      conf 0.93  Thyroid function remains relatively stable with aging, unlike sex horm
+  0.75-0.80  best 0.784  SAME      conf 0.72  The therapeutic goal in hypothyroidism treatment is to normalize circu
+  0.75-0.80  best 0.755  SAME      conf 0.80  Cytomel (synthetic T3) monotherapy typically fails because a single do
+  0.75-0.80  best 0.764  SAME      conf 0.85  Deiodinase enzymes control thyroid hormone activity by directing T4 to
+  0.75-0.80  best 0.796  SAME      conf 0.96  Younger women develop more aggressive breast cancer subtypes; approxim
+  0.75-0.80  best 0.789  SAME      conf 0.82  Biologically aggressive breast cancers that would evade detection even
+  0.75-0.80  best 0.774  SAME      conf 0.93  The cervical spine is designed for mobility and movement, not for tole
+  0.75-0.80  best 0.766  SAME      conf 0.88  For non-specific back pain, treatment outcomes are unpredictable when 
+  0.75-0.80  best 0.763  SAME      conf 0.88  Understanding the mechanical basis of pain, demonstrated through teach
+  0.75-0.80  best 0.769  SAME      conf 0.90  When chronic joint instability is stabilized over time, the joint stif
+  0.75-0.80  best 0.774  SAME      conf 0.93  Exhausting a primary muscle group with high-intensity exercise can pri
+  0.75-0.80  best 0.792  SAME      conf 0.88  Postpartum women may experience altered proprioceptive feedback during
+  0.75-0.80  best 0.766  SAME      conf 0.90  Young female athletes in track, field, and gymnastics commonly develop
+  0.75-0.80  best 0.782  SAME      conf 0.93  Exercise improves metabolic flexibility in perimenopausal women.
+  0.75-0.80  best 0.763  SAME      conf 0.92  During high-intensity intervals of 1 minute or less, heart rate rises 
+  0.75-0.80  best 0.797  SAME      conf 0.95  Carbohydrates remain important for all active individuals, contrary to
+  0.70-0.75  best 0.719  DIFFERENT conf 0.70  The clinical principle for apoB management emphasizes both absolute le
+  0.70-0.75  best 0.701  SAME      conf 0.85  Intervening after substantial disease pathology is established may not
+  0.70-0.75  best 0.744  SAME      conf 0.85  Atherosclerotic plaque forms when beta lipoprotein particles exceed a 
+  0.70-0.75  best 0.739  SAME      conf 0.93  Clear structure regarding what outcomes to pursue creates freedom in d
+  0.70-0.75  best 0.747  SAME      conf 0.90  Awareness of time limits does not itself create focus; time concern is
+  0.70-0.75  best 0.701  SAME      conf 0.97  Sodium chloride, rather than sodium alone, appears to be the primary d
+  0.70-0.75  best 0.737  SAME      conf 0.80  Exogenous ketones can serve as a bridge during ketogenic diet transiti
+  0.70-0.75  best 0.739  SAME      conf 0.68  Continuous ketone monitors are available from multiple manufacturers; 
+  0.70-0.75  best 0.728  SAME      conf 0.88  Protein turnover—the combined rates of protein breakdown and synthesis
+  0.70-0.75  best 0.707  SAME      conf 0.85  Societies that culturally tolerate male violence toward women show hig
+  0.70-0.75  best 0.739  SAME      conf 0.65  Human males maintain high testosterone continuously because fertile fe
+  0.70-0.75  best 0.728  SAME      conf 0.85  Rough physical play reduces overall aggression.
+  0.70-0.75  best 0.739  SAME      conf 0.93  Testosterone acts as a transcription factor in the developing male fet
+  0.70-0.75  best 0.717  SAME      conf 0.80  DHT is necessary for complete prostate development during fetal and ea
+  0.70-0.75  best 0.714  SAME      conf 0.80  Aggression exists in both masculine and feminine forms: males commit d
+  0.70-0.75  best 0.736  SAME      conf 0.90  Behavioral phenotypes and traits exist on a spectrum with substantial 
+  0.70-0.75  best 0.741  SAME      conf 0.72  Studies with T3 formulations, including short-lived and standard prepa
+  0.70-0.75  best 0.725  SAME      conf 0.93  Approximately 99.5% of circulating T3 and T4 are bound to carrier prot
+  0.70-0.75  best 0.737  SAME      conf 0.80  Significant changes in the ratio of T3 to reverse T3 correlate with su
+  0.70-0.75  best 0.748  SAME      conf 0.85  Breast cancer mortality continues when screening tools are applied too
+  0.70-0.75  best 0.727  SAME      conf 0.72  A single baseline mammogram in the 30s can establish breast density st
+  0.70-0.75  best 0.735  SAME      conf 0.93  Documenting activities that cause pain, relieve pain, or have no effec
+  0.70-0.75  best 0.704  SAME      conf 0.85  The spine enables a wide range of functional movements: dancing, reach
+  0.70-0.75  best 0.742  SAME      conf 0.92  Loss of power is the difference between recovering balance when stumbl
+  0.70-0.75  best 0.734  SAME      conf 0.90  When training time is severely restricted, remaining sessions cannot b
+  0.70-0.75  best 0.742  SAME      conf 0.85  Exercise is among the most potent stimuli for enhancing metabolic flex
+  0.70-0.75  best 0.750  SAME      conf 0.88  Exercise effectiveness does not depend on following a single prescribe
+  0.70-0.75  best 0.745  SAME      conf 0.95  Tirzepatide (Mounjaro) is significantly easier to tolerate than semagl
+  0.70-0.75  best 0.714  SAME      conf 0.70  Adequate total caloric and macronutrient intake across the menstrual c
+  0.70-0.75  best 0.725  SAME      conf 0.92  Diagnostic assessment must observe traits across multiple environments
+  <0.70      best 0.663  SAME      conf 0.85  Krill oil delivers omega-3 fatty acids in phospholipid form, distingui
+  <0.70      best 0.499  DIFFERENT conf 0.90  Obsetropib lowers apoB levels; early trial data shows no adverse effec
+  <0.70      best 0.681  SAME      conf 0.88  One person facing anticipated end-of-life implemented a reflective pra
+  <0.70      best 0.565  SAME      conf 0.72  Explicitly telling mentors and teachers what they mean to you and how 
+  <0.70      best 0.556  DIFFERENT conf 0.65  Children as young as kindergarten are capable of recognizing and expre
+  <0.70      best 0.585  SAME      conf 0.80  Teaching children to recognize and express appreciation to mentors bef
+  <0.70      best 0.660  SAME      conf 0.70  The body endogenously produces small amounts of L-BHB via a tissue-res
+  <0.70      best 0.698  SAME      conf 0.95  Pure D-BHB formulations trended to accelerate seizure occurrence in an
+  <0.70      best 0.497  SAME      conf 0.80  Genetic risk variants confer increased susceptibility but do not deter
+  <0.70      best 0.616  SAME      conf 0.72  Alzheimer's disease is heterogeneous and clinically diagnosed imprecis
+  <0.70      best 0.667  SAME      conf 0.88  For fat loss and body composition changes, the ketogenic diet offers n
+  <0.70      best 0.678  SAME      conf 0.90  Genital-targeting rough play among males is tolerated and occurs betwe
+  <0.70      best 0.648  SAME      conf 0.80  Physical aggression is not a universal need or trait; most men are not
+  <0.70      best 0.602  SAME      conf 0.60  Real-world cases exist of individuals with 5-alpha reductase deficienc
+  <0.70      best 0.684  SAME      conf 0.95  The sex-based difference in thyroid antigenicity appears related to se
+  <0.70      best 0.635  SAME      conf 0.80  Thyroid hormone stimulates energy expenditure, causing increased calor
+  <0.70      best 0.644  SAME      conf 0.68  Thyroid assessment involves evaluation of family history, current symp
+  <0.70      best 0.598  SAME      conf 0.88  Consistent execution of a personalized screening plan over time distin
+  <0.70      best 0.691  SAME      conf 0.90  Introduction of heavy barbell back squats performed with full range of
+  <0.70      best 0.673  SAME      conf 0.88  After spinal injury, training goals shift from creating power through 
+  <0.70      best 0.653  SAME      conf 0.80  Elite athlete physiological data demonstrates human movement capacity 
+  <0.70      best 0.538  SAME      conf 0.80  Assessment of individual movement patterns and body architecture shoul
+  <0.70      best 0.659  SAME      conf 0.72  Static MRI imaging cannot detect pain triggers occurring during dynami
+  <0.70      best 0.558  SAME      conf 0.68  Bird dogs are a foundational core exercise performed by elite athletes
+  <0.70      best 0.679  SAME      conf 0.85  Power capacity can be maintained through controlled, deliberate moveme
+  <0.70      best 0.619  SAME      conf 0.60  Muscle-tendon stiffness changes with age and hormonal status, and thes
+  <0.70      best 0.535  DIFFERENT conf 0.80  Apparent sex differences in ACL injury rates during midlife may reflec
+  <0.70      best 0.695  SAME      conf 0.90  The optimal balance between high-intensity training and training volum
+  <0.70      best 0.622  SAME      conf 0.92  Lean mass should be assessed before increasing tirzepatide doses to ev
+  <0.70      best 0.626  SAME      conf 0.72  When exercisers report low energy or poor tolerance to a training prog
+
+band        misses  judged  SAME  DIFF  UNSURE  SAME%   est. recoverable
+>=0.86          8       8     8     0       0   100%       8   → recall if the gate reached this band: 50%
+0.80-0.86      20      20    20     0       0   100%      20   → recall if the gate reached this band: 52%
+0.75-0.80     327      30    30     0       0   100%     327   → recall if the gate reached this band: 72%
+0.70-0.75     196      30    29     1       0    97%     189   → recall if the gate reached this band: 85%
+<0.70         236      30    27     3       0    90%     212   → recall if the gate reached this band: 98%
+exit=0
