@@ -149,6 +149,6 @@ export function pingWorker(origin: string): void {
     method: 'POST',
     headers: secret ? { authorization: `Bearer ${secret}` } : {},
   }).catch(() => {
-    // Best effort only — cron picks the job up regardless.
+    // Best effort only — "Run worker now" or `pipeline work` picks it up otherwise.
   })
 }

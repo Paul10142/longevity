@@ -163,7 +163,7 @@ export function JobQueuePanel() {
   async function runWorker() {
     setRunning(true)
     try {
-      await fetch("/api/worker/tick", { method: "POST" })
+      await fetch("/api/admin/worker/run", { method: "POST" })
       await refresh()
     } finally {
       setRunning(false)

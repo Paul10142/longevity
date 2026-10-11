@@ -116,9 +116,18 @@ running jobs with old `locked_at` heartbeats get reclaimed).
 | Discover | `discover_topics` | Review unfiled claims + over-broad topics, propose new topics with parent placement (through the same root gate as Tag), flag affected claims `needs_tagging` and hand back to Tag |
 | Synthesize | `generate_topic` | Prioritized claims → clinician article + protocol (per-paragraph `claim_ids`), patient article translated from clinician version |
 
-Worker: `app/api/worker/tick` — invoked by Vercel cron (see `vercel.json`),
-by a fire-and-forget ping after enqueue, or manually from the admin UI.
-It works within a ~250s budget and exits; checkpoints make that safe.
+Worker: `app/api/worker/tick` — invoked by a fire-and-forget ping after
+enqueue (or by Vercel cron, if one is re-added to `vercel.json`). The admin
+"Run worker now" button runs the same tick through the session-gated
+`/api/admin/worker/run`. A tick works within a ~250s budget and exits;
+checkpoints make that safe.
+
+The tick endpoint **fails closed** (`lib/workerAuth.ts`): callers must send
+`Authorization: Bearer $WORKER_SECRET` (what `pingWorker` sends) or
+`Bearer $CRON_SECRET` (what Vercel cron sends automatically). No other header
+is trusted — `x-vercel-cron` is forgeable. Only `next dev` with neither secret
+set leaves it open. Adding a cron therefore also means adding `CRON_SECRET` to
+Vercel (Sensitive, production + preview).
 
 ### Model providers
 
