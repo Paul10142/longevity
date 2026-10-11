@@ -1,0 +1,121 @@
+found 23 pair(s) in the excluded 0.7-0.75 band; asking the adjudicator
+
+  1  sim 0.719  SAME     conf 0.85  PSA screening is intentionally designed as a high-sensitiv
+     A: PSA screening is intentionally designed as a high-sensitivity test with low specificity to avoid missing cancer cases, but this design produces many false positives—elevated PSA from benign conditions like BPH or prostatitis—leading to unnecessary biopsies.
+     B: Screening tests intentionally accept false positives to ensure true positives are not missed; they prioritize sensitivity over specificity, meaning many individuals who test positive will not actually have disease.
+     why: Same sensitivity-over-specificity screening principle; the new insight adds a concrete worked example (PSA screening), named benign causes of false positives (BPH, prostatitis), and the downstream consequence of unnecessary biopsies.
+
+  2  sim 0.704  SAME     conf 0.85  Inflammation and immune system dysfunction may be primary 
+     A: Inflammation and immune system dysfunction may be primary drivers of Alzheimer's disease and dementia, with their roles currently underestimated in research.
+     B: Amyloid and tau accumulation may be downstream consequences of neuroinflammation rather than primary drivers; neuroinflammation is proposed as a major underlying cause of Alzheimer's disease.
+     why: Both claim inflammation is a primary driver of Alzheimer's; the new insight adds immune system dysfunction as a co-driver, extends the scope to dementia broadly, and adds the caveat that this role is currently underestimated in research.
+
+  3  sim 0.704  SAME     conf 0.82  Prostate MRI is recommended for nearly all men with abnorm
+     A: Prostate MRI is recommended for nearly all men with abnormal PSA testing (99.5% of individuals), with exceptions for bilateral hip replacements—where MRI is ineffective and PSA density can be calculated via ultrasound instead—and individualized consideration for patients with profound anxiety requiring general anesthesia. Single hip replacement is not a barrier; experienced radiologists can effectively read MRI in these cases.
+     B: Pre-biopsy MRI should be performed before prostate biopsy in men with elevated PSA undergoing routine screening, regardless of PSA level, to determine whether a biopsy is warranted and reduce unnecessary procedures.
+     why: Both recommend MRI for essentially all men with abnormal/elevated PSA; the new insight adds the 99.5% applicability figure, the bilateral hip replacement exception with ultrasound-derived PSA density as the alternative, the note that a single hip replacement is not a barrier given experienced radiologists, and individualized handling of severe anxiety requiring general anesthesia.
+
+  4  sim 0.716  SAME     conf 0.60  Extracted plant-derived proteins have only slightly lower 
+     A: Extracted plant-derived proteins have only slightly lower digestibility than animal proteins, but whole plant foods have major digestibility limitations that are not present in extracted forms.
+     B: When plant-based protein extracts are provided in sufficient quantity (30 grams) with high digestibility, they stimulate muscle protein synthesis at levels equivalent to dairy protein, indicating that bioavailability and dose—not intrinsic inferiority—are the limiting factors.
+     why: Both claim that bioavailability, not intrinsic quality, limits extracted plant protein. The new insight adds that extracts are only slightly less digestible than animal proteins, and that whole plant foods have major digestibility limitations extracts lack.
+
+  5  sim 0.705  SAME     conf 0.90  Intuitive expertise—the 5–10% refinement that distinguishe
+     A: Intuitive expertise—the 5–10% refinement that distinguishes expert judgment—is tacit knowledge acquired only through decades of hands-on practice and cannot be learned from textbooks or literature alone.
+     B: Expert scientific judgment operates on approximately 90–95% knowledge-based reasoning (processing documented information and established protocols) and 5–10% intuitive insight that cannot be extracted from published literature.
+     why: Same claim that a 5–10% intuitive component of expert judgment cannot be extracted from literature; the new insight adds that this component is tacit knowledge acquired only through decades of hands-on practice.
+
+  6  sim 0.733  SAME     conf 0.90  Charitable recipients may benefit more from receiving mone
+     A: Charitable recipients may benefit more from receiving money earlier in smaller increments than from large posthumous gifts, and the return on impact from early charitable giving can exceed market investment returns.
+     B: Charitable giving made earlier compounds more effectively than equivalent or larger amounts given later; distributing capital over 30 years produces greater long-term impact than concentrating it at end of life.
+     why: Same claim that earlier charitable giving beats later or posthumous giving; the new insight adds that smaller earlier increments can outperform large posthumous gifts and that the impact return of early giving can exceed market investment returns.
+
+  7  sim 0.738  SAME     conf 0.72  Establishing long-term behavioral change requires providin
+     A: Establishing long-term behavioral change requires providing short-term rewards during the formation phase. Research has documented this through experiments using social reinforcement to initiate behavior patterns that eventually become self-sustaining, though the timeframe for transition varies by individual and behavior type.
+     B: Behavioral change through positive reinforcement requires sustained consistency over an extended period. Establishing new behaviors requires six months to three years of consistent positive reinforcement. Many people abandon the approach because maintaining this consistency is difficult.
+     why: Both describe establishing new behaviors through consistent reinforcement over a formation period; the new insight adds that social reinforcement was the studied method, that behaviors eventually become self-sustaining, and that the transition timeframe varies by individual and behavior type, which is compatible with the existing 6-month-to-3-year range.
+
+  8  sim 0.748  SAME     conf 0.72  Pain sensitivity is modality-specific—high tolerance for o
+     A: Pain sensitivity is modality-specific—high tolerance for one pain stimulus type (cold, heat, pressure, pinprick) does not predict tolerance for others. An individual may have high tolerance for heat but low tolerance for cold, independent of their tolerance for other modalities.
+     B: Genetic factors contribute to modality-specific pain sensitivities, helping explain why pain tolerance to different stimulus types varies across individuals.
+     why: Both describe modality-specific pain sensitivity. The new insight adds that tolerance to one stimulus type does not predict tolerance to others, names the modalities (cold, heat, pressure, pinprick), and gives a concrete case (high heat tolerance with low cold tolerance), none of which the existing genetics-focused statement contains.
+
+  9  sim 0.721  SAME     conf 0.90  Whole food meals slow gastric emptying compared to isolate
+     A: Whole food meals slow gastric emptying compared to isolated protein sources, delaying amino acid delivery to muscle by slowing digestion overall.
+     B: Whole food protein sources digest and absorb more slowly than protein concentrates, making them functionally 'inferior' from a speed-of-digestion standpoint when the goal is rapid muscle protein synthesis signaling.
+     why: Both state whole food protein digests more slowly than isolated/concentrated protein; the new insight adds the mechanism (slowed gastric emptying of whole food meals) and the consequence of delayed amino acid delivery to muscle.
+
+ 10  sim 0.719  DIFFERENT conf 0.80  For patients on GLP-1 receptor agonists, counsel them to t
+     A: For patients on GLP-1 receptor agonists, counsel them to track absolute daily protein intake in grams rather than total calorie counting; establish a patient-specific target and make protein the primary nutrition metric to monitor.
+     B: When patients have variable day-to-day protein intake, target 2 g/kg of body weight (not 1.6 g/kg directly) because this ensures that low-intake days still meet ~1.6 g/kg adequacy; missing a 2 g/kg target still achieves 1.6 g/kg (adequate), whereas missing a 1.6 g/kg target results in 1.2 g/kg (inadequate). This strategy accounts for an asymmetric protein dose-response where losses from underconsumption exceed gains from overconsumption, and protein shortfalls cannot be compensated by higher intake on subsequent days.
+     why: The new insight is about GLP-1 patients making absolute daily protein grams, not calories, their main tracking metric, while the existing claim is about setting a buffered 2 g/kg target to absorb day-to-day intake variability; these are distinct recommendations rather than the same fact at different resolutions.
+
+ 11  sim 0.714  DIFFERENT conf 0.85  Ephedrine is believed to be a beta-2 receptor agonist that
+     A: Ephedrine is believed to be a beta-2 receptor agonist that produces effects less euphoric than yohimbine but with more pronounced adrenaline spiking.
+     B: Yohimbine, an alpha-2 adrenergic antagonist, raises adrenaline signaling substantially and produces a more racy, aggressive subjective effect than caffeine, with an almost borderline anxious quality.
+     why: The new insight is about ephedrine's mechanism (beta-2 agonist) and its effects compared with yohimbine, while the existing claim is about yohimbine's mechanism and effects compared with caffeine, so they are distinct facts about different compounds.
+
+ 12  sim 0.734  SAME     conf 0.62  Fiber slows gastric emptying (stomach emptying), which del
+     A: Fiber slows gastric emptying (stomach emptying), which delays and reduces the rate at which glucose enters the bloodstream, thereby reducing postprandial glucose spikes.
+     B: When fiber supplementation reduces the peak of postprandial blood glucose, insulin secretion is correspondingly reduced, resulting in lower insulin area under the curve.
+     why: Both describe fiber blunting the postprandial glycemic response; the new insight adds the upstream mechanism (slowed gastric emptying delaying glucose entry into the bloodstream), which the existing claim, focused on the downstream insulin reduction, lacks.
+
+ 13  sim 0.722  DIFFERENT conf 0.80  To maintain a target fitness level at a given older age, y
+     A: To maintain a target fitness level at a given older age, younger people must start from higher baseline fitness levels than their age-matched peers, because they have longer to experience age-related decline before reaching that target age.
+     B: For a 40-year-old already in exceptional fitness condition, a maintenance-focused training approach is appropriate, given that most people at that age are not in similar shape.
+     why: The new insight is about backcasting from age-related decline, meaning younger people need a higher starting fitness to reach a target at an older age; the existing claim recommends a maintenance-focused approach for an already-exceptional 40-year-old, which is a distinct recommendation and not the same relationship.
+
+ 14  sim 0.711  DIFFERENT conf 0.80  Acromania is hypothesized to contribute to metabolic effec
+     A: Acromania is hypothesized to contribute to metabolic effects associated with microbiome changes, based on its capacity to produce short-chain fatty acids.
+     B: In metabolically healthy individuals, acromania comprises 5-10% of the gut microbiome, and this proportion appears consistent across different geographic populations.
+     why: The new insight proposes a mechanism (short-chain fatty acid production driving metabolic effects), whereas the existing claim reports relative abundance (5-10% of the microbiome in metabolically healthy people across populations) — distinct facts about the same organism, not the same relationship or finding.
+
+ 15  sim 0.720  SAME     conf 0.72  Dietary approaches to boost GLP-1 via short-chain fatty ac
+     A: Dietary approaches to boost GLP-1 via short-chain fatty acid production create a meal-linked, waxing-and-waning GLP-1 pattern, in contrast to GLP-1 medications, which deliver a continuous high dose directly into the bloodstream.
+     B: Dietary interventions to boost GLP-1 through short-chain fatty acid production do not produce the same magnitude of weight loss as high-dose GLP-1 administration.
+     why: Both contrast SCFA-driven dietary GLP-1 boosting with GLP-1 medications; the new insight adds a likely explanatory mechanism the existing claim lacks: diet produces a meal-linked, waxing-and-waning GLP-1 pattern, while drugs deliver a continuous high dose directly into the bloodstream.
+
+ 16  sim 0.717  SAME     conf 0.90  People typically eat across a longer time window than they
+     A: People typically eat across a longer time window than they consciously perceive when eating without intentional time restriction.
+     B: Approximately 50% of adults have eating windows of 15 hours or longer, defined as a ≥95% probability of consuming food within that window in any given week, and only approximately 10% have eating windows of 12 hours or less; however, measured data reveal a significant discrepancy with self-reports—nearly 100% of adults report eating for 12 hours or less (fewer than 5% report eating more than 13 hours), indicating that people significantly underestimate their daily eating window.
+     why: The new insight states that people underestimate their eating window, and the existing claim already says this with specific numbers; the new insight adds no detail, so it is fully redundant.
+
+ 17  sim 0.742  SAME     conf 0.80  Athletes performing heavy deadlifts may develop high absol
+     A: Athletes performing heavy deadlifts may develop high absolute strength but poor leg strength-endurance (inability to sustain moderate-effort movement like backward hill walking for extended duration), indicating training stimulus mismatched to functional demands.
+     B: Individuals performing heavy deadlifts should first demonstrate baseline leg strength endurance for fundamental movements (e.g., walking backwards 30 meters) before heavy loading is introduced; lacking this foundational capacity makes heavy strength training biomechanically inappropriate.
+     why: Both describe heavy deadlifters lacking foundational leg strength-endurance relative to their absolute strength; the new insight adds the observation that high absolute strength can coexist with poor strength-endurance, the backward hill-walking example for sustained moderate effort over extended duration, and the framing of a training stimulus mismatched to functional demands.
+
+ 18  sim 0.730  SAME     conf 0.88  A substantial proportion of patients with hallux limitus p
+     A: A substantial proportion of patients with hallux limitus progress to hallux rigidus over time.
+     B: Hallux limitus (functional great toe motion limitation) and hallux rigidus (structural limitation due to arthritic changes) are distinct diagnoses with different prognoses; limitus involves a functional joint with preserved motion (typically 40–45° when the metatarsal is mobilized) and musculature-based limitation, while rigidus involves severe arthritis with extreme motion restriction (approximately 5°), essentially resulting in joint fusion. Hallux limitus can progress to hallux rigidus if strengthening and range-of-motion work are not addressed.
+     why: Both describe hallux limitus progressing to hallux rigidus. The new insight adds a frequency qualifier the existing claim lacks: a substantial proportion of patients progress over time, so progression is common rather than merely possible.
+
+ 19  sim 0.733  SAME     conf 0.72  In people naive to nicotine, even small doses activate rew
+     A: In people naive to nicotine, even small doses activate reward pathways strongly, comparable to the first-time effect observed with other drugs.
+     B: When systemic nicotine levels increase, dopamine release increases in the mesolimbic reward pathway, a mechanism underlying nicotine's reinforcing properties and its tendency to promote seeking behavior.
+     why: Both describe nicotine activating the mesolimbic reward pathway; the new insight adds that in nicotine-naive people even small doses produce strong reward activation, comparable to the first-time effect of other drugs.
+
+ 20  sim 0.723  SAME     conf 0.88  Children who are lied to about whether a caregiver will re
+     A: Children who are lied to about whether a caregiver will respond to their signal (by ringing a bell) show reduced ability to delay gratification, consuming an available reward sooner than children given truthful promises about caregiver responsiveness.
+     B: When children perceive that caregivers will not reliably fulfill promises (due to prior lying or broken commitments), they adopt a 'survival mode' mindset favoring immediate consumption of available resources over delayed gratification, because they cannot rely on promised future rewards materializing.
+     why: Same finding that caregiver unreliability reduces delay of gratification; the new insight adds the concrete experimental paradigm (children lied to about whether a caregiver will respond to a bell signal) and the direct comparison against children given truthful promises.
+
+ 21  sim 0.719  SAME     conf 0.82  In older adults, impaired sleep architecture predicts the 
+     A: In older adults, impaired sleep architecture predicts the extent of future beta-amyloid accumulation and age-related protein burden.
+     B: A bidirectional vicious cycle exists: poor sleep accelerates accumulation of beta-amyloid and abnormal tau, and accumulation of these proteins further impairs sleep regulation, creating self-reinforcing neurodegeneration.
+     why: Both describe poor sleep driving beta-amyloid accumulation; the new insight adds the population (older adults), the specific feature (impaired sleep architecture), and the predictive/prospective framing (sleep quality forecasts the extent of future amyloid burden).
+
+ 22  sim 0.742  DIFFERENT conf 0.72  When training twice per week, sessions should be spaced ro
+     A: When training twice per week, sessions should be spaced roughly evenly across the week (e.g., Monday and Thursday) rather than consecutive days, to maintain consistent recovery demands and avoid prolonged gaps without training stimulus.
+     B: A three-day-per-week resistance training program, with one body part trained intensely per session, allows for approximately two days of recovery between same-body-part sessions.
+     why: The new insight recommends spacing a two-sessions-per-week schedule evenly, such as Monday and Thursday, while the existing claim describes a three-day split that trains one body part per session; they share a scheduling and recovery theme but are distinct facts about different program structures.
+
+ 23  sim 0.707  SAME     conf 0.68  The purpose of pain-management interventions is to reduce 
+     A: The purpose of pain-management interventions is to reduce pain sufficiently so the person can then perform the strengthening and movement-retraining work that produces lasting improvement.
+     B: Pain management strategy differs fundamentally by acuity. In acute pain or perioperative settings, the goal is pain elimination or significant reduction to enable mobilization; in chronic pain, the goal shifts to quality of life and patient control rather than complete pain elimination. The clinical challenge is matching the right intervention from a large toolbox (200+ medications, 200+ procedures, mind-body therapies, complementary approaches, and physical rehabilitation) to the individual patient and context.
+     why: Both state that pain reduction is a means to enable active rehabilitation (the existing claim says 'to enable mobilization'); the new insight adds that the enabled work is strengthening and movement retraining, and that this active work, not pain relief itself, produces lasting improvement.
+
+
+judged 23 of 23 | SAME 18 | DIFFERENT 5 | UNSURE 0
+78% of this excluded band are duplicates the library currently keeps apart.
+exit=0

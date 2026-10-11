@@ -15,7 +15,28 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🔎 2026-10-11 (evening) — PLAN & DESIGN REVIEW DONE. Nothing was changed or run. Paul's five decisions are pending.
+> **🛠 2026-10-11 (late) — PHASE A LANDED (Paul10142/longevity#6). Paul decided: laptop CLI only, no Deepgram top-up yet,
+> order A → B ∥ C → D, hold the 213 reviews, Deepgram not YouTube. Read `docs/plan-review-2026-10-11.md` §11.**
+>
+> - **Overnight run (Paul starts it):** `cd /Users/paulclancy/_lifestyleacademy && git pull --ff-only && caffeinate -dims
+>   npx tsx --env-file=.env.local scripts/extractDeepgram.ts --hours 9 --batch 3` — drains the 1 queued consolidate + 4
+>   queued extract jobs first, then the 18 Deepgram-transcribed sources. Log lands in `scratchpad/runs/`. Next morning:
+>   read the log, check `formatCliStats` lines, re-query counts, and run `scripts/evalTwinRecall.ts` (no --judge) only
+>   if the twin sources were touched.
+> - **Gate is 0.70 / sweep 0.70 / 8 candidates** (benchmark: judge says SAME 30/30 at 0.75–0.80, 29/30 at 0.70–0.75,
+>   27/30 below 0.70 on the twins; 18/23 on random corpus pairs in 0.70–0.75). Expect the review queue to grow with
+>   sub-0.80-confidence SAME verdicts; Paul holds reviews until the caption redo anyway.
+> - **Vectors live in `claim_embeddings`** (migrations 029/030 applied). `claims.embedding` is a rollback copy: drop it
+>   after the first full ingestion through the new path (migration 031, together with the `superseded` status and the
+>   `claim_members_retired` log the retirement plan needs).
+> - **Phase B prerequisites (not built yet):** `scripts/retireSourceClaims.ts` + migration 031 + the fresh-run guard in
+>   `extractSource`, per `docs/caption-retirement-plan.md`. Then retire the 20 caption rows that already have a Deepgram
+>   twin, then transcribe the twins of the 98 extracted caption rows first.
+> - **Phase C (parallel):** un-park tagging for clean claims only, then the v4 sentence-level synthesis on the 92 good
+>   sources. Not started.
+> - **Next small change for patient care:** a `contradicts` relation from the adjudicator stored in `claim_links`.
+>
+> **🔎 2026-10-11 (evening) — PLAN & DESIGN REVIEW DONE (superseded by the block above for live state).
 > Read [`docs/plan-review-2026-10-11.md`](docs/plan-review-2026-10-11.md) (phone version: https://claude.ai/artifact/EJBPiNJZHaM5RiZrtYFhw6) before touching anything.**
 >
 > - **The blocker is the AI-call path, not the database.** The 08-28 errors were the app's own 30 s fetch aborts plus one

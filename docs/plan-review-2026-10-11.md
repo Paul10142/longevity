@@ -329,6 +329,69 @@ C is the only check between an invented detail and a physician.
 5. **Merge reviews.** Hold the 213 until after the caption redo. Recommendation:
    hold.
 
+## 11. Executed the same evening: Phase A (decisions taken, engine fixed)
+
+Paul's decisions, 2026-10-11 evening: laptop CLI only for now (he runs it
+overnight); no Deepgram top-up until the credit runs out; the A → B ∥ C → D
+order; hold the 213 reviews; Deepgram, not YouTube. Phase A then landed as
+Paul10142/longevity#6:
+
+- **Bare CLI sessions.** Every `claude -p` call now runs with no MCP servers,
+  no settings or hooks, no built-in tools and no session persistence: 52k → 4k
+  context tokens per judgement, 8.6 s → 3.3 s. The child environment no
+  longer carries `ANTHROPIC_API_KEY`: a CLI that sees it switches to API-key
+  billing, which has no credit, and every call fails with "Credit balance is
+  too low" — found while re-running the benchmark, and the reason the overnight
+  run would have died the same way.
+- **Failed searches fail loudly; extraction retries per chunk; runs log to
+  `scratchpad/runs/`.**
+- **Vectors moved** to `claim_embeddings` (migrations 029 and 030 applied):
+  32,104 rows, identical nearest neighbour on 25 of 25 sampled claims, new
+  index 125 MB, old 251 MB index dropped, ~160 ms per search warm. The 029 draft
+  used pgvector's iterative scan, which walked the whole index whenever a claim
+  had no neighbour above the floor (19 s per call); 030 removed it.
+- **Gate 0.80 → 0.70 on ingestion and sweep, 8 candidates.** Evidence below.
+
+**The recall benchmark, judged band by band** (`scripts/evalTwinRecall.ts
+--judge 30`, read-only; 119 misses judged, 0 failed):
+
+| Best caption-twin similarity | Misses | Judged | SAME | Recall if the gate reached this band |
+|---|---|---|---|---|
+| ≥ 0.86 | 8 | 8 | 8 | 50% (today's 0.80 gate) |
+| 0.80–0.86 | 20 | 20 | 20 | 52% |
+| 0.75–0.80 | 327 | 30 | 30 | 72% |
+| 0.70–0.75 | 196 | 30 | 29 | 85% |
+| < 0.70 | 236 | 30 | 27 | 98% (no gate) |
+
+Read it this way: when the judge is shown the repeat, it recognises it almost
+every time, even below 0.70. The lookup, not the judgement, is what loses
+repeats. The 28 misses above 0.80 had been seen at ingestion and left apart;
+with eight candidates and the current prompt they merge.
+
+**Corpus-wide precision check for the new band** (`evalCandidateThreshold.ts
+--lo 0.70 --hi 0.75`, 23 random pairs): 18 SAME, 5 DIFFERENT, 0 UNSURE. The
+five "different" verdicts are genuinely different facts (ephedrine versus
+yohimbine, a 2-day versus a 3-day training split). That is why the gate stops
+at 0.70 rather than 0.75: 0.70–0.75 is 78% duplicates corpus-wide and 97% on the
+twins, and there is no corpus-wide evidence yet for anything lower. Judging every
+insight with no gate (98% on the twins) is the next experiment, after the
+overnight run shows what 0.70 does to the review queue.
+
+**What the engine still does not do that a careful note-taker would:** flag a
+contradiction. A new fact that conflicts with an existing one is judged
+"different" and recorded as merely "related"; the conflict itself is invisible.
+For a product that feeds patient care that is the next small change: a
+`contradicts` relation from the judge, stored as a `claim_links` row of that
+kind, listed for review.
+
+**Cost of the lower gate:** roughly 70% of insights now reach the judge instead
+of 14%. On the stripped CLI (~3 s per call) that is about 2 hours of judging per
+3,000 insights, which the overnight budget absorbs.
+
+**Still Paul's:** the 9 fidelity re-checks (extraction faithfulness is the
+other half of "the same notes a human would take"), and the Deepgram top-up when
+the credit runs out.
+
 ## Appendix: how the numbers were obtained
 
 - Counts: direct SQL against the live project, 2026-10-11 20:30–21:30 UTC.

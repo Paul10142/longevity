@@ -42,7 +42,15 @@ const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 // flat across it. The 2026-08-14 "do not lower the floor" note rested on pairs
 // at 0.82–0.87 and a 0.86 sweep — a different band. Recall is now tracked by
 // scripts/evalTwinRecall.ts. Still env-tunable for experiments.
-const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.75)
+//
+// 0.75 → 0.70 the same evening, once the benchmark had judged the misses band
+// by band: 29/30 SAME in 0.70–0.75 on the twin episodes (estimated recall 72% →
+// 85% when the gate reaches that band), and 18/23 SAME (78%) on random corpus
+// pairs from the band, the five DIFFERENT verdicts reading as genuinely distinct
+// facts. Below 0.70 the twin set was still 27/30 SAME, but there is no
+// corpus-wide precision evidence there yet, so the gate stops here; judging
+// every insight with no gate at all is the next experiment, not the default.
+const CANDIDATE_THRESHOLD = envNum('CONSOLIDATION_CANDIDATE_THRESHOLD', 0.70)
 // 5 → 8 (2026-10-11): on a lower floor the shortlist fills with near-topic
 // neighbours, and the twin-episode misses included 28 pairs ABOVE 0.80 that a
 // five-deep list had pushed out. The judge sees the extra rows at trivial cost.
@@ -70,7 +78,7 @@ export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE
 // held), and those pairs sit exactly where ingestion's gate sits, not above it.
 // At 0.86 nothing is left to find: the 2026-08-15 full sweep produced 14 merges
 // in 11,502 claims. Same floor as ingestion from 2026-10-11.
-const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.75)
+const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.70)
 
 /** PostgREST returns a one-to-one embed as an object; some client versions wrap it
  *  in a one-element array. Either way, hand back the vector or null. */
