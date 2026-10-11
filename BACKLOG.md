@@ -15,7 +15,23 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌃 2026-08-16 DAY WINDOW — HANDOFF (read this FIRST; supersedes every block below for live state).**
+> **🪟 2026-10-11 — HANDOFF (read this FIRST; supersedes every block below for live state).**
+>
+> Full detail lives in the `v4-build-state` memory (2026-10-11 and 2026-10-03 blocks). Summary:
+>
+> - **Nothing has run since 2026-08-28.** 567 sources; 36,375 insights; 31,574 active claims; 213 pending
+>   merge reviews; 18 Deepgram-transcribed sources not yet extracted. `main`@`dbcb8a0`.
+> - **Blocker:** consolidation (dedup) hits DB timeouts in the enrich step at 31k claims — the last run
+>   produced ~95 insights in 10.5 h. Stuck job `c5e951f1-062a-4369-93b3-6574c0ba024d` is queued. Fix this
+>   before restarting extraction.
+> - **Approved by Paul 2026-10-03, not yet applied:** lower `CONSOLIDATION_CANDIDATE_THRESHOLD` (0.80) and
+>   `SWEEP_THRESHOLD` (0.86), validate on a 40-pair sample, then re-sweep the corpus. Evidence:
+>   `scripts/evalCandidateThreshold.ts`.
+> - **Decided 2026-10-03:** no unlabelled FoundMyFitness episodes; redo the 107 YouTube-caption sources via
+>   Deepgram (written plan first — retire by removing claim members, never delete claims).
+> - **Not started:** Huberman Lab ingestion via its podcast feed.
+
+> **🌃 2026-08-16 DAY WINDOW — HANDOFF (superseded by the 2026-10-11 block above; kept as dated history).**
 >
 > **LIVE STATE (2026-08-16 ~14:05 UTC):** **96/249 sources have insights** (95 succeeded); **18,379 raw
 > insights**; **15,548 active claims — +2,626 in three hours** as the consolidation backlog drains
