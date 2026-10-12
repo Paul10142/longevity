@@ -1,0 +1,55 @@
+111 pairs (0 with a failed call, excluded)
+seconds per call: as shipped 19.8  →  no thinking 2.6
+outcome (enriched / no change / rejected by guard): shipped 111/0/0   no thinking 105/3/3
+shipped    : 111 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+no thinking: 111 rewrites; rejected 3 (dropped a number: 1, invented one: 2, both: 0); rewrites dropping a digit before the guard 1, in the canonical after it 0
+
+REJECTIONS BY THE MISSING-NUMBER CHECK:
+
+[no thinking] merge:11ca63fa-721c-4eb4-9905-67024f8be69f  missing ["1200"]  invented []
+  MEMBER 1: Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.
+  MEMBER 2: Male prenatal testosterone peaks in mid-gestation (around 15–20 weeks) and then falls at birth, followed by a postnatal surge that peaks at about three months of age (the “mini‑puberty”); fetal concentrations can be substantial (speaker estimated ~400–600 ng/dL versus ~1200 ng/dL in male puberty).
+  REWRITE:  Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks (fetal concentrations ~400–600 ng/dL), then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months of age—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.
+
+identical text: 3/111;  mean word overlap 0.84
+mean length (chars): shipped 404  no thinking 406
+detail coverage (share of the members' distinctive words kept): shipped 0.874  no thinking 0.883
+  pairs where no-thinking keeps >=10 points less: 9/111;  keeps >=10 points more: 12/111
+
+MOST DIFFERENT PAIRS:
+
+merge:361c6ee5-0165-43b9-8f99-0d8df6009ff1  overlap 0.60
+  MEMBER 1: Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range.
+  MEMBER 2: The RDA for protein (commonly ~0.8 g/kg) is likely insufficient for most adults who want to preserve or build muscle; many people are better served by higher intakes around ~1.6 g/kg/day — roughly twice the RDA — e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg.
+  shipped:      Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals. For adults who want to preserve or build muscle, the RDA is likely insufficient; many are better served by higher intakes around ~1.6 g/kg/day—for example, someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg. Uncertainty and debate increase for intakes well above that range.
+  no thinking:  Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range.
+
+merge:361c6ee5-0165-43b9-8f99-0d8df6009ff1  overlap 0.63
+  MEMBER 1: Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range.
+  MEMBER 2: The RDA for protein (commonly ~0.8 g/kg) is likely insufficient for most adults who want to preserve or build muscle; many people are better served by higher intakes around ~1.6 g/kg/day — roughly twice the RDA — e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg.
+  shipped:      Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg/day) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals, particularly for adults who want to preserve or build muscle—many people are better served by higher intakes around ~1.6 g/kg/day (e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg); uncertainty and debate increase for intakes well above that range.
+  no thinking:  Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range.
+
+merge:b75d7694-665f-4361-9dcd-6b9dc3005dcd  overlap 0.67
+  MEMBER 1: X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development because X‑inactivation in females is incomplete—about 20% of genes on the ‘silenced’ X escape inactivation, so some genes remain effectively double‑dosed in XX individuals.
+  MEMBER 2: Roughly one-fifth of genes on the inactive X chromosome escape X-inactivation, creating dosage differences between individuals with one versus two X chromosomes that influence phenotype.
+  shipped:      X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development, influencing phenotype, because X‑inactivation in females is incomplete—about 20% of genes on the inactive X chromosome escape inactivation, so some genes remain effectively double‑dosed in XX individuals.
+  no thinking:  X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development because X‑inactivation in females is incomplete—roughly one-fifth (about 20%) of genes on the 'silenced' X escape inactivation, so some genes remain effectively double‑dosed in XX individuals, creating dosage differences between individuals with one versus two X chromosomes that influence phenotype.
+
+merge:01eb7cce-7e31-4153-9984-3672baad44d1  overlap 0.67
+  MEMBER 1: Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men.
+  MEMBER 2: Congenital absence of the vas deferens occurs in the population (reported here as about 1 in 500 men) and is a cause of obstructive azoospermia — effectively a ‘natural vasectomy’ that prevents natural conception.
+  shipped:      Congenital absence of the vas deferens causes obstructive azoospermia and complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' occurs in roughly 1 in 500 men.
+  no thinking:  Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men and results in obstructive azoospermia that prevents natural conception.
+
+merge:4904035a-4989-433f-b870-29dc4ebe62d3  overlap 0.67
+  MEMBER 1: Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management.
+  MEMBER 2: A focused physical exam is essential in male fertility evaluation because a small but important fraction (about 1–5%) of male infertility stems from major medical conditions (e.g., testicular cancer, diabetes) and from treatable anatomic findings such as varicoceles.
+  shipped:      A focused physical examination remains essential in male fertility evaluation because a small but meaningful proportion (approximately 1–5%) of male infertility stems from major medical conditions (e.g., testicular cancer, systemic disease such as diabetes) that change management, as well as from treatable anatomic findings such as varicoceles.
+  no thinking:  Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management, and a focused exam can identify treatable anatomic findings such as varicoceles.
+
+merge:01eb7cce-7e31-4153-9984-3672baad44d1  overlap 0.68
+  MEMBER 1: Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men.
+  MEMBER 2: Congenital absence of the vas deferens occurs in the population (reported here as about 1 in 500 men) and is a cause of obstructive azoospermia — effectively a ‘natural vasectomy’ that prevents natural conception.
+  shipped:      Congenital absence of the vas deferens causes complete infertility despite otherwise normal-appearing testes and is a cause of obstructive azoospermia occurring in roughly 1 in 500 men; such anatomic 'natural vasectomy' prevents natural conception.
+  no thinking:  Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' results in obstructive azoospermia and may occur in roughly 1 in 500 men.

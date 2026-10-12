@@ -1,0 +1,1502 @@
+[
+ {
+  "id": "merge:3343462b-3dd6-4305-998f-550a6d6da648",
+  "member1": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality—improving lifespan without addressing healthspan can extend time lived with poor health; healthspan is conceptually and practically more complex to define and measure.",
+  "member2": "Distinguish lifespan (the binary event of death) from healthspan (a continuous, subjective 'vector' that determines quality of life); healthspan is analog — not an on/off state — and is meaningfully separable from lifespan when planning interventions for aging.",
+  "shipped": {
+   "ms": 7390,
+   "canonical": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality; healthspan, by contrast, is a continuous, subjective 'vector' that determines quality of life and is analog—not an on/off state. Improving lifespan without addressing healthspan can extend time lived with poor health. Healthspan is conceptually and practically more complex to define and measure than lifespan, and is meaningfully separable from lifespan when planning interventions for aging.",
+   "proposed": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality; healthspan, by contrast, is a continuous, subjective 'vector' that determines quality of life and is analog—not an on/off state. Improving lifespan without addressing healthspan can extend time lived with poor health. Healthspan is conceptually and practically more complex to define and measure than lifespan, and is meaningfully separable from lifespan when planning interventions for aging.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2411,
+   "canonical": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality—improving lifespan without addressing healthspan can extend time lived with poor health; healthspan is a continuous, subjective 'vector' that determines quality of life, analog rather than an on/off state, conceptually and practically more complex to define and measure than lifespan, and meaningfully separable from lifespan when planning interventions for aging.",
+   "proposed": "Lifespan is a discrete, objective endpoint (alive vs. dead), but it conveys nothing about functional quality—improving lifespan without addressing healthspan can extend time lived with poor health; healthspan is a continuous, subjective 'vector' that determines quality of life, analog rather than an on/off state, conceptually and practically more complex to define and measure than lifespan, and meaningfully separable from lifespan when planning interventions for aging.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:fbf2c28f-36cf-4b66-aecf-311cf1552700",
+  "member1": "Healthspan is multidimensional: treat it as three sub-vectors — physical function, cognitive function, and emotional well‑being — rather than a single metric; interventions should target the specific domain(s) that are most likely to decline or matter to the individual.",
+  "member2": "Healthspan can be usefully parsed into three related but distinct domains—physical capacity, cognitive capacity, and emotional health—which follow different age trajectories and therefore require different strategies.",
+  "shipped": {
+   "ms": 12890,
+   "canonical": "Healthspan is multidimensional: treat it as three sub-vectors—physical function, cognitive function, and emotional well-being—rather than a single metric; these follow different age trajectories and therefore require different strategies. Interventions should target the specific domain(s) that are most likely to decline or matter to the individual.",
+   "proposed": "Healthspan is multidimensional: treat it as three sub-vectors—physical function, cognitive function, and emotional well-being—rather than a single metric; these follow different age trajectories and therefore require different strategies. Interventions should target the specific domain(s) that are most likely to decline or matter to the individual.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3850,
+   "canonical": "Healthspan is multidimensional: treat it as three distinct sub-vectors—physical function (capacity), cognitive function (capacity), and emotional well-being (health)—rather than a single metric; these domains follow different age trajectories and therefore require different strategies; interventions should target the specific domain(s) that are most likely to decline or matter to the individual.",
+   "proposed": "Healthspan is multidimensional: treat it as three distinct sub-vectors—physical function (capacity), cognitive function (capacity), and emotional well-being (health)—rather than a single metric; these domains follow different age trajectories and therefore require different strategies; interventions should target the specific domain(s) that are most likely to decline or matter to the individual.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:80cd5c83-e0ae-4abb-a195-6b701fbef090",
+  "member1": "The introduction of randomized controlled trials (RCTs) and modern statistical methods provided a rigorous way to test medical interventions, accelerating the transition to evidence-based medicine.",
+  "member2": "The adoption of randomized controlled trials (RCTs) became the methodological foundation of modern medicine, enabling reliable evaluation of treatments and powering rapid improvements in acute care (e.g., infections, heart failure, renal failure, appendicitis, complicated pregnancy).",
+  "shipped": {
+   "ms": 13382,
+   "canonical": "The introduction of randomized controlled trials (RCTs) and modern statistical methods provided a rigorous way to test medical interventions, becoming the methodological foundation of modern medicine, enabling reliable evaluation of treatments, and accelerating the transition to evidence-based medicine; RCTs powered rapid improvements in acute care, including infections, heart failure, renal failure, appendicitis, and complicated pregnancy.",
+   "proposed": "The introduction of randomized controlled trials (RCTs) and modern statistical methods provided a rigorous way to test medical interventions, becoming the methodological foundation of modern medicine, enabling reliable evaluation of treatments, and accelerating the transition to evidence-based medicine; RCTs powered rapid improvements in acute care, including infections, heart failure, renal failure, appendicitis, and complicated pregnancy.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 5639,
+   "canonical": "The introduction of randomized controlled trials (RCTs) and modern statistical methods provided a rigorous way to test medical interventions, accelerating the transition to evidence-based medicine; RCTs became the methodological foundation of modern medicine, enabling reliable evaluation of treatments and powering rapid improvements in acute care including infections, heart failure, renal failure, appendicitis, and complicated pregnancy.",
+   "proposed": "The introduction of randomized controlled trials (RCTs) and modern statistical methods provided a rigorous way to test medical interventions, accelerating the transition to evidence-based medicine; RCTs became the methodological foundation of modern medicine, enabling reliable evaluation of treatments and powering rapid improvements in acute care including infections, heart failure, renal failure, appendicitis, and complicated pregnancy.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:76f67031-fc45-463b-96d0-6e6367e22613",
+  "member1": "Modifiable vascular and metabolic targets that reduce dementia risk include improving overall metabolic health, lowering apolipoprotein B (APOB)/atherogenic lipoproteins, controlling blood pressure, and avoiding tobacco use.",
+  "member2": "Improving metabolic health—lowering APOB and blood pressure and avoiding smoking—reduces risk for both cardiovascular disease and dementias (including Alzheimer’s and vascular dementia) because vascular and metabolic factors drive brain injury over time.",
+  "shipped": {
+   "ms": 10769,
+   "canonical": "Modifiable vascular and metabolic targets that reduce risk for both cardiovascular disease and dementias (including Alzheimer's and vascular dementia) include improving overall metabolic health, lowering apolipoprotein B (APOB)/atherogenic lipoproteins, controlling blood pressure, and avoiding tobacco use, because vascular and metabolic factors drive brain injury over time.",
+   "proposed": "Modifiable vascular and metabolic targets that reduce risk for both cardiovascular disease and dementias (including Alzheimer's and vascular dementia) include improving overall metabolic health, lowering apolipoprotein B (APOB)/atherogenic lipoproteins, controlling blood pressure, and avoiding tobacco use, because vascular and metabolic factors drive brain injury over time.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3124,
+   "canonical": "Modifiable vascular and metabolic targets that reduce dementia risk—including Alzheimer's disease and vascular dementia—include improving overall metabolic health, lowering apolipoprotein B (APOB)/atherogenic lipoproteins, controlling blood pressure, and avoiding tobacco use; these same interventions also reduce cardiovascular disease risk because vascular and metabolic factors drive brain injury over time.",
+   "proposed": "Modifiable vascular and metabolic targets that reduce dementia risk—including Alzheimer's disease and vascular dementia—include improving overall metabolic health, lowering apolipoprotein B (APOB)/atherogenic lipoproteins, controlling blood pressure, and avoiding tobacco use; these same interventions also reduce cardiovascular disease risk because vascular and metabolic factors drive brain injury over time.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:74fb6f18-e43c-4a5d-b26a-411883856c72",
+  "member1": "Chronic obstructive pulmonary disease (COPD) remains a major cause of death but is overwhelmingly caused by cigarette smoking, underscoring that reducing tobacco use is the primary prevention strategy.",
+  "member2": "Chronic obstructive pulmonary disease (COPD) is largely preventable because its dominant cause is cigarette smoking; therefore population-level reduction in smoking is the primary lever to cut COPD incidence and mortality.",
+  "shipped": {
+   "ms": 27665,
+   "canonical": "Chronic obstructive pulmonary disease (COPD) remains a major cause of death but is largely preventable because it is overwhelmingly caused by cigarette smoking; therefore population-level reduction in smoking is the primary prevention strategy and lever to cut COPD incidence and mortality.",
+   "proposed": "Chronic obstructive pulmonary disease (COPD) remains a major cause of death but is largely preventable because it is overwhelmingly caused by cigarette smoking; therefore population-level reduction in smoking is the primary prevention strategy and lever to cut COPD incidence and mortality.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3048,
+   "canonical": "Chronic obstructive pulmonary disease (COPD) remains a major cause of death and is largely preventable because it is overwhelmingly caused by cigarette smoking; therefore, reducing tobacco use and population-level reduction in smoking are the primary prevention strategy and primary lever to cut COPD incidence and mortality.",
+   "proposed": "Chronic obstructive pulmonary disease (COPD) remains a major cause of death and is largely preventable because it is overwhelmingly caused by cigarette smoking; therefore, reducing tobacco use and population-level reduction in smoking are the primary prevention strategy and primary lever to cut COPD incidence and mortality.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:091e532c-ec5e-4f9b-ace3-a898bb2a270b",
+  "member1": "A nontrivial portion of cancer incidence reflects stochastic ‘bad luck’—random mutations from cell division—so some cancers occur independent of identifiable genetic predisposition or environmental exposures.",
+  "member2": "A substantial portion of cancer incidence may be driven by random, unavoidable replication errors (“bad luck”); environmental or infectious triggers (e.g., oncogenic viruses) explain some cancers but do not account for the majority in many analyses.",
+  "shipped": {
+   "ms": 36788,
+   "canonical": "A substantial portion of cancer incidence reflects stochastic 'bad luck'—unavoidable replication errors and random mutations from cell division—so some cancers occur independent of identifiable genetic predisposition, environmental exposures, or infectious exposures; environmental or infectious triggers (e.g., oncogenic viruses) explain some cancers but do not account for the majority in many analyses.",
+   "proposed": "A substantial portion of cancer incidence reflects stochastic 'bad luck'—unavoidable replication errors and random mutations from cell division—so some cancers occur independent of identifiable genetic predisposition, environmental exposures, or infectious exposures; environmental or infectious triggers (e.g., oncogenic viruses) explain some cancers but do not account for the majority in many analyses.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2160,
+   "canonical": "A nontrivial portion of cancer incidence reflects stochastic 'bad luck'—random mutations from cell division—so some cancers occur independent of identifiable genetic predisposition or environmental exposures; environmental or infectious triggers (e.g., oncogenic viruses) explain some cancers but do not account for the majority in many analyses.",
+   "proposed": "A nontrivial portion of cancer incidence reflects stochastic 'bad luck'—random mutations from cell division—so some cancers occur independent of identifiable genetic predisposition or environmental exposures; environmental or infectious triggers (e.g., oncogenic viruses) explain some cancers but do not account for the majority in many analyses.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:05a6fa55-6bf1-4294-a70f-e8ad45ab4ef3",
+  "member1": "Early external genitalia are bipotential and resemble female anatomy; masculinization mainly involves growth and modification (e.g., clitoris enlarges to form the penis; labia are modified to form structures that appear male).",
+  "member2": "Masculinization of external genitalia involves enlargement and remodeling rather than creation of wholly new structures—practically, the clitoris and labia are modified to produce structures that appear male.",
+  "shipped": {
+   "ms": 7204,
+   "canonical": "Early external genitalia are bipotential and resemble female anatomy; masculinization involves enlargement and remodeling rather than creation of wholly new structures—practically, the clitoris enlarges to form the penis and labia are modified to form structures that appear male.",
+   "proposed": "Early external genitalia are bipotential and resemble female anatomy; masculinization involves enlargement and remodeling rather than creation of wholly new structures—practically, the clitoris enlarges to form the penis and labia are modified to form structures that appear male.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 1908,
+   "canonical": "Early external genitalia are bipotential and resemble female anatomy; masculinization mainly involves growth and modification rather than creation of wholly new structures—the clitoris enlarges to form the penis; labia are modified to form structures that appear male.",
+   "proposed": "Early external genitalia are bipotential and resemble female anatomy; masculinization mainly involves growth and modification rather than creation of wholly new structures—the clitoris enlarges to form the penis; labia are modified to form structures that appear male.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:9835ef56-bc5b-4490-a1b0-2779fcb26202",
+  "member1": "Biological sex is best conceptualized by the type of gamete the organism is designed to produce—small, motile gametes (sperm) versus large, nutrient-rich gametes (eggs)—so across sexually reproducing organisms, reproductive systems are organized around gamete type rather than any single marker like chromosomes or hormones.",
+  "member2": "Biological sex is best defined by the type of gamete an organism is built around: the reproductive system and developmental programs align with whether the organism produces large immobile gametes (eggs) or small mobile gametes (sperm).",
+  "shipped": {
+   "ms": 28216,
+   "canonical": "Biological sex is best conceptualized by the type of gamete the organism is designed to produce—small, motile gametes (sperm) versus large, nutrient-rich, immobile gametes (eggs)—so across sexually reproducing organisms, reproductive systems and developmental programs are organized around gamete type rather than any single marker like chromosomes or hormones.",
+   "proposed": "Biological sex is best conceptualized by the type of gamete the organism is designed to produce—small, motile gametes (sperm) versus large, nutrient-rich, immobile gametes (eggs)—so across sexually reproducing organisms, reproductive systems and developmental programs are organized around gamete type rather than any single marker like chromosomes or hormones.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2179,
+   "canonical": "Biological sex is best conceptualized by the type of gamete the organism is designed to produce—small, motile gametes (sperm) versus large, nutrient-rich gametes (eggs)—so across sexually reproducing organisms, reproductive systems and developmental programs are organized around gamete type rather than any single marker like chromosomes or hormones.",
+   "proposed": "Biological sex is best conceptualized by the type of gamete the organism is designed to produce—small, motile gametes (sperm) versus large, nutrient-rich gametes (eggs)—so across sexually reproducing organisms, reproductive systems and developmental programs are organized around gamete type rather than any single marker like chromosomes or hormones.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:6f609fa7-b4c5-4f3b-ac27-1bd3f1eb7a23",
+  "member1": "Prenatal testosterone acts as an organizing signal that converts genetic information into widespread developmental changes in the male body and brain, establishing many later sex differences in anatomy and behavior.",
+  "member2": "Prenatal (embryologic) exposure to androgens such as testosterone organizes sex-specific development of the brain and body, producing durable differences that can influence behavior long after birth.",
+  "shipped": {
+   "ms": 39154,
+   "canonical": "Prenatal (embryologic) exposure to androgens such as testosterone acts as an organizing signal that converts genetic information into widespread developmental changes in the body and brain, establishing many durable sex differences in anatomy and behavior that can influence behavior long after birth.",
+   "proposed": "Prenatal (embryologic) exposure to androgens such as testosterone acts as an organizing signal that converts genetic information into widespread developmental changes in the body and brain, establishing many durable sex differences in anatomy and behavior that can influence behavior long after birth.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 1931,
+   "canonical": "Prenatal (embryologic) exposure to androgens such as testosterone acts as an organizing signal that converts genetic information into widespread developmental changes in the male body and brain, establishing durable sex-specific differences in anatomy and behavior that can influence behavior long after birth.",
+   "proposed": "Prenatal (embryologic) exposure to androgens such as testosterone acts as an organizing signal that converts genetic information into widespread developmental changes in the male body and brain, establishing durable sex-specific differences in anatomy and behavior that can influence behavior long after birth.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:11ca63fa-721c-4eb4-9905-67024f8be69f",
+  "member1": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.",
+  "member2": "Male prenatal testosterone peaks in mid-gestation (around 15–20 weeks) and then falls at birth, followed by a postnatal surge that peaks at about three months of age (the “mini‑puberty”); fetal concentrations can be substantial (speaker estimated ~400–600 ng/dL versus ~1200 ng/dL in male puberty).",
+  "shipped": {
+   "ms": 24546,
+   "canonical": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks, then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects.",
+   "proposed": "",
+   "reason": "synthesis failed: Expected ',' or '}' after property value in JSON at position 327 (line 2 column 326)",
+   "changed": false,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2801,
+   "canonical": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks (with fetal concentrations estimated at ~400–600 ng/dL), then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months of age—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects (compared to ~1200 ng/dL in male puberty).",
+   "proposed": "Male fetuses experience a fetal testosterone surge beginning around 8 weeks of gestation, peaking roughly between 15–20 weeks (with fetal concentrations estimated at ~400–600 ng/dL), then falling at birth; a postnatal 'mini-puberty' raises testosterone again with a peak around 3 months of age—testosterone acts via intracellular receptors to change transcription of thousands of genes, producing broad developmental effects (compared to ~1200 ng/dL in male puberty).",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:b75d7694-665f-4361-9dcd-6b9dc3005dcd",
+  "member1": "X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development because X‑inactivation in females is incomplete—about 20% of genes on the ‘silenced’ X escape inactivation, so some genes remain effectively double‑dosed in XX individuals.",
+  "member2": "Roughly one-fifth of genes on the inactive X chromosome escape X-inactivation, creating dosage differences between individuals with one versus two X chromosomes that influence phenotype.",
+  "shipped": {
+   "ms": 28929,
+   "canonical": "X-chromosome dosage matters: having one X versus two Xs meaningfully affects development because X-inactivation in females is incomplete—about 20% of genes on the inactive X chromosome escape inactivation, creating dosage differences between individuals with one versus two X chromosomes; some genes remain effectively double-dosed in XX individuals, and these dosage differences influence phenotype.",
+   "proposed": "X-chromosome dosage matters: having one X versus two Xs meaningfully affects development because X-inactivation in females is incomplete—about 20% of genes on the inactive X chromosome escape inactivation, creating dosage differences between individuals with one versus two X chromosomes; some genes remain effectively double-dosed in XX individuals, and these dosage differences influence phenotype.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2096,
+   "canonical": "X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development because X‑inactivation in females is incomplete—roughly one-fifth (about 20%) of genes on the 'silenced' X escape inactivation, so some genes remain effectively double‑dosed in XX individuals, creating dosage differences between individuals with one versus two X chromosomes that influence phenotype.",
+   "proposed": "X‑chromosome dosage matters: having one X versus two Xs meaningfully affects development because X‑inactivation in females is incomplete—roughly one-fifth (about 20%) of genes on the 'silenced' X escape inactivation, so some genes remain effectively double‑dosed in XX individuals, creating dosage differences between individuals with one versus two X chromosomes that influence phenotype.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:92714200-3137-4d56-809f-7c1c57c5341c",
+  "member1": "Dihydrotestosterone (DHT) acting via androgen receptors is critical for masculinizing external genitalia and the prostate; natural human experiments such as five‑alpha‑reductase deficiency (which impairs DHT synthesis) illustrate this causal pathway.",
+  "member2": "Peripheral conversion of testosterone to dihydrotestosterone (DHT) by 5α‑reductase in genital tissues creates locally high concentrations of a more potent androgen, enabling masculinization of external genitalia (penis formation, scrotal fusion) and promoting full prostate development without raising systemic androgen levels during fetal development.",
+  "shipped": {
+   "ms": 41366,
+   "canonical": "Dihydrotestosterone (DHT) acting via androgen receptors is critical for masculinizing external genitalia and the prostate; peripheral conversion of testosterone to DHT by 5α-reductase in genital tissues creates locally high concentrations of a more potent androgen, enabling masculinization of external genitalia (penis formation, scrotal fusion) and promoting full prostate development without raising systemic androgen levels during fetal development; natural human experiments such as 5α-reductase deficiency (which impairs DHT synthesis) illustrate this causal pathway.",
+   "proposed": "Dihydrotestosterone (DHT) acting via androgen receptors is critical for masculinizing external genitalia and the prostate; peripheral conversion of testosterone to DHT by 5α-reductase in genital tissues creates locally high concentrations of a more potent androgen, enabling masculinization of external genitalia (penis formation, scrotal fusion) and promoting full prostate development without raising systemic androgen levels during fetal development; natural human experiments such as 5α-reductase deficiency (which impairs DHT synthesis) illustrate this causal pathway.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2511,
+   "canonical": "Dihydrotestosterone (DHT) acting via androgen receptors is critical for masculinizing external genitalia and the prostate; peripheral conversion of testosterone to DHT by 5α-reductase in genital tissues creates locally high concentrations of this more potent androgen, enabling masculinization of external genitalia (penis formation, scrotal fusion) and promoting full prostate development without raising systemic androgen levels during fetal development, as illustrated by natural human experiments such as five-alpha-reductase deficiency (which impairs DHT synthesis).",
+   "proposed": "Dihydrotestosterone (DHT) acting via androgen receptors is critical for masculinizing external genitalia and the prostate; peripheral conversion of testosterone to DHT by 5α-reductase in genital tissues creates locally high concentrations of this more potent androgen, enabling masculinization of external genitalia (penis formation, scrotal fusion) and promoting full prostate development without raising systemic androgen levels during fetal development, as illustrated by natural human experiments such as five-alpha-reductase deficiency (which impairs DHT synthesis).",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:760376b4-7e53-47de-97e5-0fe5ea9422ea",
+  "member1": "Male and female aggression often follow different strategies: males are more likely to use direct physical confrontation, while females more often use indirect or relational tactics—patterns that can be understood through evolutionary trade‑offs in competition and risk.",
+  "member2": "Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm.",
+  "shipped": {
+   "ms": 8618,
+   "canonical": "Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm—patterns reflecting evolutionary trade-offs in competition and risk.",
+   "proposed": "Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm—patterns reflecting evolutionary trade-offs in competition and risk.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2210,
+   "canonical": "Male and female aggression often follow different strategies: males are more likely to use direct, face-to-face physical or overt verbal confrontation, while females more often use indirect or relational tactics (e.g., reputation denigration, social exclusion)—patterns that reflect adaptive competition while avoiding physical harm and can be understood through evolutionary trade‑offs in risk and cost.",
+   "proposed": "Male and female aggression often follow different strategies: males are more likely to use direct, face-to-face physical or overt verbal confrontation, while females more often use indirect or relational tactics (e.g., reputation denigration, social exclusion)—patterns that reflect adaptive competition while avoiding physical harm and can be understood through evolutionary trade‑offs in risk and cost.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:f3fdfc43-e39f-438c-bee3-d612de59d7a8",
+  "member1": "Androgens (testosterone) during fetal and early postnatal periods have organizational effects on neural development that help produce persistent sex differences in behavior—examples include higher rates of rough‑and‑tumble play in males across many mammal species.",
+  "member2": "Fetal testosterone exposure organizes sex differences in brain development: during a prenatal critical window, XX brains develop largely without testosterone while XY brains are exposed to high testosterone, producing long-lasting male-typical versus female-typical behavioral patterns (e.g., greater rough play in males across many mammals).",
+  "shipped": {
+   "ms": 16069,
+   "canonical": "Androgens (testosterone) during fetal and early postnatal periods, particularly during a prenatal critical window, organize sex differences in neural development: XX brains develop largely without testosterone while XY brains are exposed to high testosterone, producing long-lasting male-typical versus female-typical behavioral patterns, exemplified by higher rates of rough-and-tumble play in males across many mammal species.",
+   "proposed": "Androgens (testosterone) during fetal and early postnatal periods, particularly during a prenatal critical window, organize sex differences in neural development: XX brains develop largely without testosterone while XY brains are exposed to high testosterone, producing long-lasting male-typical versus female-typical behavioral patterns, exemplified by higher rates of rough-and-tumble play in males across many mammal species.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2319,
+   "canonical": "Androgens (testosterone) during fetal and early postnatal periods have organizational effects on neural development during a prenatal critical window—XX brains develop largely without testosterone while XY brains are exposed to high testosterone—producing persistent sex differences in behavior and long-lasting male-typical versus female-typical behavioral patterns; examples include higher rates of rough-and-tumble play in males across many mammal species.",
+   "proposed": "Androgens (testosterone) during fetal and early postnatal periods have organizational effects on neural development during a prenatal critical window—XX brains develop largely without testosterone while XY brains are exposed to high testosterone—producing persistent sex differences in behavior and long-lasting male-typical versus female-typical behavioral patterns; examples include higher rates of rough-and-tumble play in males across many mammal species.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:d19cf6bd-c688-4173-97cf-57dcca3d8763",
+  "member1": "Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.",
+  "member2": "Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs.",
+  "shipped": {
+   "ms": 25996,
+   "canonical": "Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; the modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.",
+   "proposed": "Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; the modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2095,
+   "canonical": "Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments where high-energy foods were rare and costly to obtain, which helps explain modern cravings for items like candy bars and chocolate over lower-calorie alternatives like cheese sticks; the modern ubiquity of these calorie-dense items creates an evolutionary mismatch that promotes overconsumption relative to energy needs.",
+   "proposed": "Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments where high-energy foods were rare and costly to obtain, which helps explain modern cravings for items like candy bars and chocolate over lower-calorie alternatives like cheese sticks; the modern ubiquity of these calorie-dense items creates an evolutionary mismatch that promotes overconsumption relative to energy needs.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:11bf8990-1d21-4135-a184-167728758ce9",
+  "member1": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+  "member2": "Where paternal investment materially improves offspring survival, evolutionary pressures favor male behavioral shifts (and associated hormonal changes) that increase caregiving—manifesting as lower testosterone during periods of active paternal care.",
+  "shipped": {
+   "ms": 18962,
+   "canonical": "Where paternal investment materially improves offspring survival, evolutionary pressures favor male behavioral shifts (and associated hormonal changes) that increase caregiving. Across humans and other species, high paternal involvement is associated with suppressed testosterone in males during periods of active paternal care—an evolved hormonal mechanism that reallocates effort from mating to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "proposed": "Where paternal investment materially improves offspring survival, evolutionary pressures favor male behavioral shifts (and associated hormonal changes) that increase caregiving. Across humans and other species, high paternal involvement is associated with suppressed testosterone in males during periods of active paternal care—an evolved hormonal mechanism that reallocates effort from mating to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3596,
+   "canonical": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating to parenting; where paternal investment materially improves offspring survival, evolutionary pressures favor male behavioral shifts and associated hormonal changes that increase caregiving, manifesting as lower testosterone during periods of active paternal care; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "proposed": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating to parenting; where paternal investment materially improves offspring survival, evolutionary pressures favor male behavioral shifts and associated hormonal changes that increase caregiving, manifesting as lower testosterone during periods of active paternal care; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:8f4e764d-7acf-4dd7-8786-e318b9edf979",
+  "member1": "Testosterone replacement in men has established clinical benefits for bone density, frailty, and many subjective symptoms, and is commonly regarded in clinical practice as an effective therapeutic option when indicated—though patient selection and monitoring remain important.",
+  "member2": "Testosterone replacement in men is generally safe and can improve bone health, reduce frailty, and improve subjective quality-of-life measures; common historical concerns (prostate cancer, heart disease) have not shown clear increases except for an edge-case risk of hypertension that should be monitored and managed.",
+  "shipped": {
+   "ms": 8930,
+   "canonical": "Testosterone replacement in men is generally safe and has established clinical benefits for bone density, frailty, and subjective quality-of-life measures; it is commonly regarded in clinical practice as an effective therapeutic option when indicated. Common historical concerns about prostate cancer and heart disease have not shown clear increases; however, an edge-case risk of hypertension should be monitored and managed. Patient selection and monitoring remain important.",
+   "proposed": "Testosterone replacement in men is generally safe and has established clinical benefits for bone density, frailty, and subjective quality-of-life measures; it is commonly regarded in clinical practice as an effective therapeutic option when indicated. Common historical concerns about prostate cancer and heart disease have not shown clear increases; however, an edge-case risk of hypertension should be monitored and managed. Patient selection and monitoring remain important.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2233,
+   "canonical": "Testosterone replacement in men has established clinical benefits for bone density, frailty, and many subjective symptoms, and is commonly regarded in clinical practice as an effective therapeutic option when indicated—though patient selection and monitoring remain important; it is generally safe, with common historical concerns (prostate cancer, heart disease) not showing clear increases except for an edge-case risk of hypertension that should be monitored and managed.",
+   "proposed": "Testosterone replacement in men has established clinical benefits for bone density, frailty, and many subjective symptoms, and is commonly regarded in clinical practice as an effective therapeutic option when indicated—though patient selection and monitoring remain important; it is generally safe, with common historical concerns (prostate cancer, heart disease) not showing clear increases except for an edge-case risk of hypertension that should be monitored and managed.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:18a11b44-ea7a-46f4-9156-3d9afdd3a90e",
+  "member1": "Maintaining chronically high testosterone is metabolically costly and promotes mating-focused behaviors (aggression, territory defense, mate-seeking) that are maladaptive once a stable pair bond is formed; many species therefore show seasonal or context-dependent elevations in testosterone rather than sustained high levels.",
+  "member2": "Many seasonally breeding animals keep testosterone low year-round and only raise it during the mating season (“rut”), producing rapid increases in testes size, ornamentation (e.g., antlers), aggression, and sexual behavior when females are fertile—because maintaining high testosterone is energetically and immunologically costly.",
+  "shipped": {
+   "ms": 22570,
+   "canonical": "Maintaining chronically high testosterone is metabolically and immunologically costly, promoting mating-focused behaviors (aggression, territory defense, mate-seeking, sexual behavior) and rapid increases in physical characteristics (testes size, ornamentation such as antlers) that are maladaptive once a stable pair bond is formed; seasonally breeding animals therefore keep testosterone low year-round and raise it only during the mating season (\"rut\") when females are fertile, rather than sustaining chronically elevated levels.",
+   "proposed": "Maintaining chronically high testosterone is metabolically and immunologically costly, promoting mating-focused behaviors (aggression, territory defense, mate-seeking, sexual behavior) and rapid increases in physical characteristics (testes size, ornamentation such as antlers) that are maladaptive once a stable pair bond is formed; seasonally breeding animals therefore keep testosterone low year-round and raise it only during the mating season (\"rut\") when females are fertile, rather than sustaining chronically elevated levels.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2596,
+   "canonical": "Maintaining chronically high testosterone is metabolically costly and promotes mating-focused behaviors (aggression, territory defense, mate-seeking) that are maladaptive once a stable pair bond is formed; many species therefore show seasonal or context-dependent elevations in testosterone rather than sustained high levels. In seasonally breeding animals, testosterone remains low year-round and rises only during the mating season ('rut'), producing rapid increases in testes size, ornamentation (e.g., antlers), aggression, and sexual behavior when females are fertile—because maintaining high testosterone is energetically and immunologically costly.",
+   "proposed": "Maintaining chronically high testosterone is metabolically costly and promotes mating-focused behaviors (aggression, territory defense, mate-seeking) that are maladaptive once a stable pair bond is formed; many species therefore show seasonal or context-dependent elevations in testosterone rather than sustained high levels. In seasonally breeding animals, testosterone remains low year-round and rises only during the mating season ('rut'), producing rapid increases in testes size, ornamentation (e.g., antlers), aggression, and sexual behavior when females are fertile—because maintaining high testosterone is energetically and immunologically costly.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:b08bfbb4-49b3-4c83-be28-e4b4f7a8a48f",
+  "member1": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+  "member2": "Physical involvement with dependent offspring is associated with suppressed testosterone in males, a hormonal change that facilitates parental attention and reduced mating/ status-seeking behaviors; this pattern has been shown in nonhuman models and is proposed to operate in humans as an evolved trade-off between mating effort and parenting.",
+  "shipped": {
+   "ms": 33342,
+   "canonical": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating and status-seeking to parenting, facilitating parental attention; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior; this trade-off pattern is demonstrated in nonhuman models and proposed to operate in humans.",
+   "proposed": "Across humans and other species, high paternal involvement is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating and status-seeking to parenting, facilitating parental attention; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior; this trade-off pattern is demonstrated in nonhuman models and proposed to operate in humans.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2181,
+   "canonical": "Across humans and other species, physical involvement with dependent offspring is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating and status-seeking to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "proposed": "Across humans and other species, physical involvement with dependent offspring is associated with suppressed testosterone in males—an evolved hormonal mechanism that reallocates effort from mating and status-seeking to parenting; experimental studies in birds show that raising male testosterone causes parental neglect, supporting a causal role for testosterone in parenting behavior.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:60eed702-9b77-4702-891d-becd0d2dbea5",
+  "member1": "Emotional health is less tightly linked to chronological age than physical or cognitive health; population data often show a U-shaped wellbeing curve with a midlife dip (commonly around the late 40s) and improvement thereafter—meaning emotional wellbeing can improve over time with effort.",
+  "member2": "Emotional health (mood, affect, sense of wellbeing) is less tightly linked to chronological age than cognitive and physical function; it can be maintained or improved across the lifespan and therefore is a target for lifelong intentional practices.",
+  "shipped": {
+   "ms": 9354,
+   "canonical": "Emotional health (mood, affect, sense of wellbeing) is less tightly linked to chronological age than physical or cognitive health; population data often show a U-shaped wellbeing curve with a midlife dip commonly around the late 40s and improvement thereafter—meaning it can be maintained or improved across the lifespan and therefore is a target for lifelong intentional practices.",
+   "proposed": "Emotional health (mood, affect, sense of wellbeing) is less tightly linked to chronological age than physical or cognitive health; population data often show a U-shaped wellbeing curve with a midlife dip commonly around the late 40s and improvement thereafter—meaning it can be maintained or improved across the lifespan and therefore is a target for lifelong intentional practices.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2217,
+   "canonical": "Emotional health (mood, affect, sense of wellbeing) is less tightly linked to chronological age than cognitive and physical function; population data often show a U-shaped wellbeing curve with a midlife dip (commonly around the late 40s) and improvement thereafter—meaning it can be maintained or improved across the lifespan and is therefore a target for lifelong intentional practices.",
+   "proposed": "Emotional health (mood, affect, sense of wellbeing) is less tightly linked to chronological age than cognitive and physical function; population data often show a U-shaped wellbeing curve with a midlife dip (commonly around the late 40s) and improvement thereafter—meaning it can be maintained or improved across the lifespan and is therefore a target for lifelong intentional practices.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:c2cbaf96-2108-4b6a-9d73-65e8f5c51054",
+  "member1": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet.",
+  "member2": "A concrete example: in one primate study the control diet supplied roughly 28–29% of calories from sucrose (very high added sugar), and caloric restriction in that context was associated with increased longevity; in a parallel study using a diet resembling wild intake, caloric restriction did not increase lifespan.",
+  "shipped": {
+   "ms": 7566,
+   "canonical": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet; in one primate study where the control diet supplied roughly 28–29% of calories from sucrose, caloric restriction was associated with increased longevity, while in a parallel study using a diet resembling wild intake, caloric restriction did not increase lifespan.",
+   "proposed": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet; in one primate study where the control diet supplied roughly 28–29% of calories from sucrose, caloric restriction was associated with increased longevity, while in a parallel study using a diet resembling wild intake, caloric restriction did not increase lifespan.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 4018,
+   "canonical": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet. In one primate study, the control diet supplied roughly 28–29% of calories from sucrose, and caloric restriction in that context was associated with increased longevity; in a parallel study using a diet resembling wild intake, caloric restriction did not increase lifespan.",
+   "proposed": "The longevity benefit of caloric restriction depends strongly on baseline diet quality: caloric restriction tends to extend lifespan when the control diet is poor (e.g., very high in added sugar) but may not when the baseline diet approximates a healthy, species-appropriate diet. In one primate study, the control diet supplied roughly 28–29% of calories from sucrose, and caloric restriction in that context was associated with increased longevity; in a parallel study using a diet resembling wild intake, caloric restriction did not increase lifespan.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:6855f05a-e920-4ba2-af19-ca5680d436d1",
+  "member1": "For optimizing VO2‑max adaptations, use intervals lasting about 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus.",
+  "member2": "Use 3–4 minute (or similar) high‑intensity intervals for VO2‑max work; recovery time between intervals is a practical intensity gauge—if you can recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard.",
+  "shipped": {
+   "ms": 7602,
+   "canonical": "For optimizing VO2‑max adaptations, use intervals lasting 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; recovery time is a practical intensity gauge—if you recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard. Very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus.",
+   "proposed": "For optimizing VO2‑max adaptations, use intervals lasting 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; recovery time is a practical intensity gauge—if you recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard. Very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2394,
+   "canonical": "For optimizing VO2‑max adaptations, use intervals lasting about 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus. Recovery time between intervals serves as a practical intensity gauge—if you can recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard.",
+   "proposed": "For optimizing VO2‑max adaptations, use intervals lasting about 3–8 minutes at near‑maximal intensity with roughly 1:1 work:rest; very short intervals (≈1 minute) give some benefit but are suboptimal, while very long intervals (≈15 minutes) are often not intense enough to elicit full VO2‑max stimulus. Recovery time between intervals serves as a practical intensity gauge—if you can recover in under ~4 minutes the interval was probably too easy, whereas needing ~10 minutes suggests you pushed too hard.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:75c363aa-6880-4bf6-a0b8-8e54b86a540a",
+  "member1": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹.",
+  "member2": "You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain longevity benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+  "shipped": {
+   "ms": 6391,
+   "canonical": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹. You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain these benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+   "proposed": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹. You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain these benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3316,
+   "canonical": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹. You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain longevity benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+   "proposed": "VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹. You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain longevity benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:90b6cc6e-3557-4522-bdcf-a345bb6cf49d",
+  "member1": "Leucine is a key amino-acid signal that activates mTOR and stimulates MPS, so protein quality (leucine content) and per-meal leucine dose influence anabolic responses.",
+  "member2": "mTOR is primarily an amino-acid sensor and is especially sensitive to leucine; leucine is one of the key amino acids that potently activates mTOR and thereby drives anabolic signaling.",
+  "shipped": {
+   "ms": 30247,
+   "canonical": "Leucine is a key amino-acid signal that potently activates mTOR—which is primarily an amino-acid sensor and especially sensitive to leucine—thereby driving anabolic signaling and stimulating MPS. Protein quality (leucine content) and per-meal leucine dose influence anabolic responses.",
+   "proposed": "Leucine is a key amino-acid signal that potently activates mTOR—which is primarily an amino-acid sensor and especially sensitive to leucine—thereby driving anabolic signaling and stimulating MPS. Protein quality (leucine content) and per-meal leucine dose influence anabolic responses.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2350,
+   "canonical": "Leucine is a key amino-acid signal that potently activates mTOR (an amino-acid sensor especially sensitive to leucine) and stimulates MPS, so protein quality (leucine content) and per-meal leucine dose influence anabolic responses and anabolic signaling.",
+   "proposed": "Leucine is a key amino-acid signal that potently activates mTOR (an amino-acid sensor especially sensitive to leucine) and stimulates MPS, so protein quality (leucine content) and per-meal leucine dose influence anabolic responses and anabolic signaling.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:ba92c9ff-ca5d-475b-bc5d-43304363bde3",
+  "member1": "When assessing glucose tolerance in someone habitually on a very low–carbohydrate diet, refeed carbohydrates for about three days before an oral glucose tolerance test (OGTT); without short-term carbohydrate refeeding an OGTT will often show paradoxical insulin resistance and may misclassify metabolic status.",
+  "member2": "Standard postprandial tests (e.g., an oral glucose tolerance test) can give misleading results in people adapted to low‑carbohydrate diets unless they are 'refed' carbohydrates beforehand; refeeding restores the acute insulin/glucose response so the test reflects true muscle insulin sensitivity.",
+  "shipped": {
+   "ms": 23093,
+   "canonical": "When assessing glucose tolerance in someone habitually on a very low–carbohydrate diet, refeed carbohydrates for about three days before postprandial tests such as an oral glucose tolerance test (OGTT); without refeeding, such tests will often show paradoxical insulin resistance and can give misleading results that may misclassify metabolic status. Refeeding restores the acute insulin/glucose response so the test reflects true muscle insulin sensitivity.",
+   "proposed": "When assessing glucose tolerance in someone habitually on a very low–carbohydrate diet, refeed carbohydrates for about three days before postprandial tests such as an oral glucose tolerance test (OGTT); without refeeding, such tests will often show paradoxical insulin resistance and can give misleading results that may misclassify metabolic status. Refeeding restores the acute insulin/glucose response so the test reflects true muscle insulin sensitivity.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2283,
+   "canonical": "When assessing glucose tolerance in someone habitually on a very low–carbohydrate diet, refeed carbohydrates for about three days before an oral glucose tolerance test (OGTT); without short-term carbohydrate refeeding an OGTT will often show paradoxical insulin resistance and may misclassify metabolic status. Refeeding restores the acute insulin/glucose response so the test reflects true muscle insulin sensitivity.",
+   "proposed": "When assessing glucose tolerance in someone habitually on a very low–carbohydrate diet, refeed carbohydrates for about three days before an oral glucose tolerance test (OGTT); without short-term carbohydrate refeeding an OGTT will often show paradoxical insulin resistance and may misclassify metabolic status. Refeeding restores the acute insulin/glucose response so the test reflects true muscle insulin sensitivity.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:ae9ef578-2e0c-4c8c-b8d4-281367ab503f",
+  "member1": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy, so use cold therapy cautiously if maximizing strength or size is the primary goal.",
+  "member2": "If hypertrophy is the priority, avoid immediate cold-water immersion after resistance training; reserve cold exposure for non-training days or delay it several hours after exercise to reduce the risk of blunting muscle-growth signaling.",
+  "shipped": {
+   "ms": 9069,
+   "canonical": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy, so if maximizing strength or size is the primary goal, avoid immediate cold-water immersion after resistance training; instead, reserve cold exposure for non-training days or delay it several hours after exercise to reduce the risk of blunting muscle-growth signaling.",
+   "proposed": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy, so if maximizing strength or size is the primary goal, avoid immediate cold-water immersion after resistance training; instead, reserve cold exposure for non-training days or delay it several hours after exercise to reduce the risk of blunting muscle-growth signaling.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3366,
+   "canonical": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy by interfering with muscle-growth signaling; if hypertrophy is the priority, avoid immediate cold-water immersion after resistance training, and reserve cold exposure for non-training days or delay it several hours after exercise to reduce this risk, though use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "proposed": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy by interfering with muscle-growth signaling; if hypertrophy is the priority, avoid immediate cold-water immersion after resistance training, and reserve cold exposure for non-training days or delay it several hours after exercise to reduce this risk, though use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:3cf0fbe0-49fe-4528-b848-adb297306b3f",
+  "member1": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold immersion) can blunt muscle hypertrophy, so use cold therapy cautiously if maximizing strength or size is the primary goal.",
+  "member2": "Cold-water immersion immediately after resistance training can blunt muscle hypertrophy by reducing the inflammatory and anabolic signaling that drives growth.",
+  "shipped": {
+   "ms": 19765,
+   "canonical": "Emerging evidence suggests that immediate post-exercise cold exposure (cold-water immersion, ice baths) can blunt muscle hypertrophy by reducing the inflammatory and anabolic signaling that drives growth; use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "proposed": "Emerging evidence suggests that immediate post-exercise cold exposure (cold-water immersion, ice baths) can blunt muscle hypertrophy by reducing the inflammatory and anabolic signaling that drives growth; use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2581,
+   "canonical": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold-water immersion) can blunt muscle hypertrophy by reducing the inflammatory and anabolic signaling that drives growth, so use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "proposed": "Emerging evidence suggests that immediate post-exercise cold exposure (ice baths/cold-water immersion) can blunt muscle hypertrophy by reducing the inflammatory and anabolic signaling that drives growth, so use cold therapy cautiously if maximizing strength or size is the primary goal.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:ff7c81a9-97ee-4381-8b7c-cff2da8e0611",
+  "member1": "Sperm dimensions: the rounded pre‑tail spermatid is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), and the flagellar tail adds substantial length — about a 35‑micron tail — producing a very small but highly engineered motile cell.",
+  "member2": "Sperm are extremely compact, highly specialized cells: the head is only a few microns across while the tail is ~35 µm; the midpiece contains microtubules and mitochondria, and roughly 300 genes are dedicated to motility—reflecting a design optimized for streamlined propulsion and energy efficiency.",
+  "shipped": {
+   "ms": 8232,
+   "canonical": "Sperm are extremely compact, highly specialized and engineered cells: the head is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), and the flagellar tail is ~35 µm; the midpiece contains microtubules and mitochondria, and roughly 300 genes are dedicated to motility—reflecting a design optimized for streamlined propulsion and energy efficiency.",
+   "proposed": "Sperm are extremely compact, highly specialized and engineered cells: the head is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), and the flagellar tail is ~35 µm; the midpiece contains microtubules and mitochondria, and roughly 300 genes are dedicated to motility—reflecting a design optimized for streamlined propulsion and energy efficiency.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 5188,
+   "canonical": "Sperm are extremely compact, highly specialized cells: the rounded pre-tail spermatid head is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), while the flagellar tail is ~35 µm; the midpiece contains microtubules and mitochondria, and roughly 300 genes are dedicated to motility—reflecting a design optimized for streamlined propulsion and energy efficiency, producing a very small but highly engineered motile cell.",
+   "proposed": "Sperm are extremely compact, highly specialized cells: the rounded pre-tail spermatid head is only a few microns across (comparable to about half a lymphocyte or half a red blood cell), while the flagellar tail is ~35 µm; the midpiece contains microtubules and mitochondria, and roughly 300 genes are dedicated to motility—reflecting a design optimized for streamlined propulsion and energy efficiency, producing a very small but highly engineered motile cell.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:2d90e55e-461e-4305-9975-dd75d9db2345",
+  "member1": "For diagnostic semen analysis, standardize pre‑sample abstinence to about 2–4 days (commonly ~3 days) to balance higher sperm concentration with declining motility from longer abstinence.",
+  "member2": "For diagnostic semen analysis, laboratories recommend 2–4 days of ejaculatory abstinence before collecting a sample to reduce biological variability in sperm count and motility measurements.",
+  "shipped": {
+   "ms": 12273,
+   "canonical": "For diagnostic semen analysis, laboratories recommend standardizing ejaculatory abstinence to about 2–4 days (commonly ~3 days) to reduce biological variability in sperm count and motility measurements, balancing higher sperm concentration with the declining motility that occurs with longer abstinence.",
+   "proposed": "For diagnostic semen analysis, laboratories recommend standardizing ejaculatory abstinence to about 2–4 days (commonly ~3 days) to reduce biological variability in sperm count and motility measurements, balancing higher sperm concentration with the declining motility that occurs with longer abstinence.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2107,
+   "canonical": "For diagnostic semen analysis, standardize pre‑sample abstinence to about 2–4 days (commonly ~3 days) to balance higher sperm concentration with declining motility from longer abstinence and reduce biological variability in sperm count and motility measurements.",
+   "proposed": "For diagnostic semen analysis, standardize pre‑sample abstinence to about 2–4 days (commonly ~3 days) to balance higher sperm concentration with declining motility from longer abstinence and reduce biological variability in sperm count and motility measurements.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:28b80a61-5860-4169-932e-e7fb118d45a1",
+  "member1": "Human sperm face multiple anatomical and chemical bottlenecks: a typical ejaculate may start at ~100 million sperm, roughly 5 million may pass the cervical barrier, ~100 may reach the fallopian tube, and typically only one sperm fertilizes the egg.",
+  "member2": "Fertilization relies on huge numerical redundancy: roughly 100 million sperm are ejaculated, about 5 million reach the cervix/uterus, 100–500 reach the fallopian tube, and typically only a single sperm contacts the egg — this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.",
+  "shipped": {
+   "ms": 35788,
+   "canonical": "Human sperm face multiple anatomical and chemical bottlenecks: a typical ejaculate starts with roughly 100 million sperm, about 5 million reach the cervix/uterus, 100–500 reach the fallopian tube, and typically only a single sperm contacts the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.",
+   "proposed": "Human sperm face multiple anatomical and chemical bottlenecks: a typical ejaculate starts with roughly 100 million sperm, about 5 million reach the cervix/uterus, 100–500 reach the fallopian tube, and typically only a single sperm contacts the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2295,
+   "canonical": "Human sperm face multiple anatomical and chemical bottlenecks requiring huge numerical redundancy: a typical ejaculate may start at ~100 million sperm, roughly 5 million may pass the cervical barrier, 100–500 may reach the fallopian tube, and typically only one sperm fertilizes the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.",
+   "proposed": "Human sperm face multiple anatomical and chemical bottlenecks requiring huge numerical redundancy: a typical ejaculate may start at ~100 million sperm, roughly 5 million may pass the cervical barrier, 100–500 may reach the fallopian tube, and typically only one sperm fertilizes the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:01eb7cce-7e31-4153-9984-3672baad44d1",
+  "member1": "Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men.",
+  "member2": "Congenital absence of the vas deferens occurs in the population (reported here as about 1 in 500 men) and is a cause of obstructive azoospermia — effectively a ‘natural vasectomy’ that prevents natural conception.",
+  "shipped": {
+   "ms": 13436,
+   "canonical": "Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' — a cause of obstructive azoospermia — may occur in roughly 1 in 500 men.",
+   "proposed": "Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' — a cause of obstructive azoospermia — may occur in roughly 1 in 500 men.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2983,
+   "canonical": "Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' results in obstructive azoospermia and may occur in roughly 1 in 500 men.",
+   "proposed": "Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' results in obstructive azoospermia and may occur in roughly 1 in 500 men.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:0a553c4f-3f4b-4567-8272-51a07cbc94fc",
+  "member1": "Immune‑privileged sites such as the testis can harbor replication‑competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity.",
+  "member2": "Low viral loads confined to immune‑privileged sites can still be sufficient for sexual transmission, meaning absence of symptoms or systemic viral clearance does not guarantee no sexual infectivity.",
+  "shipped": {
+   "ms": 10968,
+   "canonical": "Immune-privileged sites such as the testis can harbor replication-competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity; low viral loads confined to such sites remain sufficient for sexual transmission, meaning absence of symptoms or systemic viral clearance does not guarantee no sexual infectivity.",
+   "proposed": "Immune-privileged sites such as the testis can harbor replication-competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity; low viral loads confined to such sites remain sufficient for sexual transmission, meaning absence of symptoms or systemic viral clearance does not guarantee no sexual infectivity.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2087,
+   "canonical": "Immune‑privileged sites such as the testis can harbor replication‑competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity; low viral loads confined to these sites can still be sufficient for sexual transmission, meaning absence of symptoms or systemic viral clearance does not guarantee no sexual infectivity.",
+   "proposed": "Immune‑privileged sites such as the testis can harbor replication‑competent virus for many months after recovery, enabling sexual transmission long after systemic illness and the development of immunity; low viral loads confined to these sites can still be sufficient for sexual transmission, meaning absence of symptoms or systemic viral clearance does not guarantee no sexual infectivity.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:4904035a-4989-433f-b870-29dc4ebe62d3",
+  "member1": "Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management.",
+  "member2": "A focused physical exam is essential in male fertility evaluation because a small but important fraction (about 1–5%) of male infertility stems from major medical conditions (e.g., testicular cancer, diabetes) and from treatable anatomic findings such as varicoceles.",
+  "shipped": {
+   "ms": 28089,
+   "canonical": "A focused physical examination remains important in male fertility evaluation because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions (e.g., testicular cancer, systemic disease such as diabetes) and to treatable anatomic findings such as varicoceles, all of which change management.",
+   "proposed": "A focused physical examination remains important in male fertility evaluation because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions (e.g., testicular cancer, systemic disease such as diabetes) and to treatable anatomic findings such as varicoceles, all of which change management.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2038,
+   "canonical": "Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management; a focused exam also identifies treatable anatomic findings such as varicoceles.",
+   "proposed": "Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management; a focused exam also identifies treatable anatomic findings such as varicoceles.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:36b2ed27-e192-46b0-93d9-7484ee08d2fb",
+  "member1": "Normal spermatogenesis requires adequate gonadotropins and testosterone — measure FSH, LH, and serum testosterone when investigating low sperm counts because FSH and testosterone have complementary roles in supporting sperm production.",
+  "member2": "Spermatogenesis requires both intratesticular testosterone and FSH: testosterone (driven by LH) provides the androgenic milieu while FSH acts on Sertoli cells to support sperm production—think of testosterone and FSH like sunlight and water for flowering.",
+  "shipped": {
+   "ms": 13211,
+   "canonical": "Normal spermatogenesis requires adequate gonadotropins and testosterone—intratesticular testosterone (driven by LH) provides the androgenic milieu while FSH acts on Sertoli cells to support sperm production. FSH and testosterone have complementary roles. Measure FSH, LH, and serum testosterone when investigating low sperm counts (think of testosterone and FSH like sunlight and water for flowering).",
+   "proposed": "Normal spermatogenesis requires adequate gonadotropins and testosterone—intratesticular testosterone (driven by LH) provides the androgenic milieu while FSH acts on Sertoli cells to support sperm production. FSH and testosterone have complementary roles. Measure FSH, LH, and serum testosterone when investigating low sperm counts (think of testosterone and FSH like sunlight and water for flowering).",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2368,
+   "canonical": "Normal spermatogenesis requires adequate gonadotropins and testosterone—measure FSH, LH, and serum testosterone when investigating low sperm counts because FSH and testosterone have complementary roles in supporting sperm production; specifically, intratesticular testosterone (driven by LH) provides the androgenic milieu while FSH acts on Sertoli cells to support sperm production—testosterone and FSH work together like sunlight and water for flowering.",
+   "proposed": "Normal spermatogenesis requires adequate gonadotropins and testosterone—measure FSH, LH, and serum testosterone when investigating low sperm counts because FSH and testosterone have complementary roles in supporting sperm production; specifically, intratesticular testosterone (driven by LH) provides the androgenic milieu while FSH acts on Sertoli cells to support sperm production—testosterone and FSH work together like sunlight and water for flowering.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:b9478a7b-6970-4df6-a00b-9d9a0d7a6223",
+  "member1": "Sperm morphology matters for fertility, but truly morphology-driven infertility is relatively uncommon in clinical practice.",
+  "member2": "Clinically significant abnormal sperm morphology is relatively uncommon in practice, though when present it can be a major, often hard-to-treat cause of infertility.",
+  "shipped": {
+   "ms": 14469,
+   "canonical": "Sperm morphology matters for fertility, but truly morphology-driven infertility is relatively uncommon in clinical practice; clinically significant abnormal sperm morphology, when present, can be a major, often hard-to-treat cause of infertility.",
+   "proposed": "Sperm morphology matters for fertility, but truly morphology-driven infertility is relatively uncommon in clinical practice; clinically significant abnormal sperm morphology, when present, can be a major, often hard-to-treat cause of infertility.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 1791,
+   "canonical": "Sperm morphology matters for fertility, but truly morphology-driven infertility is relatively uncommon in clinical practice; when clinically significant abnormal sperm morphology is present, it can be a major, often hard-to-treat cause of infertility.",
+   "proposed": "Sperm morphology matters for fertility, but truly morphology-driven infertility is relatively uncommon in clinical practice; when clinically significant abnormal sperm morphology is present, it can be a major, often hard-to-treat cause of infertility.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:3e62626a-05ad-4210-9297-4bece20a0a69",
+  "member1": "Male reproductive development has time-limited windows of susceptibility — notably prenatal/early postnatal development (including the first ~12 weeks) and puberty — when environmental exposures can have outsized, long-term effects on sperm production.",
+  "member2": "Male reproductive development shows windows of heightened susceptibility—exposures during fetal development and again during puberty can produce long-term effects on sperm production and reproductive function in adulthood.",
+  "shipped": {
+   "ms": 10635,
+   "canonical": "Male reproductive development has time-limited windows of susceptibility — notably prenatal/early postnatal development (including the first ~12 weeks) and puberty — when environmental exposures can have outsized, long-term effects on sperm production and reproductive function in adulthood.",
+   "proposed": "Male reproductive development has time-limited windows of susceptibility — notably prenatal/early postnatal development (including the first ~12 weeks) and puberty — when environmental exposures can have outsized, long-term effects on sperm production and reproductive function in adulthood.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2293,
+   "canonical": "Male reproductive development has time-limited windows of heightened susceptibility — notably fetal development, early postnatal development (including the first ~12 weeks), and puberty — when environmental exposures can have outsized, long-term effects on sperm production and reproductive function in adulthood.",
+   "proposed": "Male reproductive development has time-limited windows of heightened susceptibility — notably fetal development, early postnatal development (including the first ~12 weeks), and puberty — when environmental exposures can have outsized, long-term effects on sperm production and reproductive function in adulthood.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:62611a9c-86f1-4798-bf9f-31c5fa35e035",
+  "member1": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal axis and can cause testicular atrophy and loss of endogenous gonadal function; for men in whom preserving testicular function or fertility is important, human chorionic gonadotropin (HCG) can be used to stimulate endogenous testosterone production instead of giving exogenous testosterone.",
+  "member2": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal (HPG) axis: the body senses circulating testosterone and shuts down hypothalamic signaling so LH and FSH fall to essentially zero, causing loss of endogenous testicular function and usually testicular atrophy.",
+  "shipped": {
+   "ms": 22147,
+   "canonical": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal (HPG) axis: the body senses circulating testosterone and shuts down hypothalamic signaling so LH and FSH fall to essentially zero, causing loss of endogenous testicular function and usually testicular atrophy; for men in whom preserving testicular function or fertility is important, human chorionic gonadotropin (HCG) can be used to stimulate endogenous testosterone production instead of giving exogenous testosterone.",
+   "proposed": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal (HPG) axis: the body senses circulating testosterone and shuts down hypothalamic signaling so LH and FSH fall to essentially zero, causing loss of endogenous testicular function and usually testicular atrophy; for men in whom preserving testicular function or fertility is important, human chorionic gonadotropin (HCG) can be used to stimulate endogenous testosterone production instead of giving exogenous testosterone.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2116,
+   "canonical": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal (HPG) axis: the body senses circulating testosterone and shuts down hypothalamic signaling so LH and FSH fall to essentially zero, causing loss of endogenous testicular function and usually testicular atrophy; for men in whom preserving testicular function or fertility is important, human chorionic gonadotropin (HCG) can be used to stimulate endogenous testosterone production instead of giving exogenous testosterone.",
+   "proposed": "Exogenous testosterone suppresses the hypothalamic–pituitary–gonadal (HPG) axis: the body senses circulating testosterone and shuts down hypothalamic signaling so LH and FSH fall to essentially zero, causing loss of endogenous testicular function and usually testicular atrophy; for men in whom preserving testicular function or fertility is important, human chorionic gonadotropin (HCG) can be used to stimulate endogenous testosterone production instead of giving exogenous testosterone.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:5bebc03e-82e0-4110-9bb7-2cc2e7004014",
+  "member1": "Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; obesity, heavy alcohol use, cirrhosis or hepatitis, and some medications can raise estradiol and thereby lower testosterone.",
+  "member2": "Factors that increase peripheral aromatization raise estradiol in men — notably obesity and liver dysfunction (including alcohol-related liver disease, cirrhosis, hepatitis) and some medications — which can secondarily suppress testosterone.",
+  "shipped": {
+   "ms": 39009,
+   "canonical": "Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; in men, obesity, heavy alcohol use, alcohol-related liver disease, cirrhosis, hepatitis, and some medications can raise estradiol and thereby secondarily suppress testosterone.",
+   "proposed": "Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; in men, obesity, heavy alcohol use, alcohol-related liver disease, cirrhosis, hepatitis, and some medications can raise estradiol and thereby secondarily suppress testosterone.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2358,
+   "canonical": "Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; obesity, heavy alcohol use, cirrhosis or hepatitis, and some medications can raise estradiol and thereby lower testosterone through peripheral aromatization.",
+   "proposed": "Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; obesity, heavy alcohol use, cirrhosis or hepatitis, and some medications can raise estradiol and thereby lower testosterone through peripheral aromatization.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:de16cc8e-895e-472f-a262-ea382a875e57",
+  "member1": "The fertility-preserving effect of HCG with exogenous testosterone has been shown short-term; long-term preservation requires very high adherence because missed HCG doses can rapidly precipitate loss of sperm production (azoospermia).",
+  "member2": "When men use exogenous testosterone and rely on HCG to preserve fertility, very high adherence to HCG is required because missed or infrequent dosing can rapidly lead to loss of spermatogenesis (azoospermia).",
+  "shipped": {
+   "ms": 9749,
+   "canonical": "The fertility-preserving effect of HCG with exogenous testosterone has been shown short-term; long-term preservation requires very high adherence to HCG because missed or infrequent HCG doses can rapidly precipitate loss of sperm production (azoospermia).",
+   "proposed": "The fertility-preserving effect of HCG with exogenous testosterone has been shown short-term; long-term preservation requires very high adherence to HCG because missed or infrequent HCG doses can rapidly precipitate loss of sperm production (azoospermia).",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2086,
+   "canonical": "The fertility-preserving effect of HCG with exogenous testosterone has been shown short-term; long-term preservation requires very high adherence because missed or infrequent HCG dosing can rapidly precipitate loss of spermatogenesis (azoospermia).",
+   "proposed": "The fertility-preserving effect of HCG with exogenous testosterone has been shown short-term; long-term preservation requires very high adherence because missed or infrequent HCG dosing can rapidly precipitate loss of spermatogenesis (azoospermia).",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:19d18b85-c659-4889-a165-9acb7e8363fa",
+  "member1": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis and may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+  "member2": "Exogenous testosterone commonly suppresses spermatogenesis: after a few months of any exogenous testosterone (injection, topical, oral), testicular sperm production is usually shut down because exogenous testosterone suppresses the hypothalamic‑pituitary signals that drive the testes.",
+  "shipped": {
+   "ms": 29736,
+   "canonical": "Exogenous testosterone (injection, topical, or oral) commonly suppresses spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis, with testicular sperm production usually shut down after a few months; this suppression may significantly impair fertility, and prolonged use in young men (example: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+   "proposed": "Exogenous testosterone (injection, topical, or oral) commonly suppresses spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis, with testicular sperm production usually shut down after a few months; this suppression may significantly impair fertility, and prolonged use in young men (example: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2284,
+   "canonical": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis; after a few months of any exogenous testosterone (injection, topical, or oral), testicular sperm production is usually shut down because exogenous testosterone suppresses the hypothalamic–pituitary signals that drive the testes. This suppression may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+   "proposed": "Exogenous testosterone can suppress spermatogenesis via negative feedback on the hypothalamic–pituitary–gonadal axis; after a few months of any exogenous testosterone (injection, topical, or oral), testicular sperm production is usually shut down because exogenous testosterone suppresses the hypothalamic–pituitary signals that drive the testes. This suppression may significantly impair fertility — prolonged use in young men (example cited: ~3 years in the 20s) can cause substantial and potentially permanent reductions in fertility.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:01c7c180-b455-49e5-89b3-a7e6a3b0f14a",
+  "member1": "Polycythemia from testosterone raises thrombotic risk—events begin to increase around hemoglobin ≈17 g/dL or hematocrit ≈50%; risks rise further near hemoglobin ≈18 g/dL and are clear by ≈19 g/dL—so monitor CBC/hematocrit and be cautious (e.g., during long flights or dehydration) especially in older patients.",
+  "member2": "Testosterone replacement commonly causes polycythemia; clinical risk rises once hemoglobin and hematocrit approach high thresholds—clinically concerning levels are around hemoglobin 17 g/dL and hematocrit 50%, with events becoming more likely at hemoglobin ≈18 g/dL and certainly by 19 g/dL.",
+  "shipped": {
+   "ms": 18433,
+   "canonical": "Testosterone replacement commonly causes polycythemia, which raises thrombotic risk; events begin to increase around hemoglobin ≈17 g/dL or hematocrit ≈50%, risks rise further near hemoglobin ≈18 g/dL and are clear by ≈19 g/dL; monitor CBC/hematocrit and be cautious (e.g., during long flights or dehydration), especially in older patients.",
+   "proposed": "Testosterone replacement commonly causes polycythemia, which raises thrombotic risk; events begin to increase around hemoglobin ≈17 g/dL or hematocrit ≈50%, risks rise further near hemoglobin ≈18 g/dL and are clear by ≈19 g/dL; monitor CBC/hematocrit and be cautious (e.g., during long flights or dehydration), especially in older patients.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2388,
+   "canonical": "Testosterone replacement commonly causes polycythemia, raising thrombotic risk—events begin to increase around hemoglobin ≈17 g/dL or hematocrit ≈50%; risks rise further near hemoglobin ≈18 g/dL and are clear by ≈19 g/dL. Monitor CBC/hematocrit and be cautious (e.g., during long flights or dehydration), especially in older patients.",
+   "proposed": "Testosterone replacement commonly causes polycythemia, raising thrombotic risk—events begin to increase around hemoglobin ≈17 g/dL or hematocrit ≈50%; risks rise further near hemoglobin ≈18 g/dL and are clear by ≈19 g/dL. Monitor CBC/hematocrit and be cautious (e.g., during long flights or dehydration), especially in older patients.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:82f5bb38-d953-4bc1-ba88-8f0714352962",
+  "member1": "Testicular temperature equilibrates with external heat quickly; raising scrotal temperature (for example via hot baths/tubs) impairs spermatogenesis and sperm motility because the testes assume the higher temperature.",
+  "member2": "Testicular enzymes that drive spermatogenesis operate within a narrow, temperature-sensitive range; chronic elevation of scrotal temperature impairs testicular enzyme function and can reduce sperm production and quality.",
+  "shipped": {
+   "ms": 17632,
+   "canonical": "Testicular temperature equilibrates with external heat quickly; raising scrotal temperature (for example via hot baths/tubs) impairs spermatogenesis and sperm motility because the testes assume the higher temperature. Testicular enzymes that drive spermatogenesis operate within a narrow, temperature-sensitive range; chronic elevation of scrotal temperature impairs testicular enzyme function and can reduce sperm production and quality.",
+   "proposed": "Testicular temperature equilibrates with external heat quickly; raising scrotal temperature (for example via hot baths/tubs) impairs spermatogenesis and sperm motility because the testes assume the higher temperature. Testicular enzymes that drive spermatogenesis operate within a narrow, temperature-sensitive range; chronic elevation of scrotal temperature impairs testicular enzyme function and can reduce sperm production and quality.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2088,
+   "canonical": "Testicular temperature equilibrates with external heat quickly; raising scrotal temperature (for example via hot baths/tubs) impairs spermatogenesis and sperm motility because the testes assume the higher temperature and testicular enzymes that drive spermatogenesis operate within a narrow, temperature-sensitive range; chronic elevation of scrotal temperature impairs testicular enzyme function and can reduce sperm production and quality.",
+   "proposed": "Testicular temperature equilibrates with external heat quickly; raising scrotal temperature (for example via hot baths/tubs) impairs spermatogenesis and sperm motility because the testes assume the higher temperature and testicular enzymes that drive spermatogenesis operate within a narrow, temperature-sensitive range; chronic elevation of scrotal temperature impairs testicular enzyme function and can reduce sperm production and quality.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:a6635a16-a19b-444f-aa19-cba736262d66",
+  "member1": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.",
+  "member2": "Sustained, very high‑intensity exercise can reduce male fertility: one training protocol that increased men to ~2 hours/day of exercise above 80% VO2max was reported to ‘put a dent’ in fertility outcomes.",
+  "shipped": {
+   "ms": 18735,
+   "canonical": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity above 80% VO2max for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels; such training protocols have been reported to 'put a dent' in fertility outcomes.",
+   "proposed": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity above 80% VO2max for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels; such training protocols have been reported to 'put a dent' in fertility outcomes.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2903,
+   "canonical": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, with one training protocol increasing men to ~2 hours/day of exercise above 80% VO2max reported to 'put a dent' in fertility outcomes; both sperm counts and testosterone recovered when activity returned to moderate levels.",
+   "proposed": "Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, with one training protocol increasing men to ~2 hours/day of exercise above 80% VO2max reported to 'put a dent' in fertility outcomes; both sperm counts and testosterone recovered when activity returned to moderate levels.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:3bfb9396-6303-42d7-b361-51302541990e",
+  "member1": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility.",
+  "member2": "Varicocele is a common, potentially reversible contributor to male infertility and may account for roughly 40% of clinically relevant cases; by contrast hormonal causes account for about 10–15% and genetic causes are less modifiable.",
+  "shipped": {
+   "ms": 8191,
+   "canonical": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility, a potentially reversible contributor that may account for roughly 40% of clinically relevant cases; by contrast, hormonal causes account for about 10–15% and genetic causes are less modifiable.",
+   "proposed": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility, a potentially reversible contributor that may account for roughly 40% of clinically relevant cases; by contrast, hormonal causes account for about 10–15% and genetic causes are less modifiable.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2768,
+   "canonical": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility, accounting for roughly 40% of clinically relevant cases; it is a potentially reversible contributor, whereas hormonal causes account for about 10–15% of cases and genetic causes are less modifiable.",
+   "proposed": "Varicocele (dilated veins in the scrotum, analogous to varicose veins in the leg) is the most common modifiable cause of male infertility, accounting for roughly 40% of clinically relevant cases; it is a potentially reversible contributor, whereas hormonal causes account for about 10–15% of cases and genetic causes are less modifiable.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:bc8cb67d-aa8d-4b81-af3d-01b3b0d89125",
+  "member1": "Immersive heat exposure (hot tubs, saunas with submersion) rapidly raises testicular temperature because water conducts heat to tissues at the surface; typical hot tub temperatures (about 105–110°F) can cause the testes to approach those temperatures and may impair sperm production if exposure is frequent or prolonged.",
+  "member2": "Prolonged scrotal heat from hot tubs or hot baths markedly impairs male fertility; hot baths/hot-tub submersion are among the most harmful heat exposures to sperm production.",
+  "shipped": {
+   "ms": 44999,
+   "canonical": "Immersive heat exposure (hot tubs, hot baths, saunas with submersion) rapidly raises testicular temperature because water conducts heat to tissues at the surface; typical hot tub temperatures (about 105–110°F) can cause the testes to approach those temperatures; prolonged or frequent exposure may markedly impair male fertility and sperm production, with hot tubs and hot baths being among the most harmful heat exposures to reproductive function.",
+   "proposed": "Immersive heat exposure (hot tubs, hot baths, saunas with submersion) rapidly raises testicular temperature because water conducts heat to tissues at the surface; typical hot tub temperatures (about 105–110°F) can cause the testes to approach those temperatures; prolonged or frequent exposure may markedly impair male fertility and sperm production, with hot tubs and hot baths being among the most harmful heat exposures to reproductive function.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2401,
+   "canonical": "Immersive heat exposure (hot tubs, saunas with submersion) rapidly raises testicular temperature because water conducts heat to tissues at the surface; typical hot tub temperatures (about 105–110°F) can cause the testes to approach those temperatures and markedly impair sperm production if exposure is frequent or prolonged, making hot baths and hot-tub submersion among the most harmful heat exposures to male fertility.",
+   "proposed": "Immersive heat exposure (hot tubs, saunas with submersion) rapidly raises testicular temperature because water conducts heat to tissues at the surface; typical hot tub temperatures (about 105–110°F) can cause the testes to approach those temperatures and markedly impair sperm production if exposure is frequent or prolonged, making hot baths and hot-tub submersion among the most harmful heat exposures to male fertility.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:fc1be7cf-6f70-4066-b582-df5117a901f7",
+  "member1": "The RDA for protein (0.8 g/kg/day) represents the minimum to maintain nitrogen balance, but it is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk—especially in older adults who have anabolic resistance.",
+  "member2": "The standard protein RDA was historically derived from nitrogen-balance studies and represents a level compatible with routine survival (nitrogen balance), not necessarily the optimal intake for muscle maintenance or growth; for example, an ~82 kg person corresponds to ~60–65 g/day by that RDA.",
+  "shipped": {
+   "ms": 14395,
+   "canonical": "The RDA for protein (0.8 g/kg/day), historically derived from nitrogen-balance studies, represents the minimum to maintain nitrogen balance and routine survival, but it is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk—especially in older adults who have anabolic resistance—and is not necessarily optimal for muscle maintenance or growth; for example, an ~82 kg person corresponds to ~60–65 g/day by that RDA.",
+   "proposed": "The RDA for protein (0.8 g/kg/day), historically derived from nitrogen-balance studies, represents the minimum to maintain nitrogen balance and routine survival, but it is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk—especially in older adults who have anabolic resistance—and is not necessarily optimal for muscle maintenance or growth; for example, an ~82 kg person corresponds to ~60–65 g/day by that RDA.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2300,
+   "canonical": "The RDA for protein (0.8 g/kg/day)—historically derived from nitrogen-balance studies and representing a level compatible with routine survival—is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk, especially in older adults who have anabolic resistance; for example, an ~82 kg person corresponds to ~60–65 g/day by that RDA.",
+   "proposed": "The RDA for protein (0.8 g/kg/day)—historically derived from nitrogen-balance studies and representing a level compatible with routine survival—is insufficient for preserving or increasing lean mass and for reducing sarcopenia risk, especially in older adults who have anabolic resistance; for example, an ~82 kg person corresponds to ~60–65 g/day by that RDA.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:d9ff7101-cf0f-472e-9f75-5a211fbb5bb3",
+  "member1": "Men who will undergo chemotherapy should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options; fertility‑preservation programs often offer sample storage and financial assistance for limited periods.",
+  "member2": "Patients facing gonadotoxic treatments (e.g., chemotherapy) should consider sperm banking before treatment because a substantial fraction may have impaired spermatogenesis afterward; clinicians report roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF.",
+  "shipped": {
+   "ms": 27856,
+   "canonical": "Patients facing gonadotoxic treatments (e.g., chemotherapy) should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options, because a substantial fraction may have impaired spermatogenesis afterward; clinicians report roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF. Fertility-preservation programs often offer sample storage and financial assistance for limited periods.",
+   "proposed": "Patients facing gonadotoxic treatments (e.g., chemotherapy) should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options, because a substantial fraction may have impaired spermatogenesis afterward; clinicians report roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF. Fertility-preservation programs often offer sample storage and financial assistance for limited periods.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2413,
+   "canonical": "Men who will undergo chemotherapy or other gonadotoxic treatments should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options, because a substantial fraction may have impaired spermatogenesis afterward—roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF; fertility-preservation programs often offer sample storage and financial assistance for limited periods.",
+   "proposed": "Men who will undergo chemotherapy or other gonadotoxic treatments should bank sperm (provide and freeze samples) before treatment begins to preserve future reproductive options, because a substantial fraction may have impaired spermatogenesis afterward—roughly half of such patients may not have normal sperm post-treatment and therefore often require IVF; fertility-preservation programs often offer sample storage and financial assistance for limited periods.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:2c439820-32e5-4927-b9d0-a73fba910c2f",
+  "member1": "A disproportionate fraction of age‑related de novo mutations from sperm affect neurodevelopmental pathways, making advanced paternal age a clear risk factor for neurodevelopmental disorders such as autism.",
+  "member2": "Increasing paternal age is associated with a higher rate of de novo mutations in offspring, and a large portion of those mutations affect neurodevelopment—contributing to higher risks of autism, dyslexia, bipolar disorder and other neurodevelopmental conditions.",
+  "shipped": {
+   "ms": 41342,
+   "canonical": "Increasing paternal age is associated with a higher rate of de novo mutations from sperm in offspring, and a disproportionate fraction of these mutations affect neurodevelopmental pathways, making advanced paternal age a clear risk factor for neurodevelopmental disorders such as autism, dyslexia, bipolar disorder, and other neurodevelopmental conditions.",
+   "proposed": "Increasing paternal age is associated with a higher rate of de novo mutations from sperm in offspring, and a disproportionate fraction of these mutations affect neurodevelopmental pathways, making advanced paternal age a clear risk factor for neurodevelopmental disorders such as autism, dyslexia, bipolar disorder, and other neurodevelopmental conditions.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2159,
+   "canonical": "Increasing paternal age is associated with a higher rate of de novo mutations in offspring; a disproportionate fraction of these age-related mutations from sperm affect neurodevelopmental pathways, contributing to higher risks of autism, dyslexia, bipolar disorder, and other neurodevelopmental conditions.",
+   "proposed": "Increasing paternal age is associated with a higher rate of de novo mutations in offspring; a disproportionate fraction of these age-related mutations from sperm affect neurodevelopmental pathways, contributing to higher risks of autism, dyslexia, bipolar disorder, and other neurodevelopmental conditions.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:ce027b73-8eac-4b61-b4c8-8e4c1a489d0b",
+  "member1": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—whereas parallel-group designs avoid that specific problem.",
+  "member2": "Crossover trials are vulnerable to carryover effects: an intervention can produce durable physiological changes that persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline.",
+  "shipped": {
+   "ms": 9456,
+   "canonical": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—because durable physiological changes from an intervention can persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline; parallel-group designs avoid that specific problem.",
+   "proposed": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—because durable physiological changes from an intervention can persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline; parallel-group designs avoid that specific problem.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2168,
+   "canonical": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—because an intervention can produce durable physiological changes that persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline; parallel-group designs avoid this specific problem.",
+   "proposed": "Crossover trial designs in nutrition can be biased by carryover effects—when an effect of diet A persists into the period when a participant receives diet B—because an intervention can produce durable physiological changes that persist beyond a biochemical washout, so a washout period does not guarantee a return to baseline; parallel-group designs avoid this specific problem.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:5083b292-0b7a-4d85-83d5-6bdde1f3ebf3",
+  "member1": "Aim to distribute daily protein intake across 3–5 meals of roughly 30–60 g each to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal.",
+  "member2": "Distributing protein across meals—aiming for roughly ~30 g of protein per eating occasion, 3–4 times per day—is a practical strategy recommended to maximize muscle protein synthesis rather than concentrating most protein in a single meal.",
+  "shipped": {
+   "ms": 19660,
+   "canonical": "Distribute daily protein intake across 3–5 meals of roughly 30–60 g each (or ~30 g per eating occasion, 3–4 times per day), as a practical strategy recommended to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal.",
+   "proposed": "Distribute daily protein intake across 3–5 meals of roughly 30–60 g each (or ~30 g per eating occasion, 3–4 times per day), as a practical strategy recommended to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2114,
+   "canonical": "Aim to distribute daily protein intake across 3–5 meals of roughly 30–60 g each to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal; a practical strategy is targeting ~30 g of protein per eating occasion, 3–4 times per day.",
+   "proposed": "Aim to distribute daily protein intake across 3–5 meals of roughly 30–60 g each to maximize muscle protein synthesis (MPS) rather than consuming most protein in a single meal; a practical strategy is targeting ~30 g of protein per eating occasion, 3–4 times per day.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:0cfc7943-c1ec-45a1-a260-eb16047f97a4",
+  "member1": "The single biggest methodological bottleneck in nutrition research is accurate measurement of food intake in free-living people; solving that (for example via validated objective monitoring, biomarkers, or robust passive sensing) would substantially improve causal inference and reduce reliance on weak epidemiology.",
+  "member2": "Accurately measuring free-living food intake is a central unresolved problem in nutrition research; improving real-world dietary measurement could by itself solve many downstream inference and intervention issues.",
+  "shipped": {
+   "ms": 27159,
+   "canonical": "The single biggest methodological bottleneck in nutrition research is accurate measurement of food intake in free-living people; solving that (for example via validated objective monitoring, biomarkers, or robust passive sensing) would substantially improve causal inference, reduce reliance on weak epidemiology, and solve many downstream inference and intervention issues.",
+   "proposed": "The single biggest methodological bottleneck in nutrition research is accurate measurement of food intake in free-living people; solving that (for example via validated objective monitoring, biomarkers, or robust passive sensing) would substantially improve causal inference, reduce reliance on weak epidemiology, and solve many downstream inference and intervention issues.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2430,
+   "canonical": "The single biggest methodological bottleneck in nutrition research is accurate measurement of food intake in free-living people; solving that (for example via validated objective monitoring, biomarkers, or robust passive sensing) would substantially improve causal inference, reduce reliance on weak epidemiology, and by itself solve many downstream inference and intervention issues.",
+   "proposed": "The single biggest methodological bottleneck in nutrition research is accurate measurement of food intake in free-living people; solving that (for example via validated objective monitoring, biomarkers, or robust passive sensing) would substantially improve causal inference, reduce reliance on weak epidemiology, and by itself solve many downstream inference and intervention issues.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:88d3c91d-ccc6-4789-ad09-2763ac8ded16",
+  "member1": "Crossover designs are inappropriate for interventions that produce lasting, irreversible, learning, psychosocial, or sensitizing biological changes—examples include bariatric surgery, permanent allergen sensitization, and many vaccines—because these effects won't 'wash out.'",
+  "member2": "Crossover trials require interventions to have effects that wash out between periods; interventions with long‑lasting or non‑reversible effects (e.g., vaccines) violate this assumption and make crossover designs inappropriate or uninterpretable for those exposures.",
+  "shipped": {
+   "ms": 17797,
+   "canonical": "Crossover designs are inappropriate or uninterpretable for interventions that produce lasting, irreversible, learning, psychosocial, or sensitizing biological changes—examples include bariatric surgery, permanent allergen sensitization, and many vaccines—because these effects don't wash out between periods, violating the core assumption of crossover trials.",
+   "proposed": "Crossover designs are inappropriate or uninterpretable for interventions that produce lasting, irreversible, learning, psychosocial, or sensitizing biological changes—examples include bariatric surgery, permanent allergen sensitization, and many vaccines—because these effects don't wash out between periods, violating the core assumption of crossover trials.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3166,
+   "canonical": "Crossover designs are inappropriate for interventions that produce lasting, irreversible, learning, psychosocial, or sensitizing biological changes—examples include bariatric surgery, permanent allergen sensitization, and many vaccines—because these effects won't 'wash out' between periods, violating the core assumption that crossover trials require effects to be reversible and interpretable across sequential exposures.",
+   "proposed": "Crossover designs are inappropriate for interventions that produce lasting, irreversible, learning, psychosocial, or sensitizing biological changes—examples include bariatric surgery, permanent allergen sensitization, and many vaccines—because these effects won't 'wash out' between periods, violating the core assumption that crossover trials require effects to be reversible and interpretable across sequential exposures.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:866a4db6-4707-4cd8-9a2e-9f6f44a4182f",
+  "member1": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds.",
+  "member2": "The RDA for protein is a minimal requirement and many people will benefit from intakes higher than the RDA—practically speaking, it may be more useful to identify the relatively small group that does not need extra protein than to try to enumerate every group that does.",
+  "shipped": {
+   "ms": 8664,
+   "canonical": "The RDA for protein was designed to prevent deficiency and is a minimal requirement; it has important limitations when used as a target for optimal health, longevity, or athletic performance, and many people will benefit from intakes higher than the RDA. Optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds; practically speaking, it may be more useful to identify the relatively small group that does not need extra protein than to try to enumerate every group that does.",
+   "proposed": "The RDA for protein was designed to prevent deficiency and is a minimal requirement; it has important limitations when used as a target for optimal health, longevity, or athletic performance, and many people will benefit from intakes higher than the RDA. Optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds; practically speaking, it may be more useful to identify the relatively small group that does not need extra protein than to try to enumerate every group that does.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3431,
+   "canonical": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds. The RDA is a minimal requirement, and many people will benefit from intakes higher than the RDA—practically speaking, it may be more useful to identify the relatively small group that does not need extra protein than to try to enumerate every group that does.",
+   "proposed": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds. The RDA is a minimal requirement, and many people will benefit from intakes higher than the RDA—practically speaking, it may be more useful to identify the relatively small group that does not need extra protein than to try to enumerate every group that does.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:75bd8707-26c8-4721-af22-685835bbebec",
+  "member1": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds.",
+  "member2": "The Recommended Dietary Allowance (RDA) for protein is a minimal threshold designed to prevent deficiency, not an optimal target for health, muscle mass, or performance; many people aiming for improved outcomes may benefit from consuming more than the RDA.",
+  "shipped": {
+   "ms": 10369,
+   "canonical": "The RDA for protein is a minimal threshold designed to prevent deficiency and has important limitations when used as a target for optimal health, muscle mass, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA, many people aiming for improved outcomes may benefit from consuming more than the RDA, and this should be considered separately from deficiency-prevention thresholds.",
+   "proposed": "The RDA for protein is a minimal threshold designed to prevent deficiency and has important limitations when used as a target for optimal health, muscle mass, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA, many people aiming for improved outcomes may benefit from consuming more than the RDA, and this should be considered separately from deficiency-prevention thresholds.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3197,
+   "canonical": "The Recommended Dietary Allowance (RDA) for protein is a minimal threshold designed to prevent deficiency, not an optimal target for health, muscle mass, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds, and many people aiming for improved outcomes may benefit from consuming more than the RDA.",
+   "proposed": "The Recommended Dietary Allowance (RDA) for protein is a minimal threshold designed to prevent deficiency, not an optimal target for health, muscle mass, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds, and many people aiming for improved outcomes may benefit from consuming more than the RDA.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:1bfb4651-cc60-428b-b62a-7b9d59ae7ec2",
+  "member1": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds.",
+  "member2": "The RDA for protein (designed for basic survival) is likely insufficient for people aiming to optimize health, prevent age-related muscle loss, or improve physical performance; target intakes commonly recommended by experts are ~1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to ~2.0 g/kg/day.",
+  "shipped": {
+   "ms": 39447,
+   "canonical": "The RDA for protein was designed to prevent deficiency and ensure basic survival; it has important limitations when used as a target for optimal health, longevity, or athletic performance and is likely insufficient for people aiming to optimize health, prevent age-related muscle loss, or improve physical performance. Target intakes commonly recommended by experts are ~1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to ~2.0 g/kg/day. Optimal intake for health, longevity, and athletic performance should be considered separately from deficiency-prevention thresholds.",
+   "proposed": "The RDA for protein was designed to prevent deficiency and ensure basic survival; it has important limitations when used as a target for optimal health, longevity, or athletic performance and is likely insufficient for people aiming to optimize health, prevent age-related muscle loss, or improve physical performance. Target intakes commonly recommended by experts are ~1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to ~2.0 g/kg/day. Optimal intake for health, longevity, and athletic performance should be considered separately from deficiency-prevention thresholds.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3750,
+   "canonical": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds. For people aiming to optimize health, prevent age-related muscle loss, or improve physical performance, expert-recommended target intakes are commonly ~1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to ~2.0 g/kg/day.",
+   "proposed": "The RDA for protein was designed to prevent deficiency and has important limitations when used as a target for optimal health, longevity, or athletic performance; optimal intake for these goals is likely higher than the RDA and should be considered separately from deficiency-prevention thresholds. For people aiming to optimize health, prevent age-related muscle loss, or improve physical performance, expert-recommended target intakes are commonly ~1.2–1.6 g/kg/day as a minimum effective range, with many individuals benefiting from up to ~2.0 g/kg/day.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:361c6ee5-0165-43b9-8f99-0d8df6009ff1",
+  "member1": "Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range.",
+  "member2": "The RDA for protein (commonly ~0.8 g/kg) is likely insufficient for most adults who want to preserve or build muscle; many people are better served by higher intakes around ~1.6 g/kg/day — roughly twice the RDA — e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg.",
+  "shipped": {
+   "ms": 22644,
+   "canonical": "Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals, particularly for those seeking to preserve or build muscle—many people are better served by higher intakes around ~1.6 g/kg/day; for example, someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg; uncertainty and debate increase for intakes well above that range.",
+   "proposed": "Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals, particularly for those seeking to preserve or build muscle—many people are better served by higher intakes around ~1.6 g/kg/day; for example, someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg; uncertainty and debate increase for intakes well above that range.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3702,
+   "canonical": "Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range. For adults who want to preserve or build muscle, the RDA is likely insufficient; many are better served by higher intakes around ~1.6 g/kg/day—e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg.",
+   "proposed": "Protein: the RDA is about 0.4 g per pound (≈0.8 g/kg) of body weight; increasing intake to roughly double that (~0.8 g/lb or ~1.6 g/kg) shows no evidence of harm for virtually all people and is likely superior to the RDA for most goals—uncertainty and debate increase for intakes well above that range. For adults who want to preserve or build muscle, the RDA is likely insufficient; many are better served by higher intakes around ~1.6 g/kg/day—e.g., someone who would consume ~60 g/day at the RDA might need ~150–160 g/day at ~1.6 g/kg.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:9a382d9e-2102-4530-9ba6-3f10b06e3538",
+  "member1": "Carbohydrates contribute usable fuel for higher-intensity exercise, so an essentially zero-carbohydrate, protein-only eating pattern can reduce the ability to train hard; including some carbs around workouts can improve performance.",
+  "member2": "Carbohydrate availability can limit high-intensity workout capacity; even a small amount of carbohydrate before or during training may allow you to train harder or maintain intensity when following a low-carb plan.",
+  "shipped": {
+   "ms": 8069,
+   "canonical": "Carbohydrates contribute usable fuel for higher-intensity exercise, and carbohydrate availability can limit high-intensity workout capacity; an essentially zero-carbohydrate, protein-only eating pattern can reduce the ability to train hard, but even a small amount of carbohydrate before or during training may allow you to train harder or maintain intensity when following a low-carb plan.",
+   "proposed": "Carbohydrates contribute usable fuel for higher-intensity exercise, and carbohydrate availability can limit high-intensity workout capacity; an essentially zero-carbohydrate, protein-only eating pattern can reduce the ability to train hard, but even a small amount of carbohydrate before or during training may allow you to train harder or maintain intensity when following a low-carb plan.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2235,
+   "canonical": "Carbohydrates contribute usable fuel for higher-intensity exercise, so an essentially zero-carbohydrate, protein-only eating pattern can reduce the ability to train hard; carbohydrate availability can limit high-intensity workout capacity. Even a small amount of carbohydrate before or during training may allow you to train harder or maintain intensity when following a low-carb plan.",
+   "proposed": "Carbohydrates contribute usable fuel for higher-intensity exercise, so an essentially zero-carbohydrate, protein-only eating pattern can reduce the ability to train hard; carbohydrate availability can limit high-intensity workout capacity. Even a small amount of carbohydrate before or during training may allow you to train harder or maintain intensity when following a low-carb plan.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:36eb81df-280b-4bfc-8ec4-32cf0542d38b",
+  "member1": "Chemical identity determines biological effect: the physiological effect of a food-derived molecule depends on its molecular structure, not whether it came from a ‘natural’ source or was synthesized in a lab. If two preparations deliver the same molecule with the same structure, their direct biochemical effects will be the same regardless of ancestry. This principle clarifies why isolating specific nutrients or phytochemicals can reproduce effects attributed to whole foods when the active molecules are identical.",
+  "member2": "When two substances are the same chemical molecule with the same structure, their biological effects depend on that molecular identity, not on whether the source was 'natural' or 'synthetic'.",
+  "shipped": {
+   "ms": 11000,
+   "canonical": "Chemical identity determines biological effect: the physiological effect of a food-derived molecule depends on its molecular structure, not whether it came from a 'natural' source or was synthesized in a lab. If two preparations deliver the same molecule with the same structure, their direct biochemical effects will be the same regardless of ancestry. This principle clarifies why isolating specific nutrients or phytochemicals can reproduce effects attributed to whole foods when the active molecules are identical.",
+   "proposed": "Chemical identity determines biological effect: the physiological effect of a food-derived molecule depends on its molecular structure, not whether it came from a 'natural' source or was synthesized in a lab. If two preparations deliver the same molecule with the same structure, their direct biochemical effects will be the same regardless of ancestry. This principle clarifies why isolating specific nutrients or phytochemicals can reproduce effects attributed to whole foods when the active molecules are identical.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 3074,
+   "canonical": "Chemical identity determines biological effect: the physiological effect of a food-derived molecule depends on its molecular structure, not whether it came from a 'natural' source or was synthesized in a lab. If two preparations deliver the same molecule with the same structure, their direct biochemical effects will be the same regardless of ancestry. This principle clarifies why isolating specific nutrients or phytochemicals can reproduce effects attributed to whole foods when the active molecules are identical.",
+   "proposed": "Chemical identity determines biological effect: the physiological effect of a food-derived molecule depends on its molecular structure, not whether it came from a 'natural' source or was synthesized in a lab. If two preparations deliver the same molecule with the same structure, their direct biochemical effects will be the same regardless of ancestry. This principle clarifies why isolating specific nutrients or phytochemicals can reproduce effects attributed to whole foods when the active molecules are identical.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:d7583238-9929-449d-a08d-5347d8d74b4c",
+  "member1": "Processed and ultra-processed foods are a heterogeneous category; use clear definitions and practical heuristics rather than blanket demonization, since not all processing is inherently harmful and 'ultra-processed' can be a convenient but imprecise villain.",
+  "member2": "The label “ultra-processed food” is too heterogeneous and conceptually weak to guide understanding of dietary effects; it's more informative to evaluate foods by their specific substances, composition, and physiological effects than by a broad processing category.",
+  "shipped": {
+   "ms": 12906,
+   "canonical": "The label 'ultra-processed food' is heterogeneous and conceptually weak—a convenient but imprecise villain unsuited to guide dietary understanding; instead of blanket demonization, use clear definitions and practical heuristics to evaluate foods by their specific substances, composition, and physiological effects, recognizing that not all processing is inherently harmful.",
+   "proposed": "The label 'ultra-processed food' is heterogeneous and conceptually weak—a convenient but imprecise villain unsuited to guide dietary understanding; instead of blanket demonization, use clear definitions and practical heuristics to evaluate foods by their specific substances, composition, and physiological effects, recognizing that not all processing is inherently harmful.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2266,
+   "canonical": "Processed and ultra-processed foods are a heterogeneous category; the label 'ultra-processed food' is too conceptually weak to guide understanding of dietary effects. Use clear definitions and practical heuristics rather than blanket demonization, since not all processing is inherently harmful. It is more informative to evaluate foods by their specific substances, composition, and physiological effects than by a broad processing category.",
+   "proposed": "Processed and ultra-processed foods are a heterogeneous category; the label 'ultra-processed food' is too conceptually weak to guide understanding of dietary effects. Use clear definitions and practical heuristics rather than blanket demonization, since not all processing is inherently harmful. It is more informative to evaluate foods by their specific substances, composition, and physiological effects than by a broad processing category.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ },
+ {
+  "id": "merge:4db4bfec-ac85-45e1-b90c-3fbf0715b40e",
+  "member1": "Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.",
+  "member2": "A key mechanism by which ultra-processed foods drive excess calorie intake is formulation: making foods 'hyper-palatable' typically involves adding large amounts of sugar and fat.",
+  "shipped": {
+   "ms": 20771,
+   "canonical": "Ultra-processed foods are intentionally engineered through formulation for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.",
+   "proposed": "Ultra-processed foods are intentionally engineered through formulation for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  },
+  "noThinking": {
+   "ms": 2553,
+   "canonical": "Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption; a key mechanism is formulation that makes foods hyper-palatable by adding large amounts of sugar and fat.",
+   "proposed": "Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption; a key mechanism is formulation that makes foods hyper-palatable by adding large amounts of sugar and fat.",
+   "reason": "enriched",
+   "changed": true,
+   "rejected": false,
+   "invented": [],
+   "missing": []
+  }
+ }
+]

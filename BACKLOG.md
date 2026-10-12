@@ -22,6 +22,10 @@ there.
 >   is unchanged (`lib/judgePipeline.ts`, `CONSOLIDATION_JUDGE_CONCURRENCY`). Judge stage 3.5 → 1.1 s/fact; tests incl. a randomised
 >   equivalence property.
 > - **Shipped, default OFF:** `ENRICH_NO_THINKING=1` — rewrite 19.7 → 2.5 s, detail kept equal on 59 pairs. Paul to decide.
+> - **2026-10-12 (night) — enrich guard now also rejects a DROPPED number** (it used to reject only invented ones): gold re-run, number-bearing pairs ×3:
+>   shipped 0/111 rejected, no-thinking 3/111 (1 real dropped `~1200 ng/dL`, 2 an invented worked example) → `ENRICH_NO_THINKING` **stays OFF**; next
+>   cheap step is "no-thinking first, thinking only on a guard rejection" (≈ 3.2 s/rewrite). Dropped *qualifiers* ("in mice") are not guarded; a word list is
+>   all noise — see `docs/judge-speedup.md`.
 > - **Measured, NOT shipped:** lower effort (low: +15% speed, 14 boundary hops vs 7 noise), fewer candidates, skip-the-judge
 >   (wrong on 5/33 pairs ≥ 0.86).
 > - **The judge disagrees with itself:** same settings re-run flip 7/282 merge decisions (97.5%), all SAME@0.72/0.78 ↔ SAME@0.80.

@@ -69,12 +69,66 @@ S 0.84: 8 of 42; 0.86: 5 of 33 (3 of them pairs the judge kept apart = false mer
 
 ## Lever 4 (found, not in the brief) — enrich rewrite without the thinking pass: SHIPPED OFF
 
-`ENRICH_NO_THINKING=1`. `scripts/evalEnrichSpeedup.ts`, 59 of Paul's gold pairs, shipped vs no-thinking:
-19.7 s → **2.5 s** per call; outcome enriched/no change/rejected 59/0/0 vs 58/0/1 (the guard caught one invented number and
-kept the prior text); numbers dropped 0 vs 1; detail coverage 0.861 vs 0.859 (no-thinking keeps ≥10 points less on 8
-pairs, ≥10 points more on 6); the wording differs on 55 of 59 (so does any re-run). This is not a merge decision, but
-the rewritten text is what later facts are judged against, so it ships off until Paul has read the side-by-sides the
-script prints. Projected effect on a typical source (197 facts, 1,093 s): ≈ 1.6× alone, ≈ 2.2× with lever 1.
+`ENRICH_NO_THINKING=1`. `scripts/evalEnrichSpeedup.ts` on Paul's gold pairs, shipped vs no-thinking:
+19.7 s → **2.5 s** per call (19.8 → 2.6 s in the two re-runs below); detail coverage 0.861 vs 0.859 (re-runs: 0.866 vs 0.880,
+0.874 vs 0.883). The rewritten text is what later facts are judged against, so it ships off until the guard below has been
+measured and Paul has decided.
+
+### The guard now checks both directions (2026-10-12)
+
+Until now the guard rejected only a number the rewrite *invented*. It did not reject one the rewrite *dropped*. In the first
+59-pair run the no-thinking rewrite dropped one number and invented one (the guard caught only the invented one). Now
+`droppedSpecifics()` mirrors it: a number carried by a member or the prior canonical and absent from the rewrite → reject,
+keep the prior canonical (nothing is lost: members stay linked), and log `[enrich] guard rejected …` with the numbers.
+
+Decisions on false alarms (each has a unit test in `tests/enrichGuard.test.ts`, using gold-pair wording where there is one):
+
+| case | decision |
+|---|---|
+| `5 mg` / `5 milligrams`, `30-40` / `30 to 40`, `5.0` / `5`, `1,000` / `1000`, `VO₂` / `VO2` | same number — compared as numbers, units and separators ignored |
+| `five` / `5`, `three months` / `3 months`; `20%` / `one-fifth`, `50%` / `half` | counted as kept, both directions (a member's "five" also grounds a rewrite's "5", so the old "invented" check is kinder too). "one" is never a quantity when *grounding* |
+| a point inside a range the rewrite states (member `35`, rewrite `30–40`) | counted as kept (strictly inside only; endpoints must appear) — known hole: a range from member A can hide a *different* dose from member B (`2 g in children` inside `1–3 g in adults`). Zero such cases in 340 rewrites; revisit if it shows up |
+| a number only in a member's direct quote | **not required** (quotes are evidence, not canonical text); still counts as grounding for "invented" |
+| years (`2019`), `[12]`, `PMID…`, `NCT…`, `Table 2`, `et al. 2018` | not required to survive. A year *followed by a unit* (`2000 mg`, `2000 steps`) is a dose and is required. An *invented* year is still rejected |
+| unit exponent `ml·kg⁻¹·min⁻¹` | not a number |
+| `90 minutes` → `1.5 hours`, `1:1` → `1 to 1`, `phase 3` → `phase III`, `type 2` → `T2D` | **not handled**: reads as dropped, rewrite rejected. Costs one enrichment (the detail stays in the evidence list), never data |
+
+### Measured with the new check (2026-10-12; records `eval/judge-speedup-runs/enrich-eval-guard*.{txt,json}`)
+
+| run | mode | rewrites | rejected | dropped a number | invented one | digit dropped before the guard → in the canonical after it | s/call |
+|---|---|---|---|---|---|---|---|
+| 60 gold pairs (59 usable) | shipped | 59 | 0 | 0 | 0 | 0 → 0 | 19.5 |
+| | no thinking | 59 | 0 | 0 | 0 | 0 → 0 | 2.6 |
+| the 37 number-bearing gold pairs × 3 | shipped | 111 | **0** | 0 | 0 | 0 → 0 | 19.8 |
+| | no thinking | 111 | **3 (2.7%)** | 1 | 2 | 1 → 0 | 2.6 |
+
+- The 1 dropped number (the new check's only hit in 340 rewrites) was real: `~1200 ng/dL` (adult male testosterone) left out of the
+  pair that also gave `~400–600 ng/dL`. The 2 invented were the same pair, both repetitions: a made-up worked example
+  ("someone weighing ~100 lb (45 kg) would consume ~60 g/day", which is not even arithmetically consistent). Shipped never did either.
+- The false-alarm rules above changed no outcome on this sample (a plain "any digit missing" rule gives the same 1 of 340); the equivalences
+  are covered by the unit tests, not by the gold set.
+- Also noticed, not covered by any number guard: on pair `50fe5b5a` no-thinking returned the prior text unchanged on all 3 reps
+  (outcome "no change", so the new member's detail stayed buried); shipped enriched it 3/3.
+
+### Decision: ENRICH_NO_THINKING stays OFF
+
+The rule was: rejection rate with no-thinking no worse than shipped, and no dropped number reaching the canonical. The second holds
+(0 reach the canonical, by construction). The first does not: 3/111 vs 0/111 on number-bearing pairs, concentrated in two pairs. The
+guard turns those into harmless rejections, so the cost of turning it on is a loss of ≈ 2–3% of enrichments on number-bearing
+facts (fewer overall; most facts carry no number) in exchange for ≈ 2.2× on the rewrite stage. The obvious fix is not built:
+**try no-thinking first and re-run with thinking only when the guard rejects** (≈ 2.6 + 0.03 × 19.8 ≈ 3.2 s per rewrite, and the
+final rejection rate would be the shipped one).
+
+### The next risk: a dropped qualifier ("in mice", "only in men over 50")
+
+Not built. A word-list check (animal / lab-model words, only / except / unless, population phrases, hedges) was replayed over the
+118 stored rewrites from the first run: 0 hits for animal words (none of the gold pairs contains one, so recall cannot be measured at
+all); 4 hits for only/except/population, of which 3 are false alarms (`except` → `however`, `unless` → `without`, twice) and 1 is
+plausibly real (no-thinking dropped "in men" from the aromatase pair); and 7–8 rewrites losing a hedge word (`may`, `about`, `roughly`),
+which is paraphrase more often than loss. A cheap lexical
+check would be mostly noise (1 true hit in 4). It needs the claim-level judge (is each member's population/qualifier still true of the canonical?), i.e. a
+model call per rewrite; do that, and measure it on pairs that carry qualifiers, if a qualifier drop is ever seen in practice.
+Until then this is an unguarded risk on both rewrite modes, not only no-thinking.
 
 ## What is not measured
 

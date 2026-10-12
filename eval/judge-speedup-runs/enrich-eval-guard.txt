@@ -1,0 +1,50 @@
+60 pairs (1 with a failed call, excluded)
+seconds per call: as shipped 19.5  →  no thinking 2.6
+outcome (enriched / no change / rejected by guard): shipped 59/0/0   no thinking 59/0/0
+shipped    : 59 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+no thinking: 59 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+
+REJECTIONS BY THE MISSING-NUMBER CHECK:
+
+identical text: 2/59;  mean word overlap 0.82
+mean length (chars): shipped 396  no thinking 405
+detail coverage (share of the members' distinctive words kept): shipped 0.866  no thinking 0.880
+  pairs where no-thinking keeps >=10 points less: 4/59;  keeps >=10 points more: 9/59
+
+MOST DIFFERENT PAIRS:
+
+merge:760376b4-7e53-47de-97e5-0fe5ea9422ea  overlap 0.54
+  MEMBER 1: Male and female aggression often follow different strategies: males are more likely to use direct physical confrontation, while females more often use indirect or relational tactics—patterns that can be understood through evolutionary trade‑offs in competition and risk.
+  MEMBER 2: Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm.
+  shipped:      Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm—patterns reflecting evolutionary trade-offs in competition and risk.
+  no thinking:  Male and female aggression often follow different strategies: males are more likely to use direct, face-to-face physical or overt verbal confrontation, while females more often use indirect or relational tactics (e.g., reputation denigration, social exclusion)—patterns that reflect adaptive competition while avoiding physical harm and can be understood through evolutionary trade‑offs in risk and cost.
+
+merge:2d90e55e-461e-4305-9975-dd75d9db2345  overlap 0.61
+  MEMBER 1: For diagnostic semen analysis, standardize pre‑sample abstinence to about 2–4 days (commonly ~3 days) to balance higher sperm concentration with declining motility from longer abstinence.
+  MEMBER 2: For diagnostic semen analysis, laboratories recommend 2–4 days of ejaculatory abstinence before collecting a sample to reduce biological variability in sperm count and motility measurements.
+  shipped:      For diagnostic semen analysis, laboratories recommend standardizing ejaculatory abstinence to about 2–4 days (commonly ~3 days) to reduce biological variability in sperm count and motility measurements, balancing higher sperm concentration with the declining motility that occurs with longer abstinence.
+  no thinking:  For diagnostic semen analysis, standardize pre‑sample abstinence to about 2–4 days (commonly ~3 days) to balance higher sperm concentration with declining motility from longer abstinence and reduce biological variability in sperm count and motility measurements.
+
+merge:4db4bfec-ac85-45e1-b90c-3fbf0715b40e  overlap 0.62
+  MEMBER 1: Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.
+  MEMBER 2: A key mechanism by which ultra-processed foods drive excess calorie intake is formulation: making foods 'hyper-palatable' typically involves adding large amounts of sugar and fat.
+  shipped:      Ultra-processed foods are intentionally engineered through formulation for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.
+  no thinking:  Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption; a key mechanism is formulation that makes foods hyper-palatable by adding large amounts of sugar and fat.
+
+merge:d7583238-9929-449d-a08d-5347d8d74b4c  overlap 0.65
+  MEMBER 1: Processed and ultra-processed foods are a heterogeneous category; use clear definitions and practical heuristics rather than blanket demonization, since not all processing is inherently harmful and 'ultra-processed' can be a convenient but imprecise villain.
+  MEMBER 2: The label “ultra-processed food” is too heterogeneous and conceptually weak to guide understanding of dietary effects; it's more informative to evaluate foods by their specific substances, composition, and physiological effects than by a broad processing category.
+  shipped:      The label 'ultra-processed food' is heterogeneous and conceptually weak—a convenient but imprecise villain unsuited to guide dietary understanding; instead of blanket demonization, use clear definitions and practical heuristics to evaluate foods by their specific substances, composition, and physiological effects, recognizing that not all processing is inherently harmful.
+  no thinking:  Processed and ultra-processed foods are a heterogeneous category; the label 'ultra-processed food' is too conceptually weak to guide understanding of dietary effects. Use clear definitions and practical heuristics rather than blanket demonization, since not all processing is inherently harmful. It is more informative to evaluate foods by their specific substances, composition, and physiological effects than by a broad processing category.
+
+merge:d19cf6bd-c688-4173-97cf-57dcca3d8763  overlap 0.66
+  MEMBER 1: Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.
+  MEMBER 2: Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs.
+  shipped:      Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; the modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.
+  no thinking:  Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments where high-energy foods were rare and costly to obtain, which helps explain modern cravings for items like candy bars and chocolate over lower-calorie alternatives like cheese sticks; the modern ubiquity of these calorie-dense items creates an evolutionary mismatch that promotes overconsumption relative to energy needs.
+
+merge:90b6cc6e-3557-4522-bdcf-a345bb6cf49d  overlap 0.66
+  MEMBER 1: Leucine is a key amino-acid signal that activates mTOR and stimulates MPS, so protein quality (leucine content) and per-meal leucine dose influence anabolic responses.
+  MEMBER 2: mTOR is primarily an amino-acid sensor and is especially sensitive to leucine; leucine is one of the key amino acids that potently activates mTOR and thereby drives anabolic signaling.
+  shipped:      Leucine is a key amino-acid signal that potently activates mTOR—which is primarily an amino-acid sensor and especially sensitive to leucine—thereby driving anabolic signaling and stimulating MPS. Protein quality (leucine content) and per-meal leucine dose influence anabolic responses.
+  no thinking:  Leucine is a key amino-acid signal that potently activates mTOR (an amino-acid sensor especially sensitive to leucine) and stimulates MPS, so protein quality (leucine content) and per-meal leucine dose influence anabolic responses and anabolic signaling.

@@ -113,10 +113,10 @@ async function main() {
       const result = await enrichClaimCanonical(claim.id)
       failStreak = 0
       if (result.rejected) {
-        // The guard caught an invented specific and kept the prior canonical.
+        // The guard caught an invented or dropped specific and kept the prior canonical.
         // This is the signal that has been invisible in the live path; surface it.
         counts.rejected++
-        console.log(`[${n}/${work.length}] REJECTED (invented ${JSON.stringify(result.invented)}) — prior kept — ${claim.id}`)
+        console.log(`[${n}/${work.length}] REJECTED (invented ${JSON.stringify(result.invented)}, dropped ${JSON.stringify(result.missing)}) — prior kept — ${claim.id}`)
       } else if (result.changed) {
         counts.enriched++
         console.log(`[${n}/${work.length}] enriched (${claim.member_count} members) "${result.canonical.slice(0, 80)}…"`)
