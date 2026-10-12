@@ -15,6 +15,31 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🌙 2026-10-12 (night) — PHASE B TOOLING LANDED; caption replacement RUNNING; Paul's three admin requests in flight.**
+>
+> - **Landed on main tonight:** #7 Workbench ranks what Paul must do now (`lib/workbench.ts`; merge reviews held);
+>   #8 `scripts/retireSourceClaims.ts` + frozen benchmark `eval/twin-benchmark-20261011.json` + `lib/writerLock.ts`
+>   (one writer, enforced) + re-extraction guard; #9 Deepgram credit sizing (`--fit-budget`, `--keys`, transcriber
+>   skips unaffordable files; `lib/deepgramBudget.ts`, `lib/deepgramSpend.ts`); #10 per-utterance Deepgram timing
+>   (`lib/deepgramSegments.ts`, `scripts/repairDeepgramTiming.ts`). Vercel builds are rate-limited for 24 h from
+>   ~22:00 UTC Oct 11, so the admin site shows the new Workbench only after that; nothing else depends on it.
+> - **RUNNING (started 00:44 UTC Oct 12, ~2–3 h): `retireSourceClaims.ts --twins --apply`** on the 20 caption
+>   episodes that already have a Deepgram twin: 3,255 facts, 2,190 claims → shells, 771 mixed claims rebuilt from
+>   Deepgram survivors, 16 reviews closed, 20 duplicate rows deleted. Log: `scratchpad/runs/retire-twins-20261011.log`
+>   (worktree `lifestyle-academy-build-0ac791`); backups in `scratchpad/backups/`. **Chained after it:**
+>   `repairDeepgramTiming.ts --apply` (94 sources, 3,243 chunks re-timed; log `scratchpad/runs/repair-timing-20261012.log`).
+>   Both hold the writer lock (`~/.lifestyle-academy-writer.lock`); Paul's overnight supervisor refuses to start
+>   while it is held and must be retried later (hub la10 says so).
+> - **Timing finding (Paul, episode 387):** the Deepgram attach merged each speaker turn into ONE segment, so every
+>   chunk in a turn carried the turn's start; solo episodes were one segment (every fact at 0:11). Fixed for future
+>   attaches; the repair rewrites `timed_transcript` + chunk/insight `start_ms` with byte-identical text, no re-extraction.
+> - **In flight (agent, PR pending):** public episode links instead of Supercast (`article_url` → `youtube_url` →
+>   site search; Supercast never rendered) and a readable transcript pop-up + `/admin/sources/[id]/transcript` page
+>   (Arial, one block per speaker turn, bold names, timestamps linking to YouTube at that second, "open in a new tab").
+> - **Morning check:** retirement log ends `exit=0` and the repair log too; `evalTwinRecall.ts --from
+>   eval/twin-benchmark-20261011.json` still runs; counts re-queried (expect sources 547, active claims ≈ 29.4k);
+>   then Paul's overnight log in `scratchpad/runs/extractDeepgram-*.log`.
+
 > **🛠 2026-10-11 (late) — PHASE A LANDED (Paul10142/longevity#6). Paul decided: laptop CLI only, no Deepgram top-up yet,
 > order A → B ∥ C → D, hold the 213 reviews, Deepgram not YouTube. Read `docs/plan-review-2026-10-11.md` §11.**
 >
