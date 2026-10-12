@@ -22,7 +22,7 @@
   },
   {
     "id": "extract:d6f0f966-b05d-4d7a-b182-7bcc11a12c31",
-    "label": "ADDED_DETAIL",
+    "label": "FAITHFUL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
@@ -43,21 +43,21 @@
   },
   {
     "id": "extract:aeae9968-5dbd-4b22-ac24-28ec98c48558",
-    "label": "FAITHFUL",
+    "label": "ADDED_DETAIL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
   },
   {
     "id": "extract:7a3755bf-28d4-41a8-a9be-6fe7a8c2ebd3",
-    "label": "FAITHFUL",
+    "label": "ADDED_DETAIL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
   },
   {
     "id": "extract:36ba4b3a-83f8-46a5-8977-9225328f3ecf",
-    "label": "ADDED_DETAIL",
+    "label": "FAITHFUL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
@@ -85,7 +85,7 @@
   },
   {
     "id": "extract:0d8a5614-4cf3-4b31-a5c4-1b31d7e1c857",
-    "label": "FAITHFUL",
+    "label": "ADDED_DETAIL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
@@ -106,7 +106,7 @@
   },
   {
     "id": "extract:e74f5012-818f-45ca-b288-e82c41162742",
-    "label": "FAITHFUL",
+    "label": "ADDED_DETAIL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
@@ -120,7 +120,7 @@
   },
   {
     "id": "extract:bd05a496-489c-4e3a-8cae-3021fe62275a",
-    "label": "DROPPED_QUALIFIER",
+    "label": "FAITHFUL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""
@@ -274,7 +274,7 @@
   },
   {
     "id": "extract:0a12494d-3f9e-4eb1-bf5f-abf45c6db146",
-    "label": "FAITHFUL",
+    "label": "ADDED_DETAIL",
     "confirmed": true,
     "labeled_by": "paul",
     "rationale": ""

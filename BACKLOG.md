@@ -15,6 +15,49 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **📏 2026-10-12 (12:45 UTC) — FIDELITY JUDGE RE-SCORED AFTER PAUL'S 9 RE-CHECKS: κ −0.11 → 0.89. The judge now
+> meets the repo's certification bar on the 40-pair sample; shadow mode is still ON in code (no code was changed).**
+>
+> - **What Paul did (00:35–00:40 UTC, /admin/fidelity, judge reasoning in view):** re-ruled all 9 disagreements
+>   (#4, 7, 8, 9, 13, 16, 18, 24, 40). **Changed 8, kept 1.** Every change moved to the judge's verdict: #7, 8, 13,
+>   16, 40 FAITHFUL → ADDED_DETAIL (he now agrees the extractor added unsourced detail); #4, 9 ADDED_DETAIL →
+>   FAITHFUL and #18 DROPPED_QUALIFIER → FAITHFUL (he withdrew his own catches). #24 ("fibroids … require no
+>   intervention") stays FAITHFUL against the judge's ADDED_DETAIL — the one live disagreement. He also saved
+>   first-time labels on #1 and #32 (both FAITHFUL, both agree with the judge). All 40 rows carry `labeled_by:
+>   paul`; the 9 carry `updated_at` after `JUDGE_COMPARED_AT`, so the Workbench re-check item is now empty
+>   (`pendingRechecks` = 0, no code change needed).
+> - **Score (read-only re-export via `scratchpad/exportGoldset.ts` → `evalExtraction.ts score`; the judge's
+>   verdicts in `eval/extraction-run.json` are unchanged from 2026-08-14, no LLM call was made):**
+>
+>   | | Aug 15 (commit 65931a0) | Oct 12 |
+>   |---|---|---|
+>   | raw agreement | 31/40 (77.5%) | **39/40 (97.5%)** |
+>   | κ flag/ok | −0.11 | **0.89** |
+>   | κ verdict | −0.09 | **0.89** |
+>   | inventions Paul caught that the judge missed | 3 | **0** |
+>   | faithful facts the judge would flag (false positives) | 6 | **1 of 35 (2.9%)** — #24 |
+>
+> - **Certified: YES, against the repo's own bar.** The bar as written (`ARCHITECTURE.md` "Extraction fidelity",
+>   BACKLOG §1a, `evalExtraction.ts score`) is "κ acceptable" plus the scorer's hard check that the judge misses
+>   no invention Paul caught, with the stated risk being that quarantine could bury faithful claims. κ 0.89 is
+>   "almost perfect" on the Landis–Koch scale, recall on Paul's ADDED_DETAIL rulings is 5/5, and the cost of the
+>   one false positive is a review, not a lost fact (spec §7: `flagged` = invisible to synthesis AND in Paul's
+>   review queue). Caveats, stated so nobody over-reads the number: n = 40 with only 5 positives; and 8 of the 9
+>   changes were made with the judge's reasoning visible, so this is agreement with Paul's considered standard
+>   (his July "never add true-but-unsourced detail" rule), not a blind second sample.
+> - **Recommendation: turn automatic hiding on, as a separate code change in an idle window.** (1) Flip the
+>   shadow-mode gate (`scripts/flagClaims.ts` / `lib/extractionFidelity.ts` path → `claims.status='flagged'` on
+>   `extraction_fidelity` flags) only while no extraction run holds the writer lock — it is on the consolidation
+>   hot path. (2) Keep the standing re-certification the eval README already prescribes: label a small rolling
+>   sample per new batch and re-score, because 40 pairs from 8 sources is a thin base. (3) Optional, not required
+>   for the flip: use #24 as a negative example if the prompt is ever recalibrated — the 08-16 "recalibrate the
+>   judge prompt on the 9 confirmed disagreements" step is no longer needed, since 8 of the 9 resolved toward the
+>   judge as-is.
+> - **Operational note:** this window ran while Paul's overnight `extractDeepgram.ts --hours 9 --batch 3` (started
+>   12:34 UTC, writer lock held, pid 70142) was live, so everything here was DB-read-only; the CLI was not used.
+>   That run's log shows a `consolidate_source` job failing on an Opus safeguards refusal at 12:35 UTC — not
+>   touched here; the heal loop owns it. Read the log before trusting the morning counts.
+
 > **✅ 2026-10-12 (02:10 UTC) — PHASE B DONE: the 20 caption twins are replaced and verified, Deepgram timing is repaired, PR #11 (public links + transcript viewer) is merged. Next window: read Paul's overnight log, then migration 031 / Phase C / the first transcription slice.**
 >
 > - **Landed on main tonight:** #7 Workbench ranks what Paul must do now; #8 `scripts/retireSourceClaims.ts` + frozen
@@ -2177,6 +2220,9 @@ Ordered by dependency.
 >   drain). Flags → `claim_flags` in **shadow mode** (no `status='flagged'` until κ
 >   certified). Validated live on ≥1 newly-ingested source this window.
 > - **Do NOT auto-quarantine on the judge until κ is acceptable** (unchanged).
+> - **1a ✅ CERTIFIED 2026-10-12** (after Paul's 9 re-checks): κ 0.89, 39/40 agreement, 0 missed inventions,
+>   1 false positive. Details in the 2026-10-12 12:45 UTC block at the top of this file. Shadow mode is still
+>   on in code; flipping it is the next (separate, idle-window) change.
 
 - **1a. Certify the judge.** Build the missing `eval/extraction-goldset.json`:
   `evalExtraction.ts sample` (~40 stratified insights) → Paul labels → compute
