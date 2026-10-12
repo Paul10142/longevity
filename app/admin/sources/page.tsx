@@ -8,6 +8,12 @@ import { EpisodeLinks } from "@/components/EpisodeLinks"
 import { TranscriptDialog } from "@/components/TranscriptDialog"
 import { episodeLinks } from "@/lib/sourceLinks"
 
+// Render on every request. Without this Next.js prerendered the table at build
+// time, so production showed the statuses and counts as they were at the last
+// deploy — every other data-reading admin page already declares this
+// (2026-10-12; found while adding the transcript pop-up).
+export const dynamic = "force-dynamic"
+
 /**
  * Where a source is in the pipeline.
  *
