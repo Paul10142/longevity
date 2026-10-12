@@ -2,9 +2,26 @@
   "buildCommand": "npm run build",
   "framework": "nextjs",
   "installCommand": "npm install",
-  "ignoreCommand": "git diff --quiet HEAD^ HEAD ./"
+  "ignoreCommand": "sh scripts/vercel-ignore-build.sh",
+  "git": {
+    "deploymentEnabled": {
+      "main": true,
+      "preview/*": true,
+      "claude/*": false,
+      "docs/*": false,
+      "fix/*": false,
+      "feat/*": false,
+      "chore/*": false,
+      "ci/*": false,
+      "test/*": false,
+      "refactor/*": false,
+      "perf/*": false,
+      "sec/*": false,
+      "security/*": false,
+      "cursor/*": false,
+      "codex/*": false,
+      "no-mistakes/*": false,
+      "dependabot/*": false
+    }
+  }
 }
-
-
-
-
