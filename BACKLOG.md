@@ -15,6 +15,54 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **⚡ 2026-10-12 (evening) — CONSOLIDATION SPEED-UP BUILT (branch `claude/judge-speedup`, PR below). Decisions unchanged; details in
+> [`docs/judge-speedup.md`](docs/judge-speedup.md).** Consolidation (≈ 17–30 min/episode) is the bigger half of an episode; the judge
+> call is only ≈ 4 s of ≈ 5–17 s per fact — the **enrich-merge rewrite (≈ 20 s, thinking pass on) is the biggest piece**.
+> - **Shipped, default on:** judge 4 facts of one source at once, writes in order, early verdict reused only if the candidate list
+>   is unchanged (`lib/judgePipeline.ts`, `CONSOLIDATION_JUDGE_CONCURRENCY`). Judge stage 3.5 → 1.1 s/fact; tests incl. a randomised
+>   equivalence property.
+> - **Shipped, default OFF:** `ENRICH_NO_THINKING=1` — rewrite 19.7 → 2.5 s, detail kept equal on 59 pairs. Paul to decide.
+> - **Measured, NOT shipped:** lower effort (low: +15% speed, 14 boundary hops vs 7 noise), fewer candidates, skip-the-judge
+>   (wrong on 5/33 pairs ≥ 0.86).
+> - **The judge disagrees with itself:** same settings re-run flip 7/282 merge decisions (97.5%), all SAME@0.72/0.78 ↔ SAME@0.80.
+> - **Not measured:** end-to-end on live data (nothing left to consolidate). First run prints `[consolidate] source …` lines.
+
+> **✅ 2026-10-12 (18:17 UTC) — OVERNIGHT RUN FINISHED: all 94 Deepgram episodes extracted and matched. Writer lock free. PR #16 (limit-aware supervisor) has merged; next: merge PR #15 (judge → Opus 5.5, no low-confidence reviews), then the speed-up window; migration 031; Phase C.**
+>
+> - **Result vs the 02:10 UTC baseline (547 / 33,120 / 29,383 / 197 / 6):** 547 sources; **35,920 facts (+2,800)**;
+>   **31,285 active claims (+1,902)**; **501 pending reviews (+304)**; 1 open job (the parked August `tag_claims`).
+>   Of the 2,800 new facts, 1,022 auto-merged into existing claims (36%) and 304 (11%) filed a review — all SAME verdicts
+>   below 0.80 confidence, caused by the 0.70 gate. PR #15 stops new ones; the 501 existing are left alone (Paul).
+> - **Timing:** run 1 03:11→12:23 UTC, run 2 12:34→17:52 (then idle, stopped 18:17). ~36 min of active processing per episode
+>   (15 episodes in ~9 productive hours); mean CLI call 26–30 s. Lost: ~1 h to the subscription usage limit (03:34→04:40,
+>   ~10,700 wasted failed calls) and ~3 h to a database outage from this Mac (09:29→12:23). Bottleneck = consolidation, strictly
+>   one fact at a time with an Opus call at default effort; extraction already runs 16 chunks at once.
+> - **Open:** episode 204 (Barzilai, caption-origin, `processing`) has 54 facts never matched to claims (leftover of an interrupted
+>   August run). The supervisor still idles to its deadline after the last episode instead of exiting (not fixed by #16; stop it per runbook §8).
+> - **Process:** `docs/EXTRACTION_RUNBOOK.md` = say "proceed with extraction" in a new window; runner never edits code; changes go to
+>   spawned windows. Monitor page: https://claude.ai/artifact/VtwisaCtVmZgNDK1ML6vHD.
+
+> **⏸ 2026-10-12 — LIMIT-AWARE SUPERVISOR LANDED (PR #16, merged 18:20 UTC after the 12:34 run ended).** The 03:11 run lost
+> ~66 min to the subscription limit (10,744 failed CLI calls, 194 job failures) because nothing understood "You've hit
+> your session limit · resets 12:40am (America/Detroit)".
+>
+> - **Before the limit:** every CLI call now runs as `--output-format stream-json --verbose`, whose `rate_limit_event`
+>   reports the five-hour window's utilization and reset. At ≥ 95% (`USAGE_PAUSE_AT`) the next call is refused by a gate
+>   in `lib/llm.ts` (`UsageLimitError`, nothing spawned); the worker parks the job (`deferJob`: queued, `run_after` = reset
+>   + 90 s, **attempts handed back**, checkpoint untouched) and the supervisor sleeps to the reset (≤ 6 h per sleep; a
+>   reset after the deadline ends the run). **After the limit:** the message is parsed (12-hour clock, IANA zone, next-day
+>   rollover, optional "Oct 15," date) and treated the same way; later calls do not spawn. Never falls back to the paid API.
+> - **Logged:** one `PAUSE …` and one `RESUME … paused Nm` line per pause, and a `STOP` summary `usage-limit pauses: N, Xm
+>   lost` — the morning report's lost time.
+> - **Poison jobs:** `quarantineReason()` — a safety-filter refusal is never re-queued; any other failed job gets 3 heals per
+>   run, then stays `failed` and is listed at STOP. Rounds count only successes as progress, so an all-failure round backs off.
+> - Retry/swallow sites now rethrow `UsageLimitError` (extractChunk, adjudicate, guest inference, hygiene, enrich-merge, tagging,
+>   fidelity judge); a paused extraction no longer marks its source `failed`.
+> - Tests: `tests/usageLimit.test.ts` (real message + real CLI event), `llmCliLimit.test.ts` (fake `claude`), `workerLimit.test.ts`
+>   (stubbed DB: attempts not spent). **Not yet run live** — first live proof is the next run's PAUSE/RESUME lines.
+> - **Overlap with PR #15** (judge → Opus 5.5, `ModelRefusalError`): both edit `lib/llm.ts` and `lib/consolidation.ts`; no logic
+>   conflict (its refusal → "kept separate"; mine → quarantine as the backstop). Land one, rebase the other, re-run `npm test`.
+
 > **⚖️ 2026-10-12 (13:30 UTC) — JUDGE PINNED TO OPUS 5.5; NO MORE LOW-CONFIDENCE MERGE REVIEWS; A REFUSED PAIR NO
 > LONGER FAILS THE JOB. Code only (no DB writes, no migration). Lands after the running extraction finishes — that
 > process loaded the old code at 12:34 UTC.**

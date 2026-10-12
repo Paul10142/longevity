@@ -97,6 +97,30 @@ export async function requeueJob(jobId: string, progress?: Record<string, unknow
   if (error) throw new Error(`Failed to requeue job ${jobId}: ${error.message}`)
 }
 
+/**
+ * Park a job until `resumeAt` WITHOUT spending an attempt. Used when the
+ * subscription window is full (lib/usageLimit.ts): the call never had a fair
+ * chance, so it must not count toward max_attempts — otherwise a one-hour pause
+ * would push every in-flight job to permanently `failed`.
+ *
+ * `claim_next_job()` incremented `attempts` when it claimed this row, so the
+ * claim is undone here. The checkpoint (`progress`) is left exactly as the
+ * handler last wrote it, so the job resumes where it stopped.
+ */
+export async function deferJob(job: Job, resumeAt: Date, reason: string): Promise<void> {
+  const { error } = await db()
+    .from('jobs')
+    .update({
+      status: 'queued',
+      locked_at: null,
+      run_after: resumeAt.toISOString(),
+      attempts: Math.max(0, job.attempts - 1),
+      error: reason.substring(0, 2000),
+    })
+    .eq('id', job.id)
+  if (error) throw new Error(`Failed to defer job ${job.id}: ${error.message}`)
+}
+
 export async function completeJob(jobId: string, progress?: Record<string, unknown>): Promise<void> {
   const { error } = await db()
     .from('jobs')

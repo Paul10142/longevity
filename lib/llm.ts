@@ -27,6 +27,14 @@ import { execFile } from 'node:child_process'
 import { existsSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
+import {
+  UsageLimitError,
+  parseCliStream,
+  parseUsageLimit,
+  noteRateLimit,
+  noteLimitReached,
+  usageGate,
+} from './usageLimit'
 
 /**
  * Per-process CLI call statistics. The 2026-08-27/28 run crawled for 16 hours
@@ -165,6 +173,13 @@ function claudeCodeText(
   // knows its task needs no reasoning opts out; the API backend never thinks on Haiku 4.5.
   if (noThinking) env.MAX_THINKING_TOKENS = '0'
 
+  // Pause BEFORE the subscription window is full (or while it is known to be),
+  // instead of spawning a call that will fail. Nothing is spawned or counted:
+  // the worker defers the job without spending an attempt and the supervisor
+  // sleeps until the window reopens (lib/usageLimit.ts).
+  const gate = usageGate()
+  if (gate) return Promise.reject(gate)
+
   return new Promise((resolve, reject) => {
     const startedAt = Date.now()
     cliStats.calls++
@@ -196,12 +211,24 @@ function claudeCodeText(
         // Print-mode calls were also persisting a session transcript each:
         // 17,725 files / 1.6 GB under ~/.claude/projects for the tmpdir cwd.
         '--no-session-persistence',
+        // stream-json (with --verbose) is the only output format that carries the
+        // `rate_limit_event` — the five-hour window's utilization and reset time —
+        // which is what lets the supervisor pause before the limit rather than
+        // after it. The reply text is the final `result` event.
+        '--output-format', 'stream-json', '--verbose',
         '--append-system-prompt', system,
       ],
       { maxBuffer: 64 * 1024 * 1024, timeout: 600_000, cwd: tmpdir(), env },
-      (err, stdout, stderr) => {
+      (err, rawStdout, stderr) => {
         cliStats.wallMs += Date.now() - startedAt
-        if (err) {
+        const stream = parseCliStream(rawStdout ?? '')
+        noteRateLimit(stream.rateLimit)
+        // On a failed call the readable reason is the `result` event's text (the
+        // raw stdout is now a wall of JSON lines).
+        // Not stream-json at all (an old CLI, a test double): the raw output IS the reply.
+        const legacy = stream.events === 0
+        const stdout = legacy ? rawStdout : (stream.text ?? '')
+        if (err || stream.isError) {
           cliStats.failures++
           cliStats.lastErrorAt = new Date().toISOString()
           // NEVER surface err.message: execFile sets it to
@@ -210,7 +237,7 @@ function claudeCodeText(
           // merge_reviews.model_reasoning as a wall of text on every failed merge
           // card (2026-07-25). Build a short, argv-free reason from the fields
           // that actually describe the failure (stderr / timeout / signal / code).
-          const e = err as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
+          const e = (err ?? {}) as NodeJS.ErrnoException & { killed?: boolean; signal?: string | null }
           // The CLI prints advisory lines on stderr that are not the failure
           // (e.g. the "claude.ai connectors are disabled because ANTHROPIC_API_KEY
           // …" notice). Keep only stderr lines that are not such notices, so the
@@ -234,10 +261,30 @@ function claudeCodeText(
             reject(new ModelRefusalError(model, detail))
             return
           }
+          // "You've hit your session limit · resets 12:40am (America/Detroit)" is
+          // not a failed call to retry: tell the caller to stop until it resets.
+          const limit = parseUsageLimit(`${detail}\n${stdout ?? ''}\n${stderrSignal}`)
+          if (limit) {
+            const limitErr = new UsageLimitError('reached', limit.resetAt, null, detail.slice(0, 120))
+            noteLimitReached(limitErr)
+            reject(limitErr)
+            return
+          }
           reject(new Error(`claude CLI failed (${model}): ${detail}`))
           return
         }
-        resolve(stdout)
+        if (legacy) {
+          resolve(rawStdout)
+          return
+        }
+        if (stream.text === null) {
+          cliStats.failures++
+          cliStats.lastErrorAt = new Date().toISOString()
+          cliStats.lastError = 'no result event in CLI output'
+          reject(new Error(`claude CLI failed (${model}): no result event in CLI output`))
+          return
+        }
+        resolve(stream.text)
       }
     )
     // The prompt goes in on stdin, and the child can be GONE before that write
@@ -350,6 +397,9 @@ async function claudeText(
     // The API runs the same model behind the same filter, so a refusal would
     // only be refused again, on credit.
     if (cliErr instanceof ModelRefusalError) throw cliErr
+    // A full (or nearly full) subscription window is a reason to WAIT, not to
+    // spend API credit: never fall back for it.
+    if (cliErr instanceof UsageLimitError) throw cliErr
     const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
     if (!fallbackEnabled) throw cliErr
     console.warn(

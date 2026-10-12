@@ -29,6 +29,7 @@ import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL, ModelRefusalError, type Effort } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 import { selectAllPaged } from './pagination'
@@ -217,6 +218,9 @@ export async function adjudicate(
       // A safety-filter refusal is an answer about the text, not an outage:
       // retrying re-sends the same text to the same filter. Callers decide.
       if (err instanceof ModelRefusalError) throw err
+      // A full usage window is not a verdict and retrying cannot help: let the
+      // worker defer the job (no attempt spent) until the window reopens.
+      rethrowIfUsageLimit(err)
       lastErr = err
     }
   }

@@ -8,7 +8,8 @@
  */
 
 import type { Job } from './types'
-import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob } from './jobs'
+import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob, deferJob } from './jobs'
+import { asUsageLimit, RESET_MARGIN_MS, UNKNOWN_RESET_PAUSE_MS, type UsageLimitError } from './usageLimit'
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint, type SweepCheckpoint } from './consolidation'
 import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
@@ -233,13 +234,48 @@ async function runHandler(job: Job): Promise<void> {
   }
 }
 
-export type TickResult = { processed: number; budgetExhausted: boolean; synthesisProcessed: number }
+export type TickResult = {
+  /** Jobs that ran to an outcome — completed, yielded, or failed. */
+  processed: number
+  /** Of `processed`, the ones whose handler threw (failed or queued for retry). */
+  failed: number
+  budgetExhausted: boolean
+  synthesisProcessed: number
+  /**
+   * Set when the tick stopped because the subscription window is full (or about
+   * to be). The job in hand was deferred, not failed, and no attempt was spent;
+   * the caller should wait until `usageLimit.resetAt` before ticking again.
+   */
+  usageLimit?: UsageLimitError
+}
+
+/**
+ * Record why a handler threw. A full subscription window is not the job's
+ * fault: park the job until the window reopens, spend NO attempt, and return
+ * the limit so the tick stops (nothing else should start a call that would be
+ * refused the same way). Anything else is an ordinary failure — retried with
+ * backoff until max_attempts, then failed.
+ */
+export async function settleJobError(job: Job, err: unknown): Promise<UsageLimitError | null> {
+  const limit = asUsageLimit(err)
+  if (limit) {
+    const resumeAt = new Date((limit.resetAt ?? Date.now() + UNKNOWN_RESET_PAUSE_MS) + RESET_MARGIN_MS)
+    console.warn(`[worker] job ${job.id} (${job.type}) deferred: ${limit.message}`)
+    await deferJob(job, resumeAt, `paused: ${limit.message}`)
+    return limit
+  }
+  console.error(`[worker] job ${job.id} (${job.type}) failed:`, err)
+  await failJob(job, err)
+  return null
+}
 
 /** Drain the queue until empty or the time budget is spent. */
 export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResult> {
   const started = Date.now()
   let processed = 0
+  let failed = 0
   let synthesisProcessed = 0
+  let usageLimit: UsageLimitError | undefined
 
   while (Date.now() - started < budgetMs) {
     const job = await claimNextJob()
@@ -264,11 +300,15 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
         await completeJob(job.id)
       }
     } catch (err) {
-      console.error(`[worker] job ${job.id} (${job.type}) failed:`, err)
-      await failJob(job, err)
+      const limit = await settleJobError(job, err)
+      if (limit) {
+        usageLimit = limit
+        break
+      }
+      failed++
     }
     processed++
   }
 
-  return { processed, budgetExhausted: Date.now() - started >= budgetMs, synthesisProcessed }
+  return { processed, failed, budgetExhausted: Date.now() - started >= budgetMs, synthesisProcessed, usageLimit }
 }

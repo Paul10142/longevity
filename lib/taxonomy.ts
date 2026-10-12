@@ -28,6 +28,7 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding, generateEmbeddingsBatch } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 import { selectAllPaged } from './pagination'
 
 // Judgment tier: topic placement shapes the whole taxonomy, so a bad call here
@@ -257,7 +258,8 @@ async function assignBatch(
       TAXONOMY_MODEL
     )
     return Array.isArray(parsed.assignments) ? parsed.assignments : []
-  } catch {
+  } catch (err) {
+    rethrowIfUsageLimit(err)
     return []
   }
 }

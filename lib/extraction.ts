@@ -13,6 +13,7 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { UsageLimitError, rethrowIfUsageLimit } from './usageLimit'
 import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import {
@@ -163,7 +164,9 @@ export async function inferGuestsFromIntro(transcript: string): Promise<string[]
       .map(g => g.trim())
       .filter(g => g.length > 1 && g.length <= 80 && !/peter\s+attia/i.test(g))
       .slice(0, 6)
-  } catch {
+  } catch (err) {
+    // A full usage window is not "could not tell" — defer, don't hedge forever.
+    rethrowIfUsageLimit(err)
     // Attribution is an enhancement — a failed inference must never block
     // extraction. The hedged participant line covers this case.
     return []
@@ -391,6 +394,8 @@ export async function extractFromChunk(
       )
       break
     } catch (err) {
+      // Retrying cannot beat a full usage window; let the worker defer the job.
+      rethrowIfUsageLimit(err)
       lastErr = err
     }
   }
@@ -784,7 +789,9 @@ export async function extractSource(
       if (s.status === 'fulfilled') {
         done.add(s.value.idx)
         cp.insights_created += s.value.inserted
-      } else if (failure === null) {
+      } else if (failure === null || (s.reason instanceof UsageLimitError && !(failure instanceof UsageLimitError))) {
+        // A usage-limit rejection outranks any other failure in the batch: it
+        // decides what the worker does with the job (defer, spend no attempt).
         failure = s.reason
       }
     }
@@ -811,13 +818,17 @@ export async function extractSource(
     // Close out the run and the source; otherwise both sit in a permanent
     // in-flight state that the admin UI reports as still running.
     await failRun(runId, err)
-    await db()
-      .from('sources')
-      .update({
-        processing_status: 'failed',
-        processing_error: (err instanceof Error ? err.message : String(err)).substring(0, 2000),
-      })
-      .eq('id', sourceId)
+    // A paused job is not a failed source: it resumes from its checkpoint when
+    // the usage window reopens, so do not mark it failed in the admin UI.
+    if (!(err instanceof UsageLimitError)) {
+      await db()
+        .from('sources')
+        .update({
+          processing_status: 'failed',
+          processing_error: (err instanceof Error ? err.message : String(err)).substring(0, 2000),
+        })
+        .eq('id', sourceId)
+    }
     throw err
   }
 }
