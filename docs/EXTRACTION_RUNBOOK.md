@@ -107,3 +107,21 @@ Standing code tasks — spawn each at most once (check the memory index first):
 - Limit-aware supervisor: on "hit your session limit … resets <time>", sleep
   until the reset instead of retrying; a safety-filter refusal on one pair must
   not fail its whole job.
+
+## 7. The monitor page (Paul, 2026-10-12)
+
+Paul keeps one at-a-glance page open: https://claude.ai/artifact/VtwisaCtVmZgNDK1ML6vHD
+("Extraction Monitor"). Its live numbers (last fact written, facts in the last
+15 minutes, new facts and claims, Deepgram episodes done, open jobs, pending
+reviews) come straight from the database every minute, so they need no help.
+The runner only keeps the **state note** current, in the `run/current` document
+(`ArtifactData`, `update`, pin `if_version`): fields `state`
+(`running|paused|stopped|finished|idle`), `note` (one plain sentence),
+`started_at`, `deadline_at`, `counts_since` (ISO UTC; set to the first start of
+the same night's run), `ended_at`, and `incidents` (chronological list of
+`{at, text}`; plain language, one line each).
+
+Update it at milestones only, in one write each time: run started or restarted,
+an incident found (usage limit, database outage, a stuck job), run ended (set
+`state` to `finished` or `stopped`, add `ended_at`). Never poll to keep it
+fresh. If the page's URL ever changes, update this section and the memory note.
