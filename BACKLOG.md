@@ -15,6 +15,21 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **✅ 2026-10-12 (18:17 UTC) — OVERNIGHT RUN FINISHED: all 94 Deepgram episodes extracted and matched. Writer lock free. PR #16 (limit-aware supervisor) has merged; next: merge PR #15 (judge → Opus 5.5, no low-confidence reviews), then the speed-up window; migration 031; Phase C.**
+>
+> - **Result vs the 02:10 UTC baseline (547 / 33,120 / 29,383 / 197 / 6):** 547 sources; **35,920 facts (+2,800)**;
+>   **31,285 active claims (+1,902)**; **501 pending reviews (+304)**; 1 open job (the parked August `tag_claims`).
+>   Of the 2,800 new facts, 1,022 auto-merged into existing claims (36%) and 304 (11%) filed a review — all SAME verdicts
+>   below 0.80 confidence, caused by the 0.70 gate. PR #15 stops new ones; the 501 existing are left alone (Paul).
+> - **Timing:** run 1 03:11→12:23 UTC, run 2 12:34→17:52 (then idle, stopped 18:17). ~36 min of active processing per episode
+>   (15 episodes in ~9 productive hours); mean CLI call 26–30 s. Lost: ~1 h to the subscription usage limit (03:34→04:40,
+>   ~10,700 wasted failed calls) and ~3 h to a database outage from this Mac (09:29→12:23). Bottleneck = consolidation, strictly
+>   one fact at a time with an Opus call at default effort; extraction already runs 16 chunks at once.
+> - **Open:** episode 204 (Barzilai, caption-origin, `processing`) has 54 facts never matched to claims (leftover of an interrupted
+>   August run). The supervisor still idles to its deadline after the last episode instead of exiting (not fixed by #16; stop it per runbook §8).
+> - **Process:** `docs/EXTRACTION_RUNBOOK.md` = say "proceed with extraction" in a new window; runner never edits code; changes go to
+>   spawned windows. Monitor page: https://claude.ai/artifact/VtwisaCtVmZgNDK1ML6vHD.
+
 > **⏸ 2026-10-12 — LIMIT-AWARE SUPERVISOR BUILT (PR pending; merges AFTER the overnight run ends).** The 03:11 run lost
 > ~66 min to the subscription limit (10,744 failed CLI calls, 194 job failures) because nothing understood "You've hit
 > your session limit · resets 12:40am (America/Detroit)".

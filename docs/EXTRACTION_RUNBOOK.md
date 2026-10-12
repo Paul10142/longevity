@@ -122,11 +122,25 @@ The runner only keeps the **state note** current, in the `run/current` document
 (`ArtifactData`, `update`, pin `if_version`): fields `state`
 (`running|paused|stopped|finished|idle`), `note` (one plain sentence),
 `started_at`, `deadline_at`, `counts_since` (ISO UTC; set to the first start of
-the same night's run), `ended_at`, and `incidents` (chronological list of
-`{at, text}`; plain language, one line each).
+the same night's run), `ended_at`, `incidents` (chronological list of
+`{at, text}`; plain language, one line each) and `work` (changes in flight in
+other windows: `{label, state: running|waiting|done, detail}`). The page also
+lists the live pipeline jobs by itself under "Working on now", so it always
+shows what is being worked on; keep `work` current whenever a code window is
+spawned, finishes, or its PR merges.
 
 Update it at milestones only, in one write each time: run started or restarted,
 an incident found (usage limit, database outage, a stuck job; a log `PAUSE` line
 means `state: paused` until the matching `RESUME`), run ended (set
 `state` to `finished` or `stopped`, add `ended_at`). Never poll to keep it
 fresh. If the page's URL ever changes, update this section and the memory note.
+
+## 8. When to stop the run yourself
+
+The supervisor idles in 15-minute sleeps (log: `no progress (streak N)`) after
+the last episode, holding the writer lock until its deadline and blocking code
+windows. If the log shows `0 source(s) left`, no job is `running` in the
+database, no `claude -p` child of the run is alive, and the last write is older
+than 15 minutes, the work is done: stop only that run's own process tree
+(SIGTERM), confirm the lock is gone, set the monitor to `finished`, then report.
+(The limit-aware supervisor change should make the run exit by itself.)
