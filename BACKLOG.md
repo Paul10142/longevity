@@ -15,6 +15,27 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **⏸ 2026-10-12 — LIMIT-AWARE SUPERVISOR BUILT (PR pending; merges AFTER the overnight run ends).** The 03:11 run lost
+> ~66 min to the subscription limit (10,744 failed CLI calls, 194 job failures) because nothing understood "You've hit
+> your session limit · resets 12:40am (America/Detroit)".
+>
+> - **Before the limit:** every CLI call now runs as `--output-format stream-json --verbose`, whose `rate_limit_event`
+>   reports the five-hour window's utilization and reset. At ≥ 92% (`USAGE_PAUSE_AT`) the next call is refused by a gate
+>   in `lib/llm.ts` (`UsageLimitError`, nothing spawned); the worker parks the job (`deferJob`: queued, `run_after` = reset
+>   + 90 s, **attempts handed back**, checkpoint untouched) and the supervisor sleeps to the reset (≤ 6 h per sleep; a
+>   reset after the deadline ends the run). **After the limit:** the message is parsed (12-hour clock, IANA zone, next-day
+>   rollover, optional "Oct 15," date) and treated the same way; later calls do not spawn. Never falls back to the paid API.
+> - **Logged:** one `PAUSE …` and one `RESUME … paused Nm` line per pause, and a `STOP` summary `usage-limit pauses: N, Xm
+>   lost` — the morning report's lost time.
+> - **Poison jobs:** `quarantineReason()` — a safety-filter refusal is never re-queued; any other failed job gets 3 heals per
+>   run, then stays `failed` and is listed at STOP. Rounds count only successes as progress, so an all-failure round backs off.
+> - Retry/swallow sites now rethrow `UsageLimitError` (extractChunk, adjudicate, guest inference, hygiene, enrich-merge, tagging,
+>   fidelity judge); a paused extraction no longer marks its source `failed`.
+> - Tests: `tests/usageLimit.test.ts` (real message + real CLI event), `llmCliLimit.test.ts` (fake `claude`), `workerLimit.test.ts`
+>   (stubbed DB: attempts not spent). **Not run live** — needs the writer lock; first live proof is the next run's PAUSE/RESUME lines.
+> - **Overlap with PR #15** (judge → Opus 5.5, `ModelRefusalError`): both edit `lib/llm.ts` and `lib/consolidation.ts`; no logic
+>   conflict (its refusal → "kept separate"; mine → quarantine as the backstop). Land one, rebase the other, re-run `npm test`.
+
 > **📏 2026-10-12 (12:45 UTC) — FIDELITY JUDGE RE-SCORED AFTER PAUL'S 9 RE-CHECKS: κ −0.11 → 0.89. The judge now
 > meets the repo's certification bar on the 40-pair sample; shadow mode is still ON in code (no code was changed).**
 >
