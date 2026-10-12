@@ -5,6 +5,14 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 import fidelityPairs from "@/eval/extraction-eval-pairs.json"
 import judgeRun from "@/eval/extraction-run.json"
 import { pendingRechecks, type FidelityLabel } from "@/lib/fidelity"
+import {
+  STUCK_JOB_MINUTES,
+  groupWorkbench,
+  pipelineState,
+  rankWorkbench,
+  type WorkbenchCounts,
+  type WorkbenchItem,
+} from "@/lib/workbench"
 
 // Counts are live — never serve a cached to-do list.
 export const dynamic = "force-dynamic"
@@ -29,16 +37,6 @@ const EXTRACTION_BRAKE_MB = 6000
 
 /** An unknown count renders as a dash, never as zero. */
 const fmt = (n: number | null) => (n === null ? "—" : n.toLocaleString())
-
-type Decision = {
-  name: string
-  href: string
-  /** null = the query failed. Never conflate that with zero — see countOf. */
-  count: number | null
-  description: string
-  /** Shown instead of the count when there is nothing to do. */
-  emptyLabel: string
-}
 
 type Stat = { name: string; value: string; description: string }
 
@@ -69,11 +67,58 @@ async function countOf(
   }
 }
 
+/**
+ * Sources marked `processing` that no queued or running job will ever finish.
+ *
+ * Extraction sets a source to `processing` when it starts and to `succeeded`
+ * or `failed` when it ends — but only if the handler gets to run its catch
+ * block. A worker killed mid-flight, or a job deleted by hand, leaves the
+ * source "Extracting…" forever with nothing behind it. PostgREST cannot express
+ * that anti-join as one count, so this is two small reads: the processing
+ * sources (a handful at most — they are transient, not a set that grows with
+ * the corpus) and the open jobs that point at them. Same rule as countOf: null
+ * on any error, never zero.
+ */
+async function countOrphanedProcessingSources(): Promise<number | null> {
+  if (!supabaseAdmin) return null
+  try {
+    const { data: processing, error } = await supabaseAdmin
+      .from("sources")
+      .select("id")
+      .eq("processing_status", "processing")
+    if (error) {
+      console.error("[admin dashboard] processing sources read failed:", error)
+      return null
+    }
+    const ids = ((processing ?? []) as { id: string }[]).map(r => r.id)
+    if (ids.length === 0) return 0
+
+    const { data: jobs, error: jobsError } = await supabaseAdmin
+      .from("jobs")
+      .select("payload")
+      .in("status", ["queued", "running"])
+      .in("payload->>source_id", ids)
+    if (jobsError) {
+      console.error("[admin dashboard] open jobs by source read failed:", jobsError)
+      return null
+    }
+    const covered = new Set(
+      ((jobs ?? []) as { payload: { source_id?: unknown } | null }[]).map(j => j.payload?.source_id)
+    )
+    return ids.filter(id => !covered.has(id)).length
+  } catch (err) {
+    console.error("[admin dashboard] orphaned source count threw:", err)
+    return null
+  }
+}
+
 async function loadDashboard() {
   if (!supabaseAdmin) {
-    return { decisions: [] as Decision[], stats: [] as Stat[], storage: null, configured: false }
+    return { counts: null, stats: [] as Stat[], storage: null, configured: false }
   }
   const db = supabaseAdmin
+  // A running job the worker has not touched for this long is stuck (see lib/workbench).
+  const stuckBefore = new Date(Date.now() - STUCK_JOB_MINUTES * 60_000).toISOString()
 
   const [
     mergeReviews,
@@ -85,6 +130,9 @@ async function loadDashboard() {
     untaggedClaims,
     activeClaims,
     openJobs,
+    failedJobs,
+    stuckJobs,
+    orphanedSources,
     sizeResult,
   ] = await Promise.all([
     countOf("merge_reviews", q => q.select("id", { count: "exact", head: true }).eq("status", "pending")),
@@ -108,6 +156,12 @@ async function loadDashboard() {
     ),
     countOf("claims", q => q.select("id", { count: "exact", head: true }).eq("status", "active")),
     countOf("jobs", q => q.select("id", { count: "exact", head: true }).in("status", ["queued", "running"])),
+    // The P0 signals: work the pipeline cannot recover from on its own.
+    countOf("jobs", q => q.select("id", { count: "exact", head: true }).eq("status", "failed")),
+    countOf("jobs", q =>
+      q.select("id", { count: "exact", head: true }).eq("status", "running").lt("locked_at", stuckBefore)
+    ),
+    countOrphanedProcessingSources(),
     db.rpc("database_size_bytes"),
   ])
 
@@ -121,47 +175,18 @@ async function loadDashboard() {
       ? null
       : pendingRechecks(fidelityLabels, new Map(judgeRun.map(r => [r.id, r.verdict]))).size
 
-  const decisions: Decision[] = [
-    {
-      name: "Merge Reviews",
-      href: "/admin/reviews",
-      count: mergeReviews,
-      description: "Claim pairs the pipeline could not confidently call duplicates. You decide keep-both or merge.",
-      emptyLabel: "Queue clear",
-    },
-    {
-      name: "Topic Approvals",
-      href: "/admin/topics/proposals",
-      count: topicProposals,
-      description: "Genuinely new branches the pipeline wants to open. Nothing is created without your approval.",
-      emptyLabel: "None proposed",
-    },
-    {
-      name: "Accuracy Flags",
-      href: "/admin/flags",
-      count: openFlags,
-      description: "Claims that may overstate what the transcript actually said. Keep or dismiss each.",
-      emptyLabel: "No open flags",
-    },
-    {
-      name: "Unreviewed Topics",
-      href: "/admin/topics",
-      count: unreviewedTopics,
-      description: "Topics the AI created that you have not signed off on yet. Fold thin ones into their parent.",
-      emptyLabel: "All reviewed",
-    },
-    {
-      name: "Fidelity Labels",
-      href: "/admin/fidelity",
-      // Unlabelled pairs plus disagreements awaiting a re-check; unknown stays unknown.
-      count: fidelityUnlabeled === null || fidelityRechecks === null ? null : fidelityUnlabeled + fidelityRechecks,
-      description:
-        fidelityUnlabeled === 0 && (fidelityRechecks ?? 0) > 0
-          ? "Facts where your ruling and the AI judge disagree. Look again, then keep or change your ruling. Certifies the AI accuracy judge."
-          : "Rule whether extracted insights faithfully reflect the transcript. Certifies the AI accuracy judge.",
-      emptyLabel: "All labeled",
-    },
-  ]
+  const counts: WorkbenchCounts = {
+    mergeReviews,
+    topicProposals,
+    openFlags,
+    unreviewedTopics,
+    fidelityUnlabeled,
+    fidelityRechecks,
+    openJobs,
+    failedJobs,
+    stuckJobs,
+    orphanedSources,
+  }
 
   const sizeBytes = typeof sizeResult === "object" && sizeResult && "data" in sizeResult
     ? Number((sizeResult as { data: unknown }).data ?? 0)
@@ -180,15 +205,84 @@ async function loadDashboard() {
     },
   ]
 
-  return { decisions, stats, storage: usedMb, configured: true }
+  return { counts, stats, storage: usedMb, configured: true }
+}
+
+/** "3 items", "1 item" — or "unknown" when the count could not be loaded. */
+function countLabel(item: WorkbenchItem): string {
+  if (item.count === null) return "unknown"
+  return `${fmt(item.count)} ${item.count === 1 ? "item" : "items"}`
+}
+
+/**
+ * One ranked queue as a row. `tone` dims parked and unknown queues so the live
+ * ones stand out; `note` is the small print under the title.
+ */
+function QueueRow({
+  item,
+  index,
+  tone,
+  note,
+}: {
+  item: WorkbenchItem
+  index?: number
+  tone: "live" | "muted"
+  note: string
+}) {
+  const live = tone === "live"
+  return (
+    <li>
+      <Link
+        href={item.href}
+        className={`block rounded-lg border p-4 transition-colors ${
+          live ? "bg-card hover:border-foreground/40" : "border-dashed bg-muted/30 hover:border-foreground/20"
+        }`}
+      >
+        <div className="flex items-baseline justify-between gap-3">
+          <span className={`font-semibold ${live ? "" : "text-muted-foreground"}`}>
+            {index !== undefined && <span className="mr-2 tabular-nums text-muted-foreground">{index}.</span>}
+            {item.title}
+          </span>
+          {item.count === null ? (
+            <span className="text-xs text-muted-foreground whitespace-nowrap">unknown</span>
+          ) : (
+            <span className={`text-xl font-bold tabular-nums ${live ? "" : "text-muted-foreground"}`}>
+              {fmt(item.count)}
+            </span>
+          )}
+        </div>
+        <p className="text-xs text-muted-foreground mt-1.5">{note}</p>
+      </Link>
+    </li>
+  )
 }
 
 export default async function AdminHomePage() {
-  const { decisions, stats, storage, configured } = await loadDashboard()
-  const outstanding = decisions.reduce((sum, d) => sum + (d.count ?? 0), 0)
-  // If any count failed, "nothing is waiting on you" would be a lie.
-  const anyUnknown = decisions.some(d => d.count === null)
+  const { counts, stats, storage, configured } = await loadDashboard()
+  const sections = groupWorkbench(counts ? rankWorkbench(counts) : [])
+  const { now, later, unknown, held, clear } = sections
+  const pipeline = counts ? pipelineState(counts) : null
+
+  const outstanding = [...(now ? [now] : []), ...later].reduce((sum, i) => sum + (i.count ?? 0), 0)
+  const heldTotal = held.reduce((sum, i) => sum + (i.count ?? 0), 0)
   const storagePct = storage === null ? null : Math.min(100, (storage / STORAGE_CAP_MB) * 100)
+
+  // The one-line summary under the title. Unknown counts are named, never
+  // folded into "nothing is waiting" — that sentence would be a lie.
+  const summary = (() => {
+    if (!configured) return "Database not configured — counts unavailable."
+    const parts: string[] = []
+    if (outstanding > 0) {
+      parts.push(`${outstanding.toLocaleString()} ${outstanding === 1 ? "item needs" : "items need"} you`)
+    } else if (unknown.length === 0) {
+      parts.push("Nothing is waiting on you right now")
+    }
+    if (unknown.length > 0) {
+      parts.push(`${unknown.length} ${unknown.length === 1 ? "count" : "counts"} could not be loaded — refresh to retry`)
+    }
+    if (heldTotal > 0) parts.push(`${heldTotal.toLocaleString()} on hold`)
+    return `${parts.join(" · ")}.`
+  })()
 
   return (
     <div className="min-h-screen bg-background">
@@ -197,71 +291,111 @@ export default async function AdminHomePage() {
           <div className="max-w-4xl mx-auto space-y-10">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Workbench</h1>
-              <p className="text-muted-foreground mt-2">
-                {!configured
-                  ? "Database not configured — counts unavailable."
-                  : anyUnknown
-                    ? `Some counts could not be loaded${outstanding > 0 ? ` — at least ${outstanding.toLocaleString()} waiting` : ""}. Refresh to retry.`
-                    : outstanding === 0
-                      ? "Nothing is waiting on you right now."
-                      : `${outstanding.toLocaleString()} ${outstanding === 1 ? "item needs" : "items need"} your decision.`}
-              </p>
+              <p className="text-muted-foreground mt-2">{summary}</p>
             </div>
 
             <section className="space-y-3">
-              <h2 className="text-lg font-semibold">Needs your decision</h2>
-              {(() => {
-                // Cleared queues fall out of sight: only live decisions (or ones
-                // whose count failed to load) get a top-level card. The rest tuck
-                // under a collapsed toggle so an empty dashboard reads as "done".
-                const live = decisions.filter(d => d.count === null || d.count > 0)
-                const cleared = decisions.filter(d => d.count === 0)
-                const tile = (item: Decision) => {
-                  const unknown = item.count === null
-                  const active = (item.count ?? 0) > 0
-                  return (
-                    <Link
-                      key={item.href}
-                      href={item.href}
-                      className={`block rounded-lg border p-4 transition-colors ${
-                        active
-                          ? "border-foreground/20 bg-card hover:border-foreground/40"
-                          : "border-dashed bg-muted/30 hover:border-foreground/20"
-                      }`}
-                    >
-                      <div className="flex items-baseline justify-between gap-3">
-                        <span className="font-semibold">{item.name}</span>
-                        {unknown ? (
-                          <span className="text-xs text-muted-foreground">Count unavailable</span>
-                        ) : active ? (
-                          <span className="text-2xl font-bold tabular-nums">{fmt(item.count)}</span>
-                        ) : (
-                          <span className="text-xs text-muted-foreground">{item.emptyLabel}</span>
-                        )}
-                      </div>
-                      <p className="text-xs text-muted-foreground mt-1.5">{item.description}</p>
-                    </Link>
-                  )
-                }
-                return (
-                  <>
-                    {live.length > 0 ? (
-                      <div className="grid gap-3 sm:grid-cols-2">{live.map(tile)}</div>
-                    ) : (
-                      <p className="text-sm text-muted-foreground">All queues are clear. 🎉</p>
-                    )}
-                    {cleared.length > 0 && (
-                      <details className="group">
-                        <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
-                          {cleared.length} cleared {cleared.length === 1 ? "queue" : "queues"} — nothing waiting ▸
-                        </summary>
-                        <div className="grid gap-3 sm:grid-cols-2 mt-3">{cleared.map(tile)}</div>
-                      </details>
-                    )}
-                  </>
-                )
-              })()}
+              <h2 className="text-lg font-semibold">Do this now</h2>
+              {now ? (
+                <Card className={now.priority === 0 ? "border-destructive/60" : "border-foreground/30"}>
+                  <CardHeader className="pb-3">
+                    <CardTitle className="text-xl leading-snug">{now.title}</CardTitle>
+                    <CardDescription>{now.why}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex flex-wrap items-center gap-x-4 gap-y-2">
+                    <Button asChild>
+                      <Link href={now.href}>Open</Link>
+                    </Button>
+                    <span className="text-sm text-muted-foreground">
+                      {countLabel(now)} · {now.timeEstimate}
+                    </span>
+                  </CardContent>
+                </Card>
+              ) : (
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl leading-snug">
+                      {!configured
+                        ? "Counts unavailable"
+                        : unknown.length > 0
+                          ? "Nothing we could count needs you right now"
+                          : "Nothing needs you right now"}
+                    </CardTitle>
+                    <CardDescription>
+                      {!configured
+                        ? "The database is not configured, so nothing could be checked."
+                        : pipeline?.label}
+                      {configured && unknown.length > 0 && " Some counts could not be loaded — see below."}
+                    </CardDescription>
+                  </CardHeader>
+                </Card>
+              )}
             </section>
+
+            {later.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold">After that</h2>
+                <ol className="space-y-2">
+                  {later.map((item, i) => (
+                    <QueueRow
+                      key={item.key}
+                      item={item}
+                      index={i + 2}
+                      tone="live"
+                      note={`${item.why} · ${item.timeEstimate}`}
+                    />
+                  ))}
+                </ol>
+              </section>
+            )}
+
+            {unknown.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold">Could not be checked</h2>
+                <ul className="space-y-2">
+                  {unknown.map(item => (
+                    <QueueRow
+                      key={item.key}
+                      item={item}
+                      tone="muted"
+                      note="The count could not be loaded, so this may still be waiting on you. Refresh to retry."
+                    />
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {held.length > 0 && (
+              <section className="space-y-3">
+                <h2 className="text-lg font-semibold">On hold</h2>
+                <ul className="space-y-2">
+                  {held.map(item => (
+                    <QueueRow key={item.key} item={item} tone="muted" note={item.held?.reason ?? "On hold."} />
+                  ))}
+                </ul>
+              </section>
+            )}
+
+            {clear.length > 0 && (
+              <details className="group">
+                <summary className="cursor-pointer select-none text-xs text-muted-foreground hover:text-foreground">
+                  {clear.length} {clear.length === 1 ? "queue is" : "queues are"} clear — nothing waiting ▸
+                </summary>
+                <ul className="mt-3 grid gap-2 sm:grid-cols-2">
+                  {clear.map(item => (
+                    <li key={item.key}>
+                      <Link
+                        href={item.href}
+                        className="flex items-baseline justify-between gap-3 rounded-lg border border-dashed bg-muted/30 p-3 text-sm transition-colors hover:border-foreground/20"
+                      >
+                        <span className="font-medium">{item.title}</span>
+                        <span className="text-xs text-muted-foreground whitespace-nowrap">Clear</span>
+                      </Link>
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
 
             <section className="space-y-3">
               <h2 className="text-lg font-semibold">Pipeline status</h2>
