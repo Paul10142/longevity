@@ -4,6 +4,8 @@ import { useMemo, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
+import { EpisodeLinks } from "@/components/EpisodeLinks"
+import type { EpisodeLink } from "@/lib/sourceLinks"
 
 /**
  * The episode catalogue: every episode of every show, and whether we have
@@ -24,9 +26,8 @@ export type CatalogueRow = {
   title: string | null
   episode_number: number | null
   date: string | null
-  url: string | null
-  youtube_url: string | null
-  article_url: string | null
+  /** Public links only, resolved on the server (lib/sourceLinks). */
+  links: EpisodeLink[]
   processing_status: string | null
   transcript_origin: string | null
   word_count: number
@@ -178,22 +179,8 @@ export function CatalogueClient({ rows }: { rows: CatalogueRow[] }) {
                       {r.insights_count > 0 ? r.insights_count.toLocaleString() : "—"}
                     </td>
                     <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex gap-2">
-                        {r.url && (
-                          <a href={r.url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            Episode
-                          </a>
-                        )}
-                        {r.youtube_url && (
-                          <a href={r.youtube_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            Video
-                          </a>
-                        )}
-                        {r.article_url && (
-                          <a href={r.article_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">
-                            Notes
-                          </a>
-                        )}
+                      <div className="flex gap-3">
+                        <EpisodeLinks links={r.links} className="text-sm" />
                         {r.insights_count > 0 && (
                           <Link href={`/sources/${r.id}`} className="text-muted-foreground hover:underline">
                             Insights

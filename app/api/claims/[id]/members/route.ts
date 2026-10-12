@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { isAdmin } from "@/lib/isAdmin"
+import { episodeLinks, publicVideoUrl, type EpisodeLink } from "@/lib/sourceLinks"
 
 export const dynamic = "force-dynamic"
 
@@ -9,7 +10,35 @@ export const dynamic = "force-dynamic"
  * (with its verbatim quote, source, and locator), plus the verified third-party
  * references linked to it. The leaf of the chain
  * article paragraph → claim → raw insight → source (+ verified reference).
+ *
+ * Each member's `source` carries PUBLIC links only (`links`, `video_url`),
+ * resolved by lib/sourceLinks. `sources.url` is read but never returned: for
+ * podcast rows it is the private, members-only Supercast feed link.
  */
+
+type SourceRow = {
+  id: string
+  title: string
+  type: string
+  url: string | null
+  youtube_url: string | null
+  article_url: string | null
+  episode_number: number | null
+}
+
+export type MemberSource = {
+  id: string
+  title: string
+  type: string
+  links: EpisodeLink[]
+  video_url: string | null
+}
+
+function publicSource(s: SourceRow | null): MemberSource | null {
+  if (!s) return null
+  return { id: s.id, title: s.title, type: s.type, links: episodeLinks(s), video_url: publicVideoUrl(s) }
+}
+
 export async function GET(
   _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -25,7 +54,7 @@ export async function GET(
         `raw_insight_id, matched_by,
          raw_insights (
            statement, direct_quote, locator, start_ms, end_ms, evidence_type, confidence,
-           sources ( id, title, type, url )
+           sources ( id, title, type, url, youtube_url, article_url, episode_number )
          )`
       )
       .eq("claim_id", id),
@@ -39,7 +68,7 @@ export async function GET(
     raw_insights: {
       statement: string; direct_quote: string | null; locator: string
       start_ms: number | null; end_ms: number | null; evidence_type: string; confidence: string
-      sources: { id: string; title: string; type: string; url: string | null } | null
+      sources: SourceRow | null
     } | null
   }) => ({
     raw_insight_id: m.raw_insight_id,
@@ -50,7 +79,7 @@ export async function GET(
     start_ms: m.raw_insights?.start_ms ?? null,
     evidence_type: m.raw_insights?.evidence_type,
     confidence: m.raw_insights?.confidence,
-    source: m.raw_insights?.sources ?? null,
+    source: publicSource(m.raw_insights?.sources ?? null),
   }))
 
   // Verified references supporting this claim.

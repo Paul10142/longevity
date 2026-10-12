@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { episodeLinks } from "@/lib/sourceLinks"
 import { CatalogueClient, type CatalogueRow } from "@/components/CatalogueClient"
 import { Card, CardContent } from "@/components/ui/card"
 
@@ -10,6 +11,11 @@ import { Card, CardContent } from "@/components/ui/card"
  * that function exists (migration 019) because `select('*')` dragged ~42 MB of
  * transcript text through PostgREST on every load and started tripping the
  * statement timeout. It returns aggregates and no transcript body.
+ *
+ * The episode links are resolved HERE, on the server (lib/sourceLinks), and
+ * only the public ones are handed to the client component: for podcast rows
+ * `url` is the private, members-only Supercast feed link, which must never
+ * reach the browser.
  */
 
 export const dynamic = "force-dynamic"
@@ -62,9 +68,7 @@ export default async function AdminCataloguePage() {
       title: r.title,
       episode_number: r.episode_number,
       date: r.date,
-      url: r.url,
-      youtube_url: r.youtube_url,
-      article_url: r.article_url,
+      links: episodeLinks(r),
       processing_status: r.processing_status,
       transcript_origin: r.transcript_origin,
       word_count: Number(r.word_count ?? 0),

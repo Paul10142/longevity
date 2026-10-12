@@ -4,9 +4,11 @@ import { SourceEditorClient } from "@/components/SourceEditorClient"
 import { TranscriptEditorClient } from "@/components/TranscriptEditorClient"
 import { SourceRawInsightsClient, type SourceInsightRow } from "@/components/SourceRawInsightsClient"
 import { ReprocessSourceButton } from "@/components/ReprocessSourceButton"
+import { TranscriptDialog } from "@/components/TranscriptDialog"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { episodeLinks, isPrivateFeedUrl, publicVideoUrl } from "@/lib/sourceLinks"
 
 const JOB_STATUS_VARIANT: Record<string, "default" | "secondary" | "destructive" | "outline"> = {
   running: "default",
@@ -135,16 +137,34 @@ export default async function SourcePage({
       <main>
         <div className="container mx-auto px-4 py-12">
           <div className="max-w-4xl mx-auto space-y-6">
-            <div>
+            <div className="flex flex-wrap items-center justify-between gap-2">
               <Link
                 href="/admin/sources"
                 className="text-sm text-muted-foreground hover:text-primary inline-flex items-center gap-1"
               >
                 ← Back to Manage Sources
               </Link>
+              {source.transcript && (
+                <TranscriptDialog sourceId={source.id} title={source.title} label="Read transcript" />
+              )}
             </div>
 
-            <SourceEditorClient source={source} />
+            {/* The editor gets a public-safe view of the row. For podcast rows
+                `url` is the private, members-only Supercast feed link: it is
+                blanked here, flagged so the editor leaves it untouched, and
+                the public links are resolved instead. */}
+            <SourceEditorClient
+              source={{
+                id: source.id,
+                title: source.title,
+                authors: source.authors ?? [],
+                date: source.date,
+                type: source.type,
+                url: isPrivateFeedUrl(source.url) ? null : source.url,
+                urlIsPrivate: isPrivateFeedUrl(source.url),
+                links: episodeLinks(source),
+              }}
+            />
 
             <TranscriptEditorClient sourceId={source.id} transcript={source.transcript} />
 
@@ -222,7 +242,8 @@ export default async function SourcePage({
               </CardContent>
             </Card>
 
-            <SourceRawInsightsClient insights={insights} sourceUrl={source.url} />
+            {/* Timestamp deep-links need the public video, never the feed link. */}
+            <SourceRawInsightsClient insights={insights} sourceUrl={publicVideoUrl(source)} />
           </div>
         </div>
       </main>

@@ -6,6 +6,9 @@ import { Badge } from '@/components/ui/badge'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { InsightReviewFilters } from './InsightReviewFilters'
+import { EpisodeLinks } from './EpisodeLinks'
+import { TranscriptDialog } from './TranscriptDialog'
+import type { EpisodeLink } from '@/lib/sourceLinks'
 import { ChevronLeft, ChevronRight } from 'lucide-react'
 
 interface Insight {
@@ -33,16 +36,22 @@ interface InsightReviewClientProps {
   hasSearchOrFilters: boolean
   allSources: string[]
   allTopics?: Array<{ id: string; name: string; slug: string }>
+  /** Public episode links per source id, resolved on the server (lib/sourceLinks). */
+  sourceLinks?: Record<string, EpisodeLink[]>
+  /** Source ids that have a transcript to read. */
+  transcriptAvailable?: Record<string, boolean>
 }
 
-export function InsightReviewClient({ 
-  insightsBySource, 
+export function InsightReviewClient({
+  insightsBySource,
   accurateInsightCounts,
   totalCount,
   currentPage,
   hasSearchOrFilters,
   allSources,
-  allTopics = []
+  allTopics = [],
+  sourceLinks = {},
+  transcriptAvailable = {},
 }: InsightReviewClientProps) {
   const router = useRouter()
   const searchParams = useSearchParams()
@@ -110,12 +119,21 @@ export function InsightReviewClient({
                       <CardTitle className="text-xl mb-2">
                         {firstInsight.sourceTitle || 'Unknown Source'}
                       </CardTitle>
-                      <div className="flex gap-2">
+                      <div className="flex flex-wrap items-center gap-2">
                         <Badge variant="outline">{firstInsight.sourceType}</Badge>
                         <Badge variant="secondary">{count} insights</Badge>
                         <Link href={`/sources/${sourceId}`}>
                           <Button variant="ghost" size="sm">View Source</Button>
                         </Link>
+                        {/* The transcript, readable, without leaving the review. */}
+                        {transcriptAvailable[sourceId] && (
+                          <TranscriptDialog
+                            sourceId={sourceId}
+                            title={firstInsight.sourceTitle}
+                            variant="ghost"
+                          />
+                        )}
+                        <EpisodeLinks links={sourceLinks[sourceId] ?? []} className="ml-1" />
                       </div>
                     </div>
                   </div>

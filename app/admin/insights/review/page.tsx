@@ -1,5 +1,6 @@
 import { supabaseAdmin } from '@/lib/supabaseServer'
 import { selectAllPaged } from '@/lib/pagination'
+import { episodeLinks, type EpisodeLink } from '@/lib/sourceLinks'
 import { Card, CardContent } from '@/components/ui/card'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -99,16 +100,37 @@ export default async function InsightsReviewPage({
 
   // Dropdown options.
   const [{ data: sourcesData }, { data: topicsData }] = await Promise.all([
-    db.from('sources').select('id, title, type').order('title', { ascending: true }),
+    // Link columns only — no transcript text. `url` is read so the public
+    // links can be resolved HERE; it never reaches the client component.
+    db
+      .from('sources')
+      .select('id, title, type, url, youtube_url, article_url, episode_number')
+      .order('title', { ascending: true }),
     db
       .from('topics')
       .select('id, name, slug')
       .eq('status', 'active')
       .order('name', { ascending: true }),
   ])
-  const allSourceRows = (sourcesData || []) as { id: string; title: string; type: string }[]
+  const allSourceRows = (sourcesData || []) as {
+    id: string
+    title: string
+    type: string
+    url: string | null
+    youtube_url: string | null
+    article_url: string | null
+    episode_number: number | null
+  }[]
   const allSources = allSourceRows.map((s) => s.title).filter(Boolean)
   const allTopics = (topicsData || []) as { id: string; name: string; slug: string }[]
+
+  // Public episode links per source (episode page / YouTube / site search),
+  // resolved on the server so the private member-feed URL is never shipped
+  // to the browser.
+  const sourceLinks: Record<string, EpisodeLink[]> = {}
+  allSourceRows.forEach((s) => {
+    sourceLinks[s.id] = episodeLinks(s)
+  })
 
   // Per-source totals for the card headers.
   //
@@ -120,9 +142,13 @@ export default async function InsightsReviewPage({
   // trip instead of fourteen.
   const { data: sourceRollup } = await db.rpc('admin_source_list')
   const accurateInsightCounts: Record<string, number> = {}
+  // Which sources have a transcript to read (the rollup's word count is
+  // computed in the database, so this costs nothing extra).
+  const transcriptAvailable: Record<string, boolean> = {}
   ;(sourceRollup || []).forEach((s: any) => {
     const n = Number(s.insights_count ?? 0)
     if (n > 0) accurateInsightCounts[s.id] = n
+    if (Number(s.word_count ?? 0) > 0) transcriptAvailable[s.id] = true
   })
   const totalSourcesWithInsights = Object.keys(accurateInsightCounts).length
 
@@ -367,6 +393,8 @@ export default async function InsightsReviewPage({
           hasSearchOrFilters={hasSearchOrFilters}
           allSources={allSources}
           allTopics={allTopics}
+          sourceLinks={sourceLinks}
+          transcriptAvailable={transcriptAvailable}
         />
 
         {!hasSearchOrFilters && (

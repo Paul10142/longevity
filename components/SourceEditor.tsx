@@ -6,6 +6,8 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { EpisodeLinks } from "@/components/EpisodeLinks"
+import type { EpisodeLink } from "@/lib/sourceLinks"
 import { Edit2, Save, X, Plus, X as XIcon } from "lucide-react"
 
 const COMMON_AUTHORS = [
@@ -15,15 +17,26 @@ const COMMON_AUTHORS = [
   "Dr. Rhonda Patrick"
 ]
 
+export type SourceEditorSource = {
+  id: string
+  title: string
+  authors: string[]
+  date: string | null
+  /** The public URL to edit, or null. Never the private feed link. */
+  url: string | null
+  /**
+   * True when the stored link is the private Supercast feed URL (members
+   * only): it is not shown, not editable here, and left exactly as it is on
+   * save.
+   */
+  urlIsPrivate?: boolean
+  /** Public episode links, resolved on the server (lib/sourceLinks). */
+  links?: EpisodeLink[]
+  type: string
+}
+
 interface SourceEditorProps {
-  source: {
-    id: string
-    title: string
-    authors: string[]
-    date: string | null
-    url: string | null
-    type: string
-  }
+  source: SourceEditorSource
   onUpdate: (updates: { title?: string; authors?: string[]; date?: string | null; url?: string | null }) => Promise<void>
 }
 
@@ -45,7 +58,9 @@ export function SourceEditor({ source, onUpdate }: SourceEditorProps) {
         title: formData.title,
         authors: formData.authors,
         date: formData.date || null,
-        url: formData.url || null,
+        // The private feed link is never loaded into the form, so sending
+        // `url` would wipe it. Leave that column alone in that case.
+        ...(source.urlIsPrivate ? {} : { url: formData.url || null }),
       })
       setIsEditing(false)
     } catch (error) {
@@ -121,16 +136,15 @@ export function SourceEditor({ source, onUpdate }: SourceEditorProps) {
               <strong>Authors:</strong> {source.authors.join(", ")}
             </p>
           )}
-          {source.url && (
+          {source.links && source.links.length > 0 && (
             <p className="text-muted-foreground">
-              <a
-                href={source.url}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary hover:underline"
-              >
-                {source.url}
-              </a>
+              <EpisodeLinks links={source.links} className="text-sm" />
+            </p>
+          )}
+          {source.urlIsPrivate && (
+            <p className="text-xs text-muted-foreground mt-2">
+              This episode came from the private podcast feed. That link is for members
+              only, so it is kept but never shown here.
             </p>
           )}
         </CardContent>
@@ -186,17 +200,27 @@ export function SourceEditor({ source, onUpdate }: SourceEditorProps) {
           />
         </div>
 
-        <div>
-          <Label htmlFor="url">URL</Label>
-          <Input
-            id="url"
-            type="url"
-            value={formData.url}
-            onChange={(e) => setFormData({ ...formData, url: e.target.value })}
-            className="mt-1"
-            placeholder="https://..."
-          />
-        </div>
+        {source.urlIsPrivate ? (
+          <div>
+            <Label>URL</Label>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Private podcast-feed link — members only, so it is not shown here. It stays
+              as it is when you save.
+            </p>
+          </div>
+        ) : (
+          <div>
+            <Label htmlFor="url">URL</Label>
+            <Input
+              id="url"
+              type="url"
+              value={formData.url}
+              onChange={(e) => setFormData({ ...formData, url: e.target.value })}
+              className="mt-1"
+              placeholder="https://..."
+            />
+          </div>
+        )}
 
         <div>
           <Label>Authors</Label>
