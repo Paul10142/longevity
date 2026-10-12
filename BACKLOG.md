@@ -15,30 +15,37 @@ there.
 
 ## ▶ START HERE — execution entry point
 
-> **🌙 2026-10-12 (night) — PHASE B TOOLING LANDED; caption replacement RUNNING; Paul's three admin requests in flight.**
+> **✅ 2026-10-12 (02:10 UTC) — PHASE B DONE: the 20 caption twins are replaced and verified, Deepgram timing is repaired, PR #11 (public links + transcript viewer) is merged. Next window: read Paul's overnight log, then migration 031 / Phase C / the first transcription slice.**
 >
-> - **Landed on main tonight:** #7 Workbench ranks what Paul must do now (`lib/workbench.ts`; merge reviews held);
->   #8 `scripts/retireSourceClaims.ts` + frozen benchmark `eval/twin-benchmark-20261011.json` + `lib/writerLock.ts`
->   (one writer, enforced) + re-extraction guard; #9 Deepgram credit sizing (`--fit-budget`, `--keys`, transcriber
->   skips unaffordable files; `lib/deepgramBudget.ts`, `lib/deepgramSpend.ts`); #10 per-utterance Deepgram timing
->   (`lib/deepgramSegments.ts`, `scripts/repairDeepgramTiming.ts`). Vercel builds are rate-limited for 24 h from
->   ~22:00 UTC Oct 11, so the admin site shows the new Workbench only after that; nothing else depends on it.
-> - **RUNNING (started 00:44 UTC Oct 12, ~2–3 h): `retireSourceClaims.ts --twins --apply`** on the 20 caption
->   episodes that already have a Deepgram twin: 3,255 facts, 2,190 claims → shells, 771 mixed claims rebuilt from
->   Deepgram survivors, 16 reviews closed, 20 duplicate rows deleted. Log: `scratchpad/runs/retire-twins-20261011.log`
->   (worktree `lifestyle-academy-build-0ac791`); backups in `scratchpad/backups/`. **Chained after it:**
->   `repairDeepgramTiming.ts --apply` (94 sources, 3,243 chunks re-timed; log `scratchpad/runs/repair-timing-20261012.log`).
->   Both hold the writer lock (`~/.lifestyle-academy-writer.lock`); Paul's overnight supervisor refuses to start
->   while it is held and must be retried later (hub la10 says so).
-> - **Timing finding (Paul, episode 387):** the Deepgram attach merged each speaker turn into ONE segment, so every
->   chunk in a turn carried the turn's start; solo episodes were one segment (every fact at 0:11). Fixed for future
->   attaches; the repair rewrites `timed_transcript` + chunk/insight `start_ms` with byte-identical text, no re-extraction.
-> - **In flight (agent, PR pending):** public episode links instead of Supercast (`article_url` → `youtube_url` →
->   site search; Supercast never rendered) and a readable transcript pop-up + `/admin/sources/[id]/transcript` page
->   (Arial, one block per speaker turn, bold names, timestamps linking to YouTube at that second, "open in a new tab").
-> - **Morning check:** retirement log ends `exit=0` and the repair log too; `evalTwinRecall.ts --from
->   eval/twin-benchmark-20261011.json` still runs; counts re-queried (expect sources 547, active claims ≈ 29.4k);
->   then Paul's overnight log in `scratchpad/runs/extractDeepgram-*.log`.
+> - **Landed on main tonight:** #7 Workbench ranks what Paul must do now; #8 `scripts/retireSourceClaims.ts` + frozen
+>   benchmark `eval/twin-benchmark-20261011.json` + `lib/writerLock.ts` + re-extraction guard; #9 Deepgram credit sizing;
+>   #10 per-utterance timing + `scripts/repairDeepgramTiming.ts`; **#11** public episode links (`lib/sourceLinks.ts`:
+>   `article_url` → `youtube_url` → site search; the Supercast link is never rendered or shipped), readable transcript
+>   pop-up + `/admin/sources/[id]/transcript` (`lib/transcriptView.ts`, `components/TranscriptReader.tsx`), and
+>   `/admin/sources` is now `force-dynamic` — it was prerendered at build time, so production showed stale statuses
+>   between deploys. `supabase/migrations_v2/025b_…` records the live `admin_source_list()` (series/youtube_url/
+>   article_url), which no checked-in migration defined; applying it is a no-op.
+> - **Replacement run (00:44–01:54 UTC, exit 0, every episode verified):** 20 sources; 3,255 facts and 968 chunks
+>   deleted; 2,191 claims → retired shells; 770 mixed claims re-derived from Deepgram survivors; 16 reviews closed;
+>   20 duplicate rows deleted. Live after: **547 sources, 33,120 insights, 29,383 active claims, 2,191 retired,
+>   197 pending reviews, 6 queued jobs (unchanged); 0 orphans** (active claims without members, members without
+>   insights, retired claims with members or vectors, active claims without vectors — all 0). Backups:
+>   `scratchpad/backups/retire-*.json` in worktree `lifestyle-academy-build-0ac791`. The benchmark reproduces from
+>   the file: 49.8%, bands 8 / 20 / 327 / 196 / 236.
+> - **Timing repair (01:54–02:06 UTC, exit 0):** 94/94 Deepgram sources, 0 text mismatches, 3,243 chunks and 11,797
+>   insights re-timed, 32 chunks unplaceable (left as they were, start_ms null). #387: 1,340 segments, 41 chunks with
+>   41 distinct start times, first at 5:31 — `lib/transcriptHygiene.ts` strips the scripted intro before chunking,
+>   by design. An insight's time is its chunk's start (≈2-minute granularity); per-insight timing by locating
+>   `direct_quote` in the timed segments (pure alignment, no LLM) is a cheap follow-up if Paul wants it.
+> - **Writer lock is free.** Paul's overnight command (hub la10) runs unchanged; the "another writer holds the
+>   corpus" retry note no longer applies.
+> - **Vercel** build rate limit until ~22:00 UTC Oct 12; #7 and #11 reach the site after that. Everything was merged
+>   on local gates (tsc, 147/147 tests, `next build`).
+> - **Next:** read the overnight log (`scratchpad/runs/extractDeepgram-*.log` in the main checkout) and re-query
+>   counts; migration 031 (drop `claims.embedding`) after that run; then Phase C (tag clean claims, v4 synthesis on
+>   the good sources), the contradiction relation, and the first transcription slice: `fetchPodcastFeed.ts --keys
+>   <twins of the 98 extracted caption rows> --fit-budget` → `transcribeDeepgram.ts` → `retireSourceClaims.ts
+>   --source` per caption row BEFORE attach/extract.
 
 > **🛠 2026-10-11 (late) — PHASE A LANDED (Paul10142/longevity#6). Paul decided: laptop CLI only, no Deepgram top-up yet,
 > order A → B ∥ C → D, hold the 213 reviews, Deepgram not YouTube. Read `docs/plan-review-2026-10-11.md` §11.**
