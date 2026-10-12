@@ -27,6 +27,17 @@ windows at once. To stop that recurring:
    level-2 headings: UPDATES → NEXT STEPS → TO-DO ITEMS, plain language). Do not
    restate it here or in project memory — edit the global file instead.
 
+## ▶ Runner window — "proceed with extraction" (Paul, 2026-10-12)
+
+If Paul says **"proceed with extraction"**, "continue extraction", "start the
+run" or "check the overnight run", this window is the **RUNNER**: read and follow
+[`docs/EXTRACTION_RUNBOOK.md`](docs/EXTRACTION_RUNBOOK.md) — nothing else needs
+pasting. The runner starts/watches/restarts/reports on the pipeline (day or
+night) and **never edits code**: any change goes to a separate window via
+`spawn_task`, and code windows do not merge to `main` or write to the database
+while a run is live. This refines rule 4 above: one *writer* at a time (the
+runner), code work in separate worktrees.
+
 ## Commands
 
 - `npm run dev` — dev server
