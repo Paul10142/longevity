@@ -89,10 +89,10 @@ test('a model refusal is not a usage-limit pause, and keeps its readable reason'
   })
 })
 
-test('pauses BEFORE the limit: a reply that reports the window 95% full gates the next call', async () => {
+test('pauses BEFORE the limit: a reply that reports the window 96% full gates the next call', async () => {
   const { claudeJson } = await import('../lib/llm')
   const { UsageLimitError } = await import('../lib/usageLimit')
-  fake([rate(0.95, future()), result('{"n":1}')])
+  fake([rate(0.96, future()), result('{"n":1}')])
   assert.deepEqual(await claudeJson('sys', 'user'), { n: 1 }, 'the call that reported it still succeeds')
   await assert.rejects(claudeJson('sys', 'user'), (e: unknown) => {
     assert.ok(e instanceof UsageLimitError)

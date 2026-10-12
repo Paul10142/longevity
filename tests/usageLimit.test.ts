@@ -166,13 +166,13 @@ test('gate: open when no call has reported yet, and below the threshold', () => 
   assert.equal(usageGate(NOW), null)
   noteRateLimit(snap(0.5, NOW + 3_600_000), NOW)
   assert.equal(usageGate(NOW), null)
-  noteRateLimit(snap(0.91, NOW + 3_600_000), NOW)
+  noteRateLimit(snap(0.94, NOW + 3_600_000), NOW)
   assert.equal(usageGate(NOW), null, `default threshold is ${DEFAULT_PAUSE_AT}`)
 })
 
 test('gate: closes slightly before the limit, until the window resets', () => {
   const resetsAt = NOW + 2 * 3_600_000
-  noteRateLimit(snap(0.93, resetsAt), NOW)
+  noteRateLimit(snap(0.96, resetsAt), NOW)
   const g = usageGate(NOW)
   assert.ok(g instanceof UsageLimitError)
   assert.equal(g.kind, 'approaching')

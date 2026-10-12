@@ -15,7 +15,7 @@
  *      message, work out the reset instant, and stop calling until then.
  *   2. PROACTIVE — every CLI call in `--output-format stream-json` carries a
  *      `rate_limit_event` with the five-hour window's utilization (0–1) and its
- *      reset time. Pause slightly BEFORE the window is full (default 92%), so no
+ *      reset time. Pause slightly BEFORE the window is full (default 95%), so no
  *      call fails, no job is interrupted mid-way, and Paul keeps headroom.
  *
  * Everything below is pure (no I/O) apart from the module-level `usageState`,
@@ -23,7 +23,7 @@
  */
 
 /** Pause when the five-hour window is at least this full. Env: USAGE_PAUSE_AT. */
-export const DEFAULT_PAUSE_AT = 0.92
+export const DEFAULT_PAUSE_AT = 0.95
 /** Wake this long AFTER the stated reset, so the first call lands inside the new window. */
 export const RESET_MARGIN_MS = 90_000
 /** One sleep never exceeds this; a 5-hour window cannot need more. */

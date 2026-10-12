@@ -20,7 +20,7 @@ there.
 > your session limit · resets 12:40am (America/Detroit)".
 >
 > - **Before the limit:** every CLI call now runs as `--output-format stream-json --verbose`, whose `rate_limit_event`
->   reports the five-hour window's utilization and reset. At ≥ 92% (`USAGE_PAUSE_AT`) the next call is refused by a gate
+>   reports the five-hour window's utilization and reset. At ≥ 95% (`USAGE_PAUSE_AT`) the next call is refused by a gate
 >   in `lib/llm.ts` (`UsageLimitError`, nothing spawned); the worker parks the job (`deferJob`: queued, `run_after` = reset
 >   + 90 s, **attempts handed back**, checkpoint untouched) and the supervisor sleeps to the reset (≤ 6 h per sleep; a
 >   reset after the deadline ends the run). **After the limit:** the message is parsed (12-hour clock, IANA zone, next-day
