@@ -30,7 +30,7 @@ there.
 > - **Process:** `docs/EXTRACTION_RUNBOOK.md` = say "proceed with extraction" in a new window; runner never edits code; changes go to
 >   spawned windows. Monitor page: https://claude.ai/artifact/VtwisaCtVmZgNDK1ML6vHD.
 
-> **⏸ 2026-10-12 — LIMIT-AWARE SUPERVISOR BUILT (PR pending; merges AFTER the overnight run ends).** The 03:11 run lost
+> **⏸ 2026-10-12 — LIMIT-AWARE SUPERVISOR LANDED (PR #16, merged 18:20 UTC after the 12:34 run ended).** The 03:11 run lost
 > ~66 min to the subscription limit (10,744 failed CLI calls, 194 job failures) because nothing understood "You've hit
 > your session limit · resets 12:40am (America/Detroit)".
 >
@@ -47,7 +47,7 @@ there.
 > - Retry/swallow sites now rethrow `UsageLimitError` (extractChunk, adjudicate, guest inference, hygiene, enrich-merge, tagging,
 >   fidelity judge); a paused extraction no longer marks its source `failed`.
 > - Tests: `tests/usageLimit.test.ts` (real message + real CLI event), `llmCliLimit.test.ts` (fake `claude`), `workerLimit.test.ts`
->   (stubbed DB: attempts not spent). **Not run live** — needs the writer lock; first live proof is the next run's PAUSE/RESUME lines.
+>   (stubbed DB: attempts not spent). **Not yet run live** — first live proof is the next run's PAUSE/RESUME lines.
 > - **Overlap with PR #15** (judge → Opus 5.5, `ModelRefusalError`): both edit `lib/llm.ts` and `lib/consolidation.ts`; no logic
 >   conflict (its refusal → "kept separate"; mine → quarantine as the backstop). Land one, rebase the other, re-run `npm test`.
 
