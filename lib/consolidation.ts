@@ -28,11 +28,12 @@
 import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
-import { claudeJson, CLAUDE_JUDGMENT_MODEL, ModelRefusalError } from './llm'
+import { claudeJson, CLAUDE_JUDGMENT_MODEL, ModelRefusalError, type Effort } from './llm'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 import { selectAllPaged } from './pagination'
 import { generateEmbedding, insightEmbeddingText } from './embeddings'
+import { runOrdered } from './judgePipeline'
 
 // Judgment tier (Opus 5.5): deciding whether two claims are the same is the call
 // that determines whether the library deduplicates correctly.
@@ -92,6 +93,20 @@ export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE
 // in 11,502 claims. Same floor as ingestion from 2026-10-11.
 const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.70)
 
+// How many of ONE source's facts the judge reads at once (lib/judgePipeline.ts).
+// Writes still land in order and a verdict is reused only if the candidate list is
+// unchanged by the writes ahead of it, so this changes speed, not decisions.
+// 1 = the original one-at-a-time loop. Default 4: 3.2x on the judge stage alone, and
+// tests/judgePipeline.test.ts shows the writes and the lists the judge sees are the
+// sequential loop's (docs/judge-speedup.md).
+const JUDGE_CONCURRENCY = envInt('CONSOLIDATION_JUDGE_CONCURRENCY', 4)
+// A call started this close to the end of a tick would not finish inside it.
+const JUDGE_LAUNCH_MARGIN_MS = envInt('CONSOLIDATION_JUDGE_LAUNCH_MARGIN_MS', 45_000)
+// Reasoning depth for the judge's calls. Unset = the CLI/API default, which is what
+// every verdict on file was made at. Lower values are faster; scripts/evalJudgeSpeedup.ts
+// measures what they change before one is made the default.
+const JUDGE_EFFORT = envEffort('CONSOLIDATION_JUDGE_EFFORT')
+
 /** PostgREST returns a one-to-one embed as an object; some client versions wrap it
  *  in a one-element array. Either way, hand back the vector or null. */
 function embeddingOf(rel: unknown): unknown {
@@ -105,6 +120,11 @@ function envNum(name: string, def: number): number {
   if (raw == null || raw.trim() === '') return def
   const n = Number(raw)
   return Number.isFinite(n) ? n : def
+}
+/** Read a reasoning-effort level from env; unset or unrecognised = no cap. */
+function envEffort(name: string): Effort | undefined {
+  const raw = process.env[name]?.trim().toLowerCase()
+  return raw === 'low' || raw === 'medium' || raw === 'high' || raw === 'xhigh' || raw === 'max' ? raw : undefined
 }
 /** Read a positive integer from env, falling back to `def`. */
 function envInt(name: string, def: number): number {
@@ -164,7 +184,12 @@ export type Adjudication = {
 // canonical to carry every detail when `enrich` is flagged.
 const ADJUDICATION_SYSTEM = ADJUDICATION_V3
 
-export async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
+export async function adjudicate(
+  rawStatement: string,
+  candidates: Candidate[],
+  opts: { effort?: Effort } = {}
+): Promise<Adjudication> {
+  const effort = opts.effort ?? JUDGE_EFFORT
   const list = candidates
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
@@ -177,7 +202,7 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
   for (let attempt = 0; attempt <= 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
     try {
-      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL)
+      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL, effort)
       const verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
       return {
         verdict,
@@ -798,18 +823,11 @@ export async function consolidateSource(
     run_id: runId,
   }
 
-  for (let i = 0; i < pending.length; i++) {
-    if (Date.now() - started > timeBudgetMs) {
-      return { done: false, checkpoint: { ...cp } }
-    }
-    const raw = pending[i]
-    if (!raw.embedding) {
-      // Should not happen (extraction embeds inline), but skip defensively.
-      cp = { ...cp, processed: cp.processed + 1 }
-      await onProgress(cp)
-      continue
-    }
-
+  // Search and judge may run ahead (CONSOLIDATION_JUDGE_CONCURRENCY); the writes
+  // below run strictly in order, each after every earlier write has landed, and a
+  // verdict is used only if the candidate list is the one it was judged on.
+  const search = async (raw: RawInsight): Promise<Candidate[] | null> => {
+    if (!raw.embedding) return null // Should not happen (extraction embeds inline); skipped below.
     const { data: candData, error: candErr } = await db().rpc('match_claims', {
       query_embedding: raw.embedding,
       match_threshold: CANDIDATE_THRESHOLD,
@@ -822,41 +840,67 @@ export async function consolidateSource(
     // 8 s statement timeout (pg_stat_statements), so this was a live path. Throw:
     // the job fails, backs off, and resumes from this same insight.
     if (candErr) throw new Error(`match_claims failed for insight ${raw.id}: ${candErr.message}`)
-    const candidates = (candData ?? []) as Candidate[]
-
-    if (candidates.length === 0) {
-      await createClaimFromRaw(raw)
-      cp = { ...cp, claims_created: cp.claims_created + 1 }
-    } else {
-      const verdict = await judgePair(raw.statement, candidates, `insight ${raw.id}`)
-      const chosen =
-        verdict.candidate_index && verdict.candidate_index >= 1 && verdict.candidate_index <= candidates.length
-          ? candidates[verdict.candidate_index - 1]
-          : candidates[0]
-
-      if (pairAction(verdict) === 'merge') {
-        await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
-      } else {
-        const newClaimId = await createClaimFromRaw(raw)
-        cp = { ...cp, claims_created: cp.claims_created + 1 }
-        // Kept separate, but they were close enough for ANN to pair them and the
-        // V3 prompt splits ONLY on genuine contradiction or a material
-        // difference — so this is a variant of an existing idea, not new ground.
-        // Record it (spec §6 "F3 fix"). Without the link the relationship is
-        // lost: a reader loses the "these are variants" structure, and the
-        // novelty metric (§9) can only ever see exact merges, under-reporting
-        // refinements — which are the engine's actual value. The note carries
-        // the verdict, so the low-confidence SAME / UNSURE / REFUSED pairs that
-        // used to become merge_reviews can be found for a second opinion.
-        await linkNearDuplicate(newClaimId, chosen.id, chosen.similarity, verdictNote(verdict))
-        if (verdict.verdict === 'REFUSED') cp = { ...cp, refused: cp.refused + 1 }
-        else if (verdict.verdict !== 'DIFFERENT') cp = { ...cp, kept_separate: cp.kept_separate + 1 }
-      }
-    }
-
-    cp = { ...cp, processed: cp.processed + 1 }
-    await onProgress(cp)
+    return (candData ?? []) as Candidate[]
   }
+
+  const tickStart = Date.now()
+  const { applied, stats } = await runOrdered<RawInsight, Candidate, PairVerdict>(pending, {
+    concurrency: JUDGE_CONCURRENCY,
+    outOfTime: () => Date.now() - started > timeBudgetMs,
+    canLaunch: () => Date.now() - started < timeBudgetMs - JUDGE_LAUNCH_MARGIN_MS,
+    search,
+    judge: (raw, candidates) => judgePair(raw.statement, candidates, `insight ${raw.id}`),
+    apply: async (raw, candidates, verdict) => {
+      if (candidates === null) {
+        cp = { ...cp, processed: cp.processed + 1 }
+        await onProgress(cp)
+        return
+      }
+      if (candidates.length === 0 || !verdict) {
+        await createClaimFromRaw(raw)
+        cp = { ...cp, claims_created: cp.claims_created + 1 }
+      } else {
+        const chosen =
+          verdict.candidate_index && verdict.candidate_index >= 1 && verdict.candidate_index <= candidates.length
+            ? candidates[verdict.candidate_index - 1]
+            : candidates[0]
+
+        if (pairAction(verdict) === 'merge') {
+          await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
+        } else {
+          const newClaimId = await createClaimFromRaw(raw)
+          cp = { ...cp, claims_created: cp.claims_created + 1 }
+          // Kept separate, but they were close enough for ANN to pair them and the
+          // V3 prompt splits ONLY on genuine contradiction or a material
+          // difference — so this is a variant of an existing idea, not new ground.
+          // Record it (spec §6 "F3 fix"). Without the link the relationship is
+          // lost: a reader loses the "these are variants" structure, and the
+          // novelty metric (§9) can only ever see exact merges, under-reporting
+          // refinements — which are the engine's actual value. The note carries
+          // the verdict, so the low-confidence SAME / UNSURE / REFUSED pairs that
+          // used to become merge_reviews can be found for a second opinion.
+          await linkNearDuplicate(newClaimId, chosen.id, chosen.similarity, verdictNote(verdict))
+          if (verdict.verdict === 'REFUSED') cp = { ...cp, refused: cp.refused + 1 }
+          else if (verdict.verdict !== 'DIFFERENT') cp = { ...cp, kept_separate: cp.kept_separate + 1 }
+        }
+      }
+      cp = { ...cp, processed: cp.processed + 1 }
+      await onProgress(cp)
+    },
+  })
+  // The measured cost per fact, in the log, so the speed of a real run is read from the run
+  // and not estimated: `reused` early verdicts kept, `stale` ones re-judged because a write
+  // ahead of them changed the candidate list.
+  if (applied > 0) {
+    const secs = (Date.now() - tickStart) / 1000
+    console.log(
+      `[consolidate] source ${sourceId.slice(0, 8)}: ${applied} fact(s) in ${secs.toFixed(0)}s = ${(secs / applied).toFixed(1)} s/fact ` +
+        `(judge concurrency ${JUDGE_CONCURRENCY}; judged ${stats.judged}, early verdict reused ${stats.reused}, re-judged ${stats.stale}, no candidates ${stats.unjudged})`
+    )
+  }
+  // Out of time before the end: yield, and the next tick resumes from what is
+  // still unconsolidated.
+  if (applied < pending.length) return { done: false, checkpoint: { ...cp } }
 
   await finishRun(runId, {
     processed: cp.processed,

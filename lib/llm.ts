@@ -145,7 +145,8 @@ function claudeCodeText(
   system: string,
   user: string,
   model: string,
-  effort?: Effort
+  effort?: Effort,
+  noThinking = false
 ): Promise<string> {
   // The CLI must bill the claude.ai login, never the API key. `.env.local`
   // carries ANTHROPIC_API_KEY for the `api` backend, and a spawned CLI that sees
@@ -159,6 +160,10 @@ function claudeCodeText(
   delete env.ANTHROPIC_AUTH_TOKEN
   delete env.CLAUDECODE
   delete env.CLAUDE_CODE_ENTRYPOINT
+  // The CLI lets Haiku 4.5 think before answering by default, which more than doubles a short
+  // mechanical call (measured 2026-10-12: 6-7 s -> 3 s on an enrich-merge rewrite). A caller that
+  // knows its task needs no reasoning opts out; the API backend never thinks on Haiku 4.5.
+  if (noThinking) env.MAX_THINKING_TOKENS = '0'
 
   return new Promise((resolve, reject) => {
     const startedAt = Date.now()
@@ -304,9 +309,10 @@ export async function claudeJson<T>(
   user: string,
   maxTokens = 8000,
   model: string = CLAUDE_MODEL,
-  effort?: Effort
+  effort?: Effort,
+  opts: { noThinking?: boolean } = {}
 ): Promise<T> {
-  const text = await claudeText(system, user, maxTokens, model, effort)
+  const text = await claudeText(system, user, maxTokens, model, effort, opts.noThinking)
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T
 }
@@ -332,13 +338,14 @@ async function claudeText(
   user: string,
   maxTokens: number,
   model: string,
-  effort?: Effort
+  effort?: Effort,
+  noThinking = false
 ): Promise<string> {
   if (backend() !== 'claude-code') {
     return apiText(system, user, maxTokens, model, effort)
   }
   try {
-    return await claudeCodeText(system, user, model, effort)
+    return await claudeCodeText(system, user, model, effort, noThinking)
   } catch (cliErr) {
     // The API runs the same model behind the same filter, so a refusal would
     // only be refused again, on credit.
