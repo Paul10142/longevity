@@ -78,13 +78,13 @@ test('limit message as plain text (not stream-json, exit 1) is recognised too', 
   await assert.rejects(claudeJson('sys', 'user'), UsageLimitError)
 })
 
-test('a model refusal stays an ordinary failure with its readable reason', async () => {
+test('a model refusal is not a usage-limit pause, and keeps its readable reason', async () => {
   const { claudeJson } = await import('../lib/llm')
   const { UsageLimitError } = await import('../lib/usageLimit')
   fake([result("API Error: Opus 5's safeguards flagged this message (https://www.anthropic.com/legal/aup).", true)], 1)
   await assert.rejects(claudeJson('sys', 'user'), (e: unknown) => {
     assert.ok(!(e instanceof UsageLimitError))
-    assert.match((e as Error).message, /claude CLI failed \(opus\): API Error: Opus 5's safeguards flagged/)
+    assert.match((e as Error).message, /API Error: Opus 5's safeguards flagged/)
     return true
   })
 })
