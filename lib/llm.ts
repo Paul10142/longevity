@@ -8,7 +8,12 @@
  * Two model tiers:
  *   - BULK      (Haiku 4.5) — high-volume mechanical extraction, one call per
  *                             transcript chunk.
- *   - JUDGMENT  (Opus 4.8)  — dedup adjudication, topic assignment, synthesis.
+ *   - JUDGMENT  (Opus 5.5)  — dedup adjudication, topic assignment, synthesis.
+ *
+ * Both backends request the exact model id below. The CLI used to get a short
+ * alias (`opus`), which resolves to whatever the CLI currently treats as Opus —
+ * the refusals in the 2026-10-12 overnight log name Opus 5, not the model this
+ * file named. Paul pinned the judge to Opus 5.5 that day.
  *
  * Two backends, chosen with `LLM_BACKEND`:
  *   - `api`         (default) — ANTHROPIC_API_KEY, used by the deployed worker.
@@ -53,27 +58,41 @@ function emptyMcpConfig(): string {
 }
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
-export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-4-8'
+export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-5-5'
 // Bulk tier: per-chunk insight and reference extraction.
 export const CLAUDE_BULK_MODEL = 'claude-haiku-4-5'
 // Synthesis default (kept under the original name — long-form clinical writing).
 export const CLAUDE_MODEL = CLAUDE_JUDGMENT_MODEL
 
-/** Reasoning depth for adaptive thinking. Unset = the API default (`high`). */
+/** Reasoning depth for adaptive thinking. Unset = the API default (`high` on
+ *  most models; `medium` on Opus 5.5). */
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
-/** Adaptive thinking is an Opus-4.x feature; Haiku 4.5 rejects it, and it also
- *  rejects `output_config.effort`. Gate both on the model. */
+/** Adaptive thinking and `output_config.effort` exist on Opus 4.6+, Opus 5.x,
+ *  Sonnet 5.x and Haiku 5.x; Haiku 4.5 rejects both. Gate them on the model —
+ *  until 2026-10-12 this matched only `claude-opus-4-`, so moving the judge to
+ *  Opus 5.5 would have silently dropped every caller's effort cap on the API path. */
 function supportsAdaptiveThinking(model: string): boolean {
-  return model.startsWith('claude-opus-4-') || model.startsWith('claude-sonnet-5')
+  return /^claude-(opus-(4-[6-9]|5)|sonnet-5|haiku-5|fable-)/.test(model)
 }
 
-/** CLI model aliases. The `claude` CLI takes short names, not full model ids. */
-function cliAlias(model: string): string {
-  if (model.startsWith('claude-haiku')) return 'haiku'
-  if (model.startsWith('claude-sonnet')) return 'sonnet'
-  return 'opus'
+/**
+ * The model's safety filter declined the request. Not a transport failure:
+ * asking again sends the same text to the same filter, so callers must not
+ * retry it. The CLI reports it on stdout ("Opus 5's safeguards flagged this
+ * message …", exit 1); the API returns HTTP 200 with `stop_reason: "refusal"`.
+ * The filter is broad ("can sometimes flag legitimate biology tasks", in its
+ * own words): one dedup pair failed consolidate job 652e4ec4 on every retry
+ * through the night of 2026-10-12.
+ */
+export class ModelRefusalError extends Error {
+  constructor(model: string, detail: string) {
+    super(`${model} declined (safety filter): ${detail.slice(0, 200)}`)
+    this.name = 'ModelRefusalError'
+  }
 }
+
+const CLI_REFUSAL = /safeguards flagged this message|violates? our Usage Policy/i
 
 type Backend = 'api' | 'claude-code'
 function backend(): Backend {
@@ -148,7 +167,10 @@ function claudeCodeText(
       'claude',
       [
         '-p',
-        '--model', cliAlias(model),
+        // The exact id, never an alias: `opus` resolves to whatever the CLI calls
+        // Opus today (see the header). Verified 2026-10-12 that the CLI accepts
+        // `claude-opus-5-5` and `claude-haiku-4-5` and reports them back as such.
+        '--model', model,
         ...(effort ? ['--effort', effort] : []),
         // A BARE session, on purpose. Without these four flags every call loads
         // the developer's whole Claude Code setup: every MCP server, every
@@ -203,7 +225,11 @@ function claudeCodeText(
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
           cliStats.lastError = detail
-          reject(new Error(`claude CLI failed (${cliAlias(model)}): ${detail}`))
+          if (CLI_REFUSAL.test(`${stdout ?? ''}\n${stderr ?? ''}`)) {
+            reject(new ModelRefusalError(model, detail))
+            return
+          }
+          reject(new Error(`claude CLI failed (${model}): ${detail}`))
           return
         }
         resolve(stdout)
@@ -223,11 +249,11 @@ function claudeCodeText(
     // message. Any other stdin error is surfaced.
     child.stdin?.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EPIPE') return
-      reject(new Error(`claude CLI stdin failed (${cliAlias(model)}): ${err.code ?? err.message}`))
+      reject(new Error(`claude CLI stdin failed (${model}): ${err.code ?? err.message}`))
     })
     // Likewise a spawn failure (binary missing, fork limit) arrives as an event.
     child.on('error', (err: NodeJS.ErrnoException) => {
-      reject(new Error(`claude CLI could not run (${cliAlias(model)}): ${err.code ?? err.message}`))
+      reject(new Error(`claude CLI could not run (${model}): ${err.code ?? err.message}`))
     })
     child.stdin?.end(user)
   })
@@ -258,8 +284,12 @@ async function apiText(
     if (effort) params.output_config = { effort }
   }
 
-  const msg = await getAnthropic().messages.create(params as never)
-  return (msg as Anthropic.Message).content
+  const msg = (await getAnthropic().messages.create(params as never)) as Anthropic.Message
+  if (msg.stop_reason === 'refusal') {
+    const d = msg.stop_details
+    throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
+  }
+  return msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map(b => b.text)
     .join('\n')
@@ -310,10 +340,13 @@ async function claudeText(
   try {
     return await claudeCodeText(system, user, model, effort)
   } catch (cliErr) {
+    // The API runs the same model behind the same filter, so a refusal would
+    // only be refused again, on credit.
+    if (cliErr instanceof ModelRefusalError) throw cliErr
     const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
     if (!fallbackEnabled) throw cliErr
     console.warn(
-      `[llm] claude-code CLI failed (${cliAlias(model)}); falling back to api backend: ` +
+      `[llm] claude-code CLI failed (${model}); falling back to api backend: ` +
         `${cliErr instanceof Error ? cliErr.message : String(cliErr)}`
     )
     return apiText(system, user, maxTokens, model, effort)

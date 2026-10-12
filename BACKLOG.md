@@ -15,6 +15,34 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **⚖️ 2026-10-12 (13:30 UTC) — JUDGE PINNED TO OPUS 5.5; NO MORE LOW-CONFIDENCE MERGE REVIEWS; A REFUSED PAIR NO
+> LONGER FAILS THE JOB. Code only (no DB writes, no migration). Lands after the running extraction finishes — that
+> process loaded the old code at 12:34 UTC.**
+>
+> - **Model:** `CLAUDE_JUDGMENT_MODEL` = `claude-opus-5-5`; both backends pass the exact id (`--model claude-opus-5-5`
+>   / `claude-haiku-4-5`), never the alias. Verified by one CLI call each (`modelUsage` names the id back). The
+>   alias `opus` resolved to Opus 5.5 in that test too, but the 09:24–12:35 UTC refusals say "Opus 5's safeguards";
+>   pinning removes the doubt. API path: adaptive thinking + effort now gated on Opus 5.x too (it matched only
+>   `claude-opus-4-`, so effort caps would have been dropped). Haiku unchanged.
+> - **Rule (`pairAction()` / `verdictNote()` in `lib/consolidation.ts`, both paths):** merge only SAME ≥ 0.80. SAME
+>   below it, UNSURE (Paul's call in session) and REFUSED → separate claims, `claim_links` `near_duplicate`, verdict
+>   on `note` (`judge:SAME@0.72`, `judge:UNSURE@…`, `judge:REFUSED`; DIFFERENT links now carry `judge:DIFFERENT@…`).
+>   No `merge_reviews` insert remains anywhere in the code. Sweep: same, except DIFFERENT still unlinked.
+>   Evidence re-counted: sub-0.80 SAME decisions 17 accepted / 36 rejected (the handoff said 46); by band 0.70–0.72
+>   13/18, 0.75–0.78 4/13. All 34 UNSURE reviews ever filed were July checker-outage rows; the V3 judge has never
+>   returned a genuine UNSURE.
+> - **Refusal:** `ModelRefusalError` (CLI stdout "safeguards flagged this message" / API `stop_reason: refusal`),
+>   never retried (was 4× per attempt), never sent to the API fallback; `judgePair()` logs it and keeps the pair
+>   apart. Consolidate job **652e4ec4** should finish on the first run under the new code. Checkpoint counters:
+>   `reviews_queued` → `kept_separate` + `refused`.
+> - **Not touched:** the 348 pending reviews (340 at the decision + 8 filed by the 12:34 run on the old code).
+> - **Verified:** `tsc` clean, `npm test` 186/186 (new `tests/consolidationRule.test.ts` = the rule;
+>   `tests/llmCli.test.ts` = fake `claude` on PATH: exact id sent, refusal → `ModelRefusalError` after ONE call),
+>   `npm run build` ok. Not run: a live consolidation under the new rule (needs the writer lock).
+> - **Next:** after the first run on this code, check `claim_links where note like 'judge:%'` grows and
+>   `merge_reviews` does not; then migration 031 / Phase C as in the 02:10 block. A second-opinion pass over
+>   `judge:SAME@%` / `judge:REFUSED` links (e.g. a different model) is the natural follow-up, not built.
+
 > **📏 2026-10-12 (12:45 UTC) — FIDELITY JUDGE RE-SCORED AFTER PAUL'S 9 RE-CHECKS: κ −0.11 → 0.89. The judge now
 > meets the repo's certification bar on the 40-pair sample; shadow mode is still ON in code (no code was changed).**
 >

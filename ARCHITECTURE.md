@@ -110,7 +110,7 @@ running jobs with old `locked_at` heartbeats get reclaimed).
 |---|---|---|
 | Ingest | — (API route, or `pipeline ingest`) | Create source + transcript (paste / YouTube / file). The CLI path (`lib/sourceDiscovery.ts`) discovers from the channel Atom feed + site RSS and stores **timed** captions in `sources.timed_transcript`, which is what lets an Evidence citation deep-link to the moment. It deliberately does **not** enqueue extract — breadth ingest is Phase 4 and gated on the cost checkpoint |
 | Extract | `extract_source` | Chunk transcript, per-chunk LLM extraction → `raw_insights` + embeddings (batched, inline). Checkpoint = chunk index |
-| Consolidate | `consolidate_source` | Per raw insight: ANN over `claims.embedding` (`match_claims` RPC) → LLM adjudication SAME/DIFFERENT/UNSURE → attach member, create claim, or create provisionally + queue `merge_reviews` |
+| Consolidate | `consolidate_source` | Per raw insight: ANN over `claim_embeddings` (`match_claims` RPC) → LLM adjudication SAME/DIFFERENT/UNSURE → attach member (SAME ≥ 0.80) or create a claim linked `near_duplicate` to the candidate, verdict on the link note. No `merge_reviews` since 2026-10-12 |
 | Sweep | `claim_sweep` | Periodic claim-vs-claim ANN pass to catch accumulated near-duplicates |
 | Tag | `tag_claims` | File claims into the curated spine (ANN over `topics.embedding` + LLM multi-label). May create a child under an existing topic; a new **root** becomes a `topic_proposals` row instead |
 | Discover | `discover_topics` | Review unfiled claims + over-broad topics, propose new topics with parent placement (through the same root gate as Tag), flag affected claims `needs_tagging` and hand back to Tag |
@@ -137,7 +137,13 @@ to a provider SDK directly. Two tiers:
 | Tier | Model | Used by |
 |---|---|---|
 | Bulk | `claude-haiku-4-5` | `extract_source`, reference-mention extraction — one call per transcript chunk |
-| Judgment | `claude-opus-4-8` | dedup adjudication, topic assignment/discovery, reference matching, `generate_topic` |
+| Judgment | `claude-opus-5-5` | dedup adjudication, topic assignment/discovery, reference matching, `generate_topic` |
+
+Both backends request these exact ids. Until 2026-10-12 the CLI was handed the
+alias `opus`, which follows whatever the CLI currently calls Opus (the refusals
+in that night's log name Opus 5); Paul pinned the judge to Opus 5.5. A safety-filter refusal ("…safeguards flagged this message", or
+`stop_reason: "refusal"` on the API) raises `ModelRefusalError`, which is never
+retried and never falls back to the API: the same model would refuse again.
 
 **Embeddings are the one exception and stay on OpenAI**
 (`text-embedding-3-small`, 1536-d, `lib/embeddings.ts`). Anthropic ships no
@@ -270,9 +276,10 @@ which `app/api/worker/tick/route.ts` already assumes):
   change to the gate, the candidate count, or the adjudication prompt. Claim
   vectors live in `claim_embeddings` (half precision, migration 029), not on the
   claim row, and are refreshed when enrich rewrites the canonical.
-- Adjudicator (**Opus 4.8**, `CLAUDE_JUDGMENT_MODEL` — `lib/consolidation.ts`;
-  the earlier "gpt-5-mini" note was stale) verdict SAME with confidence ≥ **0.85**
-  → auto-attach.
+- Adjudicator (**Opus 5.5**, `CLAUDE_JUDGMENT_MODEL` — `lib/consolidation.ts`;
+  the earlier "gpt-5-mini" note was stale) verdict SAME with confidence ≥ **0.80**
+  (`AUTO_MERGE_CONFIDENCE`) → auto-attach. Every other verdict keeps the pair
+  apart — see the last bullet. `pairAction()` is the rule, for both paths.
 - **The prompt is `ADJUDICATION_V3` — enrich-merge (live since 2026-07-24).**
   ⚠ The note that previously stood here — "retune so a material
   dose/population/threshold difference → DIFFERENT" — was **reversed by Paul on
@@ -292,9 +299,21 @@ which `app/api/worker/tick/route.ts` already assumes):
   a genuine material difference, so the pair are variants of one idea — and the
   §9 novelty metric can only distinguish "refinement" from "novel" if that link
   exists.
-- UNSURE / low-confidence SAME → create claim provisionally + `merge_reviews`
-  row. Accept in the review UI collapses the two claims; reject keeps both.
-  Nothing blocks the pipeline on human review.
+- **No merge reviews are filed (Paul, 2026-10-12).** A SAME below 0.80, an
+  UNSURE, and a pair the model's safety filter declined all keep the two claims
+  apart, linked `near_duplicate`, with the verdict on `claim_links.note`
+  (`verdictNote()`): `judge:SAME@0.72`, `judge:UNSURE@0.40`, `judge:REFUSED`
+  (DIFFERENT links carry `judge:DIFFERENT@…`). A later second-opinion pass
+  selects them with `note like 'judge:SAME@%'` etc. Why: the old path filed a
+  review for each — 143 in one six-hour run, 348 pending — and Paul's decisions
+  on the sub-0.80 ones were 17 accepted / 36 rejected, with no confidence band
+  that separates them (0.70–0.72: 13/18; 0.75–0.78: 4/13). The V3 judge has never
+  returned a genuine UNSURE (the 34 UNSURE reviews were checker-outage
+  placeholders). The sweep applies the same rule, except that it still leaves a
+  DIFFERENT pair unlinked, as before. A refusal on one pair is logged and the job
+  carries on; until this change it failed the whole job on every retry
+  (consolidate job 652e4ec4). The existing pending reviews were left as they are;
+  accept/reject in `/admin/reviews` still works on them.
 
 ### Dedup underperformance — diagnosis & fix plan (2026-07-25) ⚠ OWNED BY THE DEDUP AGENT
 
@@ -642,10 +661,10 @@ Verified across all five live stages — `extraction`, `consolidation`, `taxonom
   model, and `match_claims` / `match_topics` are vector searches, so this stays
   on OpenAI (Voyage is the alternative if we ever leave). Embeddings are ~$0.02/1M
   tokens — the whole corpus costs cents, so this is never the cost problem.
-- **Judgment tier — Opus 4.8**: dedup adjudication, topic assignment, article
+- **Judgment tier — Opus 5.5**: dedup adjudication, topic assignment, article
   generation. **Bulk tier — Haiku 4.5**: high-volume mechanical per-chunk work.
 - **Reasoning depth is capped per call site** (`effort`). Adaptive thinking
-  defaults to `high`, and thinking tokens bill as output ($25/M) — uncapped, most
+  defaults to `high` (`medium` on Opus 5.5 over the API), and thinking tokens bill as output ($25/M) — uncapped, most
   of a synthesis run's cost is invisible reasoning on mechanical work. Mechanical
   steps (section grouping, patient translation) run `low`; prose and the
   groundedness audit run `medium`. **We cap the reasoning, never the model** —

@@ -51,6 +51,7 @@ async function main() {
     adjudicate, mergeClaims, linkNearDuplicate,
     AUTO_MERGE_CONFIDENCE, ADJUDICATION_FAILED_REASONING, AdjudicationUnavailableError,
   } = await import('../lib/consolidation')
+  const { ModelRefusalError } = await import('../lib/llm')
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -117,6 +118,13 @@ async function main() {
         similarity: row.similarity ?? 0,
       }])
     } catch (err) {
+      // The safety filter declined this pair: no verdict to apply, so the
+      // review stays as it is (asking again sends the same text to the filter).
+      if (err instanceof ModelRefusalError) {
+        counts.skipped++
+        console.log(`[${n}/${work.length}] skip — model declined the pair (review ${row.id})`)
+        continue
+      }
       if (err instanceof AdjudicationUnavailableError) {
         console.error(`CLI unavailable at row ${n}/${work.length} — stopping; rerun this script later.`)
         break
