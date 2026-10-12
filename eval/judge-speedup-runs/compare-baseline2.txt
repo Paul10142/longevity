@@ -1,0 +1,90 @@
+
+=== baseline2 vs baseline — 282 pairs compared (0 excluded: error or not run) ===
+variant: effort=default, k=8
+raw verdict agreement (SAME/DIFFERENT/UNSURE):      278/282  98.6%
+merge decision agreement (merge vs keep apart):      275/282  97.5%
+merge into the same claim, where both merge:         235/235  100.0%
+full decision agreement (merge/keep AND same target): 275/282  97.5%
+NEW FALSE MERGES, strict (baseline DIFFERENT/UNSURE, variant merges): 0
+lost merges, strict (baseline merged, variant says DIFFERENT/UNSURE):  0
+boundary hops (SAME both sides, confidence across the 0.80 bar):      +3 merge / -4 keep apart
+
+by similarity band (decision agreement):
+  0.70-0.75   45/45  100.0%
+  0.75-0.80   43/46  93.5%
+  0.80-0.86   63/66  95.5%
+  >=0.86      33/33  100.0%
+  gold(>=0.80)  91/92  98.9%
+
+against Paul's labels (116 pairs, SAME=109, DIFFERENT=7): baseline 103/116, variant 103/116
+  false merges vs Paul's DIFFERENT labels: baseline 1, variant 1
+
+seconds per judge call (same pairs): baseline mean 3.9 / median 3.7 / p90 5.4;  variant mean 4.0 / median 3.7 / p90 5.6  → -1% faster
+
+EVERY FLIP (11):
+
+[lost merge (boundary hop)] merge:75c363aa-6880-4bf6-a0b8-8e54b86a540a  (gold, gold(>=0.80), top sim 0.800, Paul: SAME)
+  baseline: SAME→#1 @0.80 enrich=true — Both describe pragmatic VO2 max targets for longevity, and they are compatible: the existing claim sets a top-~2.5%-for-age benchmark (~52 ml·kg⁻¹·min⁻¹ at age 50), while the new insight adds the cave
+  variant:  SAME→#1 @0.72 enrich=true — Both describe what VO2 max level to aim for to gain longevity benefits. The new insight adds the elite-athlete range (80s–90s ml·kg⁻¹·min⁻¹) and the caveat that such extreme values are rare and likely
+  NEW:  You do not need elite athlete-level VO2 max (80s–90s ml·kg⁻¹·min⁻¹) to gain longevity benefits; those extreme values are rare and likely unnecessary for most people pursuing healthy lifespan goals.
+  #1:   VO2 max benefits for longevity appear to concentrate in the upper percentiles of the population; being in the top ~2.5% for your age is linked with substantially better lifespan outcomes — for a 50-year-old that corresponds to roughly 52 ml·kg⁻¹·min⁻¹.
+
+[NEW MERGE (boundary hop)] paul:eff826bf-8635-4d34-ab09-a3d2ec14790c  (paul, 0.80-0.86, top sim 0.816, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe ketamine tolerance; the new insight adds that it develops rapidly as acute tachyphylaxis within short windows of repeated dosing, requiring progressively higher doses for the same effect
+  variant:  SAME→#1 @0.80 enrich=true — Both describe ketamine tolerance. The new insight adds that tolerance develops rapidly as acute tachyphylaxis, so repeated dosing within short time windows needs progressively higher doses, a timescal
+  NEW:  Ketamine displays rapidly developing tolerance (tachyphylaxis); repeated administration in short time windows requires progressively higher doses to achieve the same effect.
+  #1:   Chronic recreational ketamine users develop profound tolerance, remaining ambulatory and functional at doses described as extreme enough to incapacitate large animals.
+
+[verdict] paul:81db23d8-6ed3-485c-ad4c-48a3d2e5f3f2  (paul, 0.80-0.86, top sim 0.831, Paul: SAME)
+  baseline: DIFFERENT @0.68 enrich=false — Both concern heart rate recovery, but the new insight claims HRR is a better performance or fitness metric than maximum heart rate, while the existing claim says HRR speed shows the aerobic vs. anaero
+  variant:  SAME→#1 @0.60 enrich=true — Both treat heart rate recovery speed as an informative exercise metric; the new insight adds that HRR may be a more meaningful performance metric than maximum heart rate, a comparison the existing cla
+  NEW:  Heart rate recovery—how quickly the heart rate drops after exertion—may be a more meaningful performance metric than maximum heart rate itself.
+  #1:   Heart rate recovery speed after exercise reflects the relative aerobic vs. anaerobic contribution to the exercise bout; faster heart rate drop indicates predominantly aerobic-driven activity, while slower recovery suggests greater anaerobic component.
+
+[verdict] paul:6317f815-fe48-45c2-b10c-023890fdf020  (paul, 0.80-0.86, top sim 0.800, Paul: DIFFERENT)
+  baseline: DIFFERENT @0.60 enrich=false — Both concern UCL tears in throwers, but the new insight describes why the injury happens (traction forces above the rupture threshold at 90+ mph), while the existing claim describes how treatment chan
+  variant:  SAME→#1 @0.55 enrich=true — Both describe UCL tearing in throwing athletes. The new insight adds the injury mechanism: in high-level throwers (90+ mph), super-physiologic traction forces can exceed the ligament's rupture thresho
+  NEW:  The ulnar collateral ligament in high-level baseball throwers (90+ mph) is subjected to super-physiologic traction forces that can exceed the ligament's rupture threshold.
+  #1:   The ulnar collateral ligament tears in throwing athletes and was historically career-ending; modern reconstructive surgery (Tommy John surgery) has generally made return to play possible.
+
+[NEW MERGE (boundary hop)] paul:065589dc-51f6-492f-9f28-aaaf7abc4522  (paul, 0.80-0.86, top sim 0.843, Paul: SAME)
+  baseline: SAME→#1 @0.78 enrich=true — Both describe rapamycin as a robust, reproducible longevity intervention with broad healthspan benefits across tissues; the new insight adds a specific effect size (~25% lifespan extension), the rever
+  variant:  SAME→#1 @0.80 enrich=true — Both describe rapamycin as a robust, reproducible longevity benchmark with broad healthspan effects; the new insight adds the ~25% lifespan extension effect size, reversal of functional decline across
+  NEW:  Rapamycin extends lifespan by approximately 25% and reverses functional decline in multiple tissues; this established benchmark represents the standard against which new aging interventions should be evaluated.
+  #1:   Rapamycin appears to positively affect nearly all measurable aspects of health span—not just lifespan extension—in complex animals, demonstrating broad pleiotropic effects across multiple distinct healthspan metrics concurrently rather than via a single pathwa
+
+[lost merge (boundary hop)] paul:95923d64-2ca0-47e8-833f-0d20ac0a3eb8  (paul, 0.80-0.86, top sim 0.803, Paul: SAME)
+  baseline: SAME→#1 @0.80 enrich=true — Both describe caloric restriction extending lifespan and health span; the new insight adds that the effect is conserved across evolutionarily distant organisms (rodents, fruit flies, C. elegans, yeast
+  variant:  SAME→#1 @0.72 enrich=true — Both assert that caloric restriction extends both lifespan and health span; the new insight adds that this effect is conserved across evolutionarily distant organisms (rodents, fruit flies, C. elegans
+  NEW:  Caloric restriction extends lifespan and health span proportionally across diverse organisms spanning wide evolutionary distances, from rodents to invertebrates including fruit flies, C. elegans, and yeast.
+  #1:   Caloric restriction extends health span—the period of life spent in good health free from disease and disability—not only lifespan; animals under caloric restriction remain healthier throughout their extended lives.
+
+[verdict] paul:767bbedc-d37d-4cfb-ab65-c6d3df2bfdb3  (paul, 0.80-0.86, top sim 0.810, Paul: SAME)
+  baseline: DIFFERENT @0.60 enrich=false — Both address mouse-to-human fasting equivalence, but they give conflicting values for the same quantity: the existing claim says a 24-hour mouse fast may equal weeks of human fasting, while the new in
+  variant:  SAME→#1 @0.70 enrich=true — Both describe the same claim that a 24-hour mouse fast is far more severe than a human fast, so mouse protocols don't translate directly; the new insight adds a 4–5 day human-equivalence estimate, whi
+  NEW:  One day of fasting in mice may be roughly equivalent to 4–5 days of fasting in humans, though this equivalency is not exact because both species can enter ketosis within 24 hours depending on diet composition.
+  #1:   In mice, a 24-hour fast represents extreme calorie deprivation; even a 12-hour fast imposes 'overwhelming' metabolic demands.
+
+[NEW MERGE (boundary hop)] twin:28d41d5b-6ece-41a2-b97c-a731c290569f  (twin, 0.75-0.80, top sim 0.765)
+  baseline: SAME→#1 @0.78 enrich=true — The existing claim already uses the type 2 diabetes rise from about 1.5–2% to over 10% within one generation as its illustration; the new insight adds that the figures refer to the United States popul
+  variant:  SAME→#1 @0.80 enrich=true — The new insight states the same type 2 diabetes prevalence rise (1.5–2% to over 10%, a 5–7 fold increase) that the existing claim uses as its illustration, and it adds two details the existing claim l
+  NEW:  Type 2 diabetes prevalence in the United States increased from approximately 1.5–2% to over 10% within one generation, representing approximately a 5–7 fold increase in prevalence of clear, diagnostically-confirmed type 2 diabetes.
+  #1:   When disease incidence and prevalence increase 5–7 fold within a single generation, genetic drift alone cannot adequately explain the shift; substantial changes in environmental factors must be the primary drivers, even in conditions with genetic components.
+
+[lost merge (boundary hop)] corpus:8f6e4da2-08d2-456d-a15d-be088f985ec5  (corpus, 0.75-0.80, top sim 0.796)
+  baseline: SAME→#2 @0.80 enrich=true — Both describe the population distribution of Lp(a), with about 20% elevated and the highest levels in African-ancestry populations; the new insight adds the distribution shapes (skewed in the general 
+  variant:  SAME→#2 @0.75 enrich=true — Both describe the population distribution of Lp(a), with roughly 20% elevated and African-ancestry populations highest; the new insight adds the distribution shape (right-skewed in the general populat
+  NEW:  Lp(a) levels follow a skewed distribution in the general population (most individuals with low levels, 15-20% with elevated levels), but a more Gaussian distribution in African-ancestry populations, explaining their higher average Lp(a) levels.
+  #2:   Approximately 20% of the global population has Lp(a) levels in the elevated cardiovascular risk range, with substantial ethnic variation: African ancestry populations have the highest prevalence, while Chinese and Japanese populations have among the lowest; Bl
+
+[lost merge (boundary hop)] corpus:fc2a15ca-33f8-437f-8cb0-edf72fa54359  (corpus, 0.75-0.80, top sim 0.754)
+  baseline: SAME→#2 @0.80 enrich=true — Same claim that deliberate, varied training starting in midlife (40s+) preserves functional capacity into old age; the new insight adds the specific modalities (strength, circuit, and agility training
+  variant:  SAME→#2 @0.78 enrich=true — Both say deliberate, varied training started in midlife (40s+) preserves functional capacity into old age, and the new insight adds the specific modalities (strength, circuit, and agility training) wh
+  NEW:  Starting in the 40s and 50s, deliberately adding strength training, circuit training, and agility training to an exercise program helps preserve functional capacity and mitigates age-related decline.
+  #2:   Achieving physical robustness in the final decade of life (the 'marginal decade') requires deliberate, specific training beginning in middle age or younger, with emphasis on maintaining activity, independence, and freedom from pain through varied forms of exer
+
+[verdict] corpus:0e6773bd-477f-4f27-bbd6-a0fc36281f8b  (corpus, 0.75-0.80, top sim 0.769)
+  baseline: DIFFERENT @0.60 enrich=false — The closest match is claim 1, which concerns the same relationship (rapamycin's effect on resistance-training-induced protein synthesis) but asserts the opposite: protein synthesis is preserved via mT
+  variant:  SAME→#1 @0.60 enrich=true — Both describe rapamycin's effect on resistance-training-induced protein synthesis, and 'blunts' (reduced, not abolished) can coexist with claim 1's 'can still stimulate via mTORC2'; the new insight ad
+  NEW:  Rapamycin blunts muscle protein synthesis in people undergoing resistance training.
+  #1:   Rapamycin specifically inhibits mTORC1 (the nutrient-sensitive complex) but does not inhibit mTORC2. This differential specificity means resistance training can still stimulate protein synthesis through mTORC2 even when mTORC1 is pharmacologically suppressed.

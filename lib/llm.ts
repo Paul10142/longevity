@@ -8,7 +8,12 @@
  * Two model tiers:
  *   - BULK      (Haiku 4.5) — high-volume mechanical extraction, one call per
  *                             transcript chunk.
- *   - JUDGMENT  (Opus 4.8)  — dedup adjudication, topic assignment, synthesis.
+ *   - JUDGMENT  (Opus 5.5)  — dedup adjudication, topic assignment, synthesis.
+ *
+ * Both backends request the exact model id below. The CLI used to get a short
+ * alias (`opus`), which resolves to whatever the CLI currently treats as Opus —
+ * the refusals in the 2026-10-12 overnight log name Opus 5, not the model this
+ * file named. Paul pinned the judge to Opus 5.5 that day.
  *
  * Two backends, chosen with `LLM_BACKEND`:
  *   - `api`         (default) — ANTHROPIC_API_KEY, used by the deployed worker.
@@ -61,27 +66,41 @@ function emptyMcpConfig(): string {
 }
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
-export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-4-8'
+export const CLAUDE_JUDGMENT_MODEL = 'claude-opus-5-5'
 // Bulk tier: per-chunk insight and reference extraction.
 export const CLAUDE_BULK_MODEL = 'claude-haiku-4-5'
 // Synthesis default (kept under the original name — long-form clinical writing).
 export const CLAUDE_MODEL = CLAUDE_JUDGMENT_MODEL
 
-/** Reasoning depth for adaptive thinking. Unset = the API default (`high`). */
+/** Reasoning depth for adaptive thinking. Unset = the API default (`high` on
+ *  most models; `medium` on Opus 5.5). */
 export type Effort = 'low' | 'medium' | 'high' | 'xhigh' | 'max'
 
-/** Adaptive thinking is an Opus-4.x feature; Haiku 4.5 rejects it, and it also
- *  rejects `output_config.effort`. Gate both on the model. */
+/** Adaptive thinking and `output_config.effort` exist on Opus 4.6+, Opus 5.x,
+ *  Sonnet 5.x and Haiku 5.x; Haiku 4.5 rejects both. Gate them on the model —
+ *  until 2026-10-12 this matched only `claude-opus-4-`, so moving the judge to
+ *  Opus 5.5 would have silently dropped every caller's effort cap on the API path. */
 function supportsAdaptiveThinking(model: string): boolean {
-  return model.startsWith('claude-opus-4-') || model.startsWith('claude-sonnet-5')
+  return /^claude-(opus-(4-[6-9]|5)|sonnet-5|haiku-5|fable-)/.test(model)
 }
 
-/** CLI model aliases. The `claude` CLI takes short names, not full model ids. */
-function cliAlias(model: string): string {
-  if (model.startsWith('claude-haiku')) return 'haiku'
-  if (model.startsWith('claude-sonnet')) return 'sonnet'
-  return 'opus'
+/**
+ * The model's safety filter declined the request. Not a transport failure:
+ * asking again sends the same text to the same filter, so callers must not
+ * retry it. The CLI reports it on stdout ("Opus 5's safeguards flagged this
+ * message …", exit 1); the API returns HTTP 200 with `stop_reason: "refusal"`.
+ * The filter is broad ("can sometimes flag legitimate biology tasks", in its
+ * own words): one dedup pair failed consolidate job 652e4ec4 on every retry
+ * through the night of 2026-10-12.
+ */
+export class ModelRefusalError extends Error {
+  constructor(model: string, detail: string) {
+    super(`${model} declined (safety filter): ${detail.slice(0, 200)}`)
+    this.name = 'ModelRefusalError'
+  }
 }
+
+const CLI_REFUSAL = /safeguards flagged this message|violates? our Usage Policy/i
 
 type Backend = 'api' | 'claude-code'
 function backend(): Backend {
@@ -134,7 +153,8 @@ function claudeCodeText(
   system: string,
   user: string,
   model: string,
-  effort?: Effort
+  effort?: Effort,
+  noThinking = false
 ): Promise<string> {
   // The CLI must bill the claude.ai login, never the API key. `.env.local`
   // carries ANTHROPIC_API_KEY for the `api` backend, and a spawned CLI that sees
@@ -148,6 +168,10 @@ function claudeCodeText(
   delete env.ANTHROPIC_AUTH_TOKEN
   delete env.CLAUDECODE
   delete env.CLAUDE_CODE_ENTRYPOINT
+  // The CLI lets Haiku 4.5 think before answering by default, which more than doubles a short
+  // mechanical call (measured 2026-10-12: 6-7 s -> 3 s on an enrich-merge rewrite). A caller that
+  // knows its task needs no reasoning opts out; the API backend never thinks on Haiku 4.5.
+  if (noThinking) env.MAX_THINKING_TOKENS = '0'
 
   // Pause BEFORE the subscription window is full (or while it is known to be),
   // instead of spawning a call that will fail. Nothing is spawned or counted:
@@ -163,7 +187,10 @@ function claudeCodeText(
       'claude',
       [
         '-p',
-        '--model', cliAlias(model),
+        // The exact id, never an alias: `opus` resolves to whatever the CLI calls
+        // Opus today (see the header). Verified 2026-10-12 that the CLI accepts
+        // `claude-opus-5-5` and `claude-haiku-4-5` and reports them back as such.
+        '--model', model,
         ...(effort ? ['--effort', effort] : []),
         // A BARE session, on purpose. Without these four flags every call loads
         // the developer's whole Claude Code setup: every MCP server, every
@@ -230,6 +257,10 @@ function claudeCodeText(
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
           cliStats.lastError = detail
+          if (CLI_REFUSAL.test(`${stdout ?? ''}\n${stderr ?? ''}`)) {
+            reject(new ModelRefusalError(model, detail))
+            return
+          }
           // "You've hit your session limit · resets 12:40am (America/Detroit)" is
           // not a failed call to retry: tell the caller to stop until it resets.
           const limit = parseUsageLimit(`${detail}\n${stdout ?? ''}\n${stderrSignal}`)
@@ -239,7 +270,7 @@ function claudeCodeText(
             reject(limitErr)
             return
           }
-          reject(new Error(`claude CLI failed (${cliAlias(model)}): ${detail}`))
+          reject(new Error(`claude CLI failed (${model}): ${detail}`))
           return
         }
         if (legacy) {
@@ -250,7 +281,7 @@ function claudeCodeText(
           cliStats.failures++
           cliStats.lastErrorAt = new Date().toISOString()
           cliStats.lastError = 'no result event in CLI output'
-          reject(new Error(`claude CLI failed (${cliAlias(model)}): no result event in CLI output`))
+          reject(new Error(`claude CLI failed (${model}): no result event in CLI output`))
           return
         }
         resolve(stream.text)
@@ -270,11 +301,11 @@ function claudeCodeText(
     // message. Any other stdin error is surfaced.
     child.stdin?.on('error', (err: NodeJS.ErrnoException) => {
       if (err.code === 'EPIPE') return
-      reject(new Error(`claude CLI stdin failed (${cliAlias(model)}): ${err.code ?? err.message}`))
+      reject(new Error(`claude CLI stdin failed (${model}): ${err.code ?? err.message}`))
     })
     // Likewise a spawn failure (binary missing, fork limit) arrives as an event.
     child.on('error', (err: NodeJS.ErrnoException) => {
-      reject(new Error(`claude CLI could not run (${cliAlias(model)}): ${err.code ?? err.message}`))
+      reject(new Error(`claude CLI could not run (${model}): ${err.code ?? err.message}`))
     })
     child.stdin?.end(user)
   })
@@ -305,8 +336,12 @@ async function apiText(
     if (effort) params.output_config = { effort }
   }
 
-  const msg = await getAnthropic().messages.create(params as never)
-  return (msg as Anthropic.Message).content
+  const msg = (await getAnthropic().messages.create(params as never)) as Anthropic.Message
+  if (msg.stop_reason === 'refusal') {
+    const d = msg.stop_details
+    throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
+  }
+  return msg.content
     .filter((b): b is Anthropic.TextBlock => b.type === 'text')
     .map(b => b.text)
     .join('\n')
@@ -321,9 +356,10 @@ export async function claudeJson<T>(
   user: string,
   maxTokens = 8000,
   model: string = CLAUDE_MODEL,
-  effort?: Effort
+  effort?: Effort,
+  opts: { noThinking?: boolean } = {}
 ): Promise<T> {
-  const text = await claudeText(system, user, maxTokens, model, effort)
+  const text = await claudeText(system, user, maxTokens, model, effort, opts.noThinking)
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T
 }
@@ -349,21 +385,25 @@ async function claudeText(
   user: string,
   maxTokens: number,
   model: string,
-  effort?: Effort
+  effort?: Effort,
+  noThinking = false
 ): Promise<string> {
   if (backend() !== 'claude-code') {
     return apiText(system, user, maxTokens, model, effort)
   }
   try {
-    return await claudeCodeText(system, user, model, effort)
+    return await claudeCodeText(system, user, model, effort, noThinking)
   } catch (cliErr) {
+    // The API runs the same model behind the same filter, so a refusal would
+    // only be refused again, on credit.
+    if (cliErr instanceof ModelRefusalError) throw cliErr
     // A full (or nearly full) subscription window is a reason to WAIT, not to
     // spend API credit: never fall back for it.
     if (cliErr instanceof UsageLimitError) throw cliErr
     const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
     if (!fallbackEnabled) throw cliErr
     console.warn(
-      `[llm] claude-code CLI failed (${cliAlias(model)}); falling back to api backend: ` +
+      `[llm] claude-code CLI failed (${model}); falling back to api backend: ` +
         `${cliErr instanceof Error ? cliErr.message : String(cliErr)}`
     )
     return apiText(system, user, maxTokens, model, effort)

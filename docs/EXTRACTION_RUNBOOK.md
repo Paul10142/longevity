@@ -157,3 +157,27 @@ is idling: if the log shows `0 source(s) left`, no job is `running` in the
 database, no `claude -p` child of the run is alive, and the last write is older
 than 15 minutes, the work is done: stop only that run's own process tree
 (SIGTERM), confirm the lock is gone, set the monitor to `finished`, then report.
+
+## 8. How long an episode takes (2026-10-12)
+
+Measured from `pipeline_runs` on the 2026-10-12 run (ten finished sources, 89–244 facts each):
+
+| stage | per episode | per fact |
+|---|---|---|
+| extraction (16 chunks at once) | ≈ 8 min | – |
+| consolidation (search, judge, merge, enrich-merge rewrite) | ≈ 17–30 min | 5–17 s |
+
+Consolidation is the larger half. Per fact the judge call is ≈ 4 s (about 40% of facts reach it) and the
+enrich-merge rewrite ≈ 20 s (about 64% of merges). Since the speed-up (`docs/judge-speedup.md`):
+
+- `CONSOLIDATION_JUDGE_CONCURRENCY` (default 4): the judge reads up to four of one source's facts at once;
+  writes stay in order and an early verdict is used only if the candidate list is unchanged. 1 = the old loop.
+- `ENRICH_NO_THINKING=1` (default OFF — Paul's call): the rewrite call skips the CLI's thinking pass,
+  ≈ 20 s → 2.5 s per call.
+- Each consolidated source now logs `[consolidate] source …: N fact(s) in Ts = X s/fact (judge concurrency 4;
+  judged J, early verdict reused R, re-judged S, no candidates U)`. **Read those lines in the run report** — they are
+  the first real end-to-end measurement of the speed-up; a `re-judged` share far above ~9% means facts from one source
+  keep landing next to each other and the window should be lowered.
+- Not worth doing (measured, `docs/judge-speedup.md`): a lower judge effort setting, fewer candidates, skipping the
+  judge on very similar pairs.
+

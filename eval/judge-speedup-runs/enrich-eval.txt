@@ -1,0 +1,12 @@
+60 pairs (1 with a failed call, excluded)
+seconds per call: as shipped 19.7  →  no thinking 2.5
+outcome (enriched / no change / rejected by guard): shipped 59/0/0   no thinking 58/0/1
+rewrites that drop a number a member carried: shipped 0   no thinking 1
+identical text: 4/59;  mean word overlap 0.83
+mean length (chars): shipped 390  no thinking 394
+detail coverage (share of the members' distinctive words kept): shipped 0.861  no thinking 0.859
+  pairs where no-thinking keeps >=10 points less: 8/59;  keeps >=10 points more: 6/59
+
+MOST DIFFERENT PAIRS:
+
+merge:2c439820-32e5-4927-b9d0-a73fba910c2f  overlap 0.52

@@ -1,0 +1,12 @@
+If a pair whose BEST candidate scores >= S were merged into that candidate with no judge call,
+how often would that match what the judge actually decided? (offline, from the recorded baseline)
+
+   S    pairs  judge: merge→#1   merge→other   kept apart   rule would be wrong  share of all pairs
+0.84      42             34             2            6               8        14.9%
+0.86      33             28             2            3               5        11.7%
+0.88      20             18             1            1               2         7.1%
+0.90       9              9             0            0               0         3.2%
+0.92       5              5             0            0               0         1.8%
+0.94       3              3             0            0               0         1.1%
+
+rank of the candidate the judge merged into (239 merges): #1:213  #2:16  #3:4  #4:3  #5:0  #6:1  #7:1  #8:1

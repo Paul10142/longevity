@@ -2,12 +2,22 @@
  * Consolidation stage (v2): raw_insights → claims via semantic dedup.
  *
  * For each raw insight not yet attached to a claim:
- *   1. ANN search over claims.embedding (match_claims RPC).
+ *   1. ANN search over claim_embeddings (match_claims RPC).
  *   2. No candidate above the floor → create a new claim (seed).
  *   3. Candidates → one LLM adjudication call (SAME / DIFFERENT / UNSURE).
- *      - SAME, high confidence  → attach as a member (auto-merge).
- *      - DIFFERENT               → create a new claim.
- *      - UNSURE / low-confidence → create a new claim + queue a merge_review.
+ *      - SAME at or above AUTO_MERGE_CONFIDENCE → attach as a member (auto-merge).
+ *      - anything else → create a new claim, linked `near_duplicate` to the
+ *        candidate, the verdict written on the link's `note` (verdictNote()).
+ *
+ * No merge_review is ever filed (Paul, 2026-10-12). Until then a SAME verdict
+ * below the bar, and every UNSURE, filed one for him to read: 143 in a single
+ * six-hour run, 348 pending. His own decisions on the sub-0.80 ones were 17
+ * accepted / 36 rejected, and no confidence level separates the two (0.70–0.72:
+ * 13/18; 0.75–0.78: 4/13), so the queue cost his time without a bar that could
+ * shrink it. Those pairs now stay apart, and a later second-opinion pass finds
+ * them by the link note: `judge:SAME@…`, `judge:UNSURE@…`, `judge:REFUSED`.
+ * The same rule holds in sweepClaims. pairAction() is the rule; tests/
+ * consolidationRule.test.ts pins it.
  *
  * Raw insights are never mutated. Claims aggregate their members. Wrong
  * merges are reversible (detach a member). A periodic claim_sweep catches
@@ -18,15 +28,16 @@
 import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
-import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { claudeJson, CLAUDE_JUDGMENT_MODEL, ModelRefusalError, type Effort } from './llm'
 import { rethrowIfUsageLimit } from './usageLimit'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 import { selectAllPaged } from './pagination'
 import { generateEmbedding, insightEmbeddingText } from './embeddings'
+import { runOrdered } from './judgePipeline'
 
-// Judgment tier: deciding whether two claims are the same is the call that
-// determines whether the library deduplicates correctly.
+// Judgment tier (Opus 5.5): deciding whether two claims are the same is the call
+// that determines whether the library deduplicates correctly.
 const ADJUDICATION_MODEL = CLAUDE_JUDGMENT_MODEL
 
 // Similarity floor for ANN candidates (cosine). Below this, no LLM call — so an
@@ -69,8 +80,10 @@ const CANDIDATE_COUNT = envInt('CONSOLIDATION_CANDIDATE_COUNT', 8)
 // The evidence: every one of the 145 reviews parked under the old bar was a SAME
 // verdict, 83 of them clustered at 0.82–0.83 — they failed a threshold, not a
 // judgement. Accepting that band produced 77 merges with 0 failures and visibly
-// richer canonicals. Below ~0.80 the verdicts are genuinely uncertain (0.60–0.78)
-// and still go to review, which is where human attention belongs.
+// richer canonicals. Below ~0.80 the verdicts are genuinely uncertain (0.60–0.78).
+//
+// Since 2026-10-12 "below the bar" means kept separate with a recorded verdict,
+// not a review (see the header). The bar itself did not move.
 export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE', 0.8)
 // Claim-vs-claim floor for the periodic sweep. Was 0.86 — "stricter than
 // ingestion, since these are already-canonical claims" — which defeated the
@@ -80,6 +93,20 @@ export const AUTO_MERGE_CONFIDENCE = envNum('CONSOLIDATION_AUTO_MERGE_CONFIDENCE
 // At 0.86 nothing is left to find: the 2026-08-15 full sweep produced 14 merges
 // in 11,502 claims. Same floor as ingestion from 2026-10-11.
 const SWEEP_THRESHOLD = envNum('SWEEP_THRESHOLD', 0.70)
+
+// How many of ONE source's facts the judge reads at once (lib/judgePipeline.ts).
+// Writes still land in order and a verdict is reused only if the candidate list is
+// unchanged by the writes ahead of it, so this changes speed, not decisions.
+// 1 = the original one-at-a-time loop. Default 4: 3.2x on the judge stage alone, and
+// tests/judgePipeline.test.ts shows the writes and the lists the judge sees are the
+// sequential loop's (docs/judge-speedup.md).
+const JUDGE_CONCURRENCY = envInt('CONSOLIDATION_JUDGE_CONCURRENCY', 4)
+// A call started this close to the end of a tick would not finish inside it.
+const JUDGE_LAUNCH_MARGIN_MS = envInt('CONSOLIDATION_JUDGE_LAUNCH_MARGIN_MS', 45_000)
+// Reasoning depth for the judge's calls. Unset = the CLI/API default, which is what
+// every verdict on file was made at. Lower values are faster; scripts/evalJudgeSpeedup.ts
+// measures what they change before one is made the default.
+const JUDGE_EFFORT = envEffort('CONSOLIDATION_JUDGE_EFFORT')
 
 /** PostgREST returns a one-to-one embed as an object; some client versions wrap it
  *  in a one-element array. Either way, hand back the vector or null. */
@@ -94,6 +121,11 @@ function envNum(name: string, def: number): number {
   if (raw == null || raw.trim() === '') return def
   const n = Number(raw)
   return Number.isFinite(n) ? n : def
+}
+/** Read a reasoning-effort level from env; unset or unrecognised = no cap. */
+function envEffort(name: string): Effort | undefined {
+  const raw = process.env[name]?.trim().toLowerCase()
+  return raw === 'low' || raw === 'medium' || raw === 'high' || raw === 'xhigh' || raw === 'max' ? raw : undefined
 }
 /** Read a positive integer from env, falling back to `def`. */
 function envInt(name: string, def: number): number {
@@ -134,7 +166,7 @@ function db() {
 
 export type Candidate = { id: string; canonical_statement: string; context_note: string | null; similarity: number }
 
-type Adjudication = {
+export type Adjudication = {
   verdict: 'SAME' | 'DIFFERENT' | 'UNSURE'
   candidate_index: number | null // 1-based index into the candidate list, or null
   confidence: number
@@ -153,7 +185,12 @@ type Adjudication = {
 // canonical to carry every detail when `enrich` is flagged.
 const ADJUDICATION_SYSTEM = ADJUDICATION_V3
 
-export async function adjudicate(rawStatement: string, candidates: Candidate[]): Promise<Adjudication> {
+export async function adjudicate(
+  rawStatement: string,
+  candidates: Candidate[],
+  opts: { effort?: Effort } = {}
+): Promise<Adjudication> {
+  const effort = opts.effort ?? JUDGE_EFFORT
   const list = candidates
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
@@ -166,7 +203,7 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
   for (let attempt = 0; attempt <= 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
     try {
-      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL)
+      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL, effort)
       const verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
       return {
         verdict,
@@ -178,6 +215,9 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
         reasoning: parsed.reasoning ?? '',
       }
     } catch (err) {
+      // A safety-filter refusal is an answer about the text, not an outage:
+      // retrying re-sends the same text to the same filter. Callers decide.
+      if (err instanceof ModelRefusalError) throw err
       // A full usage window is not a verdict and retrying cannot help: let the
       // worker defer the job (no attempt spent) until the window reopens.
       rethrowIfUsageLimit(err)
@@ -198,6 +238,47 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
   throw new AdjudicationUnavailableError(lastErr)
 }
 
+/** A verdict as the pipeline acts on it: the adjudicator's, or REFUSED when the
+ *  model's safety filter declined the pair. */
+export type PairVerdict =
+  | Adjudication
+  | { verdict: 'REFUSED'; candidate_index: null; confidence: 0; enrich: false; reasoning: string }
+
+/**
+ * The merge rule, for both paths. Merge only a SAME at or above the auto-merge
+ * bar; everything else — SAME below it, UNSURE, DIFFERENT, REFUSED — keeps the
+ * two claims apart. There is no third outcome: nothing goes to human review.
+ * UNSURE is treated like a low-confidence SAME by Paul's call (2026-10-12):
+ * it is by definition less certain, and the V3 judge has never yet returned a
+ * real one (the 34 UNSURE reviews on file were all checker-outage placeholders).
+ */
+export function pairAction(v: Pick<PairVerdict, 'verdict' | 'confidence'>): 'merge' | 'keep_separate' {
+  return v.verdict === 'SAME' && v.confidence >= AUTO_MERGE_CONFIDENCE ? 'merge' : 'keep_separate'
+}
+
+/** The verdict as written on the pair's claim_links.note, so a second-opinion
+ *  pass can select it (`note like 'judge:SAME@%'`) without a review table. */
+export function verdictNote(v: Pick<PairVerdict, 'verdict' | 'confidence'>): string {
+  return v.verdict === 'REFUSED' ? 'judge:REFUSED' : `judge:${v.verdict}@${v.confidence.toFixed(2)}`
+}
+
+/**
+ * adjudicate() for the two pipeline paths: a safety-filter refusal on ONE pair
+ * becomes a REFUSED verdict (kept separate, logged) instead of an error. Before
+ * 2026-10-12 it threw, the whole consolidate job failed, and every retry hit the
+ * same pair again — job 652e4ec4 failed this way on every attempt overnight.
+ * Every other failure still throws, so an outage is never read as a verdict.
+ */
+async function judgePair(statement: string, candidates: Candidate[], label: string): Promise<PairVerdict> {
+  try {
+    return await adjudicate(statement, candidates)
+  } catch (err) {
+    if (!(err instanceof ModelRefusalError)) throw err
+    console.warn(`[consolidate] safety filter declined ${label}; kept separate. ${err.message}`)
+    return { verdict: 'REFUSED', candidate_index: null, confidence: 0, enrich: false, reasoning: err.message }
+  }
+}
+
 /**
  * Record that two claims are variants of one idea (spec §6, table from migration
  * 013). Called when adjudication keeps a close pair SEPARATE — the split is
@@ -208,13 +289,18 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
  * tally. Never fatal — a missing link degrades a metric, it does not corrupt the
  * corpus, so a failure here must not abort a source's consolidation.
  */
-export async function linkNearDuplicate(a: string, b: string, similarity: number | null): Promise<void> {
+export async function linkNearDuplicate(
+  a: string,
+  b: string,
+  similarity: number | null,
+  note: string | null = null
+): Promise<void> {
   if (a === b) return
   const [lo, hi] = a < b ? [a, b] : [b, a]
   const { error } = await db()
     .from('claim_links')
     .upsert(
-      { claim_id: lo, related_claim_id: hi, kind: 'near_duplicate', similarity },
+      { claim_id: lo, related_claim_id: hi, kind: 'near_duplicate', similarity, note },
       { onConflict: 'claim_id,related_claim_id,kind', ignoreDuplicates: true }
     )
   if (error) console.warn(`[consolidate] near-duplicate link failed (${lo}→${hi}): ${error.message}`)
@@ -563,7 +649,8 @@ export type SweepCheckpoint = {
  * Periodic claim-vs-claim sweep: catches near-duplicate claims that slipped
  * through (e.g. two sources consolidated concurrently each seeding their own
  * claim for the same idea). For each active claim, find higher-similarity
- * peers; adjudicate; auto-merge SAME/high-confidence, queue the rest for review.
+ * peers; adjudicate; auto-merge SAME/high-confidence; record the rest on a
+ * near_duplicate link (pairAction / verdictNote — no reviews since 2026-10-12).
  * Bounded per invocation by `timeBudgetMs`; idempotent (merged claims drop out).
  *
  * **Checkpoint-resumable.** A single tick rarely sweeps the whole corpus, so it
@@ -644,33 +731,22 @@ export async function sweepClaims(
     const peers = ((candData ?? []) as Candidate[]).filter(c => c.id !== claim.id && !merged.has(c.id))
     if (peers.length === 0) continue
 
-    const verdict = await adjudicate(claim.canonical_statement, peers)
+    const verdict = await judgePair(claim.canonical_statement, peers, `sweep of claim ${claim.id}`)
     const chosen =
       verdict.candidate_index && verdict.candidate_index >= 1 && verdict.candidate_index <= peers.length
         ? peers[verdict.candidate_index - 1]
         : peers[0]
 
-    if (verdict.verdict === 'SAME' && verdict.confidence >= AUTO_MERGE_CONFIDENCE) {
+    if (pairAction(verdict) === 'merge') {
       // Keep the older claim (loaded first) as the winner.
       await mergeClaims(chosen.id, claim.id)
       merged.add(chosen.id)
-    } else if (verdict.verdict === 'UNSURE') {
-      // Only queue if not already under review.
-      const { data: existing } = await db()
-        .from('merge_reviews')
-        .select('id')
-        .or(`and(claim_id.eq.${chosen.id},candidate_claim_id.eq.${claim.id}),and(claim_id.eq.${claim.id},candidate_claim_id.eq.${chosen.id})`)
-        .limit(1)
-      if (!existing || existing.length === 0) {
-        await db().from('merge_reviews').insert({
-          claim_id: chosen.id,
-          candidate_claim_id: claim.id,
-          similarity: chosen.similarity,
-          model_verdict: verdict.verdict,
-          model_confidence: verdict.confidence,
-          model_reasoning: verdict.reasoning,
-        })
-      }
+    } else if (verdict.verdict !== 'DIFFERENT') {
+      // Low-confidence SAME, UNSURE, or REFUSED: both claims already exist, so
+      // keeping them apart costs nothing — record the verdict for a second
+      // opinion instead of filing a review (until 2026-10-12, UNSURE filed one).
+      // A DIFFERENT pair is left unlinked here, as it always was in the sweep.
+      await linkNearDuplicate(chosen.id, claim.id, chosen.similarity, verdictNote(verdict))
     }
     await onProgress(processed, total, priorMerged + merged.size)
   }
@@ -682,7 +758,10 @@ export type ConsolidateCheckpoint = {
   processed: number
   total: number
   claims_created: number
-  reviews_queued: number
+  // Pairs kept apart on a low-confidence SAME or an UNSURE (no longer reviewed).
+  kept_separate: number
+  // Pairs the model's safety filter declined; kept apart, logged.
+  refused: number
   run_id?: string | null
 }
 
@@ -743,22 +822,16 @@ export async function consolidateSource(
     processed: checkpoint?.processed ?? 0,
     total: (checkpoint?.processed ?? 0) + pending.length,
     claims_created: checkpoint?.claims_created ?? 0,
-    reviews_queued: checkpoint?.reviews_queued ?? 0,
+    kept_separate: checkpoint?.kept_separate ?? 0,
+    refused: checkpoint?.refused ?? 0,
     run_id: runId,
   }
 
-  for (let i = 0; i < pending.length; i++) {
-    if (Date.now() - started > timeBudgetMs) {
-      return { done: false, checkpoint: { ...cp } }
-    }
-    const raw = pending[i]
-    if (!raw.embedding) {
-      // Should not happen (extraction embeds inline), but skip defensively.
-      cp = { ...cp, processed: cp.processed + 1 }
-      await onProgress(cp)
-      continue
-    }
-
+  // Search and judge may run ahead (CONSOLIDATION_JUDGE_CONCURRENCY); the writes
+  // below run strictly in order, each after every earlier write has landed, and a
+  // verdict is used only if the candidate list is the one it was judged on.
+  const search = async (raw: RawInsight): Promise<Candidate[] | null> => {
+    if (!raw.embedding) return null // Should not happen (extraction embeds inline); skipped below.
     const { data: candData, error: candErr } = await db().rpc('match_claims', {
       query_embedding: raw.embedding,
       match_threshold: CANDIDATE_THRESHOLD,
@@ -771,55 +844,73 @@ export async function consolidateSource(
     // 8 s statement timeout (pg_stat_statements), so this was a live path. Throw:
     // the job fails, backs off, and resumes from this same insight.
     if (candErr) throw new Error(`match_claims failed for insight ${raw.id}: ${candErr.message}`)
-    const candidates = (candData ?? []) as Candidate[]
-
-    if (candidates.length === 0) {
-      await createClaimFromRaw(raw)
-      cp = { ...cp, claims_created: cp.claims_created + 1 }
-    } else {
-      const verdict = await adjudicate(raw.statement, candidates)
-      const chosen =
-        verdict.candidate_index && verdict.candidate_index >= 1 && verdict.candidate_index <= candidates.length
-          ? candidates[verdict.candidate_index - 1]
-          : candidates[0]
-
-      if (verdict.verdict === 'SAME' && verdict.confidence >= AUTO_MERGE_CONFIDENCE) {
-        await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
-      } else if (verdict.verdict === 'DIFFERENT') {
-        const newClaimId = await createClaimFromRaw(raw)
-        cp = { ...cp, claims_created: cp.claims_created + 1 }
-        // Kept separate, but they were close enough for ANN to pair them and the
-        // V3 prompt splits ONLY on genuine contradiction or a material
-        // difference — so this is a variant of an existing idea, not new ground.
-        // Record it (spec §6 "F3 fix"). Without the link the relationship is
-        // lost: a reader loses the "these are variants" structure, and the
-        // novelty metric (§9) can only ever see exact merges, under-reporting
-        // refinements — which are the engine's actual value.
-        await linkNearDuplicate(newClaimId, chosen.id, chosen.similarity)
-      } else {
-        // UNSURE, or SAME below the auto-merge bar → provisional claim + review.
-        const newClaimId = await createClaimFromRaw(raw)
-        cp = { ...cp, claims_created: cp.claims_created + 1 }
-        await db().from('merge_reviews').insert({
-          claim_id: newClaimId,
-          candidate_claim_id: chosen.id,
-          similarity: chosen.similarity,
-          model_verdict: verdict.verdict,
-          model_confidence: verdict.confidence,
-          model_reasoning: verdict.reasoning,
-        })
-        cp = { ...cp, reviews_queued: cp.reviews_queued + 1 }
-      }
-    }
-
-    cp = { ...cp, processed: cp.processed + 1 }
-    await onProgress(cp)
+    return (candData ?? []) as Candidate[]
   }
+
+  const tickStart = Date.now()
+  const { applied, stats } = await runOrdered<RawInsight, Candidate, PairVerdict>(pending, {
+    concurrency: JUDGE_CONCURRENCY,
+    outOfTime: () => Date.now() - started > timeBudgetMs,
+    canLaunch: () => Date.now() - started < timeBudgetMs - JUDGE_LAUNCH_MARGIN_MS,
+    search,
+    judge: (raw, candidates) => judgePair(raw.statement, candidates, `insight ${raw.id}`),
+    apply: async (raw, candidates, verdict) => {
+      if (candidates === null) {
+        cp = { ...cp, processed: cp.processed + 1 }
+        await onProgress(cp)
+        return
+      }
+      if (candidates.length === 0 || !verdict) {
+        await createClaimFromRaw(raw)
+        cp = { ...cp, claims_created: cp.claims_created + 1 }
+      } else {
+        const chosen =
+          verdict.candidate_index && verdict.candidate_index >= 1 && verdict.candidate_index <= candidates.length
+            ? candidates[verdict.candidate_index - 1]
+            : candidates[0]
+
+        if (pairAction(verdict) === 'merge') {
+          await attachMember(chosen.id, raw, verdict.confidence, 'auto', { enrich: verdict.enrich })
+        } else {
+          const newClaimId = await createClaimFromRaw(raw)
+          cp = { ...cp, claims_created: cp.claims_created + 1 }
+          // Kept separate, but they were close enough for ANN to pair them and the
+          // V3 prompt splits ONLY on genuine contradiction or a material
+          // difference — so this is a variant of an existing idea, not new ground.
+          // Record it (spec §6 "F3 fix"). Without the link the relationship is
+          // lost: a reader loses the "these are variants" structure, and the
+          // novelty metric (§9) can only ever see exact merges, under-reporting
+          // refinements — which are the engine's actual value. The note carries
+          // the verdict, so the low-confidence SAME / UNSURE / REFUSED pairs that
+          // used to become merge_reviews can be found for a second opinion.
+          await linkNearDuplicate(newClaimId, chosen.id, chosen.similarity, verdictNote(verdict))
+          if (verdict.verdict === 'REFUSED') cp = { ...cp, refused: cp.refused + 1 }
+          else if (verdict.verdict !== 'DIFFERENT') cp = { ...cp, kept_separate: cp.kept_separate + 1 }
+        }
+      }
+      cp = { ...cp, processed: cp.processed + 1 }
+      await onProgress(cp)
+    },
+  })
+  // The measured cost per fact, in the log, so the speed of a real run is read from the run
+  // and not estimated: `reused` early verdicts kept, `stale` ones re-judged because a write
+  // ahead of them changed the candidate list.
+  if (applied > 0) {
+    const secs = (Date.now() - tickStart) / 1000
+    console.log(
+      `[consolidate] source ${sourceId.slice(0, 8)}: ${applied} fact(s) in ${secs.toFixed(0)}s = ${(secs / applied).toFixed(1)} s/fact ` +
+        `(judge concurrency ${JUDGE_CONCURRENCY}; judged ${stats.judged}, early verdict reused ${stats.reused}, re-judged ${stats.stale}, no candidates ${stats.unjudged})`
+    )
+  }
+  // Out of time before the end: yield, and the next tick resumes from what is
+  // still unconsolidated.
+  if (applied < pending.length) return { done: false, checkpoint: { ...cp } }
 
   await finishRun(runId, {
     processed: cp.processed,
     claims_created: cp.claims_created,
-    reviews_queued: cp.reviews_queued,
+    kept_separate: cp.kept_separate,
+    refused: cp.refused,
   })
 
   return { done: true, checkpoint: cp }

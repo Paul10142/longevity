@@ -50,6 +50,12 @@ export const ENRICH_MERGE_ENABLED = process.env.ENRICH_MERGE !== '0'
 /** Mechanical-synthesis tier (Haiku): merge-fidelity is assembly, not prose. */
 export const ENRICH_MODEL = CLAUDE_BULK_MODEL
 
+/** Skip the CLI's default thinking pass on the rewrite call (`ENRICH_NO_THINKING=1`). Off by
+ *  default: it changes how long the model deliberates, not what it is asked, but the text it
+ *  returns is what future merges are judged against, so it ships off until
+ *  scripts/evalEnrichSpeedup.ts has shown the rewrites keep every detail. */
+export const ENRICH_NO_THINKING = process.env.ENRICH_NO_THINKING === '1'
+
 export type EnrichResult = {
   /** The canonical to persist — the rewrite when it passed, else the prior one. */
   canonical: string
@@ -106,7 +112,7 @@ export function fidelityCheck(
 export async function synthesizeEnrichedCanonical(
   priorCanonical: string,
   memberStatements: string[],
-  opts?: { memberQuotes?: string[]; model?: string }
+  opts?: { memberQuotes?: string[]; model?: string; noThinking?: boolean }
 ): Promise<EnrichResult> {
   const members = memberStatements.map(s => s.trim()).filter(Boolean)
   // Grounding for the guard: member statements + prior canonical (itself
@@ -128,7 +134,9 @@ export async function synthesizeEnrichedCanonical(
       ENRICH_SYNTHESIS_SYSTEM,
       user,
       2000,
-      opts?.model ?? ENRICH_MODEL
+      opts?.model ?? ENRICH_MODEL,
+      undefined,
+      { noThinking: opts?.noThinking ?? ENRICH_NO_THINKING }
     )
     proposed = (parsed.canonical ?? '').trim()
   } catch (err) {
