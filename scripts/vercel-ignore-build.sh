@@ -19,7 +19,8 @@ if ! git cat-file -e "$prev^{commit}" 2>/dev/null; then
   git cat-file -e "$prev^{commit}" 2>/dev/null || exit 1
 fi
 
-changed=$(git diff --name-only "$prev" HEAD) || exit 1
+# --no-renames: a move lists both paths, so moving a site file into docs/ builds.
+changed=$(git diff --no-renames --name-only "$prev" HEAD) || exit 1
 # Nothing changed = a deliberate redeploy (e.g. to pick up an env var): build.
 [ -n "$changed" ] || exit 1
 
