@@ -1,5 +1,7 @@
 import { createHash } from 'node:crypto'
 
+import { ASSUMED_BITRATE_BPS, estimateHours } from './deepgramBudget'
+
 /**
  * Podcast RSS reading, shared by the audio downloader and the source ingest.
  *
@@ -166,14 +168,60 @@ export function parseFeed(xml: string, prefix: string): Episode[] {
  * Total audio across a feed. Must NOT come from <itunes:duration> alone — see
  * parseDuration. Falls back to enclosure bytes at the observed constant bitrate,
  * which every item has, and reports how much was estimated so a caller can say
- * which figure is measured and which inferred.
+ * which figure is measured and which inferred. The per-episode rule itself is
+ * `estimateHours` in deepgramBudget.ts, so the downloader's credit plan and
+ * this total can never disagree about an episode's length.
  */
-export function totalHours(eps: Episode[], bitrateBps = 128_000): { hours: number; estimated: number } {
-  let secs = 0
+export function totalHours(eps: Episode[], bitrateBps = ASSUMED_BITRATE_BPS): { hours: number; estimated: number } {
+  let hours = 0
   let estimated = 0
   for (const e of eps) {
-    if (e.duration_seconds) secs += e.duration_seconds
-    else if (e.audio_bytes) { secs += (e.audio_bytes * 8) / bitrateBps; estimated++ }
+    const est = estimateHours(e, bitrateBps)
+    if (!est) continue
+    hours += est.hours
+    if (est.estimated) estimated++
   }
-  return { hours: secs / 3600, estimated }
+  return { hours, estimated }
+}
+
+/**
+ * A `--keys` file: one join key per line (`attia-0239`), blank lines and
+ * `#` comments ignored, duplicates dropped (first occurrence wins). Order is
+ * kept because it is the download priority — the credit fit is greedy in it.
+ */
+export function parseKeyList(text: string): string[] {
+  const seen = new Set<string>()
+  const out: string[] = []
+  for (const raw of text.split(/\r?\n/)) {
+    const line = raw.replace(/#.*$/, '').trim()
+    if (!line) continue
+    // Accept a filename too: `attia-0239.mp3` and `attia-0239.deepgram.json`
+    // are the same key, and a list pasted from `ls` should just work.
+    const key = line.replace(/\.(mp3|m4a|wav)$/i, '').replace(/(\.[^.]+)?\.deepgram\.json$/i, '')
+    if (seen.has(key)) continue
+    seen.add(key)
+    out.push(key)
+  }
+  return out
+}
+
+/**
+ * Pick exactly the episodes whose keys are listed, in LIST order. Every key
+ * must exist — a typo that silently selected fewer episodes would look like a
+ * finished download — and the feed's keys must be unique, which `buildKey`
+ * guarantees and this re-asserts so a future feed change cannot alias two
+ * episodes onto one filename without anyone noticing.
+ */
+export function selectByKeys<T extends { key: string }>(episodes: T[], keys: string[]): T[] {
+  const byKey = new Map<string, T>()
+  for (const e of episodes) {
+    if (byKey.has(e.key)) throw new Error(`feed produced the key ${e.key} twice — refusing to select by key`)
+    byKey.set(e.key, e)
+  }
+  const missing = keys.filter(k => !byKey.has(k))
+  if (missing.length > 0) {
+    const shown = missing.slice(0, 10).join(', ')
+    throw new Error(`${missing.length} key(s) are not in the feed: ${shown}${missing.length > 10 ? ', …' : ''}`)
+  }
+  return keys.map(k => byKey.get(k)!)
 }

@@ -3,6 +3,11 @@
  *
  *   npx tsx --env-file=.env.local scripts/transcribeDeepgram.ts <file.mp3> [--out DIR]
  *   npx tsx --env-file=.env.local scripts/transcribeDeepgram.ts <dir-of-mp3s>
+ *   npx tsx --env-file=.env.local scripts/transcribeDeepgram.ts <dir-of-mp3s> --dry-run   # plan only, spends nothing
+ *
+ * Flags: --budget USD (cap, default 200) · --margin USD (kept unspent, default
+ * 0.25; `--margin 0` spends to the cent) · --model nova-3|nova-3-medical ·
+ * --keyterm "Name" (repeatable) · --out DIR · --dry-run.
  *
  * Why this and not the local route: MacWhisper's WhisperKit models advertise
  * speaker recognition but produced NO speaker field in any export style or
@@ -24,95 +29,41 @@
  * already a speaker-homogeneous span with clean boundaries, which is exactly the
  * unit the chunker wants. Word timings are dropped deliberately — they would
  * multiply file size ~20x for detail nothing downstream reads.
+ *
+ * BUDGET. The spend ledger, the real-balance lookup and the reconcile-from-disk
+ * step live in lib/deepgramSpend.ts (shared with the downloader's
+ * --fit-budget); the fit rule is lib/deepgramBudget.ts. Precedence is
+ * unchanged: the REAL balance wins when the key can read it, the ledger is the
+ * fallback, and spend at or past --budget stops the run before any request.
+ *
+ * SKIP, DON'T STOP. A file whose estimated cost would cross the budget is
+ * skipped and the walk continues, so the shorter episodes further down still
+ * get transcribed with what is left — "as the credit gets low, make the slice
+ * smaller so it can use all the existing credit". The run ends by listing what
+ * it skipped and the exact --budget that would cover it after a top-up. (The
+ * old behaviour stopped at the first unaffordable file and left credit unused.)
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
-import { readFile, writeFile, readdir, rename, stat } from 'node:fs/promises'
+import { readFile, writeFile, readdir, stat } from 'node:fs/promises'
 import { existsSync } from 'node:fs'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
+
+import {
+  DEEPGRAM_RATE_PER_HOUR,
+  DEFAULT_MARGIN_USD,
+  assessItem,
+  budgetToCover,
+  describeFit,
+  fitEpisodesToBudget,
+  hoursFromBytes,
+  type BudgetItem,
+} from '../lib/deepgramBudget'
+import { defaultLedgerPath, describeCredit, remainingCredit, writeLedger } from '../lib/deepgramSpend'
 
 const API = 'https://api.deepgram.com/v1/listen'
 
-/** $0.26/h nova-3 + $0.08/h keyterm prompting, pre-recorded pay-as-you-go. */
-const RATE_PER_HOUR = 0.34
-
-/**
- * Spend ledger. The API key issued for this project lacks `usage:read`, so the
- * real balance CANNOT be queried — this is a self-tracked ESTIMATE from audio
- * duration times the published rate, and it is only as right as that rate.
- * Verify against the Deepgram dashboard before trusting it near the limit.
- *
- * It is a FILE, not an in-memory counter, because the counter resets to zero
- * every time the script restarts — and a budget that forgets what it already
- * spent is not a budget. Appended after every success, so a crash loses at most
- * the last episode's record.
- *
- * ONE ledger for the whole account, NOT one per output folder. Spend is billed
- * per account, so a per-folder ledger hands every new folder a fresh $200 —
- * which is not a cap, it is a cap-shaped decoration. Lives next to the repo by
- * default; override with DEEPGRAM_LEDGER when transcribing for a different
- * account.
- */
-type LedgerEntry = { key: string; model: string; hours: number; est_usd: number; at: string }
-
-/** Write atomically. A plain writeFile that is killed mid-flush leaves a
- *  0-byte file, and a 0-byte ledger is an unreadable ledger — which halts the
- *  next run. Observed exactly that on 2026-08-24 when the run was interrupted.
- *  Temp-then-rename makes the swap atomic, so the ledger is always either the
- *  previous good version or the new one. */
-async function writeLedger(file: string, entries: LedgerEntry[]): Promise<void> {
-  const tmp = `${file}.tmp`
-  await writeFile(tmp, JSON.stringify(entries, null, 2))
-  await rename(tmp, file)
-}
-
-/**
- * Ask Deepgram for the real remaining credit. Preferred over the ledger, which
- * is only an estimate of duration x published rate and has already drifted from
- * reality once (it read $3.31 against a charged $6.26).
- *
- * Returns null when the key lacks the scope — the first key issued for this
- * project could not read usage at all — so the caller falls back to the ledger
- * rather than treating "cannot read" as "nothing left" or "plenty left". Both
- * of those failure modes are worse than an estimate: one halts a funded run,
- * the other spends past the cap.
- */
-async function fetchRealBalance(key: string): Promise<{ balance: number; project: string } | null> {
-  try {
-    const pRes = await fetch('https://api.deepgram.com/v1/projects', {
-      headers: { Authorization: `Token ${key}` },
-    })
-    if (!pRes.ok) return null
-    const projects = (await pRes.json())?.projects ?? []
-    if (projects.length === 0) return null
-    const project = projects[0].project_id as string
-
-    const bRes = await fetch(`https://api.deepgram.com/v1/projects/${project}/balances`, {
-      headers: { Authorization: `Token ${key}` },
-    })
-    if (!bRes.ok) return null
-    const balances = (await bRes.json())?.balances ?? []
-    if (balances.length === 0) return null
-    // Sum every balance: an account can hold more than one (promotional credit
-    // alongside pay-as-you-go).
-    const total = balances.reduce((sum: number, b: { amount?: number }) => sum + (b.amount ?? 0), 0)
-    return { balance: total, project }
-  } catch {
-    return null
-  }
-}
-
-async function readLedger(file: string): Promise<LedgerEntry[]> {
-  if (!existsSync(file)) return []
-  try {
-    return JSON.parse(await readFile(file, 'utf8')) as LedgerEntry[]
-  } catch {
-    // A corrupt ledger must NOT read as $0 spent — that would silently uncap the
-    // budget. Fail loudly instead.
-    throw new Error(`spend ledger at ${file} is unreadable; refusing to run with an unknown balance`)
-  }
-}
+const RATE_PER_HOUR = DEEPGRAM_RATE_PER_HOUR
 
 /**
  * Keyterm prompting ($0.08/h) biases recognition toward terms we KNOW recur.
@@ -137,6 +88,15 @@ const flag = (f: string): string | undefined => {
   return i > -1 ? args[i + 1] : undefined
 }
 const multi = (f: string): string[] => args.flatMap((a, i) => (a === f && args[i + 1] ? [args[i + 1]] : []))
+/** Every flag that consumes the argument after it — so its value is never mistaken for the target. */
+const VALUE_FLAGS = ['--out', '--keyterm', '--model', '--budget', '--margin']
+
+function parseMargin(raw: string | undefined): number {
+  if (raw === undefined) return DEFAULT_MARGIN_USD
+  const n = Number(raw)
+  if (!Number.isFinite(n) || n < 0) throw new Error(`--margin takes a dollar amount ≥ 0, got "${raw}"`)
+  return n
+}
 
 type Segment = { text: string; speaker: number | null; start_ms: number; end_ms: number }
 
@@ -225,11 +185,38 @@ async function transcribeOne(file: string, outDir: string, keyterms: string[], m
   return (out.duration_seconds ?? 0) / 3600
 }
 
+type PendingFile = BudgetItem & { file: string }
+
+/** The files a run skipped for budget, as printed lines (the real run's recap; the dry run's plan already lists them). */
+function listSkipped(skipped: PendingFile[]): string[] {
+  const skippedUsd = skipped.reduce((s, p) => s + p.hours * RATE_PER_HOUR, 0)
+  const skippedHours = skipped.reduce((s, p) => s + p.hours, 0)
+  return [
+    `skipped for budget: ${skipped.length} file(s), ~${skippedHours.toFixed(1)} h, ~$${skippedUsd.toFixed(2)}:`,
+    ...skipped.map(p => `  ${p.key}  ~${p.hours.toFixed(2)} h  ~$${(p.hours * RATE_PER_HOUR).toFixed(2)}`),
+  ]
+}
+
+/** The exact --budget (and the top-up) that would let the next run take what this one skipped. */
+function coverLine(skipped: PendingFile[], runningUsd: number, budget: number, margin: number): string {
+  const skippedUsd = skipped.reduce((s, p) => s + p.hours * RATE_PER_HOUR, 0)
+  const needed = budgetToCover(runningUsd, skippedUsd, margin)
+  const topUp = Math.max(0, skippedUsd + margin - Math.max(0, budget - runningUsd))
+  return (
+    `to cover them next run: --budget ${needed.toFixed(2)}` +
+    (topUp > 0 ? ` (the account needs ~$${topUp.toFixed(2)} more credit than it has now)` : '')
+  )
+}
+
 async function main() {
   const target = args.find(
-    a => !a.startsWith('--') && !['--out', '--keyterm', '--model'].includes(args[args.indexOf(a) - 1])
+    a => !a.startsWith('--') && !VALUE_FLAGS.includes(args[args.indexOf(a) - 1])
   )
-  if (!target) throw new Error('usage: transcribeDeepgram.ts <file.mp3 | dir> [--out DIR] [--keyterm "Name"]…')
+  if (!target) {
+    throw new Error(
+      'usage: transcribeDeepgram.ts <file.mp3 | dir> [--out DIR] [--keyterm "Name"]… [--budget USD] [--margin USD] [--dry-run]'
+    )
+  }
 
   // nova-3-medical is a domain-specialised variant; worth comparing against
   // nova-3 (general) on this corpus rather than assuming the medical one wins.
@@ -237,6 +224,8 @@ async function main() {
   const suffix = model === 'nova-3' ? '' : `.${model}`
   const keyterms = [...BASE_KEYTERMS, ...multi('--keyterm')]
   const budget = Number(flag('--budget')) || 200
+  const margin = parseMargin(flag('--margin'))
+  const dryRun = args.includes('--dry-run')
   const info = await stat(target)
   const files = info.isDirectory()
     ? (await readdir(target))
@@ -251,111 +240,94 @@ async function main() {
   if (files.length === 0) throw new Error(`no audio files found in ${target}`)
 
   const outDir = flag('--out') ?? (info.isDirectory() ? target : path.dirname(target))
-  // `new URL('..', import.meta.url)` already resolves to the repo root from
-  // scripts/ — wrapping it in dirname() strips one level too many and put the
-  // ledger in the home directory, where it read as $0 spent.
-  const ledgerPath =
-    process.env.DEEPGRAM_LEDGER ??
-    path.join(fileURLToPath(new URL('..', import.meta.url)), '.deepgram-spend.json')
-  const ledger = await readLedger(ledgerPath)
+  // Checked up front: a transcript that cannot be written after Deepgram has
+  // already billed for it is money spent for nothing.
+  if (!existsSync(outDir)) throw new Error(`--out ${outDir} does not exist`)
 
-  // RECONCILE AGAINST DISK FIRST. Every transcript that exists was BILLED,
-  // whether or not the run that made it survived to record the fact. An aborted
-  // run therefore leaves spend the ledger cannot see, and the cap silently
-  // drifts under the real balance — it read $3.31 against a real $6.26 on
-  // 2026-08-24 because four transcripts from killed runs were never recorded.
-  // The transcripts on disk are the ground truth; the ledger is a cache of them.
-  const known = new Set(ledger.map(e => `${e.key}|${e.model}`))
-  const onDisk = (await readdir(outDir)).filter(f => f.endsWith('.deepgram.json'))
-  let recovered = 0
-  for (const f of onDisk) {
-    try {
-      const d = JSON.parse(await readFile(path.join(outDir, f), 'utf8')) as {
-        key?: string
-        model?: string
-        duration_seconds?: number
-      }
-      // The file records the SERVER's model name (`medical-nova-3`); the ledger
-      // keys on the requested one, so normalise via the filename suffix.
-      const m = f.includes('.nova-3-medical.') ? 'nova-3-medical' : (d.model ?? 'unknown')
-      const id = `${d.key ?? f}|${m}`
-      if (known.has(id)) continue
-      const hours = (d.duration_seconds ?? 0) / 3600
-      ledger.push({ key: d.key ?? f, model: m, hours, est_usd: hours * RATE_PER_HOUR, at: new Date().toISOString() })
-      known.add(id)
-      recovered++
-    } catch {
-      // An unreadable transcript is not evidence of no spend, but it gives no
-      // duration to charge either. Surface it rather than silently ignoring.
-      process.stdout.write(`  warning: could not read ${f} while reconciling spend\n`)
-    }
-  }
-  if (recovered > 0) {
-    await writeLedger(ledgerPath, ledger)
-    process.stdout.write(`reconciled ${recovered} untracked transcript(s) into the spend ledger\n`)
-  }
-
-  const estimated = ledger.reduce((s2, e) => s2 + e.est_usd, 0)
-
-  // Real balance wins when the key can read it; the ledger is the fallback.
-  const real = await fetchRealBalance(process.env.DEEPGRAM_API_KEY!)
-  const spent = real ? Math.max(0, budget - real.balance) : estimated
+  // Ledger → reconcile against the transcripts on disk → real balance if the
+  // key can read it. A dry run counts recovered transcripts but writes nothing.
+  const credit = await remainingCredit({
+    budgetUsd: budget,
+    apiKey: process.env.DEEPGRAM_API_KEY,
+    ledgerPath: defaultLedgerPath(),
+    reconcileDir: outDir,
+    persistReconcile: !dryRun,
+  })
+  const { ledger, ledgerPath } = credit
 
   process.stdout.write(`${files.length} file(s), model ${model}, ${keyterms.length} keyterms\n`)
-  if (real) {
-    process.stdout.write(
-      `REAL balance from Deepgram: $${real.balance.toFixed(2)} remaining` +
-        ` (ledger estimate would have said $${Math.max(0, budget - estimated).toFixed(2)})\n`
-    )
-  } else {
-    process.stdout.write(
-      `budget $${budget.toFixed(2)} | spent ~$${estimated.toFixed(2)} | remaining ~$${Math.max(0, budget - estimated).toFixed(2)}\n` +
-        `(ESTIMATE from duration x $${RATE_PER_HOUR}/h — this key cannot read real usage; ` +
-        `an owner key would replace this with the real balance)\n`
-    )
-  }
-  if (spent >= budget) {
+  for (const line of describeCredit(credit)) process.stdout.write(line + '\n')
+  if (credit.spentUsd >= budget) {
     process.stdout.write('budget already reached — nothing to do. Raise it with --budget once funded.\n')
     return
   }
 
-  let running = spent
-  let done = 0
-  let stoppedForBudget = false
+  // Everything not yet transcribed, with its size-based estimate. The estimate
+  // is made BEFORE spending: a file is only sent once it is known to fit.
+  const pending: PendingFile[] = []
   for (const f of files) {
     const base = path.basename(f).replace(/\.[^.]+$/, '')
     if (existsSync(path.join(outDir, `${base}${suffix}.deepgram.json`))) continue // already transcribed
-
-    // Estimate BEFORE spending. A file whose cost would cross the limit stops
-    // the run rather than being skipped, so the ledger stays contiguous and
-    // resuming picks up exactly where this left off.
     const bytes = (await stat(f)).size
-    const estHours = (bytes * 8) / 128_000 / 3600
-    if (running + estHours * RATE_PER_HOUR > budget) {
+    pending.push({ key: base, hours: hoursFromBytes(bytes), estimated: true, file: f })
+  }
+  if (pending.length === 0) {
+    process.stdout.write('every file here is already transcribed — nothing to do\n')
+    return
+  }
+
+  if (dryRun) {
+    const fit = fitEpisodesToBudget(pending, credit.remainingUsd, RATE_PER_HOUR, margin)
+    process.stdout.write(`\ndry run — plan for ${pending.length} untranscribed file(s), margin $${margin.toFixed(2)}:\n`)
+    for (const line of describeFit(fit, { ratePerHour: RATE_PER_HOUR })) process.stdout.write(line + '\n')
+    const over = fit.skipped.filter(s => s.reason === 'over-budget')
+    if (over.length > 0) process.stdout.write(coverLine(over, credit.spentUsd + fit.chosenUsd, budget, margin) + '\n')
+    process.stdout.write('nothing sent, nothing spent\n')
+    return
+  }
+
+  let running = credit.spentUsd
+  let done = 0
+  const skipped: PendingFile[] = []
+  for (const p of pending) {
+    // The hard stop: at or past the cap, nothing more is sent, whatever the
+    // estimate says. Kept separate from the fit rule on purpose.
+    if (running >= budget) {
+      skipped.push(p)
+      continue
+    }
+    // Same rule as the plan, asked again with the REAL spend so far (Deepgram's
+    // measured duration replaces the byte estimate after every success).
+    const verdict = assessItem(p, budget - running, RATE_PER_HOUR, margin)
+    if (!verdict.ok) {
       process.stdout.write(
-        `\nstopping before ${base}: it would cost ~$${(estHours * RATE_PER_HOUR).toFixed(2)} ` +
-          `and take the total past $${budget.toFixed(2)}\n`
+        `  skipping ${p.key}: ~$${verdict.estUsd.toFixed(2)} (~${p.hours.toFixed(2)} h) would take the total ` +
+          `past $${budget.toFixed(2)} (~$${Math.max(0, budget - running).toFixed(2)} left, margin $${margin.toFixed(2)})\n`
       )
-      stoppedForBudget = true
-      break
+      skipped.push(p)
+      continue
     }
 
     try {
-      const hours = await transcribeOne(f, outDir, keyterms, model, suffix)
+      const hours = await transcribeOne(p.file, outDir, keyterms, model, suffix)
       const est = hours * RATE_PER_HOUR
       running += est
       done++
-      ledger.push({ key: base, model, hours, est_usd: est, at: new Date().toISOString() })
+      ledger.push({ key: p.key, model, hours, est_usd: est, at: new Date().toISOString() })
       await writeLedger(ledgerPath, ledger)
     } catch (err) {
-      process.stdout.write(`  ${base} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
+      process.stdout.write(`  ${p.key} FAILED: ${err instanceof Error ? err.message : String(err)}\n`)
     }
   }
 
   process.stdout.write(
     `\ntranscribed ${done} | estimated total spend ~$${running.toFixed(2)} of $${budget.toFixed(2)}\n`
   )
-  if (stoppedForBudget) process.stdout.write('stopped on budget, not on error — re-run with a higher --budget to continue\n')
+  if (skipped.length > 0) {
+    for (const line of listSkipped(skipped)) process.stdout.write(line + '\n')
+    process.stdout.write(coverLine(skipped, running, budget, margin) + '\n')
+    process.stdout.write('skipped on budget, not on error — top up, then re-run with that --budget to pick them up\n')
+  }
 }
 
 main().catch(e => {
