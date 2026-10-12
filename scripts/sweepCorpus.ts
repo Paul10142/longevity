@@ -29,6 +29,8 @@ async function main() {
   const since = sinceIdx >= 0 ? args[sinceIdx + 1] : null
 
   const { sweepClaims } = await import('../lib/consolidation')
+  const { acquireWriterLock } = await import('../lib/writerLock')
+  acquireWriterLock('sweepCorpus')
 
   let checkpoint: Record<string, unknown> = {
     processed: 0,
