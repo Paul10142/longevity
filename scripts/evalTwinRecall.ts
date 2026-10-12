@@ -2,9 +2,12 @@
  * Dedup RECALL benchmark on the twin episodes — the closest thing the corpus
  * has to "the same notes taken twice".
  *
- *   npx tsx --env-file=.env.local scripts/evalTwinRecall.ts [--judge N] [--k 8]
+ *   npx tsx --env-file=.env.local scripts/evalTwinRecall.ts [--judge N] [--k 8] [--from eval/twin-benchmark-20261011.json]
  *
- * Read-only: nothing is merged, written, or queued.
+ * Read-only: nothing is merged, written, or queued. With `--from`, the inputs
+ * come from the frozen export (scripts/exportTwinBenchmark.ts) instead of the
+ * live rows — the caption versions are deleted once their Deepgram twin exists
+ * (docs/caption-retirement-plan.md), and the benchmark must outlive them.
  *
  * THE QUESTION. Paul's standard for the engine is a diligent note-taker: when a
  * new source repeats a fact the library already holds, the fact is attached to
@@ -68,9 +71,26 @@ function chunk<T>(xs: T[], n: number): T[][] {
   return out
 }
 
+type Frozen = {
+  episodes: {
+    episode: number
+    title: string
+    deepgramInsights: {
+      id: string; statement: string; context_note: string | null; merged_with_caption: boolean
+      // Nearest caption claims, best first, computed from the live vectors at export time.
+      candidates: { id: string; sim: number }[]
+    }[]
+    captionClaims: { id: string; canonical_statement: string; context_note: string | null }[]
+  }[]
+}
+
 async function main() {
   const judgeN = num('--judge', 0)
   const k = num('--k', 8)
+  const fromIdx = args.indexOf('--from')
+  const fromFile = fromIdx > -1 ? args[fromIdx + 1] : null
+
+  if (fromFile) return runFromFile(fromFile, judgeN, k)
 
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
@@ -155,10 +175,41 @@ async function main() {
     console.log(`#${String(p.ep).padStart(3)}  ${dgInsights.length.toString().padStart(4)} deepgram insights, ${String(pairMerged).padStart(4)} merged with the caption twin (${Math.round((100 * pairMerged) / Math.max(1, dgInsights.length))}%)  ${p.title.slice(0, 60)}`)
   }
 
+  await summarise(dgTotal, merged, misses, judgeN, k)
+}
+
+/** The same benchmark over the frozen export, for after the caption rows are gone. */
+async function runFromFile(file: string, judgeN: number, k: number) {
+  const { readFileSync } = await import('node:fs')
+  const frozen = JSON.parse(readFileSync(file, 'utf8')) as Frozen
+  console.log(`frozen benchmark ${file}: ${frozen.episodes.length} episodes — ${frozen.episodes.map(e => `#${e.episode}`).join(', ')}\n`)
+  type Miss = { ep: number; insight: { id: string; statement: string; context_note: string | null }; bestSim: number; top: ({ id: string; canonical_statement: string; context_note: string | null } & { sim: number })[] }
+  const misses: Miss[] = []
+  let dgTotal = 0, merged = 0
+  for (const e of frozen.episodes) {
+    const claimById = new Map(e.captionClaims.map(c => [c.id, c]))
+    let pairMerged = 0
+    for (const ins of e.deepgramInsights) {
+      dgTotal++
+      if (ins.merged_with_caption) { merged++; pairMerged++; continue }
+      const top = ins.candidates.slice(0, k).flatMap(c => {
+        const claim = claimById.get(c.id)
+        return claim ? [{ ...claim, sim: c.sim }] : []
+      })
+      misses.push({ ep: e.episode, insight: ins, bestSim: ins.candidates[0]?.sim ?? 0, top })
+    }
+    console.log(`#${String(e.episode).padStart(3)}  ${e.deepgramInsights.length.toString().padStart(4)} deepgram insights, ${String(pairMerged).padStart(4)} merged with the caption twin at export (${Math.round((100 * pairMerged) / Math.max(1, e.deepgramInsights.length))}%)  ${e.title.slice(0, 60)}`)
+  }
+  await summarise(dgTotal, merged, misses as never, judgeN, k)
+}
+
+type MissLike = { ep: number; insight: { id: string; statement: string; context_note: string | null }; bestSim: number; top: ({ id: string; canonical_statement: string; context_note: string | null } & { sim: number })[] }
+
+async function summarise(dgTotal: number, merged: number, misses: MissLike[], judgeN: number, k: number) {
   // 3. Summary.
   const counts = new Map<Band, number>(BANDS.map(b => [b, 0]))
   for (const m of misses) counts.set(band(m.bestSim), (counts.get(band(m.bestSim)) ?? 0) + 1)
-  console.log(`\nTOTAL: ${dgTotal} deepgram insights, ${merged} merged (${((100 * merged) / dgTotal).toFixed(1)}% recall at today's gate), ${misses.length} not merged`)
+  console.log(`\nTOTAL: ${dgTotal} deepgram insights, ${merged} merged (${((100 * merged) / dgTotal).toFixed(1)}% recall at the gate in force when they were consolidated), ${misses.length} not merged`)
   console.log('misses by best caption-twin similarity:')
   for (const b of BANDS) console.log(`  ${b.padEnd(10)} ${String(counts.get(b)).padStart(5)}`)
 

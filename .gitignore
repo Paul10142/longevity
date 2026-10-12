@@ -63,3 +63,5 @@ eval/article-sentence-baseline.json
 
 # Unattended-run logs (lib/runLog.ts) — local evidence, not source
 scratchpad/runs/
+scratchpad/.writer.lock
+scratchpad/backups/

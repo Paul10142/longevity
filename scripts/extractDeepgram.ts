@@ -43,6 +43,10 @@ async function main() {
 
   const { startRunLog } = await import('../lib/runLog')
   startRunLog('extractDeepgram')
+  // One writer at a time: refuse to start while a maintenance script or another
+  // supervisor holds the corpus, instead of racing it.
+  const { acquireWriterLock } = await import('../lib/writerLock')
+  acquireWriterLock('extractDeepgram')
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')

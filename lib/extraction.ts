@@ -503,6 +503,25 @@ export async function extractSource(
     if (runErr || !run) throw new Error(`Failed to create pipeline run: ${runErr?.message}`)
     runId = run.id as string
 
+    // Guard (2026-10-11): deleting this source's raw_insights below cascades
+    // its claim_members away — a silent, lossy retirement that leaves mixed
+    // claims carrying text from members that no longer exist. Replacing a
+    // transcript goes through scripts/retireSourceClaims.ts first, which also
+    // repairs those claims. A source whose insights are still members of claims
+    // therefore refuses a fresh run unless the caller says it knows better.
+    if (process.env.ALLOW_MEMBERED_REEXTRACT !== '1') {
+      const { data: idRows } = await db().from('raw_insights').select('id').eq('source_id', sourceId).limit(200)
+      const ids = ((idRows ?? []) as { id: string }[]).map(r => r.id)
+      if (ids.length > 0) {
+        const { count } = await db().from('claim_members').select('raw_insight_id', { count: 'exact', head: true }).in('raw_insight_id', ids)
+        if ((count ?? 0) > 0) {
+          throw new Error(
+            `Source ${sourceId} still has claim members from a previous extraction; ` +
+              `run scripts/retireSourceClaims.ts --source ${sourceId} --apply first (or set ALLOW_MEMBERED_REEXTRACT=1)`
+          )
+        }
+      }
+    }
     // Fresh run: clear any prior chunks + insights, and reset the source's
     // derived state.
     //

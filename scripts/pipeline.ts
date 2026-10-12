@@ -400,6 +400,22 @@ async function main() {
 
     case 'extract': {
       if (!arg) throw new Error('usage: npm run pipeline -- extract <source_id>')
+      // Guard (2026-10-11): the delete below strips this source's members off
+      // every claim they belong to, and nothing rebuilds the wording of claims
+      // that also had members from other sources. Replacing a transcript goes
+      // through scripts/retireSourceClaims.ts first (it repairs those claims).
+      if (process.env.ALLOW_MEMBERED_REEXTRACT !== '1') {
+        const { data: idRows } = await db.from('raw_insights').select('id').eq('source_id', arg).limit(200)
+        const ids = ((idRows ?? []) as { id: string }[]).map(r => r.id)
+        if (ids.length > 0) {
+          const { count } = await db.from('claim_members').select('raw_insight_id', { count: 'exact', head: true }).in('raw_insight_id', ids)
+          if ((count ?? 0) > 0) {
+            throw new Error(
+              `Source ${arg} still has claim members; run scripts/retireSourceClaims.ts --source ${arg} --apply first (or set ALLOW_MEMBERED_REEXTRACT=1)`
+            )
+          }
+        }
+      }
       const { error } = await db
         .from('raw_insights')
         .delete()
