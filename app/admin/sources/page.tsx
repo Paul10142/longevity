@@ -4,6 +4,15 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { JobQueuePanel } from "@/components/JobQueuePanel"
+import { EpisodeLinks } from "@/components/EpisodeLinks"
+import { TranscriptDialog } from "@/components/TranscriptDialog"
+import { episodeLinks } from "@/lib/sourceLinks"
+
+// Render on every request. Without this Next.js prerendered the table at build
+// time, so production showed the statuses and counts as they were at the last
+// deploy — every other data-reading admin page already declares this
+// (2026-10-12; found while adding the transcript pop-up).
+export const dynamic = "force-dynamic"
 
 /**
  * Where a source is in the pipeline.
@@ -173,29 +182,21 @@ export default async function AdminSourcesPage() {
                     {sources.map((source: any) => (
                       <TableRow key={source.id}>
                         <TableCell className="font-medium">
-                          {/* Link out to the episode itself. Without this the
-                              table named a source with no way to reach it, so
-                              confirming "is this the episode I think it is?"
-                              meant leaving the page. Sources ingested before the
-                              feed have no url, hence the fallback to plain text. */}
-                          {source.url ? (
-                            <a
-                              href={source.url}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="hover:underline"
-                            >
-                              {source.title}
-                              <span className="ml-1 text-xs text-muted-foreground">&#8599;</span>
-                            </a>
-                          ) : (
-                            source.title
-                          )}
+                          {/* Public links only. `source.url` is the private,
+                              members-only Supercast feed link for podcast
+                              rows, so the title is plain text and the links
+                              beneath it come from lib/sourceLinks: the
+                              episode page, the video, or a site search when
+                              neither is known. */}
+                          {source.title}
                           {source.transcript_origin === 'deepgram' && (
                             <span className="ml-2 inline-block rounded-full bg-sky-500/10 px-2 py-0.5 text-[10px] font-medium text-sky-700 dark:text-sky-400">
                               speakers
                             </span>
                           )}
+                          <div className="mt-1 font-normal">
+                            <EpisodeLinks links={episodeLinks(source)} />
+                          </div>
                         </TableCell>
                         <TableCell className="capitalize">{source.type}</TableCell>
                         <TableCell>
@@ -220,9 +221,17 @@ export default async function AdminSourcesPage() {
                           {source.insightsCount > 0 ? source.insightsCount : "-"}
                         </TableCell>
                         <TableCell>
-                          <Link href={`/sources/${source.id}`}>
-                            <Button variant="outline" size="sm">View</Button>
-                          </Link>
+                          <div className="flex gap-2">
+                            <Link href={`/sources/${source.id}`}>
+                              <Button variant="outline" size="sm">View</Button>
+                            </Link>
+                            {/* Readable transcript in a pop-up; fetched on open,
+                                never with the table. Rows with no transcript
+                                yet have nothing to show. */}
+                            {source.wordCount > 0 && (
+                              <TranscriptDialog sourceId={source.id} title={source.title} />
+                            )}
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))}

@@ -1,18 +1,10 @@
 "use client"
 
-import { useState } from "react"
 import { useRouter } from "next/navigation"
-import { SourceEditor } from "./SourceEditor"
+import { SourceEditor, type SourceEditorSource } from "./SourceEditor"
 
 interface SourceEditorClientProps {
-  source: {
-    id: string
-    title: string
-    authors: string[]
-    date: string | null
-    url: string | null
-    type: string
-  }
+  source: SourceEditorSource
 }
 
 export function SourceEditorClient({ source }: SourceEditorClientProps) {
@@ -38,7 +30,3 @@ export function SourceEditorClient({ source }: SourceEditorClientProps) {
 
   return <SourceEditor source={source} onUpdate={handleUpdate} />
 }
-
-
-
-

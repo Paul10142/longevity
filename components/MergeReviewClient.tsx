@@ -4,6 +4,8 @@ import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
+import { EpisodeLinks } from "@/components/EpisodeLinks"
+import type { EpisodeLink } from "@/lib/sourceLinks"
 
 type ClaimSide = {
   id: string
@@ -22,7 +24,8 @@ type Member = {
   start_ms: number | null
   evidence_type: string
   confidence: string
-  source: { id: string; title: string; type: string; url: string | null } | null
+  // Public links only — the API never returns the private feed URL.
+  source: { id: string; title: string; type: string; links: EpisodeLink[]; video_url: string | null } | null
 }
 
 type Review = {
@@ -113,18 +116,10 @@ function ClaimCard({ label, claim }: { label: string; claim: ClaimSide }) {
             <div key={m.raw_insight_id} className="text-xs">
               <div className="text-muted-foreground">
                 {m.source ? (
-                  m.source.url ? (
-                    <a
-                      href={m.source.url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="hover:underline font-medium"
-                    >
-                      {m.source.title}
-                    </a>
-                  ) : (
+                  <>
                     <span className="font-medium">{m.source.title}</span>
-                  )
+                    <EpisodeLinks links={m.source.links ?? []} className="ml-2" />
+                  </>
                 ) : (
                   <span>Unknown source</span>
                 )}

@@ -3,7 +3,9 @@
 import { useCallback, useEffect, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
+import { EpisodeLinks } from "@/components/EpisodeLinks"
 import { youtubeTimestampUrl } from "@/lib/youtubeUtils"
+import type { EpisodeLink } from "@/lib/sourceLinks"
 
 type Claim = {
   id: string
@@ -24,7 +26,8 @@ type Member = {
   start_ms: number | null
   evidence_type: string
   confidence: string
-  source: { id: string; title: string; type: string; url: string | null } | null
+  // Public links only — the API never returns the private feed URL.
+  source: { id: string; title: string; type: string; links: EpisodeLink[]; video_url: string | null } | null
 }
 
 type Reference = {
@@ -91,21 +94,18 @@ function ClaimRow({ claim }: { claim: Claim }) {
               <div key={m.raw_insight_id} className="text-xs border-l-2 pl-3 py-1">
                 <div className="text-muted-foreground">
                   {m.source ? (
-                    m.source.url ? (
-                      <a href={m.source.url} target="_blank" rel="noopener noreferrer" className="hover:underline font-medium">
-                        {m.source.title}
-                      </a>
-                    ) : (
+                    <>
                       <span className="font-medium">{m.source.title}</span>
-                    )
+                      <EpisodeLinks links={m.source.links ?? []} className="ml-2" />
+                    </>
                   ) : (
                     <span>Unknown source</span>
                   )}
                   {(() => {
                     // Deep-link to the moment in the video only when the source
-                    // is a YouTube URL AND this insight carries a start_ms.
+                    // has a public video AND this insight carries a start_ms.
                     const label = formatMs(m.start_ms) ?? m.locator
-                    const deepLink = youtubeTimestampUrl(m.source?.url, m.start_ms)
+                    const deepLink = youtubeTimestampUrl(m.source?.video_url, m.start_ms)
                     return deepLink ? (
                       <a
                         href={deepLink}
