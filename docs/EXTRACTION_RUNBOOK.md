@@ -71,9 +71,12 @@ credit — never start it without Paul's yes in chat.**
 
 | Log shows | Meaning | Runner does |
 |---|---|---|
-| `hit your session limit · resets <time>` | Subscription limit. The supervisor keeps retrying (~10,000 wasted calls/hour) and recovers by itself after the reset. No data is damaged. 2026-10-12: hit 23 min in, cost ~1 h. | Note times in the report. Do not kill. Spawn the "limit-aware supervisor" code task once if not already spawned. |
+| `PAUSE — usage window 96% full, pausing before the limit …` or `PAUSE — usage limit reached; resets <time> …`, later `RESUME — paused 62m (…)` | The subscription window (shared with Paul's own sessions) is nearly full or full. **Expected, not a fault.** The supervisor stops calling the CLI, jobs keep their checkpoints and spend no retry attempts, and it wakes 90 s after the reset (never more than 6 h in one sleep; a reset after the run's deadline ends the run). It pauses at 95% full (`USAGE_PAUSE_AT`, a fraction), so calls do not fail first. | Do not kill or restart. Report the lost time from the `STOP` block (`usage-limit pauses: N, Xm lost`) or by adding up the `RESUME` lines. If a `PAUSE` says "after this run's deadline", the window reopens too late (weekly limit): the run ended by design; tell Paul when it resets. |
+| `[worker] job … deferred: usage limit …` | A job parked by the pause above. Its attempts were not spent. | Nothing. |
+| `hit your session limit` repeated many times with **no** `PAUSE` line, or `cli:` stats showing thousands of failed calls | Pre-2026-10-12 behaviour (the old supervisor hammered the CLI for an hour: 10,744 failed calls). Means the run is on old code. | Report it; do not restart mid-run. |
 | `TypeError: fetch failed`, `paged select failed`, rounds "died … sleeping" | The Mac cannot reach Supabase (2026-10-12: ~3 h outage, transient). The supervisor backs off to 15 min and STOPs after ~3 h. | After a STOP: if the database is reachable now, restart once. Report the outage window. |
-| `Opus … safeguards flagged this message` | The model's safety filter refused one biology passage; that pair's job fails repeatedly. Only that job is affected. | Report the job id. Do not retry by hand. The code fix is a spawned task. |
+| `quarantined job <id> (<type>) — refused by the model's safety filter` or `— still failing after 3 retries` | A job that cannot succeed (the model's safety filter refused a passage, e.g. consolidate job 652e4ec4 on 2026-10-12) or that kept failing after 3 re-queues. The supervisor leaves it `failed`, stops re-spending calls on it, and the rest of the round and the run carry on. It is listed again in the `STOP` block. | Report the job id and reason. Do not retry by hand. (Separately, the dedup judge now keeps a refused pair apart instead of failing the job — see the `judge-opus-5-5-and-no-low-confidence-reviews` memory — so a refusal should rarely quarantine a consolidate job.) |
+| `round N: drained X job(s), Y failed` with X = 0 | Every job in the round threw. Failures no longer count as progress, so the loop backs off (3, 6 … 15 min) instead of spinning. | Read the error class in the log; report. |
 | A job `running` with `attempts` > `max_attempts` | Remnant of a killed run; self-healing. | Never fix by hand. |
 | `Credit balance is too low` | The CLI saw an API key and billed it (pre-2026-10-11 bug; `lib/llm.ts` strips the key). | Stop, report, spawn a code task. |
 
@@ -104,9 +107,10 @@ else: report and let Paul decide.
 Standing code tasks — spawn each at most once (check the memory index first):
 - Judge → Opus 5.5, and no reviews for sub-0.80 "same" verdicts (decision
   recorded in memory `judge-opus-5-5-and-no-low-confidence-reviews`).
-- Limit-aware supervisor: on "hit your session limit … resets <time>", sleep
-  until the reset instead of retrying; a safety-filter refusal on one pair must
-  not fail its whole job.
+- ~~Limit-aware supervisor~~ — **built 2026-10-12** (`lib/usageLimit.ts`, the
+  `PAUSE`/`RESUME` lines, quarantine of poison jobs). Do not spawn again. If a
+  limit-related symptom appears that §4 does not describe, spawn a NEW task with
+  the log lines as evidence.
 
 ## 7. The monitor page (Paul, 2026-10-12)
 
@@ -122,6 +126,7 @@ the same night's run), `ended_at`, and `incidents` (chronological list of
 `{at, text}`; plain language, one line each).
 
 Update it at milestones only, in one write each time: run started or restarted,
-an incident found (usage limit, database outage, a stuck job), run ended (set
+an incident found (usage limit, database outage, a stuck job; a log `PAUSE` line
+means `state: paused` until the matching `RESUME`), run ended (set
 `state` to `finished` or `stopped`, add `ended_at`). Never poll to keep it
 fresh. If the page's URL ever changes, update this section and the memory note.

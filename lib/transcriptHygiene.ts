@@ -21,6 +21,7 @@
  */
 
 import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 
 export type RemovedSpan = {
   kind: 'intro' | 'outro' | 'sponsor' | 'ad' | 'other'
@@ -97,6 +98,7 @@ export async function stripNonContent(transcript: string): Promise<HygieneResult
     )
     marks = Array.isArray(parsed.spans) ? parsed.spans : []
   } catch (err) {
+    rethrowIfUsageLimit(err)
     console.warn('[hygiene] pass failed; keeping full transcript:', err instanceof Error ? err.message : err)
     return { cleaned: text, removed: [] }
   }

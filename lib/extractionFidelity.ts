@@ -11,6 +11,7 @@
  */
 
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 
 export type FidelityVerdict =
   | 'FAITHFUL'
@@ -81,6 +82,7 @@ export async function judgeFidelity(
       const verdict = ALLOWED.includes(parsed.verdict as FidelityVerdict) ? (parsed.verdict as FidelityVerdict) : 'UNSURE'
       return { verdict, offending: parsed.offending ?? '', reasoning: parsed.reasoning ?? '' }
     } catch (err) {
+      rethrowIfUsageLimit(err)
       lastErr = err
     }
   }

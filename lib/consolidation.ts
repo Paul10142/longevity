@@ -19,6 +19,7 @@ import { supabaseAdmin } from './supabaseServer'
 import type { EvidenceType, RawInsight } from './types'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 import { ADJUDICATION_V3 } from './adjudicationPrompts'
 import { synthesizeEnrichedCanonical, ENRICH_MERGE_ENABLED, type EnrichResult } from './enrichMerge'
 import { selectAllPaged } from './pagination'
@@ -177,6 +178,9 @@ export async function adjudicate(rawStatement: string, candidates: Candidate[]):
         reasoning: parsed.reasoning ?? '',
       }
     } catch (err) {
+      // A full usage window is not a verdict and retrying cannot help: let the
+      // worker defer the job (no attempt spent) until the window reopens.
+      rethrowIfUsageLimit(err)
       lastErr = err
     }
   }

@@ -28,6 +28,7 @@
  */
 
 import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
+import { rethrowIfUsageLimit } from './usageLimit'
 
 /**
  * Enrich-merge is ON unless explicitly disabled with `ENRICH_MERGE=0`.
@@ -131,6 +132,7 @@ export async function synthesizeEnrichedCanonical(
     )
     proposed = (parsed.canonical ?? '').trim()
   } catch (err) {
+    rethrowIfUsageLimit(err)
     return {
       canonical: priorCanonical,
       changed: false,

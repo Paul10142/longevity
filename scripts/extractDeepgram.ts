@@ -19,6 +19,16 @@
  *
  * Deliberately deferred, matching overnightExtract: tagging, article regen, and
  * the reference pass. All reversible later passes.
+ *
+ * Usage limits (2026-10-12): the subscription window filled 23 minutes in and
+ * the old loop kept running a round every ~2.5 min for an hour — 10,744 failed
+ * calls. Now a full or nearly-full window (lib/usageLimit.ts) makes the worker
+ * defer its job (no attempt spent) and this loop sleep until just after the
+ * reset, printing one PAUSE and one RESUME line so the lost time is greppable.
+ *
+ * Poison jobs: a job that can never succeed (a model safety-filter refusal) or
+ * keeps failing round after round is quarantined — left `failed`, not healed —
+ * so it neither re-spends calls every round nor keeps the run from finishing.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -52,6 +62,8 @@ async function main() {
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
   const { formatCliStats } = await import('../lib/llm')
+  const { usageGate, planPause, quarantineReason } = await import('../lib/usageLimit')
+  type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -87,15 +99,81 @@ async function main() {
     return count ?? 0
   }
 
-  /** Heal jobs that failed on a transport blip so they retry. */
+  const healCounts = new Map<string, number>()
+  const quarantined = new Map<string, string>() // job id -> reason
+
+  /**
+   * Heal jobs that failed on a transport blip so they retry — except jobs that
+   * cannot succeed: a safety-filter refusal is deterministic for its input, and
+   * a job that has been healed 3 times and still fails is not
+   * suffering a blip. Those stay `failed` (reported at STOP), so they stop
+   * re-spending calls every round and stop counting as open work.
+   */
   async function healFailed(): Promise<number> {
+    const { data: failed } = await db
+      .from('jobs')
+      .select('id, type, error')
+      .eq('status', 'failed')
+      .in('type', ['extract_source', 'consolidate_source'])
+    const heal: string[] = []
+    for (const j of (failed ?? []) as { id: string; type: string; error: string | null }[]) {
+      if (quarantined.has(j.id)) continue
+      const n = (healCounts.get(j.id) ?? 0) + 1
+      const reason = quarantineReason(j.error, n - 1)
+      if (reason) {
+        quarantined.set(j.id, `${j.type}: ${reason}`)
+        console.log(
+          `[${now()}] quarantined job ${j.id} (${j.type}) — ${reason}; left failed, not retried this run. ` +
+            `Last error: ${(j.error ?? '').replace(/\s+/g, ' ').slice(0, 140)}`
+        )
+        continue
+      }
+      healCounts.set(j.id, n)
+      heal.push(j.id)
+    }
+    if (!heal.length) return 0
     const { data } = await db
       .from('jobs')
       .update({ status: 'queued', run_after: new Date().toISOString(), locked_at: null })
-      .eq('status', 'failed')
-      .in('type', ['extract_source', 'consolidate_source'])
+      .in('id', heal)
       .select('id')
     return (data ?? []).length
+  }
+
+  let pausedMs = 0
+  let pauseCount = 0
+  const hhmmss = (t: number) => new Date(t).toISOString().slice(11, 19)
+  const mins = (ms: number) => `${Math.round(ms / 60_000)}m`
+
+  /**
+   * Sleep until the usage window reopens. Returns false when it reopens only
+   * after the run's deadline (a weekly limit): the caller ends the run.
+   */
+  async function pauseForLimit(limit: UsageLimitErr): Promise<boolean> {
+    const t0 = Date.now()
+    const plan = planPause(limit.resetAt, t0, deadline)
+    const why =
+      limit.kind === 'approaching'
+        ? `usage window ${Math.round((limit.utilization ?? 0) * 100)}% full, pausing before the limit`
+        : 'usage limit reached'
+    const resets = limit.resetAt ? `${new Date(limit.resetAt).toISOString()} UTC` : 'at an unknown time'
+    if (plan.beyondDeadline) {
+      console.log(`[${now()}] PAUSE — ${why}; resets ${resets}, after this run's deadline — stopping the run.`)
+      return false
+    }
+    console.log(
+      `[${now()}] PAUSE — ${why}; resets ${resets}. Sleeping until ${hhmmss(plan.wakeAt)} UTC (${mins(plan.sleepMs)}). ` +
+        `Jobs keep their checkpoints; no attempts spent.`
+    )
+    await sleep(plan.sleepMs)
+    const lost = Date.now() - t0
+    pausedMs += lost
+    pauseCount++
+    console.log(
+      `[${now()}] RESUME — paused ${mins(lost)} (${hhmmss(t0)} → ${hhmmss(t0 + lost)} UTC); ` +
+        `total paused ${mins(pausedMs)} over ${pauseCount} pause(s).`
+    )
+    return true
   }
 
   let round = 0
@@ -105,6 +183,14 @@ async function main() {
 
   while (Date.now() < deadline) {
     try {
+      // Check before doing anything: if the window is full (or nearly), wait
+      // for it instead of enqueueing work whose calls would be refused.
+      const preGate = usageGate()
+      if (preGate) {
+        if (!(await pauseForLimit(preGate))) break
+        continue
+      }
+
       round++
       const healed = await healFailed()
       if (healed) console.log(`[${now()}] healed ${healed} failed job(s)`)
@@ -132,13 +218,33 @@ async function main() {
         break
       }
 
+      // `processed` counts only jobs that SUCCEEDED or yielded. A job that threw
+      // is not progress: a round of nothing but failures sleeps (below) instead
+      // of spinning, which is how one poison job used to keep rounds "busy".
       let processed = 0
+      let failedJobs = 0
+      let limitHit: UsageLimitErr | undefined
       for (;;) {
-        const { processed: p } = await runWorkerTick(15 * 60_000)
-        processed += p
-        if (p === 0 || Date.now() >= deadline) break
+        const tick = await runWorkerTick(15 * 60_000)
+        processed += tick.processed - tick.failed
+        failedJobs += tick.failed
+        if (tick.usageLimit) {
+          limitHit = tick.usageLimit
+          break
+        }
+        if (tick.processed === 0 || Date.now() >= deadline) break
       }
-      console.log(`[${now()}] round ${round}: drained ${processed} job(s); ${formatCliStats()}`)
+      console.log(
+        `[${now()}] round ${round}: drained ${processed} job(s)` +
+          `${failedJobs ? `, ${failedJobs} failed` : ''}; ${formatCliStats()}`
+      )
+
+      if (limitHit) {
+        if (!(await pauseForLimit(limitHit))) break
+        idleStreak = 0
+        failStreak = 0
+        continue
+      }
 
       if (processed === 0) {
         idleStreak++
@@ -166,6 +272,12 @@ async function main() {
     db.from('claims').select('*', { count: 'exact', head: true }).eq('status', 'active'),
   ])
   console.log(`\n[${now()}] STOP — ${insights} raw insights, ${claims} active claims. ${formatCliStats()}`)
+  console.log(
+    pauseCount
+      ? `[${now()}] usage-limit pauses: ${pauseCount}, ${mins(pausedMs)} lost in total.`
+      : `[${now()}] usage-limit pauses: none.`
+  )
+  for (const [id, reason] of quarantined) console.log(`[${now()}] quarantined job ${id} — ${reason}`)
 }
 
 main().catch(e => {
