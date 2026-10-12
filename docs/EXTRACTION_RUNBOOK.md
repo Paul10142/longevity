@@ -135,12 +135,25 @@ means `state: paused` until the matching `RESUME`), run ended (set
 `state` to `finished` or `stopped`, add `ended_at`). Never poll to keep it
 fresh. If the page's URL ever changes, update this section and the memory note.
 
-## 8. When to stop the run yourself
+## 8. How a run ends, and when to stop it yourself
 
-The supervisor idles in 15-minute sleeps (log: `no progress (streak N)`) after
-the last episode, holding the writer lock until its deadline and blocking code
-windows. If the log shows `0 source(s) left`, no job is `running` in the
+**The run now ends by itself** (2026-10-12, `lib/runnableWork.ts`). Each round
+logs `N open job(s): M runnable job(s) (ignoring …)` and the supervisor exits
+with `no remaining work — done.` when nothing is left to enqueue and no
+*runnable* job is open. Not counted as work: jobs of a type this run skips
+(`tag_claims` while `SKIP_TAGGING=1`, `update_topic`, the reference jobs, per the
+`SKIP_*` flags), quarantined jobs, and jobs whose `run_after` is past the run's
+deadline (the parked August `tag_claims` job, `run_after` 2027-01-01, is what
+kept the 2026-10-12 run idling for ~45 minutes after the last episode). A job
+backing off for a few minutes after a failure still counts. The `STOP` block
+follows as before.
+
+Idle `no progress (streak N)` rounds with a job still `runnable` are a different
+thing (jobs that keep failing, or a long limit window) — see §4, do not stop
+those.
+
+Manual stop, only if a run on old code (no `runnable job(s)` in the round line)
+is idling: if the log shows `0 source(s) left`, no job is `running` in the
 database, no `claude -p` child of the run is alive, and the last write is older
 than 15 minutes, the work is done: stop only that run's own process tree
 (SIGTERM), confirm the lock is gone, set the monitor to `finished`, then report.
-(The limit-aware supervisor change should make the run exit by itself.)

@@ -29,6 +29,12 @@
  * Poison jobs: a job that can never succeed (a model safety-filter refusal) or
  * keeps failing round after round is quarantined — left `failed`, not healed —
  * so it neither re-spends calls every round nor keeps the run from finishing.
+ *
+ * Ending: the run is done when nothing is left to enqueue and no RUNNABLE job is
+ * open (lib/runnableWork.ts) — jobs of a type this run skips (SKIP_* flags),
+ * quarantined jobs and jobs parked past the deadline do not count. Before
+ * 2026-10-12 any open job did, so the parked August tag_claims job kept a
+ * finished run idling for ~45 minutes until it was stopped by hand.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -63,6 +69,7 @@ async function main() {
   const { selectAllPaged } = await import('../lib/pagination')
   const { formatCliStats } = await import('../lib/llm')
   const { usageGate, planPause, quarantineReason } = await import('../lib/usageLimit')
+  const { classifyOpenJobs, describeWork, runIsFinished } = await import('../lib/runnableWork')
   type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
@@ -94,13 +101,22 @@ async function main() {
     return rows.map(r => r.id).filter(id => !extracted.has(id))
   }
 
-  async function openJobs(): Promise<number> {
-    const { count } = await db.from('jobs').select('*', { count: 'exact', head: true }).in('status', ['queued', 'running'])
-    return count ?? 0
-  }
-
   const healCounts = new Map<string, number>()
   const quarantined = new Map<string, string>() // job id -> reason
+
+  /**
+   * The open jobs this run should still wait for. Not a raw count: a parked job
+   * (run_after beyond the deadline), a job of a type this run skips, and a
+   * quarantined job can never drain here, so counting them kept a finished run
+   * idling until stopped by hand (2026-10-12, the parked August tag_claims job).
+   */
+  async function openWork() {
+    const rows = await selectAllPaged<{ id: string; type: string; status: string; run_after: string | null }>(
+      (from, to) =>
+        db.from('jobs').select('id, type, status, run_after').in('status', ['queued', 'running']).order('id').range(from, to)
+    )
+    return classifyOpenJobs(rows, deadline, { quarantinedIds: new Set(quarantined.keys()) })
+  }
 
   /**
    * Heal jobs that failed on a transport blip so they retry — except jobs that
@@ -208,12 +224,12 @@ async function main() {
 
       for (const id of fresh) await enqueueJob('extract_source', { source_id: id })
 
-      const open = await openJobs()
+      const work = await openWork()
       console.log(
         `[${now()}] round ${round}: ${remaining.length} source(s) left, ` +
-          `${fresh.length} enqueued, ${open} open job(s)`
+          `${fresh.length} enqueued, ${work.open} open job(s): ${describeWork(work)}`
       )
-      if (open === 0 && fresh.length === 0) {
+      if (runIsFinished(fresh.length, work)) {
         console.log(`[${now()}] no remaining work — done.`)
         break
       }
