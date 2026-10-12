@@ -32,56 +32,20 @@ export {} // module marker: keep `main` file-scoped (collides with pipeline.ts o
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 
-const HOST = 'Peter Attia'
+// Speaker naming and segment building live in lib/deepgramSegments.ts, shared
+// with scripts/repairDeepgramTiming.ts. One segment PER UTTERANCE: the first
+// attach merged a speaker's consecutive utterances into one segment, which
+// collapsed a whole monologue onto its first timestamp (2026-10-12).
+import { nameSpeakers, buildLabelledSegments, HOST } from '../lib/deepgramSegments'
+import type { DgSegment } from '../lib/deepgramSegments'
+
+type DgFile = { key: string; model: string; speakers: number[]; segments: DgSegment[]; duration_seconds: number | null }
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(f)
 const val = (f: string): string | undefined => {
   const i = args.indexOf(f)
   return i > -1 ? args[i + 1] : undefined
-}
-
-type DgSegment = { text: string; speaker: number | null; start_ms: number; end_ms: number }
-type DgFile = { key: string; model: string; speakers: number[]; segments: DgSegment[]; duration_seconds: number | null }
-
-/** Map Deepgram's speaker indices to names, or leave them unnamed. See header. */
-function nameSpeakers(segments: DgSegment[], guests: string[]): Map<number, string> {
-  const names = new Map<number, string>()
-  const first = segments.find(s => s.speaker !== null)?.speaker
-  if (first == null) return names
-  names.set(first, HOST)
-
-  const others = [...new Set(segments.map(s => s.speaker).filter(s => s !== null && s !== first))] as number[]
-  if (guests.length === 1 && others.length === 1) {
-    names.set(others[0], guests[0])
-  } else {
-    // Two guests and two unnamed speakers is NOT enough to pair them — the feed
-    // lists guests in title order, which need not match speaking order. Number
-    // them instead of guessing.
-    others.forEach((sp, i) => names.set(sp, `Speaker ${i + 2}`))
-  }
-  return names
-}
-
-/** Turns into `Name: text`, merging consecutive turns by the same speaker so a
- *  back-and-forth does not become one label per sentence. */
-function buildLabelledSegments(
-  segments: DgSegment[],
-  names: Map<number, string>
-): { text: string; start_ms: number; end_ms: number }[] {
-  const out: { text: string; start_ms: number; end_ms: number }[] = []
-  for (const s of segments) {
-    const label = s.speaker != null ? names.get(s.speaker) ?? `Speaker ${s.speaker + 1}` : null
-    const prev = out[out.length - 1]
-    const sameSpeaker = prev && label && prev.text.startsWith(`${label}:`)
-    if (sameSpeaker) {
-      prev.text += ` ${s.text}`
-      prev.end_ms = s.end_ms
-    } else {
-      out.push({ text: label ? `${label}: ${s.text}` : s.text, start_ms: s.start_ms, end_ms: s.end_ms })
-    }
-  }
-  return out
 }
 
 async function main() {
