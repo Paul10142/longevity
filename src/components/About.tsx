@@ -29,7 +29,7 @@ const About = () => {
 
         {/* Founder Section */}
         <section id="about" className="mb-4 pt-8">
-          <h2 className="text-3xl font-bold text-center text-foreground mb-12">Paul Clancy MD/MBA '26, Founder</h2>
+          <h2 className="text-3xl font-bold text-center text-foreground mb-12">Paul Clancy, MD MBA, Founder</h2>
           <div className="flex flex-col md:flex-row items-center gap-8 max-w-4xl mx-auto">
             {/* Image container with fixed, reasonable sizing */}
             <div className="flex-shrink-0">
@@ -44,7 +44,7 @@ const About = () => {
             </div>
             <div className="flex-1 text-left flex flex-col justify-center">
               <div className="text-lg text-muted-foreground leading-relaxed space-y-4">
-                <p>I'm a fifth-year MD/MBA student at the University of Virginia, pursuing a residency in anesthesiology. After watching my parents age and noticing barriers in our system to address prevention and root-cause disease, I started LifestyleAcademy to more easily share resources to help patients and friends have a more interactive role in their healthcare through evidence-based strategies focused on lifestyle medicine.</p>
+                <p>I finished my MD and MBA at the University of Virginia and am now an anesthesiology resident at the University of Michigan. After watching my parents age and noticing barriers in our system to address prevention and root-cause disease, I started LifestyleAcademy to more easily share resources to help patients and friends have a more interactive role in their healthcare through evidence-based strategies focused on lifestyle medicine.</p>
                 
                 <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>
               </div>
