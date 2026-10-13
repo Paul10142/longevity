@@ -67,12 +67,12 @@ Of 239 baseline merges, 213 went into candidate #1, 16 into #2, 10 deeper — a 
 S 0.84: 8 of 42; 0.86: 5 of 33 (3 of them pairs the judge kept apart = false merges); 0.88: 2 of 20; only ≥ 0.90 is clean
 (0 of 9), and that is 3% of pairs. Skipping would also lose the judge's enrich flag. Nothing to ship.
 
-## Lever 4 (found, not in the brief) — enrich rewrite without the thinking pass: SHIPPED OFF
+## Lever 4 (found, not in the brief) — enrich rewrite without the thinking pass: SHIPPED ON, with a thinking fallback
 
-`ENRICH_NO_THINKING=1`. `scripts/evalEnrichSpeedup.ts` on Paul's gold pairs, shipped vs no-thinking:
+`ENRICH_NO_THINKING` (default on since 2026-10-12, `=0` restores thinking everywhere). `scripts/evalEnrichSpeedup.ts` on Paul's gold pairs, shipped vs no-thinking:
 19.7 s → **2.5 s** per call (19.8 → 2.6 s in the two re-runs below); detail coverage 0.861 vs 0.859 (re-runs: 0.866 vs 0.880,
-0.874 vs 0.883). The rewritten text is what later facts are judged against, so it ships off until the guard below has been
-measured and Paul has decided.
+0.874 vs 0.883). The rewritten text is what later facts are judged against, so it shipped off until the guard below was
+measured; Paul then chose the fast-first design under "Decision".
 
 ### The guard now checks both directions (2026-10-12)
 
@@ -110,14 +110,30 @@ Decisions on false alarms (each has a unit test in `tests/enrichGuard.test.ts`, 
 - Also noticed, not covered by any number guard: on pair `50fe5b5a` no-thinking returned the prior text unchanged on all 3 reps
   (outcome "no change", so the new member's detail stayed buried); shipped enriched it 3/3.
 
-### Decision: ENRICH_NO_THINKING stays OFF
+### Decision (Paul, 2026-10-12): fast first, thinking only when the guard rejects — SHIPPED ON
 
-The rule was: rejection rate with no-thinking no worse than shipped, and no dropped number reaching the canonical. The second holds
-(0 reach the canonical, by construction). The first does not: 3/111 vs 0/111 on number-bearing pairs, concentrated in two pairs. The
-guard turns those into harmless rejections, so the cost of turning it on is a loss of ≈ 2–3% of enrichments on number-bearing
-facts (fewer overall; most facts carry no number) in exchange for ≈ 2.2× on the rewrite stage. The obvious fix is not built:
-**try no-thinking first and re-run with thinking only when the guard rejects** (≈ 2.6 + 0.03 × 19.8 ≈ 3.2 s per rewrite, and the
-final rejection rate would be the shipped one).
+The rule for a bare fast mode was: rejection rate no worse than shipped, and no dropped number reaching the canonical. The second held;
+the first did not (3/111 vs 0/111), so the bare mode stays unavailable as a default. Paul chose the fallback instead:
+`synthesizeEnrichedCanonical` tries the rewrite without the thinking pass and, **only when the guard rejects it**, re-runs it once
+with thinking. What is kept is always a rewrite the guard passed. `[enrich] fast rewrite of claim … rejected, thinking re-run passed (…)`
+is logged on each fallback; a rejection of the thinking re-run too is logged as before and keeps the prior canonical.
+
+Measured on the real path (same 37 number-bearing gold pairs × 3, `enrich-eval-fallback.{txt,json}`):
+
+| | rewrites | re-run with thinking | final rejections | digit dropped before guard → in canonical | s per rewrite | detail coverage |
+|---|---|---|---|---|---|---|
+| thinking always (as before) | 111 | – | 0 | 0 → 0 | **19.7** | 0.875 |
+| fast first, thinking on rejection | 111 | 7 (6.3%) | **0** | 0 → 0 | **4.1** | 0.888 |
+
+- 4.8× faster per rewrite, including the 7 re-runs (those cost ~11–41 s each). The re-run rate was 3/111 in the bare-fast run and 7/111 here:
+  the fast rewrite varies between runs, so read it as 3–6%.
+- The re-runs were real catches, not false alarms: the dropped `~1200 ng/dL` again; the invented "~100 lb (45 kg)" worked example again; and a
+  new one — members said "~10-day" and "about two weeks" and the fast rewrite kept only "two weeks" (dropped 10, reproduced 3 of 6 tries).
+- Still unguarded: on pair `50fe5b5a` the fast rewrite returned the prior text unchanged, all 3 reps (3/111 "no change" vs 0/111 shipped), so
+  that member's detail stayed buried. Not a number problem, so the guard cannot see it; a possible second trigger for the fallback is
+  "fast result identical to the prior canonical" (not built — one more thing for Paul to decide).
+- The `20%` / `one-fifth` equivalence mattered once on this sample (a thinking rewrite wrote "roughly one-fifth" for a member's `20%`; a
+  plain digit comparison would have rejected it).
 
 ### The next risk: a dropped qualifier ("in mice", "only in men over 50")
 

@@ -1,7 +1,10 @@
 /**
  * Does the enrich-merge rewrite keep every detail when the CLI's thinking pass is skipped?
  *
- *   npx tsx --env-file=.env.local scripts/evalEnrichSpeedup.ts [--n 60] [--conc 3] [--numeric-only] [--reps 1] [--out <json>]
+ *   npx tsx --env-file=.env.local scripts/evalEnrichSpeedup.ts [--n 60] [--conc 3] [--numeric-only] [--reps 1] [--fallback] [--out <json>]
+ *
+ * `--fallback` lets the no-thinking arm re-run with thinking when the guard rejects it (the production
+ * default since 2026-10-12); without it the arm is the bare fast rewrite.
  *
  * `--numeric-only` keeps the gold pairs whose members contain a digit (37 of 92) — the only ones the
  * number guard can act on — and `--reps` runs each pair that many times, because a rewrite is not
@@ -35,6 +38,7 @@ async function main() {
   const pairsFile = '/Users/paulclancy/_lifestyleacademy/eval/dedup-eval-pairs.json'
   const gold = new Set((JSON.parse(readFileSync('eval/dedup-goldset.json', 'utf8')) as { id: string }[]).map(g => g.id))
   const numericOnly = args.includes('--numeric-only')
+  const fallback = args.includes('--fallback')
   const reps = num('--reps', 1)
   const outFile = args.includes('--out') ? args[args.indexOf('--out') + 1] : 'eval/judge-speedup-runs/enrich-eval-guard.json'
   const all = (JSON.parse(readFileSync(pairsFile, 'utf8')) as GoldPair[])
@@ -46,13 +50,13 @@ async function main() {
   const pairs = Array.from({ length: reps }, () => base).flat()
   const conc = num('--conc', 3)
 
-  type Out = { ms: number; canonical: string; proposed: string; reason: string; changed: boolean; rejected: boolean; invented: string[]; missing: string[] }
+  type Out = { ms: number; canonical: string; proposed: string; reason: string; changed: boolean; rejected: boolean; invented: string[]; missing: string[]; retried: boolean }
   const results: { p: GoldPair; a: Out; b: Out }[] = []
   let next = 0
   const one = async (p: GoldPair, noThinking: boolean): Promise<Out> => {
     const t = Date.now()
-    const r = await synthesizeEnrichedCanonical(p.candidate_statement, [p.candidate_statement, p.new_statement], { noThinking })
-    return { ms: Date.now() - t, canonical: r.canonical, proposed: r.proposed ?? '', reason: r.reason, changed: r.changed, rejected: r.rejected, invented: r.invented, missing: r.missing }
+    const r = await synthesizeEnrichedCanonical(p.candidate_statement, [p.candidate_statement, p.new_statement], { noThinking, fallbackToThinking: fallback })
+    return { ms: Date.now() - t, canonical: r.canonical, proposed: r.proposed ?? '', reason: r.reason, changed: r.changed, rejected: r.rejected, invented: r.invented, missing: r.missing, retried: !!r.retriedWithThinking }
   }
   await Promise.all(Array.from({ length: conc }, async () => {
     while (next < pairs.length) {
@@ -101,6 +105,7 @@ async function main() {
   }
   row('shipped    ', r => r.a)
   row('no thinking', r => r.b)
+  if (fallback) console.log(`fast first with thinking fallback: ${ok.filter(r => r.b.retried).length}/${ok.length} rewrites re-run with thinking; mean ${(mean(ok.map(r => r.b.ms)) / 1000).toFixed(1)} s per rewrite including the re-runs`)
   writeFileSync(outFile, JSON.stringify(results.map(r => ({ id: r.p.id, member1: r.p.candidate_statement, member2: r.p.new_statement, shipped: r.a, noThinking: r.b })), null, 1))
   console.log('\nREJECTIONS BY THE MISSING-NUMBER CHECK:')
   for (const [name, pick] of [['shipped', (r: (typeof ok)[number]) => r.a], ['no thinking', (r: (typeof ok)[number]) => r.b]] as const) {

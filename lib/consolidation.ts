@@ -463,6 +463,8 @@ export async function enrichClaimCanonical(claimId: string): Promise<EnrichResul
   // its rate is the signal that the rewrite is dropping or inventing numbers, so it is always logged.
   if (result.rejected) {
     console.log(`[enrich] guard rejected the rewrite of claim ${claimId} (${statements.length} members) — prior canonical kept: ${result.reason}`)
+  } else if (result.retriedWithThinking) {
+    console.log(`[enrich] fast rewrite of claim ${claimId} rejected, thinking re-run passed (${result.fastRejection})`)
   }
 
   // `enriched_at` marks "this claim's members have been folded in", and is

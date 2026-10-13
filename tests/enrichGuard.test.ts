@@ -109,3 +109,54 @@ test('a number that exists only in a member quote is grounding for "invented" bu
 test('numbers that are part of a name still have to be kept', () => {
   assert.deepEqual(droppedSpecifics('Type diabetes responds to exercise.', ['Type 2 diabetes responds to exercise.']), ['2'])
 })
+
+// ---- fast first, thinking only when the guard rejects ----
+import { synthesizeEnrichedCanonical } from '../lib/enrichMerge'
+
+const PRIOR = 'Testosterone peaks around 15–20 weeks.'
+const MEMBERS = [PRIOR, 'Adult male levels are about ~1200 ng/dL.']
+const GOOD = 'Testosterone peaks around 15–20 weeks; adult male levels are about ~1200 ng/dL.'
+const DROPS = 'Testosterone peaks around 15–20 weeks; adult levels are higher.'
+
+test('a fast rewrite that passes the guard is used, and there is no second call', async () => {
+  const calls: boolean[] = []
+  const r = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, complete: async (_s, _u, nt) => { calls.push(nt); return { canonical: GOOD } } })
+  assert.deepEqual(calls, [true])
+  assert.equal(r.canonical, GOOD)
+  assert.equal(r.retriedWithThinking, undefined)
+})
+
+test('a fast rewrite the guard rejects is re-run with thinking, and the thinking one is kept if it passes', async () => {
+  const calls: boolean[] = []
+  const r = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, complete: async (_s, _u, nt) => { calls.push(nt); return { canonical: nt ? DROPS : GOOD } } })
+  assert.deepEqual(calls, [true, false])
+  assert.equal(r.canonical, GOOD)
+  assert.equal(r.rejected, false)
+  assert.equal(r.retriedWithThinking, true)
+  assert.match(r.fastRejection ?? '', /dropped 1200/)
+})
+
+test('if the thinking re-run is rejected too, the prior canonical is kept', async () => {
+  const r = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, complete: async () => ({ canonical: DROPS }) })
+  assert.equal(r.canonical, PRIOR)
+  assert.equal(r.rejected, true)
+  assert.equal(r.retriedWithThinking, true)
+})
+
+test('with thinking on from the start there is one call and no fallback; a failed call is not retried by the guard path', async () => {
+  let n = 0
+  const r = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: false, complete: async () => { n++; return { canonical: DROPS } } })
+  assert.equal(n, 1)
+  assert.equal(r.rejected, true)
+  let m = 0
+  const f = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, complete: async () => { m++; throw new Error('boom') } })
+  assert.equal(m, 1)
+  assert.match(f.reason, /synthesis failed/)
+})
+
+test('fallbackToThinking:false gives the plain fast rewrite (the evaluation harness uses this)', async () => {
+  let n = 0
+  const r = await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, fallbackToThinking: false, complete: async () => { n++; return { canonical: DROPS } } })
+  assert.equal(n, 1)
+  assert.equal(r.rejected, true)
+})

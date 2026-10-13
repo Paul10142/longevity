@@ -54,11 +54,22 @@ export const ENRICH_MERGE_ENABLED = process.env.ENRICH_MERGE !== '0'
 /** Mechanical-synthesis tier (Haiku): merge-fidelity is assembly, not prose. */
 export const ENRICH_MODEL = CLAUDE_BULK_MODEL
 
-/** Skip the CLI's default thinking pass on the rewrite call (`ENRICH_NO_THINKING=1`). Off by
- *  default: it changes how long the model deliberates, not what it is asked, but the text it
- *  returns is what future merges are judged against, so it ships off until
- *  scripts/evalEnrichSpeedup.ts has shown the rewrites keep every detail. */
-export const ENRICH_NO_THINKING = process.env.ENRICH_NO_THINKING === '1'
+/** Try the rewrite WITHOUT the CLI's default thinking pass first (19.8 s → 2.6 s per call), and re-run it
+ *  WITH thinking only when the fidelity guard rejects the fast one (~3% of rewrites on number-bearing
+ *  facts; measured 2026-10-12, docs/judge-speedup.md). On at Paul's word, 2026-10-12. `ENRICH_NO_THINKING=0`
+ *  restores thinking on every rewrite. The text that survives is always one the guard passed. */
+export const ENRICH_NO_THINKING = process.env.ENRICH_NO_THINKING !== '0'
+
+export type EnrichOpts = {
+  memberQuotes?: string[]
+  model?: string
+  /** First attempt without the thinking pass (default `ENRICH_NO_THINKING`). */
+  noThinking?: boolean
+  /** Re-run with thinking when the fast attempt is rejected by the guard (default true). */
+  fallbackToThinking?: boolean
+  /** Replaces the model call (tests only). */
+  complete?: (system: string, user: string, noThinking: boolean) => Promise<{ canonical?: string }>
+}
 
 export type EnrichResult = {
   /** The canonical to persist — the rewrite when it passed, else the prior one. */
@@ -74,6 +85,10 @@ export type EnrichResult = {
   reason: string
   /** The rewrite the model proposed, before the guard — set whenever there was one (diagnostics). */
   proposed?: string
+  /** True when the fast (no-thinking) rewrite was rejected and this result is the thinking re-run's. */
+  retriedWithThinking?: boolean
+  /** Why the fast rewrite was rejected, when `retriedWithThinking`. */
+  fastRejection?: string
 }
 
 export const ENRICH_SYNTHESIS_SYSTEM = `
@@ -202,7 +217,24 @@ export function droppedSpecifics(rewrite: string, sources: string[]): string[] {
 export async function synthesizeEnrichedCanonical(
   priorCanonical: string,
   memberStatements: string[],
-  opts?: { memberQuotes?: string[]; model?: string; noThinking?: boolean }
+  opts?: EnrichOpts
+): Promise<EnrichResult> {
+  const fast = opts?.noThinking ?? ENRICH_NO_THINKING
+  const first = await attemptRewrite(priorCanonical, memberStatements, opts, fast)
+  // A fast rewrite that the guard rejected is retried once with the thinking pass. Only the guard
+  // triggers it: a failed or empty call is not retried here (the caller's own retry handles those).
+  if (fast && first.rejected && (opts?.fallbackToThinking ?? true)) {
+    const second = await attemptRewrite(priorCanonical, memberStatements, opts, false)
+    return { ...second, retriedWithThinking: true, fastRejection: first.reason }
+  }
+  return first
+}
+
+async function attemptRewrite(
+  priorCanonical: string,
+  memberStatements: string[],
+  opts: EnrichOpts | undefined,
+  noThinking: boolean
 ): Promise<EnrichResult> {
   const members = memberStatements.map(s => s.trim()).filter(Boolean)
   // Grounding for the guard: member statements + prior canonical (itself
@@ -220,14 +252,9 @@ export async function synthesizeEnrichedCanonical(
 
   let proposed: string
   try {
-    const parsed = await claudeJson<{ canonical?: string }>(
-      ENRICH_SYNTHESIS_SYSTEM,
-      user,
-      2000,
-      opts?.model ?? ENRICH_MODEL,
-      undefined,
-      { noThinking: opts?.noThinking ?? ENRICH_NO_THINKING }
-    )
+    const parsed = opts?.complete
+      ? await opts.complete(ENRICH_SYNTHESIS_SYSTEM, user, noThinking)
+      : await claudeJson<{ canonical?: string }>(ENRICH_SYNTHESIS_SYSTEM, user, 2000, opts?.model ?? ENRICH_MODEL, undefined, { noThinking })
     proposed = (parsed.canonical ?? '').trim()
   } catch (err) {
     rethrowIfUsageLimit(err)
