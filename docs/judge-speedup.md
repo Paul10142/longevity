@@ -129,9 +129,12 @@ Measured on the real path (same 37 number-bearing gold pairs × 3, `enrich-eval-
   the fast rewrite varies between runs, so read it as 3–6%.
 - The re-runs were real catches, not false alarms: the dropped `~1200 ng/dL` again; the invented "~100 lb (45 kg)" worked example again; and a
   new one — members said "~10-day" and "about two weeks" and the fast rewrite kept only "two weeks" (dropped 10, reproduced 3 of 6 tries).
-- Still unguarded: on pair `50fe5b5a` the fast rewrite returned the prior text unchanged, all 3 reps (3/111 "no change" vs 0/111 shipped), so
-  that member's detail stayed buried. Not a number problem, so the guard cannot see it; a possible second trigger for the fallback is
-  "fast result identical to the prior canonical" (not built — one more thing for Paul to decide).
+- On pair `50fe5b5a` the fast rewrite returned the prior text unchanged on all 3 reps (3/111 "no change", vs 0/111 with thinking), so that
+  member's detail stayed buried — not a number problem, so the guard cannot see it. **Paul chose to treat that as a second trigger** (2026-10-12):
+  a fast rewrite identical to the prior canonical is also re-run with thinking (`fastRejection: "fast rewrite was identical to the prior canonical"`).
+  Measured on all 92 gold pairs × 1 (`enrich-eval-fallback2.{txt,json}`): 4/91 rewrites re-run for either reason, **4.1 s** per rewrite (thinking
+  always: 20.9 s), 0 final rejections, 0 dropped numbers, 0 left unchanged (thinking-always left 2 of 91 unchanged: those are cases where the
+  members add nothing). A re-run that is unchanged again is kept as "no change", at the cost of one wasted ~20 s call.
 - The `20%` / `one-fifth` equivalence mattered once on this sample (a thinking rewrite wrote "roughly one-fifth" for a member's `20%`; a
   plain digit comparison would have rejected it).
 

@@ -301,7 +301,8 @@ which `app/api/worker/tick/route.ts` already assumes):
   figure spelled another way (`5`/`five`, `20%`/`one-fifth`, a point inside a stated range)
   counts as kept. It does not see a dropped *qualifier* (`in mice`, `only in men over 50`).
   The rewrite runs **without the CLI's thinking pass first** (≈ 4 s instead of ≈ 20 s) and is re-run
-  with thinking only when the guard rejects it (`ENRICH_NO_THINKING=0` = always think).
+  with thinking only when the guard rejects it or it returns the prior text unchanged
+  (`ENRICH_NO_THINKING=0` = always think).
 - **Near-duplicates are linked, not lost.** A DIFFERENT verdict on an ANN-paired
   candidate writes a `claim_links` row (`near_duplicate`). Under V3 a split means
   a genuine material difference, so the pair are variants of one idea — and the

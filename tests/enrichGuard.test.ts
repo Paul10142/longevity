@@ -160,3 +160,25 @@ test('fallbackToThinking:false gives the plain fast rewrite (the evaluation harn
   assert.equal(n, 1)
   assert.equal(r.rejected, true)
 })
+
+test('a fast rewrite identical to the prior canonical is re-run with thinking; unchanged twice stays unchanged', async () => {
+  const members = [PRIOR, 'Levels differ between people.']
+  const thought = 'Testosterone peaks around 15–20 weeks; levels differ between people.'
+  const calls: boolean[] = []
+  const r = await synthesizeEnrichedCanonical(PRIOR, members, { noThinking: true, complete: async (_s, _u, nt) => { calls.push(nt); return { canonical: nt ? PRIOR : thought } } })
+  assert.deepEqual(calls, [true, false])
+  assert.equal(r.canonical, thought)
+  assert.equal(r.changed, true)
+  assert.equal(r.retriedWithThinking, true)
+  assert.match(r.fastRejection ?? '', /identical to the prior/)
+  const again = await synthesizeEnrichedCanonical(PRIOR, members, { noThinking: true, complete: async () => ({ canonical: PRIOR }) })
+  assert.equal(again.changed, false)
+  assert.equal(again.rejected, false)
+  assert.equal(again.retriedWithThinking, true)
+})
+
+test('an enriched fast rewrite is not re-run just because it exists', async () => {
+  let n = 0
+  await synthesizeEnrichedCanonical(PRIOR, MEMBERS, { noThinking: true, complete: async () => { n++; return { canonical: GOOD } } })
+  assert.equal(n, 1)
+})

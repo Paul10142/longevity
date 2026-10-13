@@ -85,9 +85,9 @@ export type EnrichResult = {
   reason: string
   /** The rewrite the model proposed, before the guard — set whenever there was one (diagnostics). */
   proposed?: string
-  /** True when the fast (no-thinking) rewrite was rejected and this result is the thinking re-run's. */
+  /** True when the fast (no-thinking) rewrite was rejected, or identical to the prior canonical, and this result is the thinking re-run's. */
   retriedWithThinking?: boolean
-  /** Why the fast rewrite was rejected, when `retriedWithThinking`. */
+  /** Why the fast rewrite was not accepted, when `retriedWithThinking`. */
   fastRejection?: string
 }
 
@@ -221,11 +221,13 @@ export async function synthesizeEnrichedCanonical(
 ): Promise<EnrichResult> {
   const fast = opts?.noThinking ?? ENRICH_NO_THINKING
   const first = await attemptRewrite(priorCanonical, memberStatements, opts, fast)
-  // A fast rewrite that the guard rejected is retried once with the thinking pass. Only the guard
-  // triggers it: a failed or empty call is not retried here (the caller's own retry handles those).
-  if (fast && first.rejected && (opts?.fallbackToThinking ?? true)) {
+  // A fast rewrite is retried once with the thinking pass when the guard rejected it, or when it came
+  // back identical to the prior canonical (the new member's detail would stay buried; measured 3/111
+  // on number-bearing gold pairs, 0/111 with thinking). A failed or empty call is not retried here
+  // (the caller's own retry handles those).
+  if (fast && (opts?.fallbackToThinking ?? true) && (first.rejected || first.reason === 'no change')) {
     const second = await attemptRewrite(priorCanonical, memberStatements, opts, false)
-    return { ...second, retriedWithThinking: true, fastRejection: first.reason }
+    return { ...second, retriedWithThinking: true, fastRejection: first.rejected ? first.reason : 'fast rewrite was identical to the prior canonical' }
   }
   return first
 }

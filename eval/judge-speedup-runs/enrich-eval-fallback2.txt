@@ -1,0 +1,51 @@
+92 pairs (1 with a failed call, excluded)
+seconds per call: as shipped 20.9  →  no thinking 4.1
+outcome (enriched / no change / rejected by guard): shipped 90/1/0   no thinking 91/0/0
+shipped    : 91 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+no thinking: 91 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+fast first with thinking fallback: 4/91 rewrites re-run with thinking; mean 4.1 s per rewrite including the re-runs
+
+REJECTIONS BY THE MISSING-NUMBER CHECK:
+
+identical text: 3/91;  mean word overlap 0.83
+mean length (chars): shipped 402  no thinking 412
+detail coverage (share of the members' distinctive words kept): shipped 0.872  no thinking 0.885
+  pairs where no-thinking keeps >=10 points less: 6/91;  keeps >=10 points more: 10/91
+
+MOST DIFFERENT PAIRS:
+
+merge:5bebc03e-82e0-4110-9bb7-2cc2e7004014  overlap 0.53
+  MEMBER 1: Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; obesity, heavy alcohol use, cirrhosis or hepatitis, and some medications can raise estradiol and thereby lower testosterone.
+  MEMBER 2: Factors that increase peripheral aromatization raise estradiol in men — notably obesity and liver dysfunction (including alcohol-related liver disease, cirrhosis, hepatitis) and some medications — which can secondarily suppress testosterone.
+  shipped:      Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; in men, peripheral aromatization is notably increased by obesity and liver dysfunction (including alcohol-related liver disease, cirrhosis, hepatitis), and also by heavy alcohol use and some medications, raising estradiol and thereby secondarily lowering testosterone.
+  no thinking:  Aromatase activity in adipose tissue and diseased liver increases conversion of testosterone to estradiol; obesity, heavy alcohol use, cirrhosis or hepatitis, and some medications can raise estradiol and thereby lower testosterone through peripheral aromatization.
+
+merge:d19cf6bd-c688-4173-97cf-57dcca3d8763  overlap 0.54
+  MEMBER 1: Human preference for sweet, high-calorie foods has an evolutionary basis: calorically dense sweets were reliably valuable in ancestral environments, which helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks.
+  MEMBER 2: Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain; modern ubiquity of calorie-dense items (e.g., candy bars, chocolate) creates an evolutionary mismatch that promotes overconsumption relative to energy needs.
+  shipped:      Human brains evolved to prefer sweet, calorie-dense foods because ancestral environments made high-energy foods rare and costly to obtain, rendering them reliably valuable; modern ubiquity of these items (e.g., candy bars, chocolate) versus lower-calorie alternatives (e.g., cheese sticks) creates an evolutionary mismatch that explains modern cravings and promotes overconsumption relative to energy needs.
+  no thinking:  Human preference for sweet, high-calorie foods has an evolutionary basis: in ancestral environments, calorically dense sweets were reliably valuable and high-energy foods were rare and costly to obtain, which shaped brain evolution to favor such foods and helps explain modern cravings for items like candy bars over lower-calorie alternatives like cheese sticks; the modern ubiquity of calorie-dense items creates an evolutionary mismatch that promotes overconsumption relative to energy needs.
+
+merge:4db4bfec-ac85-45e1-b90c-3fbf0715b40e  overlap 0.64
+  MEMBER 1: Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption.
+  MEMBER 2: A key mechanism by which ultra-processed foods drive excess calorie intake is formulation: making foods 'hyper-palatable' typically involves adding large amounts of sugar and fat.
+  shipped:      Ultra-processed foods are intentionally engineered through formulation for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes excess calorie intake.
+  no thinking:  Ultra-processed foods are intentionally engineered for hyper-palatability—often by adding concentrated sugar and fat—which increases their calorie density and promotes overconsumption; a key mechanism is formulation that makes foods 'hyper-palatable' by adding large amounts of sugar and fat, thereby driving excess calorie intake.
+
+merge:a6635a16-a19b-444f-aa19-cba736262d66  overlap 0.66
+  MEMBER 1: Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  MEMBER 2: Sustained, very high‑intensity exercise can reduce male fertility: one training protocol that increased men to ~2 hours/day of exercise above 80% VO2max was reported to ‘put a dent’ in fertility outcomes.
+  shipped:      Sustained very-high-intensity exercise (example: ~2 hours/day of exercise above 80% VO2max for 12 weeks) markedly suppresses male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  no thinking:  Sustained very-high-intensity exercise (example: ~2 hours/day above 80% VO2max for 12 weeks) can markedly suppress male reproductive function, reducing sperm counts ~40% and testosterone ~50%, with effects described as putting 'a dent' in fertility outcomes; both sperm counts and testosterone recovered when activity returned to moderate levels.
+
+merge:fbf2c28f-36cf-4b66-aecf-311cf1552700  overlap 0.67
+  MEMBER 1: Healthspan is multidimensional: treat it as three sub-vectors — physical function, cognitive function, and emotional well‑being — rather than a single metric; interventions should target the specific domain(s) that are most likely to decline or matter to the individual.
+  MEMBER 2: Healthspan can be usefully parsed into three related but distinct domains—physical capacity, cognitive capacity, and emotional health—which follow different age trajectories and therefore require different strategies.
+  shipped:      Healthspan is multidimensional, comprising three related but distinct domains—physical function, cognitive function, and emotional well-being—that follow different age trajectories and therefore require different strategies; interventions should target the specific domain(s) most likely to decline or matter to the individual.
+  no thinking:  Healthspan is multidimensional across three distinct, related domains—physical function (or capacity), cognitive function (or capacity), and emotional well‑being (or health)—which follow different age trajectories; interventions should target the specific domain(s) that are most likely to decline or matter to the individual, since each requires different strategies.
+
+merge:760376b4-7e53-47de-97e5-0fe5ea9422ea  overlap 0.67
+  MEMBER 1: Male and female aggression often follow different strategies: males are more likely to use direct physical confrontation, while females more often use indirect or relational tactics—patterns that can be understood through evolutionary trade‑offs in competition and risk.
+  MEMBER 2: Human sex differences in aggression often reflect strategy: males more commonly use direct, face-to-face physical or overt verbal aggression, while females more commonly use indirect/relational aggression (e.g., reputation denigration, social exclusion) as an adaptive way to compete while avoiding physical harm.
+  shipped:      Male and female aggression often follow different strategies: males are more likely to use direct, face-to-face physical or overt verbal aggression, while females more often use indirect or relational tactics (e.g., reputation denigration, social exclusion), an adaptive strategy to compete while avoiding physical harm—patterns reflecting evolutionary trade‑offs in competition and risk.
+  no thinking:  Male and female aggression often follow different strategies: males are more likely to use direct physical confrontation or overt verbal aggression (face-to-face), while females more often use indirect or relational tactics such as reputation denigration and social exclusion—adaptive patterns that can be understood through evolutionary trade-offs in competition and risk avoidance.

@@ -23,8 +23,7 @@ there.
 >   equivalence property.
 > - **2026-10-12 (night) — enrich guard now also rejects a DROPPED number, and `ENRICH_NO_THINKING` is now ON with a thinking fallback (Paul's call).** The rewrite
 >   is tried without the thinking pass; only if the guard rejects it is it re-run with thinking. Gold, number-bearing pairs ×3: 19.7 → **4.1 s** per rewrite, 7/111 re-runs
->   (all real catches), 0 final rejections, 0 dropped numbers in the stored text. Unguarded: dropped *qualifiers* ("in mice"; a word list is noise) and a fast rewrite
->   that returns the prior text unchanged (3/111). `ENRICH_NO_THINKING=0` restores thinking everywhere. PR #24; see `docs/judge-speedup.md`.
+>   (all real catches), 0 final rejections, 0 dropped numbers in the stored text. A fast rewrite identical to the prior text is also re-run with thinking (all 92 gold pairs: 4/91 re-runs, 4.1 s, 0 left unchanged). Unguarded: dropped *qualifiers* ("in mice"; a word list is noise). `ENRICH_NO_THINKING=0` restores thinking everywhere. PR #24; see `docs/judge-speedup.md`.
 > - **Measured, NOT shipped:** lower effort (low: +15% speed, 14 boundary hops vs 7 noise), fewer candidates, skip-the-judge
 >   (wrong on 5/33 pairs ≥ 0.86).
 > - **The judge disagrees with itself:** same settings re-run flip 7/282 merge decisions (97.5%), all SAME@0.72/0.78 ↔ SAME@0.80.
