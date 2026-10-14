@@ -33,6 +33,7 @@
  */
 
 import { fidelityCheck } from '../lib/enrichMerge'
+import { quarantinesOnRaise, statusAfterResolution } from '../lib/claimGate'
 
 type ClaimRow = { id: string; canonical_statement: string; member_count: number }
 
@@ -55,6 +56,18 @@ async function raise(
     .from('claim_flags')
     .upsert({ claim_id: claimId, rule, detail, evidence }, { onConflict: 'claim_id,rule', ignoreDuplicates: true })
   if (error) throw new Error(`raise ${rule} on ${claimId}: ${error.message}`)
+
+  // Quarantine (lib/claimGate.ts): an extraction_fidelity flag hides its claim
+  // from synthesis until Paul rules on it at /admin/flags. Only an `active`
+  // claim moves, so a merged/retired claim is never resurrected into `flagged`.
+  if (quarantinesOnRaise(rule)) {
+    const { error: qErr } = await db
+      .from('claims')
+      .update({ status: 'flagged' })
+      .eq('id', claimId)
+      .eq('status', 'active')
+    if (qErr) throw new Error(`quarantine ${claimId}: ${qErr.message}`)
+  }
 }
 
 async function run(dryRun: boolean): Promise<void> {
@@ -159,8 +172,8 @@ async function run(dryRun: boolean): Promise<void> {
   console.log(`orphan_topic:   ${orphanFlags} flag(s)${dryRun ? ' (dry run)' : ''} of ${active.length} active claim(s)`)
 
   if (!dryRun) {
-    console.log(`\nFlags recorded. They do NOT quarantine anything yet — quarantine is`)
-    console.log(`claims.status = 'flagged', a deliberate step once the rubric is validated (§7.2).`)
+    console.log(`\nFlags recorded. These rules are advisory and do NOT quarantine — only`)
+    console.log(`extraction_fidelity sets claims.status = 'flagged' (lib/claimGate.ts).`)
   }
 }
 
@@ -205,6 +218,10 @@ async function report(): Promise<void> {
  * ~1 LLM call per member insight, so it is bounded, resumable (skips claims
  * already flagged), and must NOT run alongside a pipeline drain — two heavy CLI
  * consumers throttle each other.
+ *
+ * QUARANTINES (since 2026-10-13, Paul's call after the κ 0.89 certification): a
+ * raised flag sets the claim to `flagged`, hiding it from articles until it is
+ * ruled on at /admin/flags. FIDELITY_SHADOW_MODE=1 records flags without hiding.
  */
 async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?: string): Promise<void> {
   const db = await loadDb()
@@ -296,6 +313,26 @@ async function manualFlag(claimId: string, note: string): Promise<void> {
   console.log(`Flagged ${claimId} (manual): ${note || '(no note)'}`)
 }
 
+/** A false-alarm ruling on a quarantining flag puts the hidden claim back. */
+async function applyResolutionToClaim(
+  db: Awaited<ReturnType<typeof loadDb>>,
+  claimId: string,
+  rule: string,
+  resolution: string
+): Promise<void> {
+  const { data: claim, error } = await db.from('claims').select('status').eq('id', claimId).maybeSingle()
+  if (error) throw new Error(error.message)
+  const next = claim ? statusAfterResolution((claim as { status: string }).status, rule, resolution) : null
+  if (!next) return
+  const { error: uErr } = await db
+    .from('claims')
+    .update({ status: next })
+    .eq('id', claimId)
+    .eq('status', 'flagged')
+  if (uErr) throw new Error(uErr.message)
+  console.log(`Claim ${claimId} restored to ${next}`)
+}
+
 async function resolveFlag(flagId: string, resolution: string): Promise<void> {
   const db = await loadDb()
   const allowed = ['approved', 'edited', 'split', 'narrowed', 'archived', 'false_positive', 'reworded']
@@ -308,7 +345,9 @@ async function resolveFlag(flagId: string, resolution: string): Promise<void> {
     .maybeSingle()
   if (error) throw new Error(error.message)
   if (!data) throw new Error(`no flag ${flagId}`)
-  console.log(`Resolved flag ${flagId} (${(data as { rule: string }).rule}) → ${resolution}`)
+  const flag = data as { claim_id: string; rule: string }
+  await applyResolutionToClaim(db, flag.claim_id, flag.rule, resolution)
+  console.log(`Resolved flag ${flagId} (${flag.rule}) → ${resolution}`)
 }
 
 async function main() {

@@ -837,6 +837,18 @@ Flags land in `claim_flags` in **shadow mode**: nothing sets `status='flagged'`
 until the judge is κ-certified, so an uncertified judge can never bury a faithful
 claim. When the drain moves to the deployed worker it becomes a low-priority job.
 
+**Status (2026-10-13): shadow mode OFF.** The judge was certified on 2026-10-12
+(κ 0.89 vs Paul's 40 labels, 0 missed inventions, 1 false positive of 35) and Paul
+switched it on. A new `extraction_fidelity` flag now sets the claim's status to
+`flagged` (invisible to synthesis, in the `/admin/flags` queue); "Dismiss" there
+restores it to `active`, "Confirm issue" keeps it hidden (`lib/claimGate.ts`).
+Only this rule quarantines; the others stay advisory. Undo without a deploy:
+`FIDELITY_SHADOW_MODE=1`. Not applied retroactively (no flag was open at the
+switch). Two gaps: the overnight supervisor (`extractDeepgram.ts`) does not run
+the judge — only `extract_with_fidelity.sh` / `flagClaims.ts fidelity` do; and the
+re-certification sample is still the static 40 pairs (the rolling per-batch
+re-label the eval README prescribes is not built).
+
 ### Recency weighting (2026-07-28) — newer sources rank higher
 Migration `015_recency_scoring.sql` adds a bounded recency bonus (0..8, decaying
 ~1.5 pts/yr) to the `topic_claims()` score, so the newer of two comparable claims

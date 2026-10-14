@@ -57,9 +57,11 @@ runner), code work in separate worktrees.
   post-extraction flow: extract → drain (consolidate → tag) → `extraction_fidelity`
   flagging, strictly serialized so the fidelity judge never competes with the
   drain for the CLI. Defaults `SKIP_SYNTHESIS_FANOUT=1` (no article regen). Run
-  under `caffeinate` on AC power. Flags land in `claim_flags` (shadow mode — no
-  quarantine until the judge's κ is certified; see `docs/recency-weighting.md`
-  sibling `eval/extraction-goldset.json`).
+  under `caffeinate` on AC power. Flags land in `claim_flags` and **quarantine**
+  the claim (`status='flagged'`, hidden from articles, reviewed at `/admin/flags`)
+  since 2026-10-13, after the judge was certified at κ 0.89 against
+  `eval/extraction-goldset.json`. `FIDELITY_SHADOW_MODE=1` = record-only
+  (`lib/claimGate.ts`).
 
 ## Environment
 

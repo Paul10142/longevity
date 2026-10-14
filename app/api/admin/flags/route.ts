@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { selectAllPaged } from "@/lib/pagination"
+import { statusAfterResolution } from "@/lib/claimGate"
 
 export const dynamic = "force-dynamic"
 
@@ -66,7 +67,8 @@ export async function GET() {
 /**
  * Resolve a single flag. Mirrors resolveFlag() in scripts/flagClaims.ts exactly:
  * validate the resolution against the allowed set, then set resolved_at = now()
- * and resolution on the one row, 404 if nothing matched.
+ * and resolution on the one row, 404 if nothing matched. Dismissing a
+ * quarantining flag as a false alarm also un-hides its claim.
  */
 export async function POST(request: NextRequest) {
   if (!supabaseAdmin) {
@@ -105,5 +107,17 @@ export async function POST(request: NextRequest) {
   if (error) return NextResponse.json({ error: error.message }, { status: 500 })
   if (!data) return NextResponse.json({ error: "Flag not found" }, { status: 404 })
 
-  return NextResponse.json({ ok: true })
+  // A false alarm on a quarantining flag (lib/claimGate.ts) puts the hidden
+  // claim back where articles can read it. Mirrors applyResolutionToClaim() in
+  // scripts/flagClaims.ts.
+  const { claim_id, rule } = data as { claim_id: string; rule: string }
+  const { data: claim, error: cErr } = await db.from("claims").select("status").eq("id", claim_id).maybeSingle()
+  if (cErr) return NextResponse.json({ error: cErr.message }, { status: 500 })
+  const next = claim ? statusAfterResolution((claim as { status: string }).status, rule, resolution) : null
+  if (next) {
+    const { error: uErr } = await db.from("claims").update({ status: next }).eq("id", claim_id).eq("status", "flagged")
+    if (uErr) return NextResponse.json({ error: uErr.message }, { status: 500 })
+  }
+
+  return NextResponse.json({ ok: true, claimStatus: next ?? undefined })
 }
