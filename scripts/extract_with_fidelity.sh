@@ -17,10 +17,11 @@
 # deployed worker (harness-hardening milestone) it becomes a low-priority job.
 #
 # The flags land in `claim_flags` (rule = 'extraction_fidelity') and feed the §7
-# review lifecycle. They DO NOT quarantine: nothing here sets claims.status =
-# 'flagged'. Auto-quarantine waits until the judge is certified against Paul's
-# gold labels (judge↔human κ, Phase 1a) — flagging in "shadow mode" until then is
-# deliberate, so an uncertified judge can never bury a faithful claim.
+# review lifecycle. Since 2026-10-13 they QUARANTINE: a flagged claim is set to
+# claims.status = 'flagged' (invisible to articles) until Paul rules on it at
+# /admin/flags. The judge was certified against his 40 gold labels on 2026-10-12
+# (κ 0.89). FIDELITY_SHADOW_MODE=1 restores the old record-only behaviour
+# (lib/claimGate.ts).
 #
 # Usage:
 #   caffeinate -dimsu scripts/extract_with_fidelity.sh <source_id> [<source_id> …]
@@ -74,7 +75,7 @@ for sid in "$@"; do
   echo "── extraction_fidelity flagging (post-drain, no CLI contention) ──"
   npx tsx --env-file=.env.local scripts/flagClaims.ts fidelity --source "$sid"
 
-  echo "── flags for this source recorded (shadow mode — no quarantine). ──"
+  echo "── flags for this source recorded; flagged facts are hidden until reviewed at /admin/flags. ──"
 done
 
 echo ""
