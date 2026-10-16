@@ -37,6 +37,25 @@ window that hears this follows this file and needs nothing else pasted in.
 
 ## 2. What "proceed with extraction" runs
 
+**While Batch 1 is unfinished (started 2026-10-12), "proceed with extraction" means run the
+replacement loop, not the plain command below.** Batch 1 replaces the 76 YouTube-caption
+episodes one at a time: download → transcribe → delete the caption copy → attach → extract →
+verify. Paul approved the Deepgram spend for those 76 (about $48) on 2026-10-12; that yes covers
+only them. Check progress with `ls /Users/paulclancy/_lifestyleacademy/scratchpad/batch1/done | wc -l`
+(76 markers = finished; the list is `scratchpad/batch1/pairs.txt`). If fewer than 76, do the §1
+pre-flight, then run as ONE background Bash command (`run_in_background: true`):
+
+    zsh /Users/paulclancy/_lifestyleacademy/scratchpad/batch1/replace2.sh 2>&1 | tee -a /Users/paulclancy/_lifestyleacademy/scratchpad/runs/batch1-20261012.log
+
+Safe to start, stop or restart at any moment: every step repeats safely, a delete cut by a dropped
+connection finishes itself, and losing the network only makes it wait (Paul travels, so this is
+normal). **Closing the window that runs it stops it**, so one runner window stays open until it
+finishes. A stale writer lock is waited out. When the background task ends, read the LOG, not the
+exit code (an early stop also exits 0): the last lines say `finished`, or `STOP: …` with the reason.
+The scripts live in the main checkout's gitignored `scratchpad/`, so they exist only on Paul's Mac.
+When all 76 are done: re-query counts, update the monitor page, the `v4-build-state` memory and
+`BACKLOG.md`, and tell Paul. After that this paragraph no longer applies.
+
 From the MAIN checkout (`/Users/paulclancy/_lifestyleacademy`, not a worktree),
 as ONE background Bash command (`run_in_background: true`, no `caffeinate` —
 Amphetamine keeps the Mac awake):
