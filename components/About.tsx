@@ -33,7 +33,7 @@ const About = () => {
         {/* Founder Section */}
         <section id="about" className="pt-8">
           <div className="max-w-5xl mx-auto">
-            <h2 className="text-3xl sm:text-4xl font-sans font-semibold text-center text-primary mb-16">Paul Clancy MD/MBA '26, Founder</h2>
+            <h2 className="text-3xl sm:text-4xl font-sans font-semibold text-center text-primary mb-16">Paul Clancy, MD MBA, Founder</h2>
             <div className="flex flex-col md:flex-row items-start gap-12">
               {/* Image container with fixed, reasonable sizing */}
               <div className="flex-shrink-0 w-full md:w-auto">
@@ -51,7 +51,7 @@ const About = () => {
                 <Card className="shadow-premium border-2 border-border/50 bg-gradient-to-br from-background to-muted/20">
                   <CardContent className="p-8">
                     <div className="text-lg text-muted-foreground leading-relaxed space-y-6 font-light">
-                      <p>I'm a fifth-year MD/MBA student at the University of Virginia, pursuing a residency in anesthesiology. After watching my parents age and noticing barriers in our system to address prevention and root-cause disease, I started LifestyleAcademy to more easily share resources to help patients and friends have a more interactive role in their healthcare through evidence-based strategies focused on lifestyle medicine.</p>
+                      <p>I finished my MD and MBA at the University of Virginia and am now an anesthesiology resident at the University of Michigan. After watching my parents age and noticing barriers in our system to address prevention and root-cause disease, I started LifestyleAcademy to more easily share resources to help patients and friends have a more interactive role in their healthcare through evidence-based strategies focused on lifestyle medicine.</p>
                       
                       <p>I'm also the founder of <a href="https://www.admissionsacademy.org" target="_blank" rel="noopener noreferrer" className="text-primary font-medium underline hover:text-primary/80 transition-colors">AdmissionsAcademy.org</a>, a nonprofit organization committed to increasing equity in the medical school admissions process by expanding access to high-quality, free educational resources.</p>
                     </div>
