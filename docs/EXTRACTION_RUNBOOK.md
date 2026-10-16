@@ -45,11 +45,16 @@ only them. Check progress with `ls /Users/paulclancy/_lifestyleacademy/scratchpa
 (76 markers = finished; the list is `scratchpad/batch1/pairs.txt`). If fewer than 76, do the §1
 pre-flight, then run as ONE background Bash command (`run_in_background: true`):
 
-    zsh /Users/paulclancy/_lifestyleacademy/scratchpad/batch1/replace2.sh 2>&1 | tee -a /Users/paulclancy/_lifestyleacademy/scratchpad/runs/batch1-20261012.log
+    zsh /Users/paulclancy/_lifestyleacademy/scratchpad/batch1/replace3.sh 2>&1 | tee -a /Users/paulclancy/_lifestyleacademy/scratchpad/runs/batch1-20261012.log
 
-Safe to start, stop or restart at any moment: every step repeats safely, a delete cut by a dropped
-connection finishes itself, and losing the network only makes it wait (Paul travels, so this is
-normal). **Closing the window that runs it stops it**, so one runner window stays open until it
+Safe to start, stop or restart at any moment: every step repeats safely, and a delete cut by a dropped
+connection finishes itself. **A dropped connection is an ERROR, not something to wait out (Paul,
+2026-10-16):** `scratchpad/batch1/watchdog.sh` runs beside the loop and, if the network or database is
+unreachable for about two minutes in a row, stops the loop and its children and raises a Mac notification.
+When the loop's background task ends with a `STOP` line, the runner **pushes a notification to Paul's phone**
+(`PushNotification`, one line: what stopped and why) and says so in chat; it never restarts the loop by
+itself after a drop. Paul reconnects and types "proceed with extraction". An episode counts as done only when
+its source is `succeeded` and no consolidate/extract job for it is still open. **Closing the window that runs it stops it**, so one runner window stays open until it
 finishes. A stale writer lock is waited out. When the background task ends, read the LOG, not the
 exit code (an early stop also exits 0): the last lines say `finished`, or `STOP: …` with the reason.
 The scripts live in the main checkout's gitignored `scratchpad/`, so they exist only on Paul's Mac.
@@ -107,7 +112,7 @@ else: report and let Paul decide.
 
 ### The replace loop and an interrupted delete step (2026-10-16)
 
-`scratchpad/batch1/replace2.sh` (one episode at a time: download → transcribe → delete the caption copy → attach → extract) retries
+`scratchpad/batch1/replace3.sh` (one episode at a time: download → transcribe → delete the caption copy → attach → extract) retries
 every step while online, and offline failures are free. The caption-copy delete (`retire_caption` in the script) is now retried the
 same way: before each attempt it looks for the newest backup of that caption row; if its `….progress.json` is missing or not marked
 `"complete":true`, it runs `retireSourceClaims.ts --resume <backup> --apply`, otherwise a normal `--source <id> --apply`. It is done
