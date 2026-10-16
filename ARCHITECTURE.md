@@ -291,9 +291,18 @@ which `app/api/worker/tick/route.ts` already assumes):
   → SAME), flag `enrich` when the new member carries detail the canonical lacks,
   and keep separate ONLY on genuine contradiction. Do not re-tighten this without
   re-reading `BACKLOG.md` "Dedup calibration".
-- **Enrich execution is OFF by default** (`ENRICH_MERGE=1` to enable). V3 flags
-  enrich on 64% of merges against Paul's 33%, so it over-flags relative to his
-  standard — settle that before switching it on, since enrich rewrites canonicals.
+- **Enrich execution is ON by default** (`ENRICH_MERGE=0` turns it off; Paul ruled it on
+  2026-08-16 — the earlier "OFF by default" note here was stale). The rewrite is
+  guarded in BOTH directions (`lib/enrichMerge.ts`): it is rejected, and the prior
+  canonical kept, if it states a number no member carried (*invented*) or leaves out a
+  number a member or the prior canonical carried (*dropped*, added 2026-10-12). Rejections
+  lose nothing — the members stay linked — and are logged as `[enrich] guard rejected…`.
+  Years, citation/table numbers and unit exponents are not required to survive; the same
+  figure spelled another way (`5`/`five`, `20%`/`one-fifth`, a point inside a stated range)
+  counts as kept. It does not see a dropped *qualifier* (`in mice`, `only in men over 50`).
+  The rewrite runs **without the CLI's thinking pass first** (≈ 4 s instead of ≈ 20 s) and is re-run
+  with thinking only when the guard rejects it or it returns the prior text unchanged
+  (`ENRICH_NO_THINKING=0` = always think).
 - **Near-duplicates are linked, not lost.** A DIFFERENT verdict on an ANN-paired
   candidate writes a `claim_links` row (`near_duplicate`). Under V3 a split means
   a genuine material difference, so the pair are variants of one idea — and the

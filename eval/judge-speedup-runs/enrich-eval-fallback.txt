@@ -1,0 +1,51 @@
+111 pairs (0 with a failed call, excluded)
+seconds per call: as shipped 19.7  →  no thinking 4.1
+outcome (enriched / no change / rejected by guard): shipped 111/0/0   no thinking 108/3/0
+shipped    : 111 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 1, in the canonical after it 1
+no thinking: 111 rewrites; rejected 0 (dropped a number: 0, invented one: 0, both: 0); rewrites dropping a digit before the guard 0, in the canonical after it 0
+fast first with thinking fallback: 7/111 rewrites re-run with thinking; mean 4.1 s per rewrite including the re-runs
+
+REJECTIONS BY THE MISSING-NUMBER CHECK:
+
+identical text: 4/111;  mean word overlap 0.86
+mean length (chars): shipped 402  no thinking 412
+detail coverage (share of the members' distinctive words kept): shipped 0.875  no thinking 0.888
+  pairs where no-thinking keeps >=10 points less: 4/111;  keeps >=10 points more: 11/111
+
+MOST DIFFERENT PAIRS:
+
+merge:01eb7cce-7e31-4153-9984-3672baad44d1  overlap 0.55
+  MEMBER 1: Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men.
+  MEMBER 2: Congenital absence of the vas deferens occurs in the population (reported here as about 1 in 500 men) and is a cause of obstructive azoospermia — effectively a ‘natural vasectomy’ that prevents natural conception.
+  shipped:      Congenital absence of the vas deferens causes obstructive azoospermia — effectively an anatomic 'natural vasectomy' — resulting in complete infertility despite otherwise normal-appearing testes and preventing natural conception; it occurs in roughly 1 in 500 men.
+  no thinking:  Congenital absence of the vas deferens can cause complete infertility despite otherwise normal-appearing testes; such anatomic 'natural vasectomy' may occur in roughly 1 in 500 men and results in obstructive azoospermia that prevents natural conception.
+
+merge:4904035a-4989-433f-b870-29dc4ebe62d3  overlap 0.65
+  MEMBER 1: Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management.
+  MEMBER 2: A focused physical exam is essential in male fertility evaluation because a small but important fraction (about 1–5%) of male infertility stems from major medical conditions (e.g., testicular cancer, diabetes) and from treatable anatomic findings such as varicoceles.
+  shipped:      A focused physical examination is essential in male fertility evaluation because a small but meaningful proportion (approximately 1–5%) of male infertility stems from major medical conditions (e.g., testicular cancer, systemic disease such as diabetes) that change management, as well as from treatable anatomic findings such as varicoceles.
+  no thinking:  Physical examination remains important because a small but meaningful proportion (approximately 1–5%) of male infertility cases are attributable to major medical conditions — e.g., testicular cancer or systemic disease such as diabetes — that change management; a focused exam also identifies treatable anatomic findings such as varicoceles.
+
+merge:ae54cccb-81d8-4e1b-ab55-912374f45bcb  overlap 0.67
+  MEMBER 1: Sperm morphology reference cutoffs are partly a constructed standard: strict criteria (Kruger-style interpretation) accept surprisingly low percentages of 'normal' forms (e.g., around 4% normal) as compatible with fertility, reflecting how morphology thresholds were defined rather than an absolute biological truth.
+  MEMBER 2: Strict sperm morphology criteria (Kruger criteria) were developed after a cohort-style correlation between sperm shape and IVF outcomes; a commonly cited threshold is 4% normal forms — morphology below this has been associated with poorer IVF success in the original work.
+  shipped:      Sperm morphology reference cutoffs (Kruger criteria) are partly a constructed standard developed through cohort-style correlation between sperm shape and IVF outcomes; the commonly cited threshold is 4% normal forms—a surprisingly low percentage accepted as compatible with fertility; however, morphology below this level has been associated with poorer IVF success in the original work, illustrating how morphology thresholds were defined rather than representing an absolute biological truth.
+  no thinking:  Sperm morphology reference cutoffs are partly a constructed standard: strict criteria (Kruger-style interpretation), developed from cohort-style correlation between sperm shape and IVF outcomes, accept surprisingly low percentages of 'normal' forms (e.g., around 4% normal) as compatible with fertility, reflecting how morphology thresholds were defined rather than an absolute biological truth; morphology below the 4% threshold has been associated with poorer IVF success in the original work.
+
+merge:a6635a16-a19b-444f-aa19-cba736262d66  overlap 0.68
+  MEMBER 1: Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  MEMBER 2: Sustained, very high‑intensity exercise can reduce male fertility: one training protocol that increased men to ~2 hours/day of exercise above 80% VO2max was reported to ‘put a dent’ in fertility outcomes.
+  shipped:      Sustained very-high-intensity exercise (example study: ~2 hours/day of exercise above 80% VO₂max for ~12 weeks) markedly suppresses male reproductive function and puts a dent in fertility outcomes: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  no thinking:  Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels; a training protocol increasing men to ~2 hours/day of exercise above 80% VO2max was reported to 'put a dent' in fertility outcomes.
+
+merge:28b80a61-5860-4169-932e-e7fb118d45a1  overlap 0.69
+  MEMBER 1: Human sperm face multiple anatomical and chemical bottlenecks: a typical ejaculate may start at ~100 million sperm, roughly 5 million may pass the cervical barrier, ~100 may reach the fallopian tube, and typically only one sperm fertilizes the egg.
+  MEMBER 2: Fertilization relies on huge numerical redundancy: roughly 100 million sperm are ejaculated, about 5 million reach the cervix/uterus, 100–500 reach the fallopian tube, and typically only a single sperm contacts the egg — this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.
+  shipped:      Human sperm face multiple anatomical and chemical bottlenecks: a typical ejaculate contains roughly 100 million sperm, about 5 million reach the cervix and uterus, 100–500 reach the fallopian tube, and typically only a single sperm fertilizes the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.
+  no thinking:  Human sperm face multiple anatomical and chemical bottlenecks requiring huge numerical redundancy for successful conception: a typical ejaculate may start at ~100 million sperm, roughly 5 million may pass the cervical barrier, 100–500 may reach the fallopian tube, and typically only one sperm fertilizes the egg; this high attrition explains why ejaculating large numbers of sperm is necessary for successful conception.
+
+merge:a6635a16-a19b-444f-aa19-cba736262d66  overlap 0.70
+  MEMBER 1: Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  MEMBER 2: Sustained, very high‑intensity exercise can reduce male fertility: one training protocol that increased men to ~2 hours/day of exercise above 80% VO2max was reported to ‘put a dent’ in fertility outcomes.
+  shipped:      Sustained very-high-intensity exercise (example study: ~2 hours/day above 80% VO2max for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels.
+  no thinking:  Sustained very-high-intensity exercise (example study: ~2 hours/day of very high intensity for 12 weeks) can markedly suppress male reproductive function: sperm counts fell ~40% and testosterone fell ~50%, but both recovered when activity returned to moderate levels; one training protocol increasing men to ~2 hours/day of exercise above 80% VO2max was reported to 'put a dent' in fertility outcomes.

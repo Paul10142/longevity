@@ -423,7 +423,7 @@ async function stampEnrichmentDecided(claimId: string): Promise<void> {
  * Enrich-merge (DB wrapper): rewrite one claim's `canonical_statement` to carry
  * every detail from its current members. Grounded in members only; the fidelity
  * guard in `synthesizeEnrichedCanonical` rejects a rewrite that invents a specific
- * no member carried, in which case the prior canonical is kept. Idempotent and
+ * no member carried or drops one a member carried, in which case the prior canonical is kept. Idempotent and
  * re-runnable — safe to call from `attachMember` inline OR from a batched sweep.
  * Returns the EnrichResult so a caller/sweep can log rejects for review.
  *
@@ -455,10 +455,17 @@ export async function enrichClaimCanonical(claimId: string): Promise<EnrichResul
   // leaving the claim indistinguishable from one never evaluated.
   if (statements.length <= 1) {
     await stampEnrichmentDecided(claimId)
-    return { canonical: claim.canonical_statement, changed: false, rejected: false, invented: [], reason: 'single member' }
+    return { canonical: claim.canonical_statement, changed: false, rejected: false, invented: [], missing: [], reason: 'single member' }
   }
 
   const result = await synthesizeEnrichedCanonical(claim.canonical_statement, statements, { memberQuotes: quotes })
+  // The guard keeps the prior wording (the members stay linked), so a rejection loses nothing — but
+  // its rate is the signal that the rewrite is dropping or inventing numbers, so it is always logged.
+  if (result.rejected) {
+    console.log(`[enrich] guard rejected the rewrite of claim ${claimId} (${statements.length} members) — prior canonical kept: ${result.reason}`)
+  } else if (result.retriedWithThinking) {
+    console.log(`[enrich] fast rewrite of claim ${claimId} not accepted, thinking re-run used (${result.fastRejection})`)
+  }
 
   // `enriched_at` marks "this claim's members have been folded in", and is
   // stamped on every successful evaluation — including one that changed nothing,
