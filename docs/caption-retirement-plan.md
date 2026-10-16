@@ -87,6 +87,42 @@ it writes a JSON backup of every row it will change or delete to
    re-derived claim has a vector row; no `raw_insights` remain for `S`; the
    counts of retired / re-derived / closed / deleted match the dry run.
 
+### 3a. Interruptions: resume, and why a plain re-run refuses (2026-10-16)
+
+The laptop will lose its connection mid-run, so the script must survive a cut at
+any write. The original version could not: steps 2–4 were planned from the
+*current* `claim_members`, so a re-run after step 1 (unhook) found no members,
+planned nothing, and left the emptied claims `active` with no members and the
+mixed claims un-rebuilt.
+
+- **The plan is fixed once.** `retireIds`, `rederive` and `reviewIds` are computed
+  before anything is written and live in the JSON backup
+  (`scratchpad/backups/retire-<sourceId>-<stamp>.json`). Next to it,
+  `….progress.json` records which mixed claims have been re-derived and whether the
+  run completed.
+- **Resume:** `npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --resume <backup.json> --apply`
+  (dry run without `--apply`: prints what is still outstanding). It re-applies steps 1–6
+  from the backup, and each step first reads what is left and writes only that:
+  a claim already retired, a vector already gone, a review already closed, a row
+  already deleted is a no-op; re-derive skips claims the progress file lists as done
+  (they cost model calls), and repeats safely if the cut landed mid-claim. Run it
+  again and it makes zero writes. Code: `lib/retireSource.ts` (logic, tested
+  against a stub database), `lib/retireSourceStore.ts` (Supabase).
+- **Plain re-run guard:** `--source` / `--twins` first looks for the newest backup of
+  the same source. If its progress file says it never finished, or some of its
+  fact→claim links are gone while the facts still exist, the script **refuses with
+  exit code 2**, names the backup and prints the exact `--resume` command.
+- **Safety rails while resuming:** a row that has since been replaced by its Deepgram
+  transcript (`transcript_origin` no longer `other`) is never cleared or emptied;
+  a claim planned for retirement that has gained members is left active and reported;
+  a mixed claim whose survivors have all gone since is retired instead of re-seeded;
+  reviews are only closed if still `pending` (a human decision in between is kept).
+- **Integrity check (read-only):** `npx tsx --env-file=.env.local scripts/checkIntegrity.ts`
+  lists active claims with no members, members pointing at a missing fact, retired
+  claims that still hold a vector or members, and facts whose source row is gone.
+  Expected 0 of each; exit code 1 otherwise. While a retire is mid-flight a count can
+  be briefly non-zero — re-run before treating it as damage.
+
 **Order per episode:** retire and delete the caption version **first**, then
 transcribe, attach and extract the Deepgram version. Deepgram facts then seed
 fresh claims or merge into good-transcript claims; nothing is ever seeded by
