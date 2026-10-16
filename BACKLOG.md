@@ -21,8 +21,8 @@ there.
 > resume command; new read-only `scripts/checkIntegrity.ts` (active claims with no members, members pointing at missing facts, retired claims with
 > vector/members, facts whose source is gone). Logic in `lib/retireSource.ts` + `lib/retireSourceStore.ts`; tests `tests/retireSource.test.ts` cut
 > the run at EVERY write (before and after it lands, delete and clear rows) and prove resume = uninterrupted end state, double resume = no-op.
-> Detail: `docs/caption-retirement-plan.md` §3a, `docs/EXTRACTION_RUNBOOK.md` §4. The replace loop's exit-5 message ("must be resumed from that
-> backup") is now actionable; making the loop call `--resume` itself is left to its owner.
+> Detail: `docs/caption-retirement-plan.md` §3a, `docs/EXTRACTION_RUNBOOK.md` §4. The replace loop (`scratchpad/batch1/replace2.sh`) now calls `--resume`
+> itself when the delete step is cut (Paul's call, 2026-10-16); it stops only after 3 failures in a row while online.
 
 > **⚡ 2026-10-12 (evening) — CONSOLIDATION SPEED-UP BUILT (branch `claude/judge-speedup`, PR below). Decisions unchanged; details in
 > [`docs/judge-speedup.md`](docs/judge-speedup.md).** Consolidation (≈ 17–30 min/episode) is the bigger half of an episode; the judge

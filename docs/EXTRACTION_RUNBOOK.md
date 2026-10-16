@@ -78,7 +78,7 @@ credit — never start it without Paul's yes in chat.**
 | `quarantined job <id> (<type>) — refused by the model's safety filter` or `— still failing after 3 retries` | A job that cannot succeed (the model's safety filter refused a passage, e.g. consolidate job 652e4ec4 on 2026-10-12) or that kept failing after 3 re-queues. The supervisor leaves it `failed`, stops re-spending calls on it, and the rest of the round and the run carry on. It is listed again in the `STOP` block. | Report the job id and reason. Do not retry by hand. (Separately, the dedup judge now keeps a refused pair apart instead of failing the job — see the `judge-opus-5-5-and-no-low-confidence-reviews` memory — so a refusal should rarely quarantine a consolidate job.) |
 | `round N: drained X job(s), Y failed` with X = 0 | Every job in the round threw. Failures no longer count as progress, so the loop backs off (3, 6 … 15 min) instead of spinning. | Read the error class in the log; report. |
 | A job `running` with `attempts` > `max_attempts` | Remnant of a killed run; self-healing. | Never fix by hand. |
-| `STOP: the caption-copy delete for <key> did not finish … Backup: scratchpad/backups/retire-<id>-<stamp>.json` (loop exit 5), or `retireSourceClaims` printing `an earlier --apply for this source was interrupted` (exit code 2) | The connection dropped part-way through the delete step. Never re-run the plain command — the earlier version would plan nothing from the half-unhooked state; the current one refuses. | Runner: once the Mac is online and no other writer is live, run the resume command printed in the message (`npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --resume <backup.json> --apply`; without `--apply` it is a dry run that prints what is still outstanding). It is idempotent: if it is cut too, run it again. Then `npx tsx --env-file=.env.local scripts/checkIntegrity.ts` (read-only, ~40 s, expect all zero) and restart the loop (`replace2.sh` skips episodes with a `done/` marker; the caption row is gone so it skips the delete). Report the incident. |
+| `STOP: the caption-copy delete for <key> keeps failing while online … Backup: scratchpad/backups/retire-<id>-<stamp>.json` (loop exit 5; a cut by a dropped connection is resumed by the loop itself and only logs `resuming the interrupted caption delete`), or `retireSourceClaims` printing `an earlier --apply for this source was interrupted` (exit code 2) | The connection dropped part-way through the delete step. Never re-run the plain command — the earlier version would plan nothing from the half-unhooked state; the current one refuses. | Runner: once the Mac is online and no other writer is live, run the resume command printed in the message (`npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --resume <backup.json> --apply`; without `--apply` it is a dry run that prints what is still outstanding). It is idempotent: if it is cut too, run it again. Then `npx tsx --env-file=.env.local scripts/checkIntegrity.ts` (read-only, ~40 s, expect all zero) and restart the loop (`replace2.sh` skips episodes with a `done/` marker; the caption row is gone so it skips the delete). Report the incident. |
 | `checkIntegrity` shows non-zero counts | Failure signatures of an interrupted replacement: active claims with no members, members pointing at a missing fact, retired claims still holding a vector or members, facts whose source row is gone. A count seen while a retire is running can be transient. | Re-run once with no retire live. If still non-zero: do not fix by hand; the resume command for the affected source's backup repairs the first three; report the rest and spawn a code task. |
 | `Credit balance is too low` | The CLI saw an API key and billed it (pre-2026-10-11 bug; `lib/llm.ts` strips the key). | Stop, report, spawn a code task. |
 
@@ -88,12 +88,13 @@ else: report and let Paul decide.
 
 ### The replace loop and an interrupted delete step (2026-10-16)
 
-`scratchpad/batch1/replace2.sh` (one episode at a time: download → transcribe → delete the caption copy → attach → extract) treats
-every step as retry-while-online except the caption-copy delete, which it runs **once**. If `retireSourceClaims.ts --apply` is cut
-(offline, crash), the loop stops with exit 5 and prints the backup path. The delete is now resumable and idempotent
-(`--resume <backup> --apply`, `docs/caption-retirement-plan.md` §3a), and a plain re-run is refused with exit code 2 and the exact
-resume command, so the loop can no longer silently plan nothing. Wiring `--resume` into the loop itself (so a dropped connection
-needs no human) is a loop edit, deliberately left to the loop's owner while it runs.
+`scratchpad/batch1/replace2.sh` (one episode at a time: download → transcribe → delete the caption copy → attach → extract) retries
+every step while online, and offline failures are free. The caption-copy delete (`retire_caption` in the script) is now retried the
+same way: before each attempt it looks for the newest backup of that caption row; if its `….progress.json` is missing or not marked
+`"complete":true`, it runs `retireSourceClaims.ts --resume <backup> --apply`, otherwise a normal `--source <id> --apply`. It is done
+when the caption row is gone; three failures in a row **while online** stop the loop (exit 5) and print the manual resume command.
+A dropped connection therefore needs no person. The delete is resumable and idempotent (`docs/caption-retirement-plan.md` §3a) and a
+plain re-run is refused with exit code 2 and the exact resume command. (Paul chose this on 2026-10-16.)
 
 ## 5. Reporting (when the run ends, or when Paul asks)
 
