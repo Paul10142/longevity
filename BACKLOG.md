@@ -15,6 +15,15 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🔁 2026-10-16 — CAPTION REPLACEMENT IS NOW RESUMABLE (branch `claude/modest-easley-f95cb0`).** `retireSourceClaims.ts --resume <backup.json> --apply`
+> re-applies steps 1–6 from the backup's own plan, idempotently (repeat = zero writes; re-derive checkpointed per claim in a `.progress.json`
+> sidecar); a plain `--source`/`--twins` re-run now refuses (exit 2) when an earlier attempt for that source was cut short and prints the exact
+> resume command; new read-only `scripts/checkIntegrity.ts` (active claims with no members, members pointing at missing facts, retired claims with
+> vector/members, facts whose source is gone). Logic in `lib/retireSource.ts` + `lib/retireSourceStore.ts`; tests `tests/retireSource.test.ts` cut
+> the run at EVERY write (before and after it lands, delete and clear rows) and prove resume = uninterrupted end state, double resume = no-op.
+> Detail: `docs/caption-retirement-plan.md` §3a, `docs/EXTRACTION_RUNBOOK.md` §4. The replace loop's exit-5 message ("must be resumed from that
+> backup") is now actionable; making the loop call `--resume` itself is left to its owner.
+
 > **⚡ 2026-10-12 (evening) — CONSOLIDATION SPEED-UP BUILT (branch `claude/judge-speedup`, PR below). Decisions unchanged; details in
 > [`docs/judge-speedup.md`](docs/judge-speedup.md).** Consolidation (≈ 17–30 min/episode) is the bigger half of an episode; the judge
 > call is only ≈ 4 s of ≈ 5–17 s per fact — the **enrich-merge rewrite (≈ 20 s, thinking pass on) is the biggest piece**.

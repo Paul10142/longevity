@@ -4,6 +4,8 @@
  *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --twins             # every caption row that has a Deepgram twin (dry run)
  *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --source <id>       # one caption row (dry run)
  *   …                                                             --apply            # write, after a JSON backup
+ *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --resume <backup.json> [--apply]
+ *                                       # finish an interrupted --apply from its own backup (dry run without --apply)
  *
  * Paul's rule (2026-10-11): caption-derived information is known-inaccurate, so
  * once an episode has its Deepgram version the caption version is DELETED, not
@@ -27,50 +29,49 @@
  *
  * Dry run by default; `--apply` writes. Refuses to apply while a pipeline job is
  * running or a supervisor process is alive: one database writer at a time.
+ *
+ * Interruptions (2026-10-16): the plan for steps 2–4 is fixed in the JSON backup
+ * and every step writes only what is still outstanding (lib/retireSource.ts), so
+ * `--resume <backup.json> --apply` finishes a cut-short run, and repeating it is
+ * a no-op. A plain `--source`/`--twins` run that finds an interrupted earlier
+ * attempt for the same source REFUSES (exit code 2) and prints the resume command,
+ * instead of planning nothing from the half-unhooked state.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 import { execSync } from 'node:child_process'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import path from 'node:path'
+import {
+  INTERRUPTED_EXIT_CODE, InterruptedAttemptError, applyPlan, assertNoInterruptedAttempt, buildPlan,
+  outstanding, readBackup, readProgress, writeBackup,
+  type RowAction, type Src,
+} from '../lib/retireSource'
 
 const args = process.argv.slice(2)
 const APPLY = args.includes('--apply')
 const TWINS = args.includes('--twins')
 const sourceIdx = args.indexOf('--source')
 const SOURCE = sourceIdx > -1 ? args[sourceIdx + 1] : null
+const resumeIdx = args.indexOf('--resume')
+const RESUME = resumeIdx > -1 ? args[resumeIdx + 1] : null
 const now = () => new Date().toISOString().slice(11, 19)
+const BACKUP_DIR = process.env.RETIRE_BACKUP_DIR || 'scratchpad/backups'
 
-function chunk<T>(xs: T[], n: number): T[][] {
-  const out: T[][] = []
-  for (let i = 0; i < xs.length; i += n) out.push(xs.slice(i, i + n))
-  return out
-}
-
-type Src = {
-  id: string
-  title: string
-  external_id: string | null
-  episode_number: number | null
-  transcript_origin: string
-  processing_status: string
-}
-type Target = { src: Src; twinId: string | null; rowAction: 'delete' | 'clear' }
-type MemberRow = { claim_id: string; raw_insight_id: string; matched_by: string; match_confidence: number | null }
-type Survivor = { raw_insight_id: string; source_id: string; statement: string; context_note: string | null; created_at: string }
+type Target = { src: Src; twinId: string | null; rowAction: RowAction }
 
 async function main() {
-  if (!TWINS && !SOURCE) {
-    throw new Error('pass --twins (every caption row with a Deepgram twin) or --source <id>')
+  if (!TWINS && !SOURCE && !RESUME) {
+    throw new Error('pass --twins (every caption row with a Deepgram twin), --source <id>, or --resume <backup.json>')
   }
+  if (RESUME && (TWINS || SOURCE)) throw new Error('--resume takes a backup file on its own, not --twins / --source')
+  if (RESUME && (!RESUME || RESUME.startsWith('--'))) throw new Error('--resume needs the path of a retire-<sourceId>-<stamp>.json backup')
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { recomputeAggregates, enrichClaimCanonical } = await import('../lib/consolidation')
-  const { generateEmbedding, insightEmbeddingText } = await import('../lib/embeddings')
   const { recomputeTopicCounts } = await import('../lib/taxonomy')
+  const { createSupabaseRetireStore } = await import('../lib/retireSourceStore')
+  const store = await createSupabaseRetireStore()
 
   // ---- one writer at a time -------------------------------------------------
   if (APPLY) {
@@ -89,6 +90,29 @@ async function main() {
     if (procs.length > 0) throw new Error(`refusing to apply: a supervisor is running:\n${procs.join('\n')}`)
     const { acquireWriterLock } = await import('../lib/writerLock')
     acquireWriterLock('retireSourceClaims')
+  }
+
+  // ---- resume: finish an interrupted run from its backup -----------------------
+  if (RESUME) {
+    const plan = readBackup(RESUME)
+    const s = plan.source
+    const todo = await outstanding(store, plan, readProgress(RESUME))
+    console.log(`[${now()}] ${APPLY ? 'APPLY' : 'DRY RUN'} — resume ${RESUME}\n  source ${s.id} "${s.title.slice(0, 58)}" (row: ${plan.rowAction})`)
+    console.log(
+      `  outstanding: fact→claim links ${todo.members}, claims to retire ${todo.retireTodo.length} (of ${plan.retireIds.length}), ` +
+        `claims to re-derive ${todo.rederiveTodo.length} (of ${plan.rederive.length}), reviews to close ${todo.reviewsTodo.length} (of ${plan.reviewIds.length}), ` +
+        `source row: ${todo.source.exists ? `present (${todo.source.origin}), ${todo.source.insights} insights, ${todo.source.chunks} chunks` : 'gone'}`
+    )
+    if (todo.retireBlocked.length) console.log(`  WARNING: ${todo.retireBlocked.length} claim(s) planned for retirement now have members — they will be left alone`)
+    if (todo.source.exists && todo.source.origin !== 'other') console.log(`  NOTE: the source row is now '${todo.source.origin}' (already replaced) — step 5 will leave it alone`)
+    if (!APPLY) { console.log(`\n[${now()}] DRY RUN — nothing written`); return }
+    const counts = await applyPlan(store, plan, { backupPath: RESUME, log: l => console.log(l) })
+    await recomputeTopicCounts()
+    console.log(
+      `\n[${now()}] DONE (resume) — retired ${counts.retired}, re-derived ${counts.rederived} (skipped ${counts.rederiveSkipped} already done, ` +
+        `${counts.rederiveRetired} found empty), reviews closed ${counts.reviewsClosed}, row ${counts.rowAction}; topic counts recomputed`
+    )
+    return
   }
 
   // ---- targets ---------------------------------------------------------------
@@ -120,7 +144,7 @@ async function main() {
     }
     // A duplicate row (another row holds this episode) is deleted; a linked row,
     // or a row with no other copy of its episode, is cleared to pending instead.
-    let rowAction: 'delete' | 'clear' = 'clear'
+    let rowAction: RowAction = 'clear'
     const m = src.title.match(/^(\d{1,3})\s*[-‒–—]/)
     if (!src.external_id && m) {
       const { count } = await db.from('sources').select('id', { count: 'exact', head: true })
@@ -132,147 +156,30 @@ async function main() {
   if (targets.length === 0) throw new Error('no matching caption sources')
 
   console.log(`[${now()}] ${APPLY ? 'APPLY' : 'DRY RUN'} — ${targets.length} caption source(s)\n`)
-  const backupDir = 'scratchpad/backups'
-  if (APPLY) mkdirSync(backupDir, { recursive: true })
 
   const totals = { insights: 0, members: 0, retired: 0, rederived: 0, reviews: 0, chunks: 0, deletedRows: 0, clearedRows: 0 }
 
   for (const t of targets) {
     const s = t.src
-    // --- what this source holds ---------------------------------------------
-    const insights = await selectAllPaged<{ id: string; statement: string; context_note: string | null; direct_quote: string | null; chunk_id: string | null; created_at: string }>(
-      (from, to) => db.from('raw_insights').select('id, statement, context_note, direct_quote, chunk_id, created_at').eq('source_id', s.id).order('id').range(from, to)
-    )
-    const insightIds = insights.map(i => i.id)
-    const members: MemberRow[] = []
-    for (const ids of chunk(insightIds, 200)) {
-      const { data, error } = await db.from('claim_members').select('claim_id, raw_insight_id, matched_by, match_confidence').in('raw_insight_id', ids)
-      if (error) throw new Error(`claim_members: ${error.message}`)
-      members.push(...((data ?? []) as MemberRow[]))
-    }
-    const affected = [...new Set(members.map(m => m.claim_id))]
-
-    // --- plan per affected claim: retire (no survivors) or re-derive -----------
-    const retireIds: string[] = []
-    const rederive: { claimId: string; seed: Survivor; survivors: number }[] = []
-    for (const claimId of affected) {
-      const { data, error } = await db
-        .from('claim_members')
-        .select('raw_insight_id, raw_insights(source_id, statement, context_note, created_at)')
-        .eq('claim_id', claimId)
-      if (error) throw new Error(`members of ${claimId}: ${error.message}`)
-      type Row = { raw_insight_id: string; raw_insights: { source_id: string; statement: string; context_note: string | null; created_at: string } | null }
-      const survivors: Survivor[] = ((data ?? []) as Row[])
-        .filter(r => r.raw_insights && r.raw_insights.source_id !== s.id)
-        .map(r => ({ raw_insight_id: r.raw_insight_id, ...(r.raw_insights as NonNullable<Row['raw_insights']>) }))
-        .sort((a, b) => a.created_at.localeCompare(b.created_at))
-      if (survivors.length === 0) retireIds.push(claimId)
-      else rederive.push({ claimId, seed: survivors[0], survivors: survivors.length })
-    }
-
-    const claimsBefore: unknown[] = []
-    for (const ids of chunk(affected, 100)) {
-      const { data } = await db.from('claims').select('id, status, canonical_statement, context_note, member_count, source_count, enriched_at').in('id', ids)
-      claimsBefore.push(...(data ?? []))
-    }
-    const reviews: { id: string }[] = []
-    for (const ids of chunk(retireIds, 100)) {
-      const { data, error } = await db.from('merge_reviews').select('id, claim_id, candidate_claim_id')
-        .eq('status', 'pending').or(`claim_id.in.(${ids.join(',')}),candidate_claim_id.in.(${ids.join(',')})`)
-      if (error) throw new Error(`merge_reviews: ${error.message}`)
-      reviews.push(...((data ?? []) as { id: string }[]))
-    }
-    const reviewIds = [...new Set(reviews.map(r => r.id))]
-    const { count: chunkCount } = await db.from('chunks').select('id', { count: 'exact', head: true }).eq('source_id', s.id)
-
+    // An interrupted earlier --apply for this source: refuse rather than plan nothing.
+    await assertNoInterruptedAttempt(store, BACKUP_DIR, s.id)
+    const plan = await buildPlan(store, s, t.twinId, t.rowAction)
+    const { chunks: chunkCount } = await store.sourceState(s.id)
     console.log(
-      `${s.title.slice(0, 58).padEnd(58)}  insights ${String(insights.length).padStart(4)}  members ${String(members.length).padStart(4)}  ` +
-        `retire ${String(retireIds.length).padStart(4)}  re-derive ${String(rederive.length).padStart(4)}  reviews ${String(reviewIds.length).padStart(3)}  chunks ${String(chunkCount ?? 0).padStart(3)}  row: ${t.rowAction}`
+      `${s.title.slice(0, 58).padEnd(58)}  insights ${String(plan.insights.length).padStart(4)}  members ${String(plan.members.length).padStart(4)}  ` +
+        `retire ${String(plan.retireIds.length).padStart(4)}  re-derive ${String(plan.rederive.length).padStart(4)}  reviews ${String(plan.reviewIds.length).padStart(3)}  chunks ${String(chunkCount).padStart(3)}  row: ${t.rowAction}`
     )
-    totals.insights += insights.length; totals.members += members.length; totals.retired += retireIds.length
-    totals.rederived += rederive.length; totals.reviews += reviewIds.length; totals.chunks += chunkCount ?? 0
+    totals.insights += plan.insights.length; totals.members += plan.members.length; totals.retired += plan.retireIds.length
+    totals.rederived += plan.rederive.length; totals.reviews += plan.reviewIds.length; totals.chunks += chunkCount
     if (!APPLY) continue
 
-    // --- backup, then write ---------------------------------------------------
-    const backupPath = path.join(backupDir, `retire-${s.id}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`)
-    writeFileSync(backupPath, JSON.stringify({ source: s, twinId: t.twinId, rowAction: t.rowAction, insights, members, claimsBefore, retireIds, rederive, reviewIds }, null, 1))
+    // --- backup (plan + progress file), then write ----------------------------
+    const backupPath = writeBackup(BACKUP_DIR, plan)
     console.log(`  backup → ${backupPath}`)
-
-    // 1. unhook
-    for (const ids of chunk(insightIds, 200)) {
-      const { error } = await db.from('claim_members').delete().in('raw_insight_id', ids)
-      if (error) throw new Error(`unhook: ${error.message}`)
-    }
-    // 2. retire the emptied claims; drop their vectors
-    for (const ids of chunk(retireIds, 100)) {
-      const { error } = await db.from('claims').update({ status: 'retired', member_count: 0, source_count: 0 }).in('id', ids)
-      if (error) throw new Error(`retire: ${error.message}`)
-      const { error: e2 } = await db.from('claim_embeddings').delete().in('claim_id', ids)
-      if (e2) throw new Error(`retire vectors: ${e2.message}`)
-    }
-    // 3. re-derive the mixed claims from their survivors
-    let n = 0
-    for (const r of rederive) {
-      const { error } = await db.from('claims')
-        .update({ canonical_statement: r.seed.statement, context_note: r.seed.context_note, needs_tagging: true })
-        .eq('id', r.claimId)
-      if (error) throw new Error(`reseed ${r.claimId}: ${error.message}`)
-      await recomputeAggregates(r.claimId)
-      const result = await enrichClaimCanonical(r.claimId)
-      if (!result.changed) {
-        // enrich only refreshes the vector when it rewrote the text; the seed
-        // reset changed the text too, so refresh it here.
-        const vector = await generateEmbedding(insightEmbeddingText({ statement: result.canonical, context_note: r.seed.context_note }))
-        const { error: e3 } = await db.from('claim_embeddings')
-          .upsert({ claim_id: r.claimId, embedding: vector, updated_at: new Date().toISOString() }, { onConflict: 'claim_id' })
-        if (e3) throw new Error(`re-embed ${r.claimId}: ${e3.message}`)
-      }
-      if (++n % 25 === 0) console.log(`  re-derived ${n}/${rederive.length}`)
-    }
-    // 4. close the reviews on retired claims
-    for (const ids of chunk(reviewIds, 100)) {
-      const { error } = await db.from('merge_reviews')
-        .update({ status: 'rejected', decided_by: 'retired-source', decided_at: new Date().toISOString() }).in('id', ids)
-      if (error) throw new Error(`close reviews: ${error.message}`)
-    }
-    // 5. delete the caption version
-    const { error: delIns } = await db.from('raw_insights').delete().eq('source_id', s.id)
-    if (delIns) throw new Error(`delete insights: ${delIns.message}`)
-    const { error: delCh } = await db.from('chunks').delete().eq('source_id', s.id)
-    if (delCh) throw new Error(`delete chunks: ${delCh.message}`)
-    if (t.rowAction === 'delete') {
-      const { error } = await db.from('sources').delete().eq('id', s.id)
-      if (error) throw new Error(`delete source row: ${error.message}`)
-      totals.deletedRows++
-    } else {
-      const { error } = await db.from('sources')
-        .update({ transcript: null, timed_transcript: null, processing_status: 'pending', processing_error: null, last_processed_at: null })
-        .eq('id', s.id)
-      if (error) throw new Error(`clear source row: ${error.message}`)
-      totals.clearedRows++
-    }
-    // 6. verify
-    const { count: leftInsights } = await db.from('raw_insights').select('id', { count: 'exact', head: true }).eq('source_id', s.id)
-    let notRetired = 0
-    for (const ids of chunk(retireIds, 100)) {
-      const { count } = await db.from('claims').select('id', { count: 'exact', head: true }).in('id', ids).neq('status', 'retired')
-      notRetired += count ?? 0
-    }
-    let missingVectors = 0, emptyRederived = 0
-    for (const ids of chunk(rederive.map(r => r.claimId), 100)) {
-      const { count: vecs } = await db.from('claim_embeddings').select('claim_id', { count: 'exact', head: true }).in('claim_id', ids)
-      missingVectors += ids.length - (vecs ?? 0)
-      const { count: empties } = await db.from('claims').select('id', { count: 'exact', head: true }).in('id', ids).eq('member_count', 0)
-      emptyRederived += empties ?? 0
-    }
-    const problems = [
-      leftInsights ? `${leftInsights} insights remain` : '',
-      notRetired ? `${notRetired} claims not retired` : '',
-      missingVectors ? `${missingVectors} re-derived claims without a vector` : '',
-      emptyRederived ? `${emptyRederived} re-derived claims with no members` : '',
-    ].filter(Boolean)
-    if (problems.length) throw new Error(`VERIFY FAILED for ${s.id}: ${problems.join('; ')}`)
-    console.log(`  verified: insights gone, ${retireIds.length} retired, ${rederive.length} re-derived, ${reviewIds.length} reviews closed, row ${t.rowAction}d`)
+    const counts = await applyPlan(store, plan, { backupPath, log: l => console.log(l) })
+    if (counts.rowAction === 'deleted') totals.deletedRows++
+    if (counts.rowAction === 'cleared') totals.clearedRows++
+    console.log(`  verified: insights gone, ${plan.retireIds.length} retired, ${plan.rederive.length} re-derived, ${plan.reviewIds.length} reviews closed, row ${t.rowAction}d`)
   }
 
   if (APPLY) {
@@ -286,4 +193,7 @@ async function main() {
   )
 }
 
-main().catch(e => { console.error(e instanceof Error ? e.message : e); process.exit(1) })
+main().catch(e => {
+  console.error(e instanceof Error ? e.message : e)
+  process.exit(e instanceof InterruptedAttemptError ? INTERRUPTED_EXIT_CODE : 1)
+})
