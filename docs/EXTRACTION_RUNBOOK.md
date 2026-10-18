@@ -95,7 +95,7 @@ credit — never start it without Paul's yes in chat.**
 
 | Log shows | Meaning | Runner does |
 |---|---|---|
-| `PAUSE — usage window 96% full, pausing before the limit …` or `PAUSE — usage limit reached; resets <time> …`, later `RESUME — paused 62m (…)` | The subscription window (shared with Paul's own sessions) is nearly full or full. **Expected, not a fault.** The supervisor stops calling the CLI, jobs keep their checkpoints and spend no retry attempts, and it wakes 90 s after the reset (never more than 6 h in one sleep; a reset after the run's deadline ends the run). It pauses at 95% full (`USAGE_PAUSE_AT`, a fraction), so calls do not fail first. | Do not kill or restart. Report the lost time from the `STOP` block (`usage-limit pauses: N, Xm lost`) or by adding up the `RESUME` lines. If a `PAUSE` says "after this run's deadline", the window reopens too late (weekly limit): the run ended by design; tell Paul when it resets. |
+| `PAUSE — usage window 96% full, pausing before the limit …` or `PAUSE — usage limit reached; resets <time> …`, later `RESUME — paused 62m (…)` | The subscription window (shared with Paul's own sessions) is nearly full or full. **Expected, not a fault.** The supervisor stops calling the CLI, jobs keep their checkpoints and spend no retry attempts, and it wakes 90 s after the reset (never more than 6 h in one sleep; a reset after the run's deadline ends the run). It pauses at 90% full in the five-hour OR the weekly window (`USAGE_PAUSE_AT`, a fraction; Paul, 2026-10-18), so calls do not fail first. A background agent, `~/.claude/usage-guard`, applies the same 90% line to jobs with no gate of their own (below). | Do not kill or restart. Report the lost time from the `STOP` block (`usage-limit pauses: N, Xm lost`) or by adding up the `RESUME` lines. If a `PAUSE` says "after this run's deadline", the window reopens too late (weekly limit): the run ended by design; tell Paul when it resets. |
 | `[worker] job … deferred: usage limit …` | A job parked by the pause above. Its attempts were not spent. | Nothing. |
 | `hit your session limit` repeated many times with **no** `PAUSE` line, or `cli:` stats showing thousands of failed calls | Pre-2026-10-12 behaviour (the old supervisor hammered the CLI for an hour: 10,744 failed calls). Means the run is on old code. | Report it; do not restart mid-run. |
 | `TypeError: fetch failed`, `paged select failed`, rounds "died … sleeping" | The Mac cannot reach Supabase (2026-10-12: ~3 h outage, transient). The supervisor backs off to 15 min and STOPs after ~3 h. | After a STOP: if the database is reachable now, restart once. Report the outage window. |
@@ -119,6 +119,15 @@ same way: before each attempt it looks for the newest backup of that caption row
 when the caption row is gone; three failures in a row **while online** stop the loop (exit 5) and print the manual resume command.
 A dropped connection therefore needs no person. The delete is resumable and idempotent (`docs/caption-retirement-plan.md` §3a) and a
 plain re-run is refused with exit code 2 and the exact resume command. (Paul chose this on 2026-10-16.)
+
+### The usage guard (Paul, 2026-10-18)
+
+`com.paulclancy.usage-guard` (launchd, every 10 min; code and config in `~/.claude/usage-guard/`, `README.md` there) reads the
+plan's 5-hour and weekly usage with one tiny Haiku call. At 90% in either window it stops the Batch 1 loop, its watchdog and the
+extraction scripts (SIGTERM, then SIGKILL after 15 s), never `retireSourceClaims`, writes `~/.claude/state/usage-paused`, and raises a
+Mac notification. It does **not** restart anything. A loop that ends with no `STOP:` line while `~/.claude/state/usage-paused`
+exists was stopped by the guard: the runner reports it as such and does not restart until the flag is gone
+(`node ~/.claude/usage-guard/guard.mjs --status`) and Paul says "proceed with extraction".
 
 ## 5. Reporting (when the run ends, or when Paul asks)
 
