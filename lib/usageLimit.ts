@@ -15,15 +15,20 @@
  *      message, work out the reset instant, and stop calling until then.
  *   2. PROACTIVE — every CLI call in `--output-format stream-json` carries a
  *      `rate_limit_event` with the five-hour window's utilization (0–1) and its
- *      reset time. Pause slightly BEFORE the window is full (default 95%), so no
+ *      reset time (and the weekly window's). Pause BEFORE a window is full (default 90%), so no
  *      call fails, no job is interrupted mid-way, and Paul keeps headroom.
  *
  * Everything below is pure (no I/O) apart from the module-level `usageState`,
  * so the parsing is unit-testable with the real message text.
  */
 
-/** Pause when the five-hour window is at least this full. Env: USAGE_PAUSE_AT. */
-export const DEFAULT_PAUSE_AT = 0.95
+/**
+ * Pause when the five-hour OR the weekly window is at least this full
+ * (0-1). Env: USAGE_PAUSE_AT. Paul chose 90% on 2026-10-18 so an overnight
+ * run cannot use up the plan; `~/.claude/usage-guard` enforces the same line
+ * for jobs that have no gate of their own.
+ */
+export const DEFAULT_PAUSE_AT = 0.9
 /** Wake this long AFTER the stated reset, so the first call lands inside the new window. */
 export const RESET_MARGIN_MS = 90_000
 /** One sleep never exceeds this; a 5-hour window cannot need more. */
@@ -290,10 +295,17 @@ export function usageGate(nowMs: number = Date.now(), threshold: number = pauseT
   const w = snap.fiveHour
   const resetAt = w?.resetsAt ?? snap.resetsAt
   // A reset time in the past means the window has rolled over; the snapshot is stale.
-  if (!resetAt || resetAt <= nowMs) return null
-  if (snap.status === 'rejected') return new UsageLimitError('reached', resetAt, w?.utilization ?? 1)
-  if (w?.utilization != null && w.utilization >= threshold) {
-    return new UsageLimitError('approaching', resetAt, w.utilization)
+  if (resetAt && resetAt > nowMs) {
+    if (snap.status === 'rejected') return new UsageLimitError('reached', resetAt, w?.utilization ?? 1)
+    if (w?.utilization != null && w.utilization >= threshold) {
+      return new UsageLimitError('approaching', resetAt, w.utilization)
+    }
+  }
+  // The weekly window has its own reset; a full week outlasts any run, so the
+  // supervisor's planPause ends the run instead of idling to it.
+  const wk = snap.sevenDay
+  if (wk?.utilization != null && wk.utilization >= threshold && wk.resetsAt && wk.resetsAt > nowMs) {
+    return new UsageLimitError('approaching', wk.resetsAt, wk.utilization)
   }
   return null
 }

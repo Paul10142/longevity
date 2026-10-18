@@ -166,19 +166,30 @@ test('gate: open when no call has reported yet, and below the threshold', () => 
   assert.equal(usageGate(NOW), null)
   noteRateLimit(snap(0.5, NOW + 3_600_000), NOW)
   assert.equal(usageGate(NOW), null)
-  noteRateLimit(snap(0.94, NOW + 3_600_000), NOW)
+  noteRateLimit(snap(0.89, NOW + 3_600_000), NOW)
   assert.equal(usageGate(NOW), null, `default threshold is ${DEFAULT_PAUSE_AT}`)
+  noteRateLimit(snap(0.9, NOW + 3_600_000), NOW)
+  assert.ok(usageGate(NOW), 'closes at exactly 90%')
 })
 
 test('gate: closes slightly before the limit, until the window resets', () => {
   const resetsAt = NOW + 2 * 3_600_000
-  noteRateLimit(snap(0.96, resetsAt), NOW)
+  noteRateLimit(snap(0.93, resetsAt), NOW)
   const g = usageGate(NOW)
   assert.ok(g instanceof UsageLimitError)
   assert.equal(g.kind, 'approaching')
   assert.equal(g.resetAt, Math.floor(resetsAt / 1000) * 1000)
   // After the reset the snapshot is stale and the gate reopens by itself.
   assert.equal(usageGate(resetsAt + 1000), null)
+})
+
+test('gate: closes on the weekly window alone, until its own reset', () => {
+  const weekReset = NOW + 3 * 86_400_000
+  noteRateLimit({ status: 'allowed', fiveHour: { utilization: 0.1, resetsAt: NOW + 3_600_000 }, sevenDay: { utilization: 0.91, resetsAt: weekReset }, resetsAt: NOW + 3_600_000 }, NOW)
+  const g = usageGate(NOW)
+  assert.equal(g?.kind, 'approaching')
+  assert.equal(g?.resetAt, weekReset)
+  assert.equal(usageGate(weekReset + 1000), null)
 })
 
 test('gate: honours a custom threshold', () => {
