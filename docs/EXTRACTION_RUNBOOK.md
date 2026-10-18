@@ -125,9 +125,13 @@ plain re-run is refused with exit code 2 and the exact resume command. (Paul cho
 `com.paulclancy.usage-guard` (launchd, every 10 min; code and config in `~/.claude/usage-guard/`, `README.md` there) reads the
 plan's 5-hour and weekly usage with one tiny Haiku call. At 90% in either window it stops the Batch 1 loop, its watchdog and the
 extraction scripts (SIGTERM, then SIGKILL after 15 s), never `retireSourceClaims`, writes `~/.claude/state/usage-paused`, and raises a
-Mac notification. It does **not** restart anything. A loop that ends with no `STOP:` line while `~/.claude/state/usage-paused`
-exists was stopped by the guard: the runner reports it as such and does not restart until the flag is gone
-(`node ~/.claude/usage-guard/guard.mjs --status`) and Paul says "proceed with extraction".
+Mac notification. **Restart (Paul, 2026-10-18):** when only the 5-hour window was over the line, the guard starts the loop again by
+itself (`caffeinate -dims zsh scratchpad/batch1/replace3.sh`, appending to the run log) once both windows are under 80%; the log
+shows `[usage-guard] restarting …`. It does **not** restart after a weekly-window stop, a stop the guard did not make (dropped
+connection, a pause at Paul's request), a stop older than 48 h, or while a loop is already running. A loop that ends with no `STOP:`
+line while `~/.claude/state/usage-paused` exists was stopped by the guard: the runner reports it, and does not start a second loop
+while `~/.claude/state/usage-restart.json` is pending (`node ~/.claude/usage-guard/guard.mjs --status`; cancel with `--cancel-restart`).
+After a weekly stop, Paul says "proceed with extraction".
 
 ## 5. Reporting (when the run ends, or when Paul asks)
 
