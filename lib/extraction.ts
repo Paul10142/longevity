@@ -450,6 +450,60 @@ export type ExtractCheckpoint = {
 }
 
 /**
+ * Fresh run only: refuse a source that still has claim members, then clear its
+ * prior chunks and insights. Every write here is keyed to this one source, apart
+ * from the optional library-wide reconcile (see below). Exported for tests.
+ */
+export async function clearForFreshRun(sourceId: string): Promise<{ hadMembers: boolean }> {
+  // Guard (2026-10-11): deleting this source's raw_insights below cascades
+  // its claim_members away — a silent, lossy retirement that leaves mixed
+  // claims carrying text from members that no longer exist. Replacing a
+  // transcript goes through scripts/retireSourceClaims.ts first, which also
+  // repairs those claims. A source whose insights are still members of claims
+  // therefore refuses a fresh run unless the caller says it knows better.
+  const { data: idRows } = await db().from('raw_insights').select('id').eq('source_id', sourceId).limit(200)
+  const ids = ((idRows ?? []) as { id: string }[]).map(r => r.id)
+  let hadMembers = false
+  if (ids.length > 0) {
+    const { count } = await db().from('claim_members').select('raw_insight_id', { count: 'exact', head: true }).in('raw_insight_id', ids)
+    hadMembers = (count ?? 0) > 0
+    if (hadMembers && process.env.ALLOW_MEMBERED_REEXTRACT !== '1') {
+      throw new Error(
+        `Source ${sourceId} still has claim members from a previous extraction; ` +
+          `run scripts/retireSourceClaims.ts --source ${sourceId} --apply first (or set ALLOW_MEMBERED_REEXTRACT=1)`
+      )
+    }
+  }
+  // Fresh run: clear any prior chunks + insights, and reset the source's
+  // derived state.
+  //
+  // The insight delete matters when a PARTIAL extraction is restarted from
+  // scratch (its checkpoint reset, e.g. after the job was drained mid-source).
+  // `scripts/pipeline.ts extract` clears insights before enqueuing, but a job
+  // re-run from an empty checkpoint never went through that path — it would
+  // append a second copy of every chunk's insights to the ones already there.
+  // Guarded by the fresh-run branch, so a RESUME (which has a checkpoint)
+  // never deletes the work it is resuming.
+  await db().from('chunks').delete().eq('source_id', sourceId)
+  const { error: riErr } = await db().from('raw_insights').delete().eq('source_id', sourceId)
+  if (riErr) throw new Error(`Failed to clear prior insights for ${sourceId}: ${riErr.message}`)
+  // If that delete cascaded claim_members away, the claims seeded from this
+  // source are stale or memberless (migration 012). reconcile_claim_membership()
+  // repairs them, but it rewrites and retires claims ACROSS the whole library, so
+  // it is skipped when nothing could have cascaded — always the case for a new
+  // source and for a partial extraction (consolidation only starts after
+  // extraction completes). That keeps this stage to rows keyed to its own source,
+  // so an extract-only run can overlap a consolidate-only run (docs/EXTRACTION_RUNBOOK.md §9).
+  // Only the ALLOW_MEMBERED_REEXTRACT override reaches it, and that is a maintenance
+  // operation: scripts/extractDeepgram.ts refuses to start a lane run with it set.
+  if (hadMembers) {
+    const { error: rcErr } = await db().rpc('reconcile_claim_membership')
+    if (rcErr) throw new Error(`Failed to reconcile claims for ${sourceId}: ${rcErr.message}`)
+  }
+  return { hadMembers }
+}
+
+/**
  * Extract raw insights for one source, resuming from `checkpoint`.
  *
  * On the first call it (re)builds chunks and a pipeline_runs row, then
@@ -508,43 +562,7 @@ export async function extractSource(
     if (runErr || !run) throw new Error(`Failed to create pipeline run: ${runErr?.message}`)
     runId = run.id as string
 
-    // Guard (2026-10-11): deleting this source's raw_insights below cascades
-    // its claim_members away — a silent, lossy retirement that leaves mixed
-    // claims carrying text from members that no longer exist. Replacing a
-    // transcript goes through scripts/retireSourceClaims.ts first, which also
-    // repairs those claims. A source whose insights are still members of claims
-    // therefore refuses a fresh run unless the caller says it knows better.
-    if (process.env.ALLOW_MEMBERED_REEXTRACT !== '1') {
-      const { data: idRows } = await db().from('raw_insights').select('id').eq('source_id', sourceId).limit(200)
-      const ids = ((idRows ?? []) as { id: string }[]).map(r => r.id)
-      if (ids.length > 0) {
-        const { count } = await db().from('claim_members').select('raw_insight_id', { count: 'exact', head: true }).in('raw_insight_id', ids)
-        if ((count ?? 0) > 0) {
-          throw new Error(
-            `Source ${sourceId} still has claim members from a previous extraction; ` +
-              `run scripts/retireSourceClaims.ts --source ${sourceId} --apply first (or set ALLOW_MEMBERED_REEXTRACT=1)`
-          )
-        }
-      }
-    }
-    // Fresh run: clear any prior chunks + insights, and reset the source's
-    // derived state.
-    //
-    // The insight delete matters when a PARTIAL extraction is restarted from
-    // scratch (its checkpoint reset, e.g. after the job was drained mid-source).
-    // `scripts/pipeline.ts extract` clears insights before enqueuing, but a job
-    // re-run from an empty checkpoint never went through that path — it would
-    // append a second copy of every chunk's insights to the ones already there.
-    // Guarded by the fresh-run branch, so a RESUME (which has a checkpoint)
-    // never deletes the work it is resuming.
-    await db().from('chunks').delete().eq('source_id', sourceId)
-    const { error: riErr } = await db().from('raw_insights').delete().eq('source_id', sourceId)
-    if (riErr) throw new Error(`Failed to clear prior insights for ${sourceId}: ${riErr.message}`)
-    // That delete cascaded claim_members away, so claims seeded from this source
-    // are now stale or memberless (migration 012 — same reason pipeline.ts calls
-    // this right after its own delete).
-    const { error: rcErr } = await db().rpc('reconcile_claim_membership')
-    if (rcErr) throw new Error(`Failed to reconcile claims for ${sourceId}: ${rcErr.message}`)
+    await clearForFreshRun(sourceId)
     await db().from('sources').update({ processing_status: 'processing', processing_error: null }).eq('id', sourceId)
   }
 

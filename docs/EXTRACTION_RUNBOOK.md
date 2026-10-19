@@ -22,8 +22,9 @@ window that hears this follows this file and needs nothing else pasted in.
 
 ## 1. Pre-flight (read-only)
 
-1. `ls -la ~/.lifestyle-academy-writer.lock` — absent, or older than 15 min
-   with no live process.
+1. `ls -la ~/.lifestyle-academy-writer*.lock` — absent, or older than 15 min
+   with no live process. (`…writer.lock` is the whole-corpus lock; `…writer.extract.lock` and
+   `…writer.consolidate.lock` belong to the two lanes, §9.)
 2. `pgrep -fl 'extractDeepgram|overnightExtract|retireSourceClaims|repairDeepgramTiming|transcribeDeepgram'`
    — must be empty. If a writer is live: stop, tell Paul, do not kill it.
 3. Database reachable from this Mac (REST call with the secret key from
@@ -133,6 +134,12 @@ line while `~/.claude/state/usage-paused` exists was stopped by the guard: the r
 while `~/.claude/state/usage-restart.json` is pending (`node ~/.claude/usage-guard/guard.mjs --status`; cancel with `--cancel-restart`).
 After a weekly stop, Paul says "proceed with extraction".
 
+**Lanes (§9) are covered by the same guard.** Both lane runs are `scripts/extractDeepgram.ts` with a flag, so the guard's
+`LA extraction pipeline` pattern matches them and the `claude -p` children of both (checked 2026-10-18 against the real
+command lines); `retireSourceClaims` is still spared. The guard does **not** restart a lane by itself (only the replace loop has a
+`restart` entry): after a stop the runner starts the lane again when `~/.claude/state/usage-paused` is gone, and the lane's own
+`usageGate` (`USAGE_PAUSE_AT`, 90%) pauses it before the guard has to.
+
 ## 5. Reporting (when the run ends, or when Paul asks)
 
 1. Read the whole log: rounds, sources extracted, CLI call stats (calls /
@@ -229,4 +236,67 @@ enrich-merge rewrite ≈ 20 s (about 64% of merges). Since the speed-up (`docs/j
   keep landing next to each other and the window should be lowered.
 - Not worth doing (measured, `docs/judge-speedup.md`): a lower judge effort setting, fewer candidates, skipping the
   judge on very similar pairs.
+
+## 9. Extract-only and consolidate-only lanes (2026-10-18)
+
+Why: extraction banks an episode's facts in ≈ 10 min and ≈ 60 Haiku calls; consolidation (matching each fact against the claims
+already in the library) takes ≈ 16 min and ≈ 130 Opus calls and is the bigger share of Claude usage. When the usage window is the
+bottleneck, run the two halves as separate runs and do the matching later. **Needs migration 032**
+(`supabase/migrations_v2/032_claim_next_job_by_type.sql`, applied once in the Supabase SQL Editor); without it a lane run stops
+at its first claim with a message saying so, and the plain run is unaffected.
+
+    # extraction only: queues consolidate_source jobs but does not run them; ends when no extraction is left
+    cd /Users/paulclancy/_lifestyleacademy && npx tsx --env-file=.env.local scripts/extractDeepgram.ts --extract-only --hours 9 --batch 3
+
+    # consolidation only: one source at a time, oldest first; ends when no consolidate job is left
+    cd /Users/paulclancy/_lifestyleacademy && npx tsx --env-file=.env.local scripts/extractDeepgram.ts --consolidate-only --hours 9
+
+Each is ONE background Bash command, as in §2. Log: `scratchpad/runs/extractDeepgram-extract-<stamp>.log` /
+`…-consolidate-<stamp>.log`. The plain command (no flag) is unchanged.
+
+- **What may run together.** One `--extract-only` run and one `--consolidate-only` run, at the same time. Nothing else:
+  not two of the same lane, and neither lane beside the plain supervisor, `retireSourceClaims`, `repairDeepgramTiming`,
+  `sweepCorpus` or the Batch 1 replace loop (it calls `retireSourceClaims`, which is refused while a lane is live). A refused start
+  prints who holds the lock. The lanes use `~/.lifestyle-academy-writer.extract.lock` and `….consolidate.lock`; the whole-corpus
+  lock keeps its old name, so processes started before this change still honour it. Locks are also treated as abandoned when the
+  holder's process is gone (a guard SIGKILL no longer blocks a restart for 15 minutes).
+- **Ending.** `--extract-only` ends with `no remaining work — done.` once no source is left and no `extract_source` job is open; queued
+  `consolidate_source` jobs do not count (the round line says `… ignoring N of a skipped type`). `--consolidate-only` ends when no
+  consolidate job is runnable; while an extract-only run is live and its queue is empty it waits (2 min polls) for the jobs that run
+  queues, so start it first or second, either works.
+- **Consolidate one source at a time.** One process, one job at a time, one lane lock: two consolidations cannot overlap (they dedup
+  against the same claims table and would race). Do not run `pipeline work` or hit the web "Run worker now" while a consolidate
+  lane is live: those claim any job type and are not covered by the lock.
+- **Done means different things.** After an extract-only run a source is `succeeded` but its facts are not claims yet. Count an episode
+  as consolidated only when its `consolidate_source` job is `done`.
+- **Caveat: a temporary gap.** For an episode whose YouTube-caption copy has already been deleted (Batch 1 replacement), the old
+  claims from that copy are gone and the new facts are not claims until consolidation reaches them, so the library shows fewer claims
+  for that episode's topics until `--consolidate-only` catches up. Banking extractions first widens that gap; it closes when the
+  consolidation backlog is drained.
+- **Gone from the extract path.** `extractSource` used to call `reconcile_claim_membership()` (a library-wide recount that retires any
+  claim with no members) on every fresh run. That could retire a claim a concurrent consolidation had just created and not yet given
+  a member. It is now skipped when the source had no claim members to lose (always true for a new source), and
+  `ALLOW_MEMBERED_REEXTRACT=1` is refused in a lane run.
+
+### Why the two lanes cannot corrupt each other
+
+Extraction of source B writes only: `sources` (B's row), `pipeline_runs` (its own `extract` row), `chunks` and `raw_insights` (rows of
+source B), and `jobs` (its own job; it enqueues `consolidate_source` for B). It reads `claim_members` only for B's own insights
+(which are none for a new source). OpenAI embeddings are computed in memory and stored on B's `raw_insights` rows.
+
+Consolidation of source A writes `claims`, `claim_embeddings`, `claim_members`, `claim_links`, `claim_topics` (re-pointed only when two
+claims merge; the tagging job that fills it is skipped), merge-review rows, its own `pipeline_runs` (`consolidate`) row and its own `jobs` row. It reads A's `raw_insights` and, to count
+sources per claim, the `raw_insights` of A and of earlier sources through `claim_members`. It never reads or updates `sources`,
+`chunks` or the `raw_insights` of a source with no members.
+
+| Shared thing | Could it race? | Handling |
+|---|---|---|
+| `jobs` queue | Both lanes claim from it | `claim_next_job(p_types)` (032): each lane asks for its own type only; `FOR UPDATE SKIP LOCKED` as before. `healFailed` is limited to the lane's type. Only the extract side enqueues. |
+| `reconcile_claim_membership()` | Yes (see above) | Removed from the new-source path; refused in lane runs. |
+| `claims.member_count` / `source_count` | Written by consolidation only | One consolidator at a time. Extraction adds `raw_insights` that no member points at yet. |
+| Topic counts / `claim_topics` / `needs_tagging` | Tagging writes them | `SKIP_TAGGING=1` in both lanes (default); claims keep `needs_tagging=true`. |
+| `pipeline_runs` | One row per (source, kind), updated by id | No shared counter. |
+| Embeddings | OpenAI API only | No shared state. |
+| `match_claims` search while claims are being added | Read of a growing table | Same as inside a single run today. |
+| Vercel/web worker (`/api/worker/tick`), `pipeline work` | Claim any type | Not covered by the lock: do not use while a lane is live. |
 

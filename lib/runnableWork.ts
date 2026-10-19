@@ -29,6 +29,8 @@ export type OpenJob = {
   run_after?: string | null
 }
 
+import { laneJobTypes, type Lane } from './pipelineLanes'
+
 type SkipFlags = Record<string, string | undefined> // SKIP_TAGGING, SKIP_SYNTHESIS_FANOUT, SKIP_REFERENCES
 
 /**
@@ -40,8 +42,14 @@ type SkipFlags = Record<string, string | undefined> // SKIP_TAGGING, SKIP_SYNTHE
  *
  * Types it never produces (claim_sweep, discover_topics, generate_topic) are
  * never counted: they are deliberate, separately-run work.
+ *
+ * A lane (`--extract-only` / `--consolidate-only`, lib/pipelineLanes.ts) runs
+ * exactly one job type, so only that type is runnable: queued jobs of the other
+ * lane's type are not this run's work and must not keep it idling.
  */
-export function runnableJobTypes(env: SkipFlags = process.env): Set<string> {
+export function runnableJobTypes(env: SkipFlags = process.env, lane: Lane = 'all'): Set<string> {
+  const only = laneJobTypes(lane)
+  if (only) return new Set(only)
   const types = new Set(['extract_source', 'consolidate_source'])
   const tagging = env.SKIP_TAGGING !== '1'
   if (tagging) types.add('tag_claims')
