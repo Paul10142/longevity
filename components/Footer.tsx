@@ -76,20 +76,29 @@ const Footer = () => {
             </div>
           </div>
 
+          {/* Disclaimer */}
+          <p className="mt-10 text-xs leading-relaxed text-muted-foreground max-w-4xl">
+            LifestyleAcademy is an independent educational project created by Paul Clancy, MD, MBA. It is not
+            affiliated with, reviewed by, or endorsed by the University of Michigan, Michigan Medicine, or any other
+            employer or institution, and the views expressed are his own. Content is for general education only and
+            is not medical advice. Using this site does not create a physician-patient relationship. Talk with your
+            own clinician before making changes to your health care. In an emergency, call 911.
+          </p>
+
           {/* Bottom Bar */}
-          <div className="mt-12 pt-8 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-4">
+          <div className="mt-8 pt-8 border-t border-border/50 flex flex-col sm:flex-row justify-between items-center gap-4">
             <p className="text-sm text-muted-foreground text-center sm:text-left">
               &copy; 2024 LifestyleAcademy. All rights reserved.
             </p>
             <p className="text-sm text-muted-foreground text-center sm:text-right">
               Created by{" "}
               <a
-                href="https://www.linkedin.com/in/paulclancy3/"
+                href="https://www.paulclancymd.com"
                 target="_blank"
                 rel="noopener noreferrer"
                 className="text-primary hover:text-primary/80 transition-colors font-medium"
               >
-                Paul Clancy
+                Paul Clancy, MD, MBA
               </a>
             </p>
           </div>
