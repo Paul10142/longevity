@@ -24,11 +24,12 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
-import { existsSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   UsageLimitError,
+  isMcpConfigError,
   parseCliStream,
   parseUsageLimit,
   noteRateLimit,
@@ -42,7 +43,7 @@ import {
  * the jobs table keeps only the last error. The supervisors print these every
  * round so the next stall is diagnosable from the log.
  */
-export const cliStats = { calls: 0, failures: 0, wallMs: 0, lastError: '', lastErrorAt: '' }
+export const cliStats = { calls: 0, failures: 0, mcpConfigFailures: 0, wallMs: 0, lastError: '', lastErrorAt: '' }
 
 export function formatCliStats(): string {
   const { calls, failures, wallMs, lastError, lastErrorAt } = cliStats
@@ -54,15 +55,41 @@ export function formatCliStats(): string {
 /**
  * An MCP config that names no servers. Passed with --strict-mcp-config so the
  * spawned CLI connects to nothing, whatever the user's own ~/.claude.json lists.
+ *
+ * Re-checked on EVERY call, never cached. It used to be written once to tmpdir()
+ * and the path remembered; at ~03:36 on 2026-10-19 macOS purged that file in the
+ * middle of an overnight run and all 6,804 calls over the next 4 hours died with
+ * "Invalid MCP configuration: MCP config file not found". A purge-proof home
+ * (~/.cache) plus a cheap existsSync that rewrites the file when missing means
+ * a deleted file costs nothing. The file NAME is unchanged: the usage guard
+ * matches "lifestyle-academy-empty-mcp" on the command line (~/.claude/usage-guard).
+ * `LA_EMPTY_MCP_DIR` overrides the folder (tests).
  */
-let emptyMcpConfigPath: string | null = null
-function emptyMcpConfig(): string {
-  if (!emptyMcpConfigPath) {
-    const p = join(tmpdir(), 'lifestyle-academy-empty-mcp.json')
-    if (!existsSync(p)) writeFileSync(p, '{"mcpServers":{}}')
-    emptyMcpConfigPath = p
+export const EMPTY_MCP_FILE = 'lifestyle-academy-empty-mcp.json'
+const EMPTY_MCP_BODY = '{"mcpServers":{}}'
+
+export function emptyMcpConfig(): string {
+  const dirs = [
+    process.env.LA_EMPTY_MCP_DIR,
+    join(homedir(), '.cache', 'lifestyle-academy'),
+    tmpdir(),
+  ].filter((d): d is string => !!d)
+  let lastErr: unknown
+  for (const dir of dirs) {
+    const p = join(dir, EMPTY_MCP_FILE)
+    try {
+      if (existsSync(p)) return p
+      mkdirSync(dir, { recursive: true })
+      // Write then rename so a CLI starting at the same moment never reads half a file.
+      const tmp = `${p}.${process.pid}.tmp`
+      writeFileSync(tmp, EMPTY_MCP_BODY)
+      renameSync(tmp, p)
+      return p
+    } catch (e) {
+      lastErr = e // unwritable folder: try the next one
+    }
   }
-  return emptyMcpConfigPath
+  throw new Error(`cannot write the empty MCP config: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`)
 }
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
@@ -257,6 +284,13 @@ function claudeCodeText(
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
           cliStats.lastError = detail
+          // The CLI could not find the empty MCP config (macOS purge, a cleanup job).
+          // Rewrite it now so the next call works, and count it so the supervisor can
+          // stop a run that keeps hitting it instead of backing off for hours.
+          if (isMcpConfigError(`${detail}\n${stdout ?? ''}`)) {
+            cliStats.mcpConfigFailures++
+            try { emptyMcpConfig() } catch { /* reported by the next call */ }
+          }
           if (CLI_REFUSAL.test(`${stdout ?? ''}\n${stderr ?? ''}`)) {
             reject(new ModelRefusalError(model, detail))
             return

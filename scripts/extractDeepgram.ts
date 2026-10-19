@@ -92,8 +92,8 @@ async function main() {
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { formatCliStats } = await import('../lib/llm')
-  const { usageGate, planPause, quarantineReason } = await import('../lib/usageLimit')
+  const { formatCliStats, cliStats } = await import('../lib/llm')
+  const { usageGate, planPause, quarantineReason, nextMcpConfigStreak, MAX_MCP_CONFIG_ROUNDS } = await import('../lib/usageLimit')
   const { classifyOpenJobs, describeWork, runIsFinished, runnableJobTypes } = await import('../lib/runnableWork')
   type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
@@ -226,6 +226,8 @@ async function main() {
   let round = 0
   let idleStreak = 0
   let failStreak = 0
+  let mcpStreak = 0
+  let mcpSeen = 0
   let lastExtracted = -1
 
   while (Date.now() < deadline) {
@@ -293,6 +295,22 @@ async function main() {
         `[${now()}] round ${round}: drained ${processed} job(s)` +
           `${failedJobs ? `, ${failedJobs} failed` : ''}; ${formatCliStats()}`
       )
+
+      // The CLI cannot load its MCP config file: a setup fault that backing off never fixes
+      // (2026-10-19: 6,804 failed calls over 4 h). llm.ts rewrites the file on the first
+      // failure, so a few rounds in a row means something keeps deleting it.
+      mcpStreak = nextMcpConfigStreak(mcpStreak, processed, cliStats.mcpConfigFailures - mcpSeen)
+      mcpSeen = cliStats.mcpConfigFailures
+      if (mcpStreak >= MAX_MCP_CONFIG_ROUNDS) {
+        console.log(
+          `[${now()}] STOP — config error: the claude CLI cannot load its empty MCP config file ` +
+            `("${cliStats.lastError.slice(0, 120)}") for ${mcpStreak} rounds in a row with no progress. ` +
+            `lib/llm.ts rewrites it on every call, so something keeps deleting ~/.cache/lifestyle-academy/lifestyle-academy-empty-mcp.json. ` +
+            `Fix that, then restart the run.`
+        )
+        process.exitCode = 2
+        break
+      }
 
       if (limitHit) {
         if (!(await pauseForLimit(limitHit))) break

@@ -360,3 +360,25 @@ export function quarantineReason(error: string | null | undefined, healsSoFar: n
   if (healsSoFar >= MAX_HEALS_PER_JOB) return `still failing after ${MAX_HEALS_PER_JOB} retries`
   return null
 }
+
+/**
+ * The spawned `claude` CLI could not load the MCP config file we hand it
+ * ("Invalid MCP configuration: MCP config file not found"). A setup fault, not a
+ * transient one: retrying changes nothing until the file exists again.
+ */
+export function isMcpConfigError(message: string | null | undefined): boolean {
+  return !!message && /Invalid MCP configuration|MCP config file not found/i.test(message)
+}
+
+/** Rounds in a row with no progress and MCP-config failures before a run stops. */
+export const MAX_MCP_CONFIG_ROUNDS = 3
+
+/**
+ * Supervisor bookkeeping for the above. Returns the new streak: it grows by one on
+ * a round that completed nothing while hitting MCP-config failures, resets on any
+ * round that made progress or hit none. The run should STOP once it reaches
+ * MAX_MCP_CONFIG_ROUNDS (the 2026-10-19 run instead backed off and retried for 4 h).
+ */
+export function nextMcpConfigStreak(streak: number, processed: number, newMcpFailures: number): number {
+  return processed === 0 && newMcpFailures > 0 ? streak + 1 : 0
+}
