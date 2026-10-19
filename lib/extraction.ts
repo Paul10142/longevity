@@ -13,7 +13,7 @@ import { supabaseAdmin } from './supabaseServer'
 import { generateEmbeddingsBatch, insightEmbeddingText } from './embeddings'
 import { finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
-import { UsageLimitError, rethrowIfUsageLimit } from './usageLimit'
+import { PipelineHaltError, UsageLimitError, rethrowIfUsageLimit } from './usageLimit'
 import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import {
@@ -807,9 +807,13 @@ export async function extractSource(
       if (s.status === 'fulfilled') {
         done.add(s.value.idx)
         cp.insights_created += s.value.inserted
-      } else if (failure === null || (s.reason instanceof UsageLimitError && !(failure instanceof UsageLimitError))) {
-        // A usage-limit rejection outranks any other failure in the batch: it
-        // decides what the worker does with the job (defer, spend no attempt).
+      } else if (
+        failure === null ||
+        (s.reason instanceof PipelineHaltError && !(failure instanceof PipelineHaltError)) ||
+        (s.reason instanceof UsageLimitError && !(failure instanceof UsageLimitError || failure instanceof PipelineHaltError))
+      ) {
+        // A halt, then a usage-limit rejection, outranks any other failure in the batch: it
+        // decides what the worker does with the job (requeue, spend no attempt).
         failure = s.reason
       }
     }
@@ -838,7 +842,7 @@ export async function extractSource(
     await failRun(runId, err)
     // A paused job is not a failed source: it resumes from its checkpoint when
     // the usage window reopens, so do not mark it failed in the admin UI.
-    if (!(err instanceof UsageLimitError)) {
+    if (!(err instanceof UsageLimitError || err instanceof PipelineHaltError)) {
       await db()
         .from('sources')
         .update({

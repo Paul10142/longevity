@@ -92,8 +92,9 @@ async function main() {
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { formatCliStats, cliStats } = await import('../lib/llm')
-  const { usageGate, planPause, quarantineReason, nextMcpConfigStreak, MAX_MCP_CONFIG_ROUNDS } = await import('../lib/usageLimit')
+  const { formatCliStats, cliCircuit } = await import('../lib/llm')
+  const { usageGate, planPause, quarantineReason, PipelineHaltError } = await import('../lib/usageLimit')
+  const { reportHalt } = await import('../lib/haltNotice')
   const { classifyOpenJobs, describeWork, runIsFinished, runnableJobTypes } = await import('../lib/runnableWork')
   type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
@@ -226,9 +227,8 @@ async function main() {
   let round = 0
   let idleStreak = 0
   let failStreak = 0
-  let mcpStreak = 0
-  let mcpSeen = 0
   let lastExtracted = -1
+  let halted: InstanceType<typeof PipelineHaltError> | null = null
 
   while (Date.now() < deadline) {
     try {
@@ -285,6 +285,9 @@ async function main() {
         const tick = await runWorkerTick(15 * 60_000, laneTypes ? { jobTypes: laneTypes } : {})
         processed += tick.processed - tick.failed
         failedJobs += tick.failed
+        // Also read the breaker itself: a halt swallowed inside a handler never reaches the tick.
+        halted = tick.halt ?? cliCircuit.halted
+        if (halted) break
         if (tick.usageLimit) {
           limitHit = tick.usageLimit
           break
@@ -296,19 +299,8 @@ async function main() {
           `${failedJobs ? `, ${failedJobs} failed` : ''}; ${formatCliStats()}`
       )
 
-      // The CLI cannot load its MCP config file: a setup fault that backing off never fixes
-      // (2026-10-19: 6,804 failed calls over 4 h). llm.ts rewrites the file on the first
-      // failure, so a few rounds in a row means something keeps deleting it.
-      mcpStreak = nextMcpConfigStreak(mcpStreak, processed, cliStats.mcpConfigFailures - mcpSeen)
-      mcpSeen = cliStats.mcpConfigFailures
-      if (mcpStreak >= MAX_MCP_CONFIG_ROUNDS) {
-        console.log(
-          `[${now()}] STOP — config error: the claude CLI cannot load its empty MCP config file ` +
-            `("${cliStats.lastError.slice(0, 120)}") for ${mcpStreak} rounds in a row with no progress. ` +
-            `lib/llm.ts rewrites it on every call, so something keeps deleting ~/.cache/lifestyle-academy/lifestyle-academy-empty-mcp.json. ` +
-            `Fix that, then restart the run.`
-        )
-        process.exitCode = 2
+      if (halted) {
+        reportHalt(halted, msg => console.log(`[${now()}] ${msg}`))
         break
       }
 
@@ -329,6 +321,11 @@ async function main() {
       }
       failStreak = 0
     } catch (err) {
+      if (err instanceof PipelineHaltError) {
+        halted = err
+        reportHalt(err, msg => console.log(`[${now()}] ${msg}`))
+        break
+      }
       // A round that dies mid-flight (Supabase unreachable AND the CLI down at
       // once) must not kill an unattended run: whatever job it held either
       // failed (healFailed requeues it) or goes stale and is reclaimed.

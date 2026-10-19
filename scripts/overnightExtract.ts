@@ -59,8 +59,9 @@ async function main() {
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { formatCliStats, cliStats } = await import('../lib/llm')
-  const { nextMcpConfigStreak, MAX_MCP_CONFIG_ROUNDS } = await import('../lib/usageLimit')
+  const { formatCliStats, cliCircuit } = await import('../lib/llm')
+  const { PipelineHaltError } = await import('../lib/usageLimit')
+  const { reportHalt } = await import('../lib/haltNotice')
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -109,8 +110,6 @@ async function main() {
   let round = 0
   let idleStreak = 0
   let failStreak = 0
-  let mcpStreak = 0
-  let mcpSeen = 0
   let lastExtractedCount = -1
   while (Date.now() < deadline) {
     // A round that dies mid-flight (total network blip: Supabase `fetch failed`
@@ -159,21 +158,14 @@ async function main() {
     // Drain within the current window.
     let processed = 0
     for (;;) {
-      const { processed: p } = await runWorkerTick(15 * 60_000)
+      const { processed: p, halt } = await runWorkerTick(15 * 60_000)
       processed += p
+      const stop = halt ?? cliCircuit.halted
+      if (stop) throw stop
       if (p === 0) break
       if (Date.now() >= deadline) break
     }
     console.log(`[${now()}] round ${round}: drained ${processed} job(s); ${formatCliStats()}`)
-
-    // CLI cannot load its MCP config file: backing off never fixes it (2026-10-19).
-    mcpStreak = nextMcpConfigStreak(mcpStreak, processed, cliStats.mcpConfigFailures - mcpSeen)
-    mcpSeen = cliStats.mcpConfigFailures
-    if (mcpStreak >= MAX_MCP_CONFIG_ROUNDS) {
-      console.log(`[${now()}] STOP — config error: the claude CLI cannot load its empty MCP config file ("${cliStats.lastError.slice(0, 120)}") for ${mcpStreak} rounds with no progress. Something keeps deleting ~/.cache/lifestyle-academy/lifestyle-academy-empty-mcp.json; fix that and restart.`)
-      process.exitCode = 2
-      break
-    }
 
     if (processed === 0) {
       idleStreak++
@@ -186,6 +178,10 @@ async function main() {
     }
     failStreak = 0
     } catch (err) {
+      if (err instanceof PipelineHaltError) {
+        reportHalt(err, msg => console.log(`[${now()}] ${msg}`))
+        break
+      }
       failStreak++
       const wait = Math.min(15 * 60_000, 3 * 60_000 * failStreak)
       const msg = err instanceof Error ? err.message.slice(0, 160) : String(err)

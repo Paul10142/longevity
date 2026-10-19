@@ -64,9 +64,29 @@ export class UsageLimitError extends Error {
   }
 }
 
-/** Call from a `catch` that would otherwise swallow or retry an LLM failure. */
+/**
+ * Thrown (by lib/llm.ts) once N CLI calls in a row have failed for a reason that is neither
+ * a usage limit nor a one-passage safety refusal — a missing MCP config file, a logged-out
+ * CLI, a missing binary. Every further call would fail the same way, so this is FATAL for
+ * the run: the worker puts the job back in the queue without spending an attempt, and the
+ * supervisors stop and alert. Never retried, never counted against a job.
+ */
+export class PipelineHaltError extends Error {
+  readonly consecutiveFailures: number
+  readonly lastError: string
+
+  constructor(consecutiveFailures: number, lastError: string) {
+    super(`${consecutiveFailures} CLI calls failed in a row: ${lastError}`)
+    this.name = 'PipelineHaltError'
+    this.consecutiveFailures = consecutiveFailures
+    this.lastError = lastError
+  }
+}
+
+/** Call from a `catch` that would otherwise swallow or retry an LLM failure. Rethrows a
+ *  usage limit (defer the job) and a pipeline halt (stop the run); neither is the job's fault. */
 export function rethrowIfUsageLimit(err: unknown): void {
-  if (err instanceof UsageLimitError) throw err
+  if (err instanceof UsageLimitError || err instanceof PipelineHaltError) throw err
 }
 
 // ---------------------------------------------------------------------------
@@ -370,15 +390,14 @@ export function isMcpConfigError(message: string | null | undefined): boolean {
   return !!message && /Invalid MCP configuration|MCP config file not found/i.test(message)
 }
 
-/** Rounds in a row with no progress and MCP-config failures before a run stops. */
-export const MAX_MCP_CONFIG_ROUNDS = 3
-
-/**
- * Supervisor bookkeeping for the above. Returns the new streak: it grows by one on
- * a round that completed nothing while hitting MCP-config failures, resets on any
- * round that made progress or hit none. The run should STOP once it reaches
- * MAX_MCP_CONFIG_ROUNDS (the 2026-10-19 run instead backed off and retried for 4 h).
- */
-export function nextMcpConfigStreak(streak: number, processed: number, newMcpFailures: number): number {
-  return processed === 0 && newMcpFailures > 0 ? streak + 1 : 0
+/** The text the supervisors print (and show in the macOS notification) when a run halts. */
+export function formatHalt(err: PipelineHaltError): { block: string; notification: string } {
+  const last = err.lastError.replace(/\s+/g, ' ').trim().slice(0, 300)
+  return {
+    block:
+      `STOP: ${err.consecutiveFailures} CLI calls failed in a row: ${last}\n` +
+      `      Every further call would fail the same way, so the run has stopped. No job lost an attempt ` +
+      `(the job in hand went back to the queue). Fix the cause, then restart the run.`,
+    notification: `${err.consecutiveFailures} CLI calls failed in a row: ${last}`.slice(0, 200),
+  }
 }

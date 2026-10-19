@@ -2,7 +2,7 @@
  * The empty MCP config the CLI backend passes with --strict-mcp-config must
  * survive being deleted mid-run (macOS purged it at 03:36 on 2026-10-19 and every
  * call for the next 4 h died with "MCP config file not found"), and a run that
- * keeps hitting that error must STOP rather than back off for hours.
+ * keeps hitting that error is stopped by the circuit breaker (tests/cliCircuit.test.ts).
  *
  *   npm test
  */
@@ -11,8 +11,8 @@ import assert from 'node:assert/strict'
 import { chmodSync, existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { claudeJson, cliStats, emptyMcpConfig, EMPTY_MCP_FILE, CLAUDE_BULK_MODEL } from '../lib/llm'
-import { isMcpConfigError, nextMcpConfigStreak, MAX_MCP_CONFIG_ROUNDS } from '../lib/usageLimit'
+import { claudeJson, emptyMcpConfig, EMPTY_MCP_FILE, CLAUDE_BULK_MODEL, resetCliCircuit } from '../lib/llm'
+import { isMcpConfigError } from '../lib/usageLimit'
 
 let dir = ''
 let cfgDir = ''
@@ -76,16 +76,15 @@ test('a CLI call after the file is deleted still succeeds', async () => {
   assert.deepEqual(out, { ok: true })
 })
 
-test('if the file vanishes between the check and the CLI, the failure is counted and the file restored', async () => {
+test('if the file vanishes between the check and the CLI, the file is restored for the next call', async () => {
   // Simulate the race with a CLI that always reports the file missing on its first call.
   const p = emptyMcpConfig()
-  const before = cliStats.mcpConfigFailures
+  resetCliCircuit()
   writeFileSync(
     join(dir, 'claude'),
     `#!/bin/sh\ncat > /dev/null\nrm -f "${p}"\necho "Error: Invalid MCP configuration: MCP config file not found: ${p}"\nexit 1\n`
   )
   await assert.rejects(claudeJson('sys', 'user', 100, CLAUDE_BULK_MODEL), /Invalid MCP configuration/)
-  assert.equal(cliStats.mcpConfigFailures, before + 1)
   assert.equal(existsSync(p), true, 'the file was restored for the next call')
 })
 
@@ -94,18 +93,4 @@ test('isMcpConfigError recognises the CLI message and nothing else', () => {
   assert.ok(isMcpConfigError('MCP config file not found'))
   assert.ok(!isMcpConfigError("You've hit your session limit"))
   assert.ok(!isMcpConfigError(null))
-})
-
-test('the supervisor streak stops a run after MAX_MCP_CONFIG_ROUNDS idle rounds with config errors', () => {
-  let s = 0
-  for (let i = 1; i < MAX_MCP_CONFIG_ROUNDS; i++) {
-    s = nextMcpConfigStreak(s, 0, 40)
-    assert.ok(s < MAX_MCP_CONFIG_ROUNDS)
-  }
-  assert.equal(nextMcpConfigStreak(s, 0, 12), MAX_MCP_CONFIG_ROUNDS)
-})
-
-test('progress, or no config errors, resets the streak', () => {
-  assert.equal(nextMcpConfigStreak(2, 5, 3), 0) // jobs completed this round
-  assert.equal(nextMcpConfigStreak(2, 0, 0), 0) // idle for another reason (usage window, empty queue)
 })
