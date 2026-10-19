@@ -54,10 +54,26 @@ export async function enqueueJob(
   return { job: data as Job, deduped: false }
 }
 
-/** Claim the next runnable job, or null if the queue is empty. */
-export async function claimNextJob(): Promise<Job | null> {
-  const { data, error } = await db().rpc('claim_next_job')
-  if (error) throw new Error(`Failed to claim job: ${error.message}`)
+/**
+ * Claim the next runnable job, or null if the queue is empty.
+ *
+ * `types` limits the claim to those job types (the extract / consolidate lanes,
+ * lib/pipelineLanes.ts; needs migration 032). Without it the call is the
+ * zero-argument one, identical to before the lanes existed.
+ */
+export async function claimNextJob(types?: readonly string[]): Promise<Job | null> {
+  const { data, error } = types
+    ? await db().rpc('claim_next_job', { p_types: [...types] })
+    : await db().rpc('claim_next_job')
+  if (error) {
+    if (types && /claim_next_job|PGRST202|schema cache/i.test(error.message)) {
+      throw new Error(
+        `Failed to claim job: ${error.message}. The lane modes need migration 032 ` +
+          `(supabase/migrations_v2/032_claim_next_job_by_type.sql) applied in the Supabase SQL Editor first.`
+      )
+    }
+    throw new Error(`Failed to claim job: ${error.message}`)
+  }
   const rows = data as Job[] | null
   return rows && rows.length > 0 ? rows[0] : null
 }

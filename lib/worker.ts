@@ -269,8 +269,15 @@ export async function settleJobError(job: Job, err: unknown): Promise<UsageLimit
   return null
 }
 
-/** Drain the queue until empty or the time budget is spent. */
-export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResult> {
+/**
+ * Drain the queue until empty or the time budget is spent. `opts.jobTypes`
+ * restricts the claim to those job types (the extract / consolidate lanes,
+ * lib/pipelineLanes.ts); jobs are still handled one at a time, in order.
+ */
+export async function runWorkerTick(
+  budgetMs = TICK_BUDGET_MS,
+  opts: { jobTypes?: readonly string[] } = {}
+): Promise<TickResult> {
   const started = Date.now()
   let processed = 0
   let failed = 0
@@ -278,7 +285,7 @@ export async function runWorkerTick(budgetMs = TICK_BUDGET_MS): Promise<TickResu
   let usageLimit: UsageLimitError | undefined
 
   while (Date.now() - started < budgetMs) {
-    const job = await claimNextJob()
+    const job = await claimNextJob(opts.jobTypes)
     if (!job) break
 
     // Spend guard: once this tick has run its budget of expensive synthesis jobs,

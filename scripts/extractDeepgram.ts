@@ -35,6 +35,19 @@
  * quarantined jobs and jobs parked past the deadline do not count. Before
  * 2026-10-12 any open job did, so the parked August tag_claims job kept a
  * finished run idling for ~45 minutes until it was stopped by hand.
+ *
+ * Lanes (2026-10-18, lib/pipelineLanes.ts, docs/EXTRACTION_RUNBOOK.md §9). The same
+ * script runs in three modes so the usage guard's pattern covers all of them:
+ *
+ *   (no flag)           extract and consolidate together, as before; holds the whole corpus
+ *   --extract-only      only extract_source jobs; consolidate_source jobs stay queued, and the
+ *                       run ends when no extraction work remains
+ *   --consolidate-only  only consolidate_source jobs, one source at a time, ends when none are
+ *                       left (and, while an extract-only run is live, waits for the jobs it queues)
+ *
+ * One extract-only run and one consolidate-only run may hold the corpus together (lane
+ * locks, lib/writerLock.ts); neither may run beside a maintenance writer or a second run of
+ * its own lane. Lane modes need migration 032.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -57,24 +70,39 @@ async function main() {
   const batch = num(args, '--batch') ?? 3
   const deadline = Date.now() + hours * 3_600_000
 
+  const { parseLane, laneJobTypes, laneHealTypes, laneEnqueuesExtractions, laneLabel, consolidateShouldWait } =
+    await import('../lib/pipelineLanes')
+  const lane = parseLane(args)
+  if (lane !== 'all' && process.env.ALLOW_MEMBERED_REEXTRACT === '1') {
+    // That override makes extraction run a library-wide claim reconcile, which is
+    // unsafe beside another lane. Do it as a plain (no flag) run instead.
+    throw new Error('ALLOW_MEMBERED_REEXTRACT=1 is not allowed in a lane run; use the plain supervisor for that')
+  }
+  const laneTypes = laneJobTypes(lane)
+
   const { startRunLog } = await import('../lib/runLog')
-  startRunLog('extractDeepgram')
+  startRunLog(lane === 'all' ? 'extractDeepgram' : `extractDeepgram-${lane}`)
   // One writer at a time: refuse to start while a maintenance script or another
-  // supervisor holds the corpus, instead of racing it.
-  const { acquireWriterLock } = await import('../lib/writerLock')
-  acquireWriterLock('extractDeepgram')
+  // supervisor holds the corpus, instead of racing it. A lane run takes only its
+  // lane, so one extract-only and one consolidate-only run can overlap.
+  const { acquireWriterLock, acquireLaneLock, laneIsLive } = await import('../lib/writerLock')
+  if (lane === 'all') acquireWriterLock(laneLabel(lane))
+  else acquireLaneLock(lane, laneLabel(lane))
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
   const { formatCliStats } = await import('../lib/llm')
   const { usageGate, planPause, quarantineReason } = await import('../lib/usageLimit')
-  const { classifyOpenJobs, describeWork, runIsFinished } = await import('../lib/runnableWork')
+  const { classifyOpenJobs, describeWork, runIsFinished, runnableJobTypes } = await import('../lib/runnableWork')
   type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
-  console.log(`[${now()}] deepgram extraction — deadline in ${hours}h, batch ${batch}`)
+  console.log(
+    `[${now()}] deepgram extraction${lane === 'all' ? '' : ` — ${lane.toUpperCase()}-ONLY lane`} — deadline in ${hours}h` +
+      (laneEnqueuesExtractions(lane) ? `, batch ${batch}` : '')
+  )
 
   /** Sources that already carry insights — never re-enqueue (would double them). */
   async function extractedIds(): Promise<Set<string>> {
@@ -115,7 +143,10 @@ async function main() {
       (from, to) =>
         db.from('jobs').select('id, type, status, run_after').in('status', ['queued', 'running']).order('id').range(from, to)
     )
-    return classifyOpenJobs(rows, deadline, { quarantinedIds: new Set(quarantined.keys()) })
+    return classifyOpenJobs(rows, deadline, {
+      types: runnableJobTypes(process.env, lane),
+      quarantinedIds: new Set(quarantined.keys()),
+    })
   }
 
   /**
@@ -130,7 +161,7 @@ async function main() {
       .from('jobs')
       .select('id, type, error')
       .eq('status', 'failed')
-      .in('type', ['extract_source', 'consolidate_source'])
+      .in('type', laneHealTypes(lane))
     const heal: string[] = []
     for (const j of (failed ?? []) as { id: string; type: string; error: string | null }[]) {
       if (quarantined.has(j.id)) continue
@@ -211,8 +242,9 @@ async function main() {
       const healed = await healFailed()
       if (healed) console.log(`[${now()}] healed ${healed} failed job(s)`)
 
-      const extracted = await extractedIds()
-      const remaining = await pendingGoodTranscripts(extracted)
+      // The consolidate lane starts no extractions and has no use for the source list.
+      const extracted = laneEnqueuesExtractions(lane) ? await extractedIds() : new Set<string>()
+      const remaining = laneEnqueuesExtractions(lane) ? await pendingGoodTranscripts(extracted) : []
 
       // Back-pressure: if the last round healed failures and completed nothing,
       // the CLI is probably in a usage-limit window. Drain what exists rather
@@ -230,6 +262,13 @@ async function main() {
           `${fresh.length} enqueued, ${work.open} open job(s): ${describeWork(work)}`
       )
       if (runIsFinished(fresh.length, work)) {
+        // Every extraction an extract-only run finishes queues a consolidation, so an
+        // empty queue is not "done" while that run is still going.
+        if (consolidateShouldWait(lane, laneIsLive('extract'), work.runnable)) {
+          console.log(`[${now()}] queue empty but an extract-only run is live — waiting 2m for the jobs it queues.`)
+          await sleep(2 * 60_000)
+          continue
+        }
         console.log(`[${now()}] no remaining work — done.`)
         break
       }
@@ -241,7 +280,7 @@ async function main() {
       let failedJobs = 0
       let limitHit: UsageLimitErr | undefined
       for (;;) {
-        const tick = await runWorkerTick(15 * 60_000)
+        const tick = await runWorkerTick(15 * 60_000, laneTypes ? { jobTypes: laneTypes } : {})
         processed += tick.processed - tick.failed
         failedJobs += tick.failed
         if (tick.usageLimit) {
