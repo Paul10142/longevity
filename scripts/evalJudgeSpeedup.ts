@@ -57,7 +57,7 @@ type Rec = {
   ms: number
   error?: string
 }
-type Run = { name: string; effort: string | null; k: number; conc: number; recs: Record<string, Rec> }
+type Run = { name: string; effort: string | null; model?: string; k: number; conc: number; recs: Record<string, Rec> }
 
 const loadPairs = (): Pair[] => (JSON.parse(readFileSync(SAMPLE, 'utf8')) as { pairs: Pair[] }).pairs
 const runPath = (n: string) => `${DIR}/${n}.json`
@@ -73,15 +73,16 @@ async function runCmd() {
   const k = num('--k', 8)
   const conc = num('--conc', 3)
   const limit = num('--limit', 100000)
-  const pairs = loadPairs().slice(0, limit)
+  const model = flag('--model')
+  const pairs = loadPairs().filter(p => !argv.includes('--labelled') || p.label).slice(0, limit)
   mkdirSync(DIR, { recursive: true })
   const run: Run = existsSync(runPath(name))
     ? loadRun(name)
-    : { name, effort, k, conc, recs: {} }
+    : { name, effort, model, k, conc, recs: {} }
   const { adjudicate } = await import('../lib/consolidation')
 
   const todo = pairs.filter(p => !run.recs[p.id] || run.recs[p.id].verdict === 'ERROR')
-  console.log(`${name}: ${pairs.length} pairs, ${todo.length} to do; effort=${effort ?? 'default'} k=${k} concurrency=${conc}`)
+  console.log(`${name}: ${pairs.length} pairs, ${todo.length} to do; model=${model ?? 'production'} effort=${effort ?? 'default'} k=${k} concurrency=${conc}`)
   let next = 0
   let done = 0
   const t0 = Date.now()
@@ -91,7 +92,7 @@ async function runCmd() {
       const cands = p.candidates.slice(0, k)
       const t = Date.now()
       try {
-        const v = await adjudicate(p.new_statement, cands, effort ? { effort } : {})
+        const v = await adjudicate(p.new_statement, cands, { ...(effort ? { effort } : {}), ...(model ? { model } : {}) })
         const idx = v.candidate_index && v.candidate_index >= 1 && v.candidate_index <= cands.length ? v.candidate_index : null
         run.recs[p.id] = {
           id: p.id, verdict: v.verdict, confidence: v.confidence, enrich: v.enrich,

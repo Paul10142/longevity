@@ -149,6 +149,32 @@ check would be mostly noise (1 true hit in 4). It needs the claim-level judge (i
 model call per rewrite; do that, and measure it on pairs that carry qualifiers, if a qualifier drop is ever seen in practice.
 Until then this is an unguarded risk on both rewrite modes, not only no-thinking.
 
+## Lever 5 — Sonnet 5.5 as the dedup judge: NOT shipped (2026-10-19)
+
+Paul's rule (2026-10-18): pipelines use Sonnet or Haiku unless he approved otherwise, and Opus is ~75% of his plan usage. Test: the 116
+human-labelled pairs of the frozen sample (109 SAME, 7 DIFFERENT), the production prompt (`ADJUDICATION_V3`) and the bare-CLI call path,
+model `claude-sonnet-5-5` (new `--model` flag on `scripts/evalJudgeSpeedup.ts run`, `--labelled` limits to the 116). "Agrees" = every DIFFERENT
+pair right (merging two distinct facts is the costly error) and no more errors on SAME pairs than Opus 5.5. Records:
+`eval/judge-speedup-runs/sonnet-{default,high}.json`, `compare-sonnet-*.txt`. Action = merge only at SAME ≥ 0.80, as in production.
+
+| judge (116 labelled pairs) | DIFFERENT pairs wrongly merged (of 7) | SAME pairs not merged (of 109) | mean confidence on SAME, # SAME below 0.80 | s per call (mean / p90) |
+|---|---|---|---|---|
+| Opus 5.5, run 1 (baseline) | **1** | 12 | 0.898, 12 | 4.0 / 5.6 |
+| Opus 5.5, run 2 (baseline2) | **1** | 12 | 0.889, 15 | 3.9 / – |
+| Sonnet 5.5, default effort | **4** | 7 | 0.901, 7 | 4.4 / 6.7 |
+| Sonnet 5.5, effort high | **3** | 9 | 0.897, 12 | 4.7 / 6.3 |
+
+- **Fails the DIFFERENT test.** Opus wrongly merges 1 of Paul's 7 DIFFERENT pairs (`a48b0215`, at exactly 0.80, in both runs); Sonnet default merges 4,
+  high merges 3. Ties on the bar: Sonnet puts several of them at exactly 0.80 where Opus said 0.65–0.72 (`c1ee80ba`, `92f1308c`, `bdcb97aa`).
+- Sonnet makes fewer SAME errors (7 and 9 vs 12), but those are the cheap direction (two claims stay separate; no data lost). The trade is
+  fewer missed merges for more false merges, which is the wrong way round under Paul's rule.
+- Against the Opus baseline: merge decision agreement 93.1% (default) and 95.7% (high), below the 97.5% Opus gets against its own re-run.
+  Same target claim 98/98 both times. High was not better than default on false merges (3 vs 4) and cost ~7% more time.
+- Not faster: 4.4 s and 4.7 s per call against 4.0 s. The saving would be plan usage, not time.
+- Caveat: the 7 DIFFERENT pairs are all hard sub-0.80 reviews Paul rejected, and Opus itself flips on one of them between runs (`6317f815`);
+  7 pairs is a small sample. The decision follows the pre-agreed rule; it did not need a close call.
+- Judge stays on `claude-opus-5-5`. Taxonomy, fidelity judge and synthesis were not in scope and are unchanged.
+
 ## What is not measured
 
 No end-to-end consolidation was run on the new code (the run owned the writer lock until it ended; this work wrote to

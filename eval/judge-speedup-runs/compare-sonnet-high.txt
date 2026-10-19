@@ -1,0 +1,77 @@
+
+=== sonnet-high vs baseline — 116 pairs compared (166 excluded: error or not run) ===
+variant: effort=high, k=8
+raw verdict agreement (SAME/DIFFERENT/UNSURE):      111/116  95.7%
+merge decision agreement (merge vs keep apart):      111/116  95.7%
+merge into the same claim, where both merge:         98/98  100.0%
+full decision agreement (merge/keep AND same target): 111/116  95.7%
+NEW FALSE MERGES, strict (baseline DIFFERENT/UNSURE, variant merges): 1
+lost merges, strict (baseline merged, variant says DIFFERENT/UNSURE):  0
+boundary hops (SAME both sides, confidence across the 0.80 bar):      +4 merge / -0 keep apart
+
+by similarity band (decision agreement):
+  0.75-0.80    1/1   100.0%
+  0.80-0.86   17/21  81.0%
+  >=0.86       2/2   100.0%
+  gold(>=0.80)  91/92  98.9%
+
+against Paul's labels (116 pairs, SAME=109, DIFFERENT=7): baseline 103/116, variant 104/116
+  false merges vs Paul's DIFFERENT labels: baseline 1, variant 3
+
+seconds per judge call (same pairs): baseline mean 4.0 / median 3.7 / p90 5.6;  variant mean 4.7 / median 4.4 / p90 6.3  → -18% faster
+
+EVERY FLIP (9):
+
+[NEW MERGE (boundary hop)] merge:dc32a7c8-2c7f-404b-9718-f930d6b8351b  (gold, gold(>=0.80), top sim 0.800, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe the growing role of GLP-1 pharmacotherapy relative to other obesity approaches; the new insight adds that the rationale is large weight and metabolic benefits and frames the open clinica
+  variant:  SAME→#1 @0.80 enrich=true — Both describe the growing role of GLP-1 pharmacotherapy in obesity management, and the new insight is a compatible framing rather than a contradiction. It adds the rationale (large weight and metaboli
+  NEW:  Because GLP‑1 receptor agonists and related drugs appear to produce large benefits for weight and metabolic outcomes, there is a growing policy and clinical question about whether pharmacotherapy should become the default approach to treating obesity.
+  #1:   Current public-health approaches to obesity have significant limits; pharmacologic strategies such as GLP‑1 receptor agonists may play a growing role alongside (or when) broader societal changes are insufficient to control population-level obesity.
+
+[verdict] paul:02eec290-31f2-4662-b647-61ef73d6d38e  (paul, 0.80-0.86, top sim 0.812, Paul: DIFFERENT)
+  baseline: DIFFERENT @0.68 enrich=false — The existing claim describes how VO2 max is measured (indirect calorimetry with a gas-exchange mask as the gold standard, with cost and access limits). The new insight is a distinct claim about why VO
+  variant:  SAME→#1 @0.55 enrich=true — Both describe VO2 max's status as the standardized, gold-standard cardiorespiratory measure; the new insight adds that it is the most studied metric in cardiovascular research because technicians can 
+  NEW:  VO2 Max is the most extensively studied and documented cardiorespiratory fitness metric and is heavily used in cardiovascular research because it is a standardized test that trained technicians can perform consistently, making it more amenable to rigorous stud
+  #1:   VO2 max (or VO2) is measured definitively via indirect calorimetry testing using a mask that captures all exhaled breath through tubing with sensors measuring oxygen and carbon dioxide concentrations; indirect calorimetry directly measures gas exchange and ser
+
+[NEW MERGE (boundary hop)] paul:c1ee80ba-b775-4041-8aac-46f7f9c83739  (paul, 0.80-0.86, top sim 0.800, Paul: DIFFERENT)
+  baseline: SAME→#1 @0.68 enrich=true — Both describe MFSD2A DHA transporters on blood-brain-barrier pericytes. The new insight adds the transport mechanism: DHA crosses in the lysophosphatidylcholine form. It also adds specificity: plant A
+  variant:  SAME→#1 @0.80 enrich=true — Both describe MFSD2A DHA transporters at the blood-brain barrier in association with pericytes, and they do not conflict; the new insight adds that the transported form is lysophosphatidylcholine-DHA 
+  NEW:  MFSD2A transporters, concentrated on pericytes, specifically transport docosahexaenoic acid (DHA) in the form of lysophosphatidylcholine DHA across the blood-brain barrier; DHA (but not plant-based ALA or necessarily EPA) requires this dedicated transport mech
+  #1:   MFSD2A DHA transporters are positioned at blood-brain barrier sites where pericytes decline with age, suggesting omega-3 status influences barrier integrity at locations of age-related pathological breakdown.
+
+[verdict] paul:81db23d8-6ed3-485c-ad4c-48a3d2e5f3f2  (paul, 0.80-0.86, top sim 0.831, Paul: SAME)
+  baseline: DIFFERENT @0.68 enrich=false — Both concern heart rate recovery, but the new insight claims HRR is a better performance or fitness metric than maximum heart rate, while the existing claim says HRR speed shows the aerobic vs. anaero
+  variant:  SAME→#1 @0.55 enrich=true — Both treat heart rate recovery as an informative exercise metric, and the new insight adds the compatible claim that it may be more meaningful than maximum heart rate as a performance measure, which t
+  NEW:  Heart rate recovery—how quickly the heart rate drops after exertion—may be a more meaningful performance metric than maximum heart rate itself.
+  #1:   Heart rate recovery speed after exercise reflects the relative aerobic vs. anaerobic contribution to the exercise bout; faster heart rate drop indicates predominantly aerobic-driven activity, while slower recovery suggests greater anaerobic component.
+
+[verdict, NEW MERGE] paul:6317f815-fe48-45c2-b10c-023890fdf020  (paul, 0.80-0.86, top sim 0.800, Paul: DIFFERENT)
+  baseline: DIFFERENT @0.60 enrich=false — Both concern UCL tears in throwers, but the new insight describes why the injury happens (traction forces above the rupture threshold at 90+ mph), while the existing claim describes how treatment chan
+  variant:  SAME→#1 @0.80 enrich=true — Both concern ulnar collateral ligament injury in throwing athletes; the new insight adds a mechanism (super-physiologic traction forces exceeding the rupture threshold in 90+ mph throwers) that explai
+  NEW:  The ulnar collateral ligament in high-level baseball throwers (90+ mph) is subjected to super-physiologic traction forces that can exceed the ligament's rupture threshold.
+  #1:   The ulnar collateral ligament tears in throwing athletes and was historically career-ending; modern reconstructive surgery (Tommy John surgery) has generally made return to play possible.
+
+[NEW MERGE (boundary hop)] paul:065589dc-51f6-492f-9f28-aaaf7abc4522  (paul, 0.80-0.86, top sim 0.843, Paul: SAME)
+  baseline: SAME→#1 @0.78 enrich=true — Both describe rapamycin as a robust, reproducible longevity intervention with broad healthspan benefits across tissues; the new insight adds a specific effect size (~25% lifespan extension), the rever
+  variant:  SAME→#1 @0.85 enrich=true — Both describe rapamycin's broad lifespan and healthspan benefits across tissues in animal models; the new insight adds a concrete effect size (~25% lifespan extension), the reversal of functional decl
+  NEW:  Rapamycin extends lifespan by approximately 25% and reverses functional decline in multiple tissues; this established benchmark represents the standard against which new aging interventions should be evaluated.
+  #1:   Rapamycin appears to positively affect nearly all measurable aspects of health span—not just lifespan extension—in complex animals, demonstrating broad pleiotropic effects across multiple distinct healthspan metrics concurrently rather than via a single pathwa
+
+[NEW MERGE (boundary hop)] paul:53a189e4-b0f0-4725-9ab8-967e31086e4d  (paul, 0.80-0.86, top sim 0.811, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe compromised BBB integrity impairing the brain's waste clearance; the new insight adds that the impairment extends beyond the glymphatic system to multiple other parenchymal brain-cleanin
+  variant:  SAME→#1 @0.80 enrich=true — Both describe BBB compromise impairing brain waste clearance; the new insight adds that other parenchymal clearance mechanisms beyond the glymphatic system are also impaired, reducing overall clearanc
+  NEW:  Compromised blood-brain barrier function impairs multiple parenchymal brain-cleaning mechanisms beyond the glymphatic system, reducing the brain's overall capacity to clear debris and metabolic waste.
+  #1:   Blood-brain barrier integrity maintains the back pressure gradient necessary for glymphatic cerebrospinal fluid flow; when the barrier becomes permeable, this pressure differential is lost, impairing the system's ability to clear waste from the brain.
+
+[verdict] paul:767bbedc-d37d-4cfb-ab65-c6d3df2bfdb3  (paul, 0.80-0.86, top sim 0.810, Paul: SAME)
+  baseline: DIFFERENT @0.60 enrich=false — Both address mouse-to-human fasting equivalence, but they give conflicting values for the same quantity: the existing claim says a 24-hour mouse fast may equal weeks of human fasting, while the new in
+  variant:  SAME→#1 @0.78 enrich=true — Both estimate how a mouse fast translates to a human fast, so they are one claim. The new insight adds a specific 4-5 day equivalence and the caveat that both species can enter ketosis within 24 hours
+  NEW:  One day of fasting in mice may be roughly equivalent to 4–5 days of fasting in humans, though this equivalency is not exact because both species can enter ketosis within 24 hours depending on diet composition.
+  #1:   In mice, a 24-hour fast represents extreme calorie deprivation; even a 12-hour fast imposes 'overwhelming' metabolic demands.
+
+[verdict] paul:a14749dd-7428-4a85-9b5c-52a5958019c6  (paul, 0.80-0.86, top sim 0.817, Paul: SAME)
+  baseline: DIFFERENT @0.60 enrich=false — Both address caloric restriction on a high-quality diet, but they contradict each other: the existing claim says the NIH/Bethesda arm tested it and found no lifespan extension, while the new insight s
+  variant:  SAME→#1 @0.72 enrich=true — Both describe the diet-quality dependence of caloric restriction's lifespan benefit in the Wisconsin study, and the new insight adds an uncertainty caveat that the effect of restricting a high-quality
+  NEW:  Whether caloric restriction applied to a high-quality diet extends lifespan remains unknown. Wisconsin tested caloric restriction on a poor-quality diet (establishing benefit), while the contrapositive—reducing intake of nutrient-dense food—has not been tested
+  #1:   The Wisconsin/NIH rhesus monkey caloric restriction study, conducted at the University of Wisconsin and NIH Bethesda over multiple decades spanning the ~40-year monkey lifespan with results observed over approximately 20 years, enrolled age-matched animals; co

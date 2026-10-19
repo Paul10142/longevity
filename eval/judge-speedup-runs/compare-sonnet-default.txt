@@ -1,0 +1,89 @@
+
+=== sonnet-default vs baseline — 116 pairs compared (166 excluded: error or not run) ===
+variant: effort=default, k=8
+raw verdict agreement (SAME/DIFFERENT/UNSURE):      113/116  97.4%
+merge decision agreement (merge vs keep apart):      108/116  93.1%
+merge into the same claim, where both merge:         98/98  100.0%
+full decision agreement (merge/keep AND same target): 108/116  93.1%
+NEW FALSE MERGES, strict (baseline DIFFERENT/UNSURE, variant merges): 0
+lost merges, strict (baseline merged, variant says DIFFERENT/UNSURE):  0
+boundary hops (SAME both sides, confidence across the 0.80 bar):      +8 merge / -0 keep apart
+
+by similarity band (decision agreement):
+  0.75-0.80    0/1   0.0%
+  0.80-0.86   16/21  76.2%
+  >=0.86       1/2   50.0%
+  gold(>=0.80)  91/92  98.9%
+
+against Paul's labels (116 pairs, SAME=109, DIFFERENT=7): baseline 103/116, variant 105/116
+  false merges vs Paul's DIFFERENT labels: baseline 1, variant 4
+
+seconds per judge call (same pairs): baseline mean 4.0 / median 3.7 / p90 5.6;  variant mean 4.4 / median 3.5 / p90 6.7  → -11% faster
+
+EVERY FLIP (11):
+
+[NEW MERGE (boundary hop)] merge:dc32a7c8-2c7f-404b-9718-f930d6b8351b  (gold, gold(>=0.80), top sim 0.800, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe the growing role of GLP-1 pharmacotherapy relative to other obesity approaches; the new insight adds that the rationale is large weight and metabolic benefits and frames the open clinica
+  variant:  SAME→#1 @0.80 enrich=true — Both address the growing role of GLP-1 pharmacotherapy in obesity management; the new insight adds the rationale that large weight and metabolic benefits are driving the question of whether drugs shou
+  NEW:  Because GLP‑1 receptor agonists and related drugs appear to produce large benefits for weight and metabolic outcomes, there is a growing policy and clinical question about whether pharmacotherapy should become the default approach to treating obesity.
+  #1:   Current public-health approaches to obesity have significant limits; pharmacologic strategies such as GLP‑1 receptor agonists may play a growing role alongside (or when) broader societal changes are insufficient to control population-level obesity.
+
+[NEW MERGE (boundary hop)] paul:c1ee80ba-b775-4041-8aac-46f7f9c83739  (paul, 0.80-0.86, top sim 0.800, Paul: DIFFERENT)
+  baseline: SAME→#1 @0.68 enrich=true — Both describe MFSD2A DHA transporters on blood-brain-barrier pericytes. The new insight adds the transport mechanism: DHA crosses in the lysophosphatidylcholine form. It also adds specificity: plant A
+  variant:  SAME→#1 @0.80 enrich=true — Both describe the MFSD2A DHA transport system at the blood-brain barrier in relation to pericytes; the new insight adds that it transports DHA as lysophosphatidylcholine-DHA and that DHA, unlike plant
+  NEW:  MFSD2A transporters, concentrated on pericytes, specifically transport docosahexaenoic acid (DHA) in the form of lysophosphatidylcholine DHA across the blood-brain barrier; DHA (but not plant-based ALA or necessarily EPA) requires this dedicated transport mech
+  #1:   MFSD2A DHA transporters are positioned at blood-brain barrier sites where pericytes decline with age, suggesting omega-3 status influences barrier integrity at locations of age-related pathological breakdown.
+
+[NEW MERGE (boundary hop)] paul:92f1308c-0067-40b1-81a5-aee18a05ecf2  (paul, 0.75-0.80, top sim 0.766, Paul: DIFFERENT)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe a hyperbaric oxygen treatment protocol for brain injury at about 2 atmospheres with 60-minute sessions and roughly 40 sessions; the new insight adds the 1.5–2 ATA range, the cognitive an
+  variant:  SAME→#1 @0.80 enrich=true — Both describe the hyperbaric oxygen protocol for brain injury (about 2 atm, 60-minute sessions, roughly 40 sessions), and the differing session frequency (twice weekly vs 5 days per week) reads as a c
+  NEW:  Hyperbaric oxygen therapy at 1.5–2 atmospheres may improve cognitive and metabolic/mitochondrial function in traumatic brain injury patients, including those with remote injuries sustained years prior. Treatment protocol involves 60-minute sessions twice weekl
+  #1:   A standard hyperbaric oxygen protocol for acute concussion or brain injury involves 2 atmospheres of pressure at 60–90 minutes per session, 5 days per week (minimum 3 days per week), for approximately 40 sessions over 6 weeks.
+
+[NEW MERGE (boundary hop)] paul:bdcb97aa-58cf-4952-b078-f99103ff8212  (paul, 0.80-0.86, top sim 0.855, Paul: DIFFERENT)
+  baseline: SAME→#1 @0.68 enrich=true — Both describe the same sauna-use protocol at about 175°F, and the new insight adds compatible facets the existing claim lacks: longer sessions over 30 minutes at 175–180°F, use outside post-exercise c
+  variant:  SAME→#1 @0.80 enrich=true — Both describe sauna sessions at ~175°F as a heat-stress recovery practice with duration adjusted to context; the new insight adds sessions over 30 minutes at 175–180°F, use outside post-exercise conte
+  NEW:  Sauna sessions exceeding 30 minutes at 175–180°F can be used for recovery or cognitive breaks outside of post-exercise contexts, with tolerance increasing through repeated exposure (heat adaptation).
+  #1:   Sauna sessions of 20–25 minutes at 175°F performed immediately after high-intensity interval training (Tabata) can be incorporated as part of a heat-stress recovery protocol.
+
+[NEW MERGE (boundary hop)] paul:eff826bf-8635-4d34-ab09-a3d2ec14790c  (paul, 0.80-0.86, top sim 0.816, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe ketamine tolerance; the new insight adds that it develops rapidly as acute tachyphylaxis within short windows of repeated dosing, requiring progressively higher doses for the same effect
+  variant:  SAME→#1 @0.80 enrich=true — Both describe ketamine tolerance; the new insight adds rapid onset (tachyphylaxis), the short-window repeated-dosing timeframe, and the need for progressively higher doses, which the existing claim (c
+  NEW:  Ketamine displays rapidly developing tolerance (tachyphylaxis); repeated administration in short time windows requires progressively higher doses to achieve the same effect.
+  #1:   Chronic recreational ketamine users develop profound tolerance, remaining ambulatory and functional at doses described as extreme enough to incapacitate large animals.
+
+[verdict] paul:6317f815-fe48-45c2-b10c-023890fdf020  (paul, 0.80-0.86, top sim 0.800, Paul: DIFFERENT)
+  baseline: DIFFERENT @0.60 enrich=false — Both concern UCL tears in throwers, but the new insight describes why the injury happens (traction forces above the rupture threshold at 90+ mph), while the existing claim describes how treatment chan
+  variant:  SAME→#1 @0.72 enrich=true — Both concern ulnar collateral ligament injury in throwing athletes, with the new insight explaining the mechanism (super-physiologic traction forces at 90+ mph exceeding rupture threshold) that the ex
+  NEW:  The ulnar collateral ligament in high-level baseball throwers (90+ mph) is subjected to super-physiologic traction forces that can exceed the ligament's rupture threshold.
+  #1:   The ulnar collateral ligament tears in throwing athletes and was historically career-ending; modern reconstructive surgery (Tommy John surgery) has generally made return to play possible.
+
+[NEW MERGE (boundary hop)] paul:8084f789-41eb-4380-8bff-d83220506621  (paul, >=0.86, top sim 0.865, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe one-year mortality after hip fracture in people over 65, and study estimates of this vary. The new insight adds a higher reported estimate (30–40%) that only touches the existing 10–30% 
+  variant:  SAME→#1 @0.80 enrich=true — Both describe 12-month mortality after hip fracture in people over 65; the new insight gives a higher estimate (30–40%) that does not contradict the existing range (10–30%) and is a compatible facet (
+  NEW:  Among people over age 65 who sustain a hip fracture, 30–40% do not survive beyond one year following the injury.
+  #1:   Hip or femur fracture in people over age 65 carries 15–30% mortality risk within 12 months (range across studies: 10–30%); among those who survive (70–85%), approximately 50% do not return to their pre-fracture level of function.
+
+[NEW MERGE (boundary hop)] paul:065589dc-51f6-492f-9f28-aaaf7abc4522  (paul, 0.80-0.86, top sim 0.843, Paul: SAME)
+  baseline: SAME→#1 @0.78 enrich=true — Both describe rapamycin as a robust, reproducible longevity intervention with broad healthspan benefits across tissues; the new insight adds a specific effect size (~25% lifespan extension), the rever
+  variant:  SAME→#1 @0.85 enrich=true — Both state that rapamycin broadly benefits lifespan and healthspan in animals; the new insight adds a concrete ~25% lifespan extension figure, reversal of functional decline in multiple tissues, and i
+  NEW:  Rapamycin extends lifespan by approximately 25% and reverses functional decline in multiple tissues; this established benchmark represents the standard against which new aging interventions should be evaluated.
+  #1:   Rapamycin appears to positively affect nearly all measurable aspects of health span—not just lifespan extension—in complex animals, demonstrating broad pleiotropic effects across multiple distinct healthspan metrics concurrently rather than via a single pathwa
+
+[NEW MERGE (boundary hop)] paul:53a189e4-b0f0-4725-9ab8-967e31086e4d  (paul, 0.80-0.86, top sim 0.811, Paul: SAME)
+  baseline: SAME→#1 @0.72 enrich=true — Both describe compromised BBB integrity impairing the brain's waste clearance; the new insight adds that the impairment extends beyond the glymphatic system to multiple other parenchymal brain-cleanin
+  variant:  SAME→#1 @0.80 enrich=true — Both describe BBB compromise impairing brain waste clearance; the new insight adds that other parenchymal clearance mechanisms beyond the glymphatic system are also impaired, reducing overall clearanc
+  NEW:  Compromised blood-brain barrier function impairs multiple parenchymal brain-cleaning mechanisms beyond the glymphatic system, reducing the brain's overall capacity to clear debris and metabolic waste.
+  #1:   Blood-brain barrier integrity maintains the back pressure gradient necessary for glymphatic cerebrospinal fluid flow; when the barrier becomes permeable, this pressure differential is lost, impairing the system's ability to clear waste from the brain.
+
+[verdict] paul:767bbedc-d37d-4cfb-ab65-c6d3df2bfdb3  (paul, 0.80-0.86, top sim 0.810, Paul: SAME)
+  baseline: DIFFERENT @0.60 enrich=false — Both address mouse-to-human fasting equivalence, but they give conflicting values for the same quantity: the existing claim says a 24-hour mouse fast may equal weeks of human fasting, while the new in
+  variant:  SAME→#1 @0.78 enrich=true — Both claims address how a mouse fast translates to a much longer human fast, so they are the same claim. The new insight adds a specific estimate (1 mouse day ≈ 4–5 human days) and the ketosis-within-
+  NEW:  One day of fasting in mice may be roughly equivalent to 4–5 days of fasting in humans, though this equivalency is not exact because both species can enter ketosis within 24 hours depending on diet composition.
+  #1:   In mice, a 24-hour fast represents extreme calorie deprivation; even a 12-hour fast imposes 'overwhelming' metabolic demands.
+
+[verdict] paul:a14749dd-7428-4a85-9b5c-52a5958019c6  (paul, 0.80-0.86, top sim 0.817, Paul: SAME)
+  baseline: DIFFERENT @0.60 enrich=false — Both address caloric restriction on a high-quality diet, but they contradict each other: the existing claim says the NIH/Bethesda arm tested it and found no lifespan extension, while the new insight s
+  variant:  SAME→#1 @0.60 enrich=true — Both describe the Wisconsin rhesus study and whether caloric restriction's lifespan benefit depends on diet quality, but the new insight adds a caveat that CR on a high-quality diet is untested or unk
+  NEW:  Whether caloric restriction applied to a high-quality diet extends lifespan remains unknown. Wisconsin tested caloric restriction on a poor-quality diet (establishing benefit), while the contrapositive—reducing intake of nutrient-dense food—has not been tested
+  #1:   The Wisconsin/NIH rhesus monkey caloric restriction study, conducted at the University of Wisconsin and NIH Bethesda over multiple decades spanning the ~40-year monkey lifespan with results observed over approximately 20 years, enrolled age-matched animals; co
