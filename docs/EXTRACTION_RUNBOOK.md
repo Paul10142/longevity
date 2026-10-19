@@ -236,6 +236,8 @@ enrich-merge rewrite ≈ 20 s (about 64% of merges). Since the speed-up (`docs/j
   keep landing next to each other and the window should be lowered.
 - Not worth doing (measured, `docs/judge-speedup.md`): a lower judge effort setting, fewer candidates, skipping the
   judge on very similar pairs.
+- Sonnet 5.5 as the dedup judge was tested on Paul's 116 labelled pairs (2026-10-19) and **not adopted**: it wrongly merges 3–4 of his 7
+  DIFFERENT pairs against Opus's 1 (`docs/judge-speedup.md`, Lever 5). The judge stays Opus 5.5.
 
 ## 9. Extract-only and consolidate-only lanes (2026-10-18)
 

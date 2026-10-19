@@ -188,9 +188,10 @@ const ADJUDICATION_SYSTEM = ADJUDICATION_V3
 export async function adjudicate(
   rawStatement: string,
   candidates: Candidate[],
-  opts: { effort?: Effort } = {}
+  opts: { effort?: Effort; model?: string } = {}
 ): Promise<Adjudication> {
   const effort = opts.effort ?? JUDGE_EFFORT
+  const model = opts.model ?? ADJUDICATION_MODEL
   const list = candidates
     .map((c, i) => `${i + 1}. ${c.canonical_statement}${c.context_note ? ` (${c.context_note})` : ''}`)
     .join('\n')
@@ -203,7 +204,7 @@ export async function adjudicate(
   for (let attempt = 0; attempt <= 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
     try {
-      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, ADJUDICATION_MODEL, effort)
+      const parsed = await claudeJson<Partial<Adjudication>>(ADJUDICATION_SYSTEM, user, 2000, model, effort)
       const verdict = parsed.verdict === 'SAME' || parsed.verdict === 'UNSURE' ? parsed.verdict : 'DIFFERENT'
       return {
         verdict,
