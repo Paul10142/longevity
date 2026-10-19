@@ -59,7 +59,9 @@ async function main() {
   const { runWorkerTick } = await import('../lib/worker')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { formatCliStats } = await import('../lib/llm')
+  const { formatCliStats, cliCircuit } = await import('../lib/llm')
+  const { PipelineHaltError } = await import('../lib/usageLimit')
+  const { reportHalt } = await import('../lib/haltNotice')
   if (!supabaseAdmin) throw new Error('Supabase not configured')
   const db = supabaseAdmin
 
@@ -156,8 +158,10 @@ async function main() {
     // Drain within the current window.
     let processed = 0
     for (;;) {
-      const { processed: p } = await runWorkerTick(15 * 60_000)
+      const { processed: p, halt } = await runWorkerTick(15 * 60_000)
       processed += p
+      const stop = halt ?? cliCircuit.halted
+      if (stop) throw stop
       if (p === 0) break
       if (Date.now() >= deadline) break
     }
@@ -174,6 +178,10 @@ async function main() {
     }
     failStreak = 0
     } catch (err) {
+      if (err instanceof PipelineHaltError) {
+        reportHalt(err, msg => console.log(`[${now()}] ${msg}`))
+        break
+      }
       failStreak++
       const wait = Math.min(15 * 60_000, 3 * 60_000 * failStreak)
       const msg = err instanceof Error ? err.message.slice(0, 160) : String(err)

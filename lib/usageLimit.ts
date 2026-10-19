@@ -64,9 +64,29 @@ export class UsageLimitError extends Error {
   }
 }
 
-/** Call from a `catch` that would otherwise swallow or retry an LLM failure. */
+/**
+ * Thrown (by lib/llm.ts) once N CLI calls in a row have failed for a reason that is neither
+ * a usage limit nor a one-passage safety refusal — a missing MCP config file, a logged-out
+ * CLI, a missing binary. Every further call would fail the same way, so this is FATAL for
+ * the run: the worker puts the job back in the queue without spending an attempt, and the
+ * supervisors stop and alert. Never retried, never counted against a job.
+ */
+export class PipelineHaltError extends Error {
+  readonly consecutiveFailures: number
+  readonly lastError: string
+
+  constructor(consecutiveFailures: number, lastError: string) {
+    super(`${consecutiveFailures} CLI calls failed in a row: ${lastError}`)
+    this.name = 'PipelineHaltError'
+    this.consecutiveFailures = consecutiveFailures
+    this.lastError = lastError
+  }
+}
+
+/** Call from a `catch` that would otherwise swallow or retry an LLM failure. Rethrows a
+ *  usage limit (defer the job) and a pipeline halt (stop the run); neither is the job's fault. */
 export function rethrowIfUsageLimit(err: unknown): void {
-  if (err instanceof UsageLimitError) throw err
+  if (err instanceof UsageLimitError || err instanceof PipelineHaltError) throw err
 }
 
 // ---------------------------------------------------------------------------
@@ -359,4 +379,25 @@ export function quarantineReason(error: string | null | undefined, healsSoFar: n
   if (isRefusalError(error)) return "refused by the model's safety filter"
   if (healsSoFar >= MAX_HEALS_PER_JOB) return `still failing after ${MAX_HEALS_PER_JOB} retries`
   return null
+}
+
+/**
+ * The spawned `claude` CLI could not load the MCP config file we hand it
+ * ("Invalid MCP configuration: MCP config file not found"). A setup fault, not a
+ * transient one: retrying changes nothing until the file exists again.
+ */
+export function isMcpConfigError(message: string | null | undefined): boolean {
+  return !!message && /Invalid MCP configuration|MCP config file not found/i.test(message)
+}
+
+/** The text the supervisors print (and show in the macOS notification) when a run halts. */
+export function formatHalt(err: PipelineHaltError): { block: string; notification: string } {
+  const last = err.lastError.replace(/\s+/g, ' ').trim().slice(0, 300)
+  return {
+    block:
+      `STOP: ${err.consecutiveFailures} CLI calls failed in a row: ${last}\n` +
+      `      Every further call would fail the same way, so the run has stopped. No job lost an attempt ` +
+      `(the job in hand went back to the queue). Fix the cause, then restart the run.`,
+    notification: `${err.consecutiveFailures} CLI calls failed in a row: ${last}`.slice(0, 200),
+  }
 }

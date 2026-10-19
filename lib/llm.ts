@@ -24,11 +24,13 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
-import { existsSync, writeFileSync } from 'node:fs'
-import { tmpdir } from 'node:os'
+import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
+import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
 import {
   UsageLimitError,
+  isMcpConfigError,
+  PipelineHaltError,
   parseCliStream,
   parseUsageLimit,
   noteRateLimit,
@@ -54,15 +56,71 @@ export function formatCliStats(): string {
 /**
  * An MCP config that names no servers. Passed with --strict-mcp-config so the
  * spawned CLI connects to nothing, whatever the user's own ~/.claude.json lists.
+ *
+ * Re-checked on EVERY call, never cached. It used to be written once to tmpdir()
+ * and the path remembered; at ~03:36 on 2026-10-19 macOS purged that file in the
+ * middle of an overnight run and all 6,804 calls over the next 4 hours died with
+ * "Invalid MCP configuration: MCP config file not found". A purge-proof home
+ * (~/.cache) plus a cheap existsSync that rewrites the file when missing means
+ * a deleted file costs nothing. The file NAME is unchanged: the usage guard
+ * matches "lifestyle-academy-empty-mcp" on the command line (~/.claude/usage-guard).
+ * `LA_EMPTY_MCP_DIR` overrides the folder (tests).
  */
-let emptyMcpConfigPath: string | null = null
-function emptyMcpConfig(): string {
-  if (!emptyMcpConfigPath) {
-    const p = join(tmpdir(), 'lifestyle-academy-empty-mcp.json')
-    if (!existsSync(p)) writeFileSync(p, '{"mcpServers":{}}')
-    emptyMcpConfigPath = p
+export const EMPTY_MCP_FILE = 'lifestyle-academy-empty-mcp.json'
+const EMPTY_MCP_BODY = '{"mcpServers":{}}'
+
+export function emptyMcpConfig(): string {
+  const dirs = [
+    process.env.LA_EMPTY_MCP_DIR,
+    join(homedir(), '.cache', 'lifestyle-academy'),
+    tmpdir(),
+  ].filter((d): d is string => !!d)
+  let lastErr: unknown
+  for (const dir of dirs) {
+    const p = join(dir, EMPTY_MCP_FILE)
+    try {
+      if (existsSync(p)) return p
+      mkdirSync(dir, { recursive: true })
+      // Write then rename so a CLI starting at the same moment never reads half a file.
+      const tmp = `${p}.${process.pid}.tmp`
+      writeFileSync(tmp, EMPTY_MCP_BODY)
+      renameSync(tmp, p)
+      return p
+    } catch (e) {
+      lastErr = e // unwritable folder: try the next one
+    }
   }
-  return emptyMcpConfigPath
+  throw new Error(`cannot write the empty MCP config: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`)
+}
+
+/**
+ * Call-level circuit breaker. A run used to learn that the CLI was broken only at the end
+ * of a round (2026-10-19: 6,804 failed calls in 4 h). Now the Nth consecutive failed call,
+ * counted in COMPLETION order across up to 16 concurrent calls, throws PipelineHaltError.
+ * Success resets the count. Not counted: a usage/rate limit (the usage pause handles it)
+ * and a safety-filter refusal (about one passage; quarantine handles it). Once tripped it
+ * stays tripped for the life of the process: later calls fail at once with the same error.
+ * Callbacks run one at a time on the event loop, so the counter needs no lock.
+ */
+export const CLI_FAILURES_TO_HALT = 5
+export const cliCircuit: { consecutive: number; halted: PipelineHaltError | null } = { consecutive: 0, halted: null }
+
+export function resetCliCircuit(): void {
+  cliCircuit.consecutive = 0
+  cliCircuit.halted = null
+}
+
+function noteCliSuccess(): void {
+  if (!cliCircuit.halted) cliCircuit.consecutive = 0
+}
+
+/** Count a failed call; returns the halt error once the breaker is open (calls still in flight then fail with it too). */
+function noteCliFailure(detail: string): PipelineHaltError | null {
+  cliCircuit.consecutive++
+  if (!cliCircuit.halted && cliCircuit.consecutive >= CLI_FAILURES_TO_HALT) {
+    cliCircuit.halted = new PipelineHaltError(cliCircuit.consecutive, detail)
+  }
+  return cliCircuit.halted
 }
 
 // Judgment tier: dedup adjudication, topic assignment, article generation.
@@ -173,6 +231,9 @@ function claudeCodeText(
   // knows its task needs no reasoning opts out; the API backend never thinks on Haiku 4.5.
   if (noThinking) env.MAX_THINKING_TOKENS = '0'
 
+  // The breaker is open: every call since it tripped would fail the same way.
+  if (cliCircuit.halted) return Promise.reject(cliCircuit.halted)
+
   // Pause BEFORE the subscription window is full (or while it is known to be),
   // instead of spawning a call that will fail. Nothing is spawned or counted:
   // the worker defers the job without spending an attempt and the supervisor
@@ -257,6 +318,12 @@ function claudeCodeText(
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
           cliStats.lastError = detail
+          // The CLI could not find the empty MCP config (macOS purge, a cleanup job):
+          // rewrite it now so the next call works. It still counts toward the circuit
+          // breaker below, which stops the run if it keeps happening.
+          if (isMcpConfigError(`${detail}\n${stdout ?? ''}`)) {
+            try { emptyMcpConfig() } catch { /* reported by the next call */ }
+          }
           if (CLI_REFUSAL.test(`${stdout ?? ''}\n${stderr ?? ''}`)) {
             reject(new ModelRefusalError(model, detail))
             return
@@ -270,10 +337,13 @@ function claudeCodeText(
             reject(limitErr)
             return
           }
-          reject(new Error(`claude CLI failed (${model}): ${detail}`))
+          // Anything else is a call that failed for a reason that is not about the
+          // passage or the plan: count it toward the circuit breaker.
+          reject(noteCliFailure(detail) ?? new Error(`claude CLI failed (${model}): ${detail}`))
           return
         }
         if (legacy) {
+          noteCliSuccess()
           resolve(rawStdout)
           return
         }
@@ -281,9 +351,10 @@ function claudeCodeText(
           cliStats.failures++
           cliStats.lastErrorAt = new Date().toISOString()
           cliStats.lastError = 'no result event in CLI output'
-          reject(new Error(`claude CLI failed (${model}): no result event in CLI output`))
+          reject(noteCliFailure('no result event in CLI output') ?? new Error(`claude CLI failed (${model}): no result event in CLI output`))
           return
         }
+        noteCliSuccess()
         resolve(stream.text)
       }
     )
@@ -400,6 +471,8 @@ async function claudeText(
     // A full (or nearly full) subscription window is a reason to WAIT, not to
     // spend API credit: never fall back for it.
     if (cliErr instanceof UsageLimitError) throw cliErr
+    // The breaker tripped: the CLI is broken for good, so stop rather than paper over it with API spend.
+    if (cliErr instanceof PipelineHaltError) throw cliErr
     const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
     if (!fallbackEnabled) throw cliErr
     console.warn(

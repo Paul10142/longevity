@@ -9,7 +9,7 @@
 
 import type { Job } from './types'
 import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob, deferJob } from './jobs'
-import { asUsageLimit, RESET_MARGIN_MS, UNKNOWN_RESET_PAUSE_MS, type UsageLimitError } from './usageLimit'
+import { PipelineHaltError, asUsageLimit, RESET_MARGIN_MS, UNKNOWN_RESET_PAUSE_MS, type UsageLimitError } from './usageLimit'
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint, type SweepCheckpoint } from './consolidation'
 import { tagClaims, discoverTopics, type TagCheckpoint, type DiscoverCheckpoint } from './taxonomy'
@@ -247,16 +247,28 @@ export type TickResult = {
    * the caller should wait until `usageLimit.resetAt` before ticking again.
    */
   usageLimit?: UsageLimitError
+  /**
+   * Set when the CLI circuit breaker tripped (lib/llm.ts): the job in hand went back to the
+   * queue with its attempts unchanged, and the caller must stop the run, not retry.
+   */
+  halt?: PipelineHaltError
 }
 
 /**
  * Record why a handler threw. A full subscription window is not the job's
  * fault: park the job until the window reopens, spend NO attempt, and return
- * the limit so the tick stops (nothing else should start a call that would be
+ * the limit so the tick stops (a PipelineHaltError is handled the same way, immediately) (nothing else should start a call that would be
  * refused the same way). Anything else is an ordinary failure — retried with
  * backoff until max_attempts, then failed.
  */
-export async function settleJobError(job: Job, err: unknown): Promise<UsageLimitError | null> {
+export async function settleJobError(job: Job, err: unknown): Promise<UsageLimitError | PipelineHaltError | null> {
+  // The CLI circuit breaker tripped (lib/llm.ts): not this job's fault and not retryable.
+  // Put it back in the queue NOW (no backoff to wait out), spend no attempt, stop the tick.
+  if (err instanceof PipelineHaltError) {
+    console.error(`[worker] job ${job.id} (${job.type}) put back in the queue: ${err.message}`)
+    await deferJob(job, new Date(), `halted: ${err.message}`)
+    return err
+  }
   const limit = asUsageLimit(err)
   if (limit) {
     const resumeAt = new Date((limit.resetAt ?? Date.now() + UNKNOWN_RESET_PAUSE_MS) + RESET_MARGIN_MS)
@@ -283,6 +295,7 @@ export async function runWorkerTick(
   let failed = 0
   let synthesisProcessed = 0
   let usageLimit: UsageLimitError | undefined
+  let halt: PipelineHaltError | undefined
 
   while (Date.now() - started < budgetMs) {
     const job = await claimNextJob(opts.jobTypes)
@@ -307,9 +320,13 @@ export async function runWorkerTick(
         await completeJob(job.id)
       }
     } catch (err) {
-      const limit = await settleJobError(job, err)
-      if (limit) {
-        usageLimit = limit
+      const outcome = await settleJobError(job, err)
+      if (outcome instanceof PipelineHaltError) {
+        halt = outcome
+        break
+      }
+      if (outcome) {
+        usageLimit = outcome
         break
       }
       failed++
@@ -317,5 +334,5 @@ export async function runWorkerTick(
     processed++
   }
 
-  return { processed, failed, budgetExhausted: Date.now() - started >= budgetMs, synthesisProcessed, usageLimit }
+  return { processed, failed, budgetExhausted: Date.now() - started >= budgetMs, synthesisProcessed, usageLimit, halt }
 }
