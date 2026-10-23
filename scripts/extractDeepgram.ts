@@ -45,6 +45,13 @@
  *   --consolidate-only  only consolidate_source jobs, one source at a time, ends when none are
  *                       left (and, while an extract-only run is live, waits for the jobs it queues)
  *
+ * The faithfulness judge is the LAST step of a run (2026-10-23, Paul's option a of 10-14): after the
+ * loop ends, while this run still holds its lock, `scripts/flagClaims.ts fidelity` judges the facts
+ * this run consolidated (flagging and hiding the ones it rejects) and sets a few aside for labelling
+ * at /admin/fidelity. Not in an --extract-only run (no claims exist yet; the consolidate run judges
+ * them), not after a halt. Failures are logged and never fail the run. JUDGE_AFTER_RUN=0 turns it off;
+ * JUDGE_HOLDOUT_PER_RUN (default 5) sets the sample; JUDGE_AFTER_RUN_MAX_MIN (default 180) bounds it.
+ *
  * One extract-only run and one consolidate-only run may hold the corpus together (lane
  * locks, lib/writerLock.ts); neither may run beside a maintenance writer or a second run of
  * its own lane. Lane modes need migration 032.
@@ -69,6 +76,7 @@ async function main() {
   const hours = num(args, '--hours') ?? 10
   const batch = num(args, '--batch') ?? 3
   const deadline = Date.now() + hours * 3_600_000
+  const runStartedAt = new Date().toISOString()
 
   const { parseLane, laneJobTypes, laneHealTypes, laneEnqueuesExtractions, laneLabel, consolidateShouldWait } =
     await import('../lib/pipelineLanes')
@@ -224,6 +232,40 @@ async function main() {
     return true
   }
 
+  /**
+   * Last step of the run: judge the facts this run consolidated, then set aside a few for
+   * labelling. Runs inside the run (lock still held), so nothing else is writing claims, and
+   * after the drain, so the judge never competes with it for the CLI. Never throws.
+   */
+  async function judgeThisRun(): Promise<void> {
+    if (process.env.JUDGE_AFTER_RUN === '0') return console.log(`[${now()}] judge: off (JUDGE_AFTER_RUN=0).`)
+    if (lane === 'extract') return console.log(`[${now()}] judge: skipped — an extract-only run has no claims yet; the consolidate run judges them.`)
+    if (halted) return console.log(`[${now()}] judge: skipped — the run halted.`)
+    try {
+      const { holdoutSize, sourceIdsFromJobs } = await import('../lib/judgeHoldout')
+      const rows = await selectAllPaged<{ payload: unknown }>((from, to) =>
+        db.from('jobs').select('payload').eq('type', 'consolidate_source').eq('status', 'done')
+          .gte('finished_at', runStartedAt).order('finished_at', { ascending: true }).range(from, to)
+      )
+      const ids = sourceIdsFromJobs(rows)
+      if (!ids.length) return console.log(`[${now()}] judge: nothing consolidated in this run — nothing to judge.`)
+      const holdout = holdoutSize(process.env.JUDGE_HOLDOUT_PER_RUN)
+      const maxMin = Number(process.env.JUDGE_AFTER_RUN_MAX_MIN) > 0 ? Number(process.env.JUDGE_AFTER_RUN_MAX_MIN) : 180
+      console.log(`[${now()}] judge: judging facts from ${ids.length} source(s) this run, holdout ${holdout}, cap ${maxMin}m.`)
+      const { spawn } = await import('node:child_process')
+      const code = await new Promise<number | null>(resolve => {
+        const child = spawn('npx', ['tsx', 'scripts/flagClaims.ts', 'fidelity', '--sources', ids.join(','), '--holdout', String(holdout)], {
+          stdio: 'inherit', env: process.env, timeout: maxMin * 60_000, killSignal: 'SIGTERM',
+        })
+        child.on('error', err => { console.warn(`[${now()}] judge: could not start (${err.message})`); resolve(null) })
+        child.on('close', c => resolve(c))
+      })
+      console.log(`[${now()}] judge: ${code === 0 ? 'finished.' : `ended early (exit ${code}); the run and its sources are unaffected. Resume: npx tsx --env-file=.env.local scripts/flagClaims.ts fidelity --sources <ids> (already-flagged facts are skipped).`}`)
+    } catch (err) {
+      console.warn(`[${now()}] judge: failed (${err instanceof Error ? err.message : err}); the run and its sources are unaffected.`)
+    }
+  }
+
   let round = 0
   let idleStreak = 0
   let failStreak = 0
@@ -336,6 +378,8 @@ async function main() {
       await sleep(wait)
     }
   }
+
+  await judgeThisRun()
 
   const [{ count: insights }, { count: claims }] = await Promise.all([
     db.from('raw_insights').select('*', { count: 'exact', head: true }),
