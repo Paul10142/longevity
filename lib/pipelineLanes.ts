@@ -72,3 +72,32 @@ export function laneLabel(lane: Lane): string {
 export function consolidateShouldWait(lane: Lane, extractLaneLive: boolean, runnable: number): boolean {
   return lane === 'consolidate' && extractLaneLive && runnable === 0
 }
+
+/** The most workers one process may run; beyond this the database's ~7-connection API pool is the limit. */
+export const MAX_WORKERS = 6
+/** Above this the extraction log warns: the 2026-10-20 database timeout happened with one job at a time. */
+export const WORKERS_WARN_ABOVE = 3
+
+/**
+ * `--workers N` (default 1): how many extract_source jobs one run works on at once. Only the
+ * extract-only lane supports it; consolidation of different episodes in parallel is not built
+ * (two consolidations would race on the same claims) and the plain run stays sequential.
+ */
+export function parseWorkers(args: readonly string[], lane: Lane): number {
+  const i = args.indexOf('--workers')
+  if (i === -1) return 1
+  const raw = args[i + 1]
+  const n = Number(raw)
+  if (!raw || !Number.isInteger(n) || n < 1 || n > MAX_WORKERS) {
+    throw new Error(`--workers needs a whole number from 1 to ${MAX_WORKERS} (got ${raw ?? 'nothing'})`)
+  }
+  if (n > 1 && lane !== 'extract') {
+    throw new Error('--workers only works with --extract-only; consolidation and the plain run stay one job at a time')
+  }
+  return n
+}
+
+/** Extractions to queue at the start of a round: at least one per worker so none starts idle. */
+export function freshBatchSize(batch: number, workers: number): number {
+  return Math.max(batch, workers)
+}
