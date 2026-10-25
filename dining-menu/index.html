@@ -1,0 +1,258 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dinner Menus Compare</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #6b7280;
+    --line: #e2e5ea; --accent: #00274c; --accent-soft: #e6ecf5; --gold: #ffcb05;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101418; --card: #1a2028; --text: #e7eaf0; --muted: #98a1b0;
+      --line: #2b333e; --accent: #8fb4e8; --accent-soft: #223247;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101418; --card: #1a2028; --text: #e7eaf0; --muted: #98a1b0;
+    --line: #2b333e; --accent: #8fb4e8; --accent-soft: #223247;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.45;
+  }
+  header {
+    background: var(--accent); color: #fff; padding: 16px;
+  }
+  header h1 { margin: 0; font-size: 1.4rem; }
+  header p { margin: 4px 0 0; opacity: .85; font-size: .9rem; }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  .daybar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    justify-content: space-between; margin-bottom: 12px;
+  }
+  .daybar .date { font-size: 1.15rem; font-weight: 600; }
+  button {
+    font: inherit; color: var(--accent); background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px; min-height: 44px; min-width: 44px; cursor: pointer;
+  }
+  button:hover { background: var(--accent-soft); }
+  button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .nav { display: flex; gap: 8px; }
+
+  .calendar {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; margin-bottom: 16px; display: none;
+  }
+  .calendar.open { display: block; }
+  .cal-head {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
+  }
+  .cal-grid .dow { color: var(--muted); font-size: .8rem; padding: 4px 0; }
+  .cal-grid button {
+    padding: 0; min-height: 40px; width: 100%; min-width: 0; font-size: .95rem;
+  }
+  .cal-grid button.other { opacity: .35; }
+  .cal-grid button.today { font-weight: 700; border-color: var(--accent); }
+  .cal-grid button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+  .status { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+  .error {
+    background: #fdecea; color: #7a1f1a; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .error { background: #3a1d1b; color: #f5c6c2; }
+  }
+
+  .halls {
+    display: grid; gap: 12px;
+    grid-template-columns: 1fr;
+  }
+  @media (min-width: 800px) {
+    .halls { grid-template-columns: repeat(3, 1fr); align-items: start; }
+  }
+  .hall {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  }
+  .hall h2 { margin: 0; font-size: 1.1rem; color: var(--accent); }
+  .hall .hours { color: var(--muted); font-size: .85rem; margin: 2px 0 10px; }
+  .station { margin-top: 12px; }
+  .station h3 {
+    margin: 0 0 4px; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;
+    color: var(--muted);
+  }
+  .station ul { margin: 0; padding-left: 18px; }
+  .station li { margin: 2px 0; }
+  .none { color: var(--muted); font-style: italic; }
+  .hall .nosvc { color: var(--muted); }
+</style>
+</head>
+<body>
+<header>
+  <h1>Dinner Menus: Mosher Jordan, East Quad, South Quad</h1>
+  <p>Live from the University of Michigan dining site</p>
+</header>
+
+<main>
+  <div class="daybar">
+    <div class="nav">
+      <button id="prev" aria-label="Previous day">&larr; Prev</button>
+      <button id="today">Today</button>
+      <button id="next" aria-label="Next day">Next &rarr;</button>
+    </div>
+    <div class="date" id="dateLabel"></div>
+    <button id="calToggle" aria-expanded="false" aria-controls="calendar">Calendar</button>
+  </div>
+
+  <div class="calendar" id="calendar">
+    <div class="cal-head">
+      <button id="calPrev" aria-label="Previous month">&larr;</button>
+      <strong id="calTitle"></strong>
+      <button id="calNext" aria-label="Next month">&rarr;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <p class="status" id="status">Checking the dining site...</p>
+  <div id="errors"></div>
+  <div class="halls" id="halls"></div>
+</main>
+
+<script>
+(() => {
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  let selected = fmt(new Date());
+  let shown = parse(selected);            // month shown in the calendar
+  let loadId = 0;
+
+  const el = id => document.getElementById(id);
+
+  function setDate(s) {
+    selected = s;
+    shown = parse(s);
+    el('dateLabel').textContent = parse(s).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    });
+    renderCalendar();
+    loadMenus();
+  }
+
+  function renderCalendar() {
+    el('calTitle').textContent = `${MONTHS[shown.getMonth()]} ${shown.getFullYear()}`;
+    const grid = el('calGrid');
+    grid.replaceChildren();
+    DAYS.forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'dow'; h.textContent = d; grid.appendChild(h);
+    });
+    const first = new Date(shown.getFullYear(), shown.getMonth(), 1);
+    const start = addDays(first, -first.getDay());
+    const todayStr = fmt(new Date());
+    for (let i = 0; i < 42; i++) {
+      const day = addDays(start, i);
+      const s = fmt(day);
+      const b = document.createElement('button');
+      b.textContent = day.getDate();
+      b.setAttribute('aria-label', s);
+      if (day.getMonth() !== shown.getMonth()) b.classList.add('other');
+      if (s === todayStr) b.classList.add('today');
+      b.setAttribute('aria-pressed', String(s === selected));
+      b.addEventListener('click', () => { setDate(s); el('calendar').classList.remove('open'); el('calToggle').setAttribute('aria-expanded', 'false'); });
+      grid.appendChild(b);
+    }
+  }
+
+  function renderHalls(data) {
+    const halls = el('halls');
+    halls.replaceChildren();
+    const errors = el('errors');
+    errors.replaceChildren();
+    data.halls.forEach(hall => {
+      const card = document.createElement('section');
+      card.className = 'hall';
+      const h = document.createElement('h2'); h.textContent = hall.name;
+      const hours = document.createElement('div'); hours.className = 'hours';
+      hours.textContent = 'Dinner, 4:30 pm to 9:00 pm';
+      card.append(h, hours);
+
+      if (hall.error) {
+        const p = document.createElement('p'); p.className = 'none';
+        p.textContent = `Could not load this hall (${hall.error}).`;
+        card.appendChild(p);
+        const e = document.createElement('div'); e.className = 'error';
+        e.textContent = `${hall.name}: ${hall.error}`;
+        errors.appendChild(e);
+      } else if (!hall.stations || hall.stations.length === 0) {
+        const p = document.createElement('p'); p.className = 'none';
+        p.textContent = 'No dinner menu posted for this day.';
+        card.appendChild(p);
+      } else {
+        hall.stations.forEach(st => {
+          const wrap = document.createElement('div'); wrap.className = 'station';
+          const sh = document.createElement('h3'); sh.textContent = st.station;
+          wrap.appendChild(sh);
+          const ul = document.createElement('ul');
+          st.items.forEach(item => {
+            const li = document.createElement('li');
+            li.textContent = item;
+            if (/no service/i.test(item)) li.className = 'nosvc';
+            ul.appendChild(li);
+          });
+          wrap.appendChild(ul);
+          card.appendChild(wrap);
+        });
+      }
+      halls.appendChild(card);
+    });
+  }
+
+  async function loadMenus() {
+    const id = ++loadId;
+    el('status').textContent = 'Checking the dining site...';
+    try {
+      const res = await fetch(`/api/menu?date=${selected}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (id !== loadId) return;
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      renderHalls(data);
+      const t = new Date(data.halls[0].checkedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      el('status').textContent = `Checked live at ${t}.`;
+    } catch (err) {
+      if (id !== loadId) return;
+      el('status').textContent = `Could not reach the menu server: ${err.message}`;
+      el('halls').replaceChildren();
+    }
+  }
+
+  el('prev').addEventListener('click', () => setDate(fmt(addDays(parse(selected), -1))));
+  el('next').addEventListener('click', () => setDate(fmt(addDays(parse(selected), 1))));
+  el('today').addEventListener('click', () => setDate(fmt(new Date())));
+  el('calPrev').addEventListener('click', () => { shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1); renderCalendar(); });
+  el('calNext').addEventListener('click', () => { shown = new Date(shown.getFullYear(), shown.getMonth() + 1, 1); renderCalendar(); });
+  el('calToggle').addEventListener('click', () => {
+    const open = el('calendar').classList.toggle('open');
+    el('calToggle').setAttribute('aria-expanded', String(open));
+    el('calToggle').setAttribute('aria-pressed', String(open));
+  });
+
+  setDate(selected);
+})();
+</script>
+</body>
+</html>
