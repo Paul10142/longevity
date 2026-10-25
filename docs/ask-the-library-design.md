@@ -1,6 +1,6 @@
 # Ask the Library — question-driven synthesis over the vetted corpus
 
-**Status:** design, written 2026-10-25 in a Fable planning window. Not built.
+**Status:** design, written 2026-10-25 in a Fable planning window. **Approved by Paul 2026-10-25** (brief answers, Opus 5.5 at low effort, admin-only first). Phase 0 build started the same day in two Sonnet windows; prompts in `docs/ask-the-library-build-prompt.md`.
 This is the buildable plan for the feature Paul described on 2026-10-25: a
 physician types a question ("Tell me more about VO2 max training"), the system
 pulls every relevant claim out of the Medical Library, writes a short, cited
@@ -369,6 +369,8 @@ since you asked", question analytics → content roadmap, a 3–5 physician pilo
 Nothing here is needed to prove the feature.
 
 ## 10. Decisions for Paul
+
+**Answered 2026-10-25 by Paul: A (a), B (a), C (a), D approved as written.** Kept for the record:
 
 | | Decision | Options | Recommendation |
 |---|---|---|---|

@@ -1,7 +1,7 @@
 # Build prompts for "Ask the Library" Phase 0
 
-Paste one of these into a fresh **Sonnet** window in `~/_lifestyleacademy` once the
-design is approved (hub rows from 2026-10-25). Each window reads only its own files.
+Design approved by Paul 2026-10-25. Each window reads only its own files; the two
+windows touch disjoint files (middleware.ts belongs to Window A).
 
 ## Window A — backend
 
@@ -17,7 +17,9 @@ before touching lib/llm.ts.
 Deliver, on a new branch from main:
 1. supabase/migrations_v2/033_ask_the_library.sql: search_claims(query_embedding, match_threshold, match_count)
    with `set hnsw.ef_search = 300` (design §6.1), plus ask_answers and ask_feedback tables with RLS on and
-   no policies. I apply it in the Supabase SQL editor myself; tell me when it is ready.
+   no policies. Apply it yourself: turn on the "Supabase LifestyleAcademy" connector (set_session_connector_enabled,
+   project vgzcrihdxcoozgcqadbt) and use its apply_migration tool; the migration only adds a function and two tables,
+   so it is safe even if an extraction run is live. Turn the connector off when done.
 2. lib/llm.ts: add claudeStream(system, user, {model, effort, maxTokens}) on the api backend using
    messages.stream() with thinking {type:"adaptive"}, output_config effort, and the server-side fallback beta.
    Keep claudeJson untouched.
@@ -27,7 +29,8 @@ Deliver, on a new branch from main:
    lib/blocks sentences with dangling-marker count, exact + nearest-question cache (§6.6), evidence floor (§6.3),
    async Haiku groundedness audit written back to ask_answers.groundedness_score.
 4. Routes: POST /api/ask (NDJSON stream, §6.7 event contract), GET /api/ask/[id], POST /api/ask/[id]/feedback.
-   Add /ask and /api/ask to UNRELEASED in middleware.ts. Add `speaker` and the source `date` to the
+   Add /ask and /api/ask to UNRELEASED in middleware.ts (you own middleware.ts; the frontend window does not touch it).
+   Add `speaker` and the source `date` to the
    /api/claims/[id]/members payload.
 5. Tests with node:test, no model calls (fake candidates): union/rank/collapse, evidence floor, parseBrief,
    marker resolution, cache lookup. npm test, npm run lint and npm run build green.
@@ -37,7 +40,7 @@ Deliver, on a new branch from main:
 
 Rules: never call a provider SDK outside lib/llm.ts; never import lib/supabaseServer into client code;
 raw_insights are read-only; follow the commit identity and reply format in ~/.claude/CLAUDE.md; open the PR
-and land it when green (pull-requests rules). Report in Paul's UPDATES / NEXT STEPS / TO-DO ITEMS format.
+and land it when green (pull-requests rules), but hold the merge if an extraction run is live (docs/EXTRACTION_RUNBOOK.md). Report in Paul's UPDATES / NEXT STEPS / TO-DO ITEMS format.
 ```
 
 ## Window B — frontend
@@ -58,11 +61,13 @@ Deliver, on a new branch from main, with a mock NDJSON stream in dev so you do n
    "not covered" state with the nearest topics; "thin evidence" banner; "answered <date>, refresh" for cached answers.
 2. /admin/ask: table of answers (question, status, latency, tokens, groundedness, dangling markers, feedback)
    with a not-covered filter, linking each row to /ask?id=.
-3. Header link to /ask visible only to the admin session; /ask and /api/ask in UNRELEASED.
+3. Header link to /ask visible only to the admin session. Do NOT edit middleware.ts: the backend window adds
+   /ask and /api/ask to UNRELEASED, and your dev server runs with the admin session anyway.
 4. Mobile layout: evidence panel becomes a bottom sheet under 768 px.
 5. Lint and build green; a tiny node:test for the marker-to-chip parser.
 
 Rules: Tailwind + shadcn only; Title Case for headings, buttons and labels; no source narration in the prose
 (the model's text is rendered as-is, attribution lives in the chips); follow the commit identity and reply format
-in ~/.claude/CLAUDE.md; open the PR and land it when green. Report in Paul's UPDATES / NEXT STEPS / TO-DO ITEMS format.
+in ~/.claude/CLAUDE.md; open the PR and land it when green, but hold the merge if an extraction run is live
+(docs/EXTRACTION_RUNBOOK.md). Report in Paul's UPDATES / NEXT STEPS / TO-DO ITEMS format.
 ```
