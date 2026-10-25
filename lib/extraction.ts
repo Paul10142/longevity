@@ -16,6 +16,7 @@ import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
 import { PipelineHaltError, UsageLimitError, rethrowIfUsageLimit } from './usageLimit'
 import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
+import { createLimiter, envLimit } from './concurrency'
 import {
   normalizeYouTubeSegments,
   buildTranscriptFromSegments,
@@ -24,6 +25,14 @@ import {
   type ChunkTiming,
 } from './transcriptSegments'
 import type { EvidenceType, Confidence, Actionability, Audience, InsightType, InsightQualifiers } from './types'
+
+/**
+ * Process-wide ceiling on simultaneous `raw_insights` writes (EXTRACT_DB_WRITE_CONCURRENCY, default 3).
+ * Each write carries 1536-float embeddings; the database's API pool is about 7 connections and the
+ * client times out after 30 s, so 16 chunks per job times N workers landing together is how a
+ * request queues behind a full pool and fails (2026-10-20). Shared by every job in the process.
+ */
+export const insertLimiter = createLimiter(envLimit('EXTRACT_DB_WRITE_CONCURRENCY', 3))
 
 // Bulk tier: one call per transcript chunk, so this is the pipeline's
 // highest-volume model by a wide margin.
@@ -725,7 +734,9 @@ export async function extractSource(
     const done = new Set(cp.done_chunks ?? [])
     const todo = indices.filter(i => !done.has(i))
 
-    const insertChunk = async (idx: number, rows: Record<string, unknown>[]) => {
+    const insertChunk = (idx: number, rows: Record<string, unknown>[]) =>
+      insertLimiter.run(() => insertChunkRows(idx, rows))
+    const insertChunkRows = async (idx: number, rows: Record<string, unknown>[]) => {
       const locator = `seg-${String(idx + 1).padStart(3, '0')}`
       // Idempotent: a retried chunk whose earlier insert half-landed would
       // otherwise duplicate its rows (there is no unique key on run_id+locator).

@@ -8,7 +8,7 @@
  */
 
 import type { Job } from './types'
-import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob, deferJob } from './jobs'
+import { claimNextJob, heartbeatJob, completeJob, failJob, enqueueJob, requeueJob, deferJob, startJobHeartbeat } from './jobs'
 import { PipelineHaltError, asUsageLimit, RESET_MARGIN_MS, UNKNOWN_RESET_PAUSE_MS, type UsageLimitError } from './usageLimit'
 import { extractSource, type ExtractCheckpoint } from './extraction'
 import { consolidateSource, sweepClaims, type ConsolidateCheckpoint, type SweepCheckpoint } from './consolidation'
@@ -311,6 +311,8 @@ export async function runWorkerTick(
       synthesisProcessed++
     }
 
+    // Keep the claim alive for the whole handler, not just between its checkpoints (see touchJob).
+    const stopHeartbeat = startJobHeartbeat(job.id)
     try {
       await runHandler(job)
       // Checkpointed handlers manage their own completion (they may requeue to
@@ -320,6 +322,7 @@ export async function runWorkerTick(
         await completeJob(job.id)
       }
     } catch (err) {
+      stopHeartbeat()
       const outcome = await settleJobError(job, err)
       if (outcome instanceof PipelineHaltError) {
         halt = outcome
@@ -330,6 +333,8 @@ export async function runWorkerTick(
         break
       }
       failed++
+    } finally {
+      stopHeartbeat()
     }
     processed++
   }
