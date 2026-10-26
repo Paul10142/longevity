@@ -17,6 +17,7 @@ import { PipelineHaltError, UsageLimitError, rethrowIfUsageLimit } from './usage
 import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import { createLimiter, envLimit } from './concurrency'
+import { withNetworkRetry } from './networkRetry'
 import {
   normalizeYouTubeSegments,
   buildTranscriptFromSegments,
@@ -738,22 +739,31 @@ export async function extractSource(
       insertLimiter.run(() => insertChunkRows(idx, rows))
     const insertChunkRows = async (idx: number, rows: Record<string, unknown>[]) => {
       const locator = `seg-${String(idx + 1).padStart(3, '0')}`
-      // Idempotent: a retried chunk whose earlier insert half-landed would
+      // Delete-then-insert is idempotent: a retried chunk whose earlier insert half-landed would
       // otherwise duplicate its rows (there is no unique key on run_id+locator).
       // This run's rows for the chunk have no members yet — consolidation only
-      // starts after extraction completes — so clearing them is safe.
-      const { error: delErr } = await db().from('raw_insights').delete().eq('run_id', runId).eq('locator', locator)
-      if (delErr) throw new Error(`Failed to clear chunk ${idx + 1}/${total} before insert: ${delErr.message}`)
-      // Sliced: each row carries a 1536-float embedding, and a multi-megabyte
-      // request dies with `TypeError: fetch failed` (a 74-min episode, 2026-08-24).
-      for (let i = 0; i < rows.length; i += INSERT_SLICE) {
-        const { error: insErr } = await db().from('raw_insights').insert(rows.slice(i, i + INSERT_SLICE))
-        if (insErr) {
-          throw new Error(
-            `Failed to insert raw_insights for chunk ${idx + 1}/${total} (slice ${i / INSERT_SLICE + 1}): ${insErr.message}`
-          )
+      // starts after extraction completes — so clearing them is safe. That also makes the whole
+      // sequence safe to repeat after a brief network drop (lib/networkRetry.ts), so a drop costs a
+      // pause, not the chunk.
+      const attempt = async (): Promise<{ error: { message: string } | null }> => {
+        const { error: delErr } = await db().from('raw_insights').delete().eq('run_id', runId).eq('locator', locator)
+        if (delErr) return { error: { message: `Failed to clear chunk ${idx + 1}/${total} before insert: ${delErr.message}` } }
+        // Sliced: each row carries a 1536-float embedding, and a multi-megabyte
+        // request dies with `TypeError: fetch failed` (a 74-min episode, 2026-08-24).
+        for (let i = 0; i < rows.length; i += INSERT_SLICE) {
+          const { error: insErr } = await db().from('raw_insights').insert(rows.slice(i, i + INSERT_SLICE))
+          if (insErr) {
+            return {
+              error: {
+                message: `Failed to insert raw_insights for chunk ${idx + 1}/${total} (slice ${i / INSERT_SLICE + 1}): ${insErr.message}`,
+              },
+            }
+          }
         }
+        return { error: null }
       }
+      const { error } = await withNetworkRetry(`insert chunk ${idx + 1}/${total}`, attempt)
+      if (error) throw new Error(error.message)
     }
 
     // allSettled, not all: with `all`, the first rejection returned while the

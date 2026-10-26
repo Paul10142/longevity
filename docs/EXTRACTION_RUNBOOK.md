@@ -341,3 +341,14 @@ No change to what is written or to job claiming. With one worker the only visibl
 - **Log.** Each round also prints `jobs per worker a / b / c`, and the `cli:` line ends with `peak X/Y in flight`.
 - **Trial first.** Run 2 workers for an hour beside the consolidate lane and compare episodes per hour with the last
   single-worker hour before using 3.
+
+## 12. A brief network drop no longer fails a job (2026-10-26)
+
+On 2026-10-26 the Mac's network changed for a few minutes mid-trial: a job heartbeat failed with `TypeError: fetch failed`,
+the handler threw, `failJob` failed the same way, and both extraction jobs and the round died. The job-state calls
+(`heartbeatJob`, `completeJob`, `requeueJob`, `deferJob`, `failJob`), `failRun` and the chunk delete-and-insert in extraction now
+go through `withNetworkRetry` (`lib/networkRetry.ts`): on a network-type error they wait 2 s, 4 s … up to 30 s and try again for
+at most `NET_RETRY_MAX_MS` (default 4 min, inside the 10-minute stale-lock window), logging `[net] <what>: … retry N in Ns`.
+Every one of them is safe to repeat (fixed-value updates; the chunk insert clears its rows first). `claim_next_job` is deliberately
+not retried (a lost answer would leave a job claimed, and a repeat would claim a second). A real database error is never retried.
+A drop longer than the budget still fails the job as before; it is requeued with backoff and its checkpoint, as always.

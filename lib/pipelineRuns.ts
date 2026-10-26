@@ -15,6 +15,7 @@
  * work genuinely is still in flight, and the next tick resumes the same row.
  */
 
+import { withNetworkRetry } from './networkRetry'
 import { supabaseAdmin } from './supabaseServer'
 import type { PipelineRun } from './types'
 
@@ -66,13 +67,15 @@ export async function finishRun(
 export async function failRun(runId: string | null | undefined, err: unknown): Promise<void> {
   if (!runId) return
   const message = err instanceof Error ? err.message : String(err)
-  const { error } = await db()
-    .from('pipeline_runs')
-    .update({
-      status: 'failed',
-      finished_at: new Date().toISOString(),
-      error_message: message.substring(0, 2000),
-    })
-    .eq('id', runId)
+  const { error } = await withNetworkRetry('fail pipeline run', () =>
+    db()
+      .from('pipeline_runs')
+      .update({
+        status: 'failed',
+        finished_at: new Date().toISOString(),
+        error_message: message.substring(0, 2000),
+      })
+      .eq('id', runId)
+  )
   if (error) console.error(`[pipelineRuns] failed to fail run ${runId}:`, error.message)
 }
