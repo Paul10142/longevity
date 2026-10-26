@@ -24,6 +24,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { createLimiter, envLimit } from './concurrency'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
@@ -171,9 +172,59 @@ export class ModelRefusalError extends Error {
 
 const CLI_REFUSAL = /safeguards flagged this message|violates? our Usage Policy/i
 
-type Backend = 'api' | 'claude-code'
+/**
+ * The `claude` CLI is not usable on this machine: the command is missing, or it is not signed in
+ * ("Not logged in · Please run /login", exit 1, printed to stdout). Distinct from a transient
+ * failure so a caller that must not touch the API (Ask the Library in `claude-code` mode) can
+ * tell the user exactly what to fix instead of guessing.
+ */
+export class CliUnavailableError extends Error {
+  constructor(reason: 'missing' | 'not-signed-in', detail = '') {
+    super(
+      reason === 'missing'
+        ? 'the claude command was not found; install Claude Code and put it on the PATH'
+        : `the claude command is not signed in (${detail.slice(0, 120) || 'Not logged in'}); run claude in a terminal and sign in`
+    )
+    this.name = 'CliUnavailableError'
+  }
+}
+
+const CLI_NOT_SIGNED_IN = /not logged in|please run \/login/i
+
+export type Backend = 'api' | 'claude-code'
 function backend(): Backend {
   return process.env.LLM_BACKEND === 'claude-code' ? 'claude-code' : 'api'
+}
+
+/** The backend the next call will use (`LLM_BACKEND`, read at call time). */
+export function llmBackend(): Backend {
+  return backend()
+}
+
+/**
+ * Per-scope token accounting for the API backend. `trackLlmUsage(fn)` runs `fn`
+ * and returns, alongside its result, the tokens every API call made inside it
+ * spent, by model. Scoped with AsyncLocalStorage so concurrent requests (the web
+ * app answers several questions at once) never see each other's calls. Outside a
+ * scope nothing is recorded and nothing changes.
+ */
+export type ModelUsage = { calls: number; inputTokens: number; outputTokens: number }
+const usageScope = new AsyncLocalStorage<Map<string, ModelUsage>>()
+
+function recordUsage(model: string, usage: { input_tokens?: number; output_tokens?: number } | undefined): void {
+  const scope = usageScope.getStore()
+  if (!scope || !usage) return
+  const u = scope.get(model) ?? { calls: 0, inputTokens: 0, outputTokens: 0 }
+  u.calls++
+  u.inputTokens += usage.input_tokens ?? 0
+  u.outputTokens += usage.output_tokens ?? 0
+  scope.set(model, u)
+}
+
+export async function trackLlmUsage<T>(fn: () => Promise<T>): Promise<{ result: T; usage: Map<string, ModelUsage> }> {
+  const scope = new Map<string, ModelUsage>()
+  const result = await usageScope.run(scope, fn)
+  return { result, usage: scope }
 }
 
 let client: Anthropic | null = null
@@ -344,6 +395,12 @@ function spawnClaudeCli(
             (e.code != null ? `exit ${e.code}` : '') ||
             'unknown error'
           cliStats.lastError = detail
+          // No `claude` on the PATH: say so, and do not count it toward the circuit breaker
+          // (installing it fixes the next call; a tripped breaker would outlive the fix).
+          if (e.code === 'ENOENT') {
+            reject(new CliUnavailableError('missing'))
+            return
+          }
           // The CLI could not find the empty MCP config (macOS purge, a cleanup job):
           // rewrite it now so the next call works. It still counts toward the circuit
           // breaker below, which stops the run if it keeps happening.
@@ -365,7 +422,11 @@ function spawnClaudeCli(
           }
           // Anything else is a call that failed for a reason that is not about the
           // passage or the plan: count it toward the circuit breaker.
-          reject(noteCliFailure(detail) ?? new Error(`claude CLI failed (${model}): ${detail}`))
+          const notSignedIn = CLI_NOT_SIGNED_IN.test(`${detail}\n${stdout ?? ''}`)
+          reject(
+            noteCliFailure(detail) ??
+              (notSignedIn ? new CliUnavailableError('not-signed-in', detail) : new Error(`claude CLI failed (${model}): ${detail}`))
+          )
           return
         }
         if (legacy) {
@@ -402,7 +463,11 @@ function spawnClaudeCli(
     })
     // Likewise a spawn failure (binary missing, fork limit) arrives as an event.
     child.on('error', (err: NodeJS.ErrnoException) => {
-      reject(new Error(`claude CLI could not run (${model}): ${err.code ?? err.message}`))
+      reject(
+        err.code === 'ENOENT'
+          ? new CliUnavailableError('missing')
+          : new Error(`claude CLI could not run (${model}): ${err.code ?? err.message}`)
+      )
     })
     child.stdin?.end(user)
   })
@@ -434,6 +499,7 @@ async function apiText(
   }
 
   const msg = (await getAnthropic().messages.create(params as never)) as Anthropic.Message
+  recordUsage(model, msg.usage)
   if (msg.stop_reason === 'refusal') {
     const d = msg.stop_details
     throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
@@ -454,11 +520,116 @@ export async function claudeJson<T>(
   maxTokens = 8000,
   model: string = CLAUDE_MODEL,
   effort?: Effort,
-  opts: { noThinking?: boolean } = {}
+  opts: { noThinking?: boolean; noFallback?: boolean } = {}
 ): Promise<T> {
-  const text = await claudeText(system, user, maxTokens, model, effort, opts.noThinking)
+  const text = await claudeText(system, user, maxTokens, model, effort, opts.noThinking, opts.noFallback)
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T
+}
+
+/**
+ * One non-streaming text completion on whichever backend `LLM_BACKEND` selects (the pipeline's
+ * mechanism). Ask the Library uses it for the composer when `LLM_BACKEND=claude-code`, so the
+ * brief is written on the developer's subscription. `noFallback` forbids the
+ * `LLM_FALLBACK_TO_API` rescue: a caller that asked for the subscription never spends API credit.
+ */
+export async function claudeCompletion(
+  system: string,
+  user: string,
+  opts: { model?: string; effort?: Effort; maxTokens?: number; noFallback?: boolean } = {}
+): Promise<string> {
+  return claudeText(system, user, opts.maxTokens ?? 4000, opts.model ?? CLAUDE_MODEL, opts.effort, false, opts.noFallback)
+}
+
+export type ClaudeStreamOptions = {
+  model?: string
+  effort?: Effort
+  maxTokens?: number
+  /** Called with each text delta as it arrives. */
+  onText?: (delta: string) => void
+}
+
+export type ClaudeStreamResult = {
+  /** The text of the answer that was served (after a refusal fallback, only the fallback model's text). */
+  text: string
+  /** The model that produced it (differs from the requested one after a fallback). */
+  model: string
+  stopReason: string | null
+  inputTokens: number
+  outputTokens: number
+  /** The safety filter declined the requested model and the API re-ran the request on a fallback. */
+  fellBack: boolean
+  /** Milliseconds from the call to the first text delta; null if no text arrived. */
+  firstTokenMs: number | null
+}
+
+/**
+ * Stream a text answer from the Anthropic API (the web app's path: `Ask the
+ * Library`, docs/ask-the-library-design.md §5). Always the `api` backend: the
+ * `claude-code` CLI cannot stream, so Ask uses `claudeCompletion` in that mode.
+ *
+ * Opus 5.5 cannot run without thinking, so effort is the only lever: pass it
+ * explicitly (the model's own default is `medium`). Thinking blocks are not
+ * forwarded; the first text delta therefore arrives after the thinking.
+ *
+ * `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) re-runs a
+ * request the safety filter declined on the model Anthropic recommends, inside
+ * the same call, so a legitimate medical question that trips the filter is not
+ * a failed request. The SDK's types predate the scalar form, hence the cast.
+ * A refusal that survives the whole chain throws ModelRefusalError.
+ */
+export async function claudeStream(
+  system: string,
+  user: string,
+  opts: ClaudeStreamOptions = {}
+): Promise<ClaudeStreamResult> {
+  const model = opts.model ?? CLAUDE_MODEL
+  const params: Record<string, unknown> = {
+    model,
+    max_tokens: opts.maxTokens ?? 4000,
+    system,
+    messages: [{ role: 'user', content: user }],
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+  }
+  if (supportsAdaptiveThinking(model)) {
+    params.thinking = { type: 'adaptive' }
+    if (opts.effort) params.output_config = { effort: opts.effort }
+  }
+
+  const startedAt = Date.now()
+  let firstTokenMs: number | null = null
+  let text = ''
+  let fellBack = false
+
+  const stream = getAnthropic().beta.messages.stream(params as never)
+  for await (const ev of stream) {
+    if (ev.type === 'content_block_start' && (ev.content_block as { type: string }).type === 'fallback') {
+      // The requested model declined part-way; what follows is the fallback model's answer.
+      fellBack = true
+      text = ''
+    } else if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
+      if (firstTokenMs === null) firstTokenMs = Date.now() - startedAt
+      text += ev.delta.text
+      opts.onText?.(ev.delta.text)
+    }
+  }
+  const final = await stream.finalMessage()
+  recordUsage(final.model, final.usage)
+
+  if (final.stop_reason === 'refusal') {
+    const d = final.stop_details
+    throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
+  }
+  return {
+    text,
+    model: final.model,
+    stopReason: final.stop_reason,
+    inputTokens: final.usage.input_tokens,
+    outputTokens: final.usage.output_tokens,
+    fellBack,
+    firstTokenMs,
+  }
 }
 
 /**
@@ -483,7 +654,8 @@ async function claudeText(
   maxTokens: number,
   model: string,
   effort?: Effort,
-  noThinking = false
+  noThinking = false,
+  noFallback = false
 ): Promise<string> {
   if (backend() !== 'claude-code') {
     return apiText(system, user, maxTokens, model, effort)
@@ -499,7 +671,7 @@ async function claudeText(
     if (cliErr instanceof UsageLimitError) throw cliErr
     // The breaker tripped: the CLI is broken for good, so stop rather than paper over it with API spend.
     if (cliErr instanceof PipelineHaltError) throw cliErr
-    const fallbackEnabled = process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
+    const fallbackEnabled = !noFallback && process.env.LLM_FALLBACK_TO_API === '1' && !!process.env.ANTHROPIC_API_KEY
     if (!fallbackEnabled) throw cliErr
     console.warn(
       `[llm] claude-code CLI failed (${model}); falling back to api backend: ` +

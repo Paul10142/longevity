@@ -24,19 +24,31 @@ type SourceRow = {
   youtube_url: string | null
   article_url: string | null
   episode_number: number | null
+  date: string | null
 }
 
 export type MemberSource = {
   id: string
   title: string
   type: string
+  episode_number: number | null
+  /** Publication date, YYYY-MM-DD. */
+  date: string | null
   links: EpisodeLink[]
   video_url: string | null
 }
 
 function publicSource(s: SourceRow | null): MemberSource | null {
   if (!s) return null
-  return { id: s.id, title: s.title, type: s.type, links: episodeLinks(s), video_url: publicVideoUrl(s) }
+  return {
+    id: s.id,
+    title: s.title,
+    type: s.type,
+    episode_number: s.episode_number,
+    date: s.date ? String(s.date).slice(0, 10) : null,
+    links: episodeLinks(s),
+    video_url: publicVideoUrl(s),
+  }
 }
 
 export async function GET(
@@ -53,8 +65,8 @@ export async function GET(
       .select(
         `raw_insight_id, matched_by,
          raw_insights (
-           statement, direct_quote, locator, start_ms, end_ms, evidence_type, confidence,
-           sources ( id, title, type, url, youtube_url, article_url, episode_number )
+           statement, direct_quote, locator, start_ms, end_ms, evidence_type, confidence, speaker,
+           sources ( id, title, type, url, youtube_url, article_url, episode_number, date )
          )`
       )
       .eq("claim_id", id),
@@ -68,6 +80,7 @@ export async function GET(
     raw_insights: {
       statement: string; direct_quote: string | null; locator: string
       start_ms: number | null; end_ms: number | null; evidence_type: string; confidence: string
+      speaker: string | null
       sources: SourceRow | null
     } | null
   }) => ({
@@ -79,6 +92,8 @@ export async function GET(
     start_ms: m.raw_insights?.start_ms ?? null,
     evidence_type: m.raw_insights?.evidence_type,
     confidence: m.raw_insights?.confidence,
+    // Model-inferred from conversational cues (migration 020): label as "attributed to".
+    speaker: m.raw_insights?.speaker ?? null,
     source: publicSource(m.raw_insights?.sources ?? null),
   }))
 

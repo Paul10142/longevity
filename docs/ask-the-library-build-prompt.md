@@ -15,7 +15,7 @@ lib/blocks.ts header (Sentence types). Load the claude-api skill and read its Ty
 before touching lib/llm.ts.
 
 Deliver, on a new branch from main:
-1. supabase/migrations_v2/033_ask_the_library.sql: search_claims(query_embedding, match_threshold, match_count)
+1. supabase/migrations_v2/034_ask_the_library.sql: search_claims(query_embedding, match_threshold, match_count)
    with `set hnsw.ef_search = 300` (design §6.1), plus ask_answers and ask_feedback tables with RLS on and
    no policies. Apply it yourself: turn on the "Supabase LifestyleAcademy" connector (set_session_connector_enabled,
    project vgzcrihdxcoozgcqadbt) and use its apply_migration tool; the migration only adds a function and two tables,

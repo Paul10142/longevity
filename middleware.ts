@@ -39,6 +39,8 @@ const UNRELEASED = [
   "/sources",
   "/transcript",
   "/start",
+  "/ask",
+  "/api/ask",
 ]
 
 function isUnreleased(pathname: string): boolean {
@@ -56,6 +58,10 @@ export async function middleware(req: NextRequest) {
   // Unreleased product pages: send visitors home, silently. No login prompt —
   // see the header comment.
   if (isUnreleased(pathname)) {
+    // An API caller gets a status code, not the home page's HTML.
+    if (pathname.startsWith("/api/")) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
+    }
     const home = req.nextUrl.clone()
     home.pathname = "/"
     home.search = ""
@@ -86,11 +92,15 @@ export const config = {
     "/sources/:path*",
     "/transcript/:path*",
     "/start/:path*",
+    "/ask/:path*",
+    "/api/ask/:path*",
     "/topics",
     "/search",
     "/medical-library",
     "/sources",
     "/transcript",
     "/start",
+    "/ask",
+    "/api/ask",
   ],
 }

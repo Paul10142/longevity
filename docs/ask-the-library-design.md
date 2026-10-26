@@ -31,7 +31,7 @@ One box. One question. In under a minute:
    library pages (topic articles) that exist for the subject, and three
    follow-up questions.
 
-The answer is a *brief*, not an article: about 250–400 words unless the
+The answer is a *brief*, not an article: about 300–500 words unless the
 question asks for a full review. Depth is one click away in the evidence panel
 and the episode list. (Decision A in §10.)
 
@@ -163,11 +163,47 @@ only lever, default `medium`, so pass `low` explicitly) and the server-side
 refusal fallback (`fallbacks: "default"`, beta header
 `server-side-fallback-2026-07-01`) so a safety-filter decline on a medical
 question re-runs on a fallback model instead of failing the physician's
-request. The `claude-code` backend is not used by the web app.
+request. The live site always runs on this API path; the `claude-code` backend
+is the at-home option in §5.1.
+
+### 5.1 Subscription mode: Ask on Paul's Claude plan (decided 2026-10-25)
+
+Paul's decision, in his words: "add a subscription-billed mode for Ask the
+Library when I run it on my Mac, and keep the API for the live site."
+
+- **One switch, the pipeline's own:** `LLM_BACKEND=claude-code` makes every
+  model call go through the local `claude` CLI, which bills his Claude
+  subscription. Unset (or `api`) uses the Anthropic API. Vercel has the variable
+  unset, so the live site stays on the API. At home he uncomments one line in
+  `.env.local` (`LLM_BACKEND=claude-code`) and runs `npm run dev`; commenting it
+  out again returns to the API.
+- **The whole path moves, not just the composer.** Expansion and the audit
+  (Haiku 5.5) and the composer (Opus 5.5, low effort) all use the CLI's existing
+  non-streaming call (`claudeJson` / `claudeCompletion` in `lib/llm.ts`, the same
+  bare, repo-free CLI session the pipeline uses). `claudeStream` is not used.
+- **What the physician sees changes in one way only.** The CLI cannot stream,
+  so the brief appears all at once: events are `retrieval`, one `delta` with the
+  whole finished brief (markers already renumbered, follow-ups removed), then
+  `done`, the same shape a cached answer has (§6.7). The `/ask` screen already
+  renders a single delta. Time to first word equals total time.
+- **Recorded and priced honestly.** Migration 035 adds `ask_answers.backend`
+  (`api` or `claude-code`). A subscription answer is stored with
+  `backend = 'claude-code'`, `stage_stats.billing = 'subscription'`, cost $0
+  (`lib/ask/cost.ts`) and null token counts (the CLI reports none).
+  Subscription answers also serve as cache hits for the live site (same model,
+  same prompt, same trust contract).
+- **Never a silent fallback to the API.** Ask passes `noFallback` on every call,
+  so `LLM_FALLBACK_TO_API=1` cannot rescue it. A missing `claude` command or a
+  signed-out one raises `CliUnavailableError`, and the screen says what to fix
+  ("Subscription mode is on (LLM_BACKEND=claude-code) but the claude command is
+  not signed in …"). A full subscription window or five CLI failures in a row
+  (the pipeline's circuit breaker) also end the question with a plain message.
+- **Needs the CLI on that machine only.** The deployed site never sets the
+  variable, so nothing here changes what production needs.
 
 ## 6. Design details
 
-### 6.1 Migration 033 — `search_claims` and the answer tables
+### 6.1 Migration 034 — `search_claims` and the answer tables
 
 ```sql
 -- Question-time retrieval: deeper HNSW search than dedup needs.
@@ -249,7 +285,7 @@ three nearest topics with visible articles and logs the question with
   experts differ". Never merge numbers into a range the claims do not state.
 - Order: bottom line → what to do (only if actionable claims exist) → key
   points by theme → where experts differ → what is not covered. Headings as
-  `###`. 250–400 words unless the question asks for a full review.
+  `###`. 300–500 words unless the question asks for a full review.
 - Physician register. No source narration in the prose ("the podcast said");
   attribution lives in the citation layer. No mention of "claims".
 - End with `FOLLOW_UPS:` and three short questions the library can answer
@@ -277,17 +313,37 @@ since you asked" by diffing the cited set against a re-run.
 
 ### 6.7 API and UI
 
-- `POST /api/ask` `{ question }` → NDJSON stream, one event per line:
-  `{type:'retrieval', count, thin:boolean}` → `{type:'delta', text}` ×N →
-  `{type:'done', answer_id, cited:[{n, claim_id}], follow_ups, latency_ms}`,
-  or `{type:'not_covered', nearest_topics}` or `{type:'error', message}`.
-  Cached answers send `retrieval` then one `delta` with the whole body.
-- `GET /api/ask/[id]` → the stored answer (for sharing and the admin log).
-- `POST /api/ask/[id]/feedback` `{ rating, note }`.
+- `POST /api/ask` `{ question, refresh? }` → NDJSON stream, one JSON event per
+  line (`Content-Type: application/x-ndjson`). As built (2026-10-25):
+  `{type:'retrieval', count, thin, cached?}` → `{type:'delta', text}` ×N →
+  `{type:'done', answer_id, cited:[{n, claim_id}], follow_ups, latency_ms,
+  body, thin, related_topics:[{id,name,slug,similarity}], cached?}`, **or**
+  `{type:'retrieval', …}` → `{type:'not_covered', answer_id, nearest_topics,
+  cached?}`, **or** `{type:'error', message}` at any point. 400 for a bad
+  question (JSON `{error}`, nothing streamed), 401 for a non-admin.
+  - `delta.text` is already clean: markers are rewritten to single `[n]`
+    numbered 1, 2, 3 … by **first appearance**, so `cited[i].n === i + 1`;
+    unresolvable markers are removed; the `FOLLOW_UPS:` tail is never streamed.
+    The concatenated deltas equal `done.body` (sent so a client can reconcile).
+    A half-arrived marker is held back, so a delta never ends mid-`[4`.
+  - `cached` = `{answered_at, stale, match:'exact'|'near'}`. A cached answer
+    sends `retrieval` (with `cached`), one `delta` with the whole body, then
+    `done`. `refresh:true` skips the cache.
+  - A sentence that cites two claims prints back-to-back markers (`[1][2]`).
+- `GET /api/ask/[id]` → the stored answer: `{id, question, status, body,
+  cited, follow_ups, thin, related_topics, claims, episodes, answered_at,
+  latency_ms, groundedness_score, error}`. `claims` is keyed by claim id with
+  the representative evidence (`statement, context, evidence_type,
+  source_count, quote, speaker, start_ms, episode`), so the evidence panel opens
+  without another call; `episodes` is "Go deeper" (`source_id, title, date,
+  episode_number, links, video_url, cited_count, cited_numbers`, most-cited
+  first). Public links only. For a `not_covered` answer `body` is null and
+  `related_topics` holds the nearest topics. 404 for an unknown id.
+- `POST /api/ask/[id]/feedback` `{ rating: 1 | -1, note? }` → `{ok:true}`.
 - `/ask` page: question box, six example chips, streaming body with `[n]`
   rendered as chips, right-hand evidence panel driven by
-  `/api/claims/[id]/members` (already returns quote, speaker-less for now,
-  source links, `start_ms`; add `speaker` and `sources.date` to that payload),
+  `/api/claims/[id]/members` (returns quote, source links, `start_ms`; now also
+  `speaker` and `source.date`/`episode_number`, added 2026-10-25),
   "Go deeper" episode list, related pages, feedback, follow-ups.
 - Gate: add `/ask` and `/api/ask` to `UNRELEASED` in `middleware.ts` so only
   the admin session sees it (Decision C).
@@ -322,6 +378,73 @@ survivable. **Verify the cap in build**: if `maxDuration` cannot cover p95,
 fall back to the queue (`jobs` type `answer_question`, page polls) for the
 compose stage, as the CLAUDE.md convention prefers.
 
+### 7.1 Measured in Phase 0 (2026-10-25)
+
+Five real questions through `ask()` in-process (`scripts/measureAsk.ts`), API
+backend, live corpus (about 42,000 active claims) **while an extraction run was
+writing to the same database**. Table = the final run (run 3, final composer
+prompt); times in seconds; tokens In/Out; cost includes the audit.
+
+| Question | Candidates (union) | Cited | Words | First Word | Total | Retrieve | Compose | Expand Tokens | Compose Tokens | Audit Tokens | Cost | Groundedness |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| What is the evidence that VO2 max predicts mortality, an… | 150 (354) | 29 | 590 | 9.0 | 21.9 | 3.3 | 13.5 | 299/119 | 32170/1434 | 14843/1918 | $0.160 | 0.92 |
+| How much protein per day should an older adult eat to pr… | 150 (278) | 34 | 398 | 11.0 | 20.6 | 2.7 | 13.5 | 291/92 | 27894/1297 | 9848/1950 | $0.140 | 0.92 |
+| When should a statin or other ApoB-lowering therapy be s… | 150 (285) | 34 | 435 | 10.2 | 21.3 | 2.0 | 16.0 | 302/118 | 32914/1545 | 11904/1324 | $0.164 | 0.96 |
+| What are the risks and benefits of GLP-1 agonists for we… | 150 (206) | 37 | 478 | 9.1 | 20.5 | 2.0 | 13.9 | 302/89 | 26308/1278 | 7594/1668 | $0.132 | 0.93 |
+| Which sleep interventions have the best evidence for imp… | 150 (278) | 28 | 430 | 12.6 | 22.5 | 2.4 | 15.6 | 293/106 | 23655/1597 | 5317/1865 | $0.128 | 0.74 |
+
+Across all 15 runs (3 passes of the same five questions): total **18.4 s
+minimum, 21.9 s median, 40.7 s maximum**; first word 6.6 s / 10.2 s / 30.7 s.
+
+- **Latency is not near the 60 s cap.** The compose call itself is a steady
+  13-16 s (2.5-5.5 s to its first token). The one slow run (40.7 s) was a
+  retrieval and embedding spike (8.2 s + 15.6 s) while the extraction run was
+  busy, not the model. Verdict: Hobby's 60 s is survivable today, with about
+  20 s of headroom in the worst run seen. **The job-queue fallback is not
+  needed yet; revisit if the p95 of real use passes about 45 s.** (Not built.)
+- **First word is slower than the 7 s estimate** (median 10 s): about 4-6 s is
+  spent before compose starts (embed, expand 1 s, retrieval 2-3 s typical,
+  provenance 0.5 s). The biggest non-model piece is `search_claims` running
+  four deep scans plus a per-hit `latest_source_date` subquery. Proposal, not
+  built: drop that subquery from the function and fetch dates for the top ~200
+  ranked candidates in one batched query.
+- **Cost is $0.13-0.16 per new question (mean $0.145)**, at the top of the
+  $0.10-0.15 estimate, because the composer reads **24-34k input tokens**, not
+  the estimated 12k (150 candidates of about 200 tokens each). A cap of about
+  80 candidates would roughly halve it and tighten the briefs; recall impact
+  not yet tested. Expansion is about $0.0001 and the audit about $0.002.
+- **Briefs land inside the widened 300-500-word target in 4 of 5 runs**
+  (398, 430, 435, 478 and 590 words, median 435). Paul widened the target from
+  250-400 on 2026-10-25 after the first measurements showed the model running
+  long even after two prompt tightenings (at low effort it does not hold a hard
+  word limit with 150 claims in front of it), so the composer prompt now asks
+  for 300-500 words and the tightening ("never exceed 400", "plan fewer,
+  denser points") was removed. The one miss (590, the VO2 max question) is the
+  broadest question; the candidate cap (above) is the lever if it matters.
+  Prompt rules 1 and 4 (choose the 10-20 strongest claims; one sentence for
+  agreeing claims, one bullet per disagreement) stay, since the table above was
+  measured with them. Not re-measured after the change to rule 7.
+- **The audit works but is noisy**: groundedness 0.74-0.96 (mean 0.89), each
+  score = share of about 30 sentences flagged. Not calibrated against the gold
+  set yet, so treat it as a trend line, not a gate. Its first version
+  returned empty output for 4 of 5 answers (Haiku 5.5's thinking used the whole
+  2000-token budget); fixed with low effort and a 6000-token budget.
+- Zero dangling markers, zero twins collapsed and zero known contradictions
+  among the candidates in all 15 runs; the first two are the expected result
+  of consolidation having already merged near-identical claims.
+
+**Subscription mode (§5.1), one real question, 2026-10-26:** "What is the
+evidence that VO2 max predicts mortality, and how should I train to improve
+it?" through `LLM_BACKEND=claude-code` (`scripts/measureAsk.ts --claude-code`),
+same live corpus and a live extraction run. 150 candidates (union 395), 32
+cited, 517 words, groundedness 0.89. Stages (s): embed 5.8, expand 3.7,
+retrieve 4.5, provenance 0.7, compose 17.4, audit 15.2. **Total and first word
+32.4 s** (the brief lands all at once), cost **$0**. Against the API runs of
+the same question (median total 21.9 s, first word 9-11 s, $0.16) it is about
+10 s slower in total and the physician waits the full time before seeing
+anything; expansion costs 3.7 s instead of 1.0 s and the audit 15 s instead of
+8 s (after the response, so not waited for). One question, not a distribution.
+
 ## 8. Measurement (principle 6: build the ruler first)
 
 An eval set `eval/ask-questions.json` of 30 questions physicians would ask
@@ -345,7 +468,7 @@ Re-run after any change to the prompt, thresholds or models (as
 
 **Phase 0 — plumbing and a usable MVP (two Sonnet build windows, parallel).**
 
-- Window A, backend: migration 033; `lib/ask/*`; `claudeStream` in
+- Window A, backend: migration 034 (035 adds the backend column); `lib/ask/*`; `claudeStream` in
   `lib/llm.ts`; `/api/ask` stream, `/api/ask/[id]`, feedback; `speaker` +
   `date` added to the claim-members payload; unit tests for union/dedupe,
   the evidence floor, `parseBrief`, marker resolution (fake candidates, no
@@ -374,7 +497,7 @@ Nothing here is needed to prove the feature.
 
 | | Decision | Options | Recommendation |
 |---|---|---|---|
-| A | Answer shape | (a) brief, 250–400 words, depth in the panel; (b) full custom article per question; (c) brief now, "build the full article" button that saves a page | **(a)**; (c) is a Phase 2 button once briefs are trusted |
+| A | Answer shape | (a) brief, 300–500 words, depth in the panel; (b) full custom article per question; (c) brief now, "build the full article" button that saves a page | **(a)**; (c) is a Phase 2 button once briefs are trusted |
 | B | Writer model | (a) Opus 5.5 at low effort, ≈ $0.10/question, ~30 s; (b) Sonnet 5.5, ≈ half the cost and time | **(a)** — the v3.2 invariant says prose is Opus; switch only if measured latency breaks the function limit |
 | C | Who sees it first | (a) admin password only (Paul and whoever he hands it to); (b) public behind the existing site | **(a)** until Phase 2 accounts |
 | D | Approve this plan | read §1, §4, §9 | build Phase 0 |
