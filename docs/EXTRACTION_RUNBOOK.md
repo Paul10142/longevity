@@ -314,3 +314,26 @@ Groundwork for `--extract-only --workers N` (§11). Each applies to every run, w
 | Insert cap | `EXTRACT_DB_WRITE_CONCURRENCY` (3) | Simultaneous `raw_insights` writes (1536-float embeddings each) against the database's ~7-connection API pool and the 30 s client timeout. |
 
 No change to what is written or to job claiming. With one worker the only visible difference is the insert cap (at most 3 chunk inserts at once instead of up to 16) and the new `peak` text in the `cli:` line.
+
+## 11. Several extraction workers: `--extract-only --workers N` (2026-10-25)
+
+    cd /Users/paulclancy/_lifestyleacademy && npx tsx --env-file=.env.local scripts/extractDeepgram.ts --extract-only --workers 2 --hours 9 --batch 3
+
+- **What it does.** One process, one extract lane lock, N workers each claiming its own `extract_source` job
+  (`claim_next_job` skips jobs another worker holds). Default 1 = the old loop, unchanged. `--workers` is refused
+  with `--consolidate-only` and the plain run (consolidating two episodes at once would race on the same claims:
+  see the plan notes), and above 6.
+- **Needs PR "job heartbeat, Claude call cap, insert cap" (§10) merged first**, otherwise a long batch lets one
+  worker re-claim another's live job.
+- **Refill.** A worker that finds the queue empty enqueues the next pending source (newest first) instead of waiting
+  for the slowest job of a batch. The round's first enqueue is `max(--batch, --workers)`.
+- **Shared limits, not per worker.** `CLI_MAX_INFLIGHT` (default 16) caps Claude children for the whole process, so
+  N workers fill the gaps of one 16-wide job rather than launching 16 x N. Expect roughly 1.3-1.8x with 2-3 workers
+  on this machine (estimate; measure it). Raise `CLI_MAX_INFLIGHT` only after watching CPU and rate limits.
+- **Database.** Each worker adds one job's insert bursts and heartbeats. 2-3 workers fit the ~7-connection API pool;
+  above 3 the run prints a warning. If `fetch failed` / timeout errors appear in the log, drop a worker.
+- **Stopping.** A circuit-breaker halt or a usage limit seen by any worker stops all of them after their current tick;
+  jobs in hand are deferred with no attempt spent. The usage guard stops the whole process as before.
+- **Log.** Each round also prints `jobs per worker a / b / c`, and the `cli:` line ends with `peak X/Y in flight`.
+- **Trial first.** Run 2 workers for an hour beside the consolidate lane and compare episodes per hour with the last
+  single-worker hour before using 3.
