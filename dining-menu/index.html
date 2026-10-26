@@ -7,7 +7,7 @@
 <style>
   :root {
     --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #6b7280;
-    --line: #e2e5ea; --accent: #00274c; --accent-soft: #e6ecf5; --gold: #ffcb05;
+    --line: #e2e5ea; --accent: #00274c; --accent-soft: #e6ecf5;
   }
   @media (prefers-color-scheme: dark) {
     :root:not([data-theme="light"]) {
@@ -25,9 +25,7 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.45;
   }
-  header {
-    background: var(--accent); color: #fff; padding: 16px;
-  }
+  header { background: var(--accent); color: #fff; padding: 16px; }
   header h1 { margin: 0; font-size: 1.4rem; }
   header p { margin: 4px 0 0; opacity: .85; font-size: .9rem; }
   main { max-width: 1200px; margin: 0 auto; padding: 16px; }
@@ -73,27 +71,50 @@
     :root:not([data-theme="light"]) .error { background: #3a1d1b; color: #f5c6c2; }
   }
 
-  .halls {
-    display: grid; gap: 12px;
-    grid-template-columns: 1fr;
+  /* Three equal columns, one per hall. Stations are full-width labels, so the same
+     station sits in the same row across the page. */
+  .menu-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    column-gap: 10px; row-gap: 12px; align-items: stretch;
   }
-  @media (min-width: 800px) {
-    .halls { grid-template-columns: repeat(3, 1fr); align-items: start; }
+  /* Hall names stay pinned at the top while you scroll. */
+  .colheads {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 8px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px;
   }
-  .hall {
-    background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px;
+  .colhead {
+    color: var(--accent); text-decoration: none; min-width: 0;
   }
-  .hall h2 { margin: 0; font-size: 1.1rem; color: var(--accent); }
-  .hall .hours { color: var(--muted); font-size: .85rem; margin: 2px 0 10px; }
-  .station { margin-top: 12px; }
-  .station h3 {
-    margin: 0 0 4px; font-size: .8rem; text-transform: uppercase; letter-spacing: .04em;
-    color: var(--muted);
+  .colhead:hover .hall-name { text-decoration: underline; }
+  .hall-name { display: block; font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
+  .hall-hours { display: block; font-size: .85rem; color: var(--muted); font-weight: 400; }
+
+  .station-band {
+    grid-column: 1 / -1; margin-top: 8px; font-size: .8rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
   }
-  .station ul { margin: 0; padding-left: 18px; }
-  .station li { margin: 2px 0; }
-  .none { color: var(--muted); font-style: italic; }
-  .hall .nosvc { color: var(--muted); }
+  .cell {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; min-width: 0; font-size: .95rem;
+  }
+  .cell ul { margin: 0; padding-left: 18px; }
+  .cell li { margin: 2px 0; overflow-wrap: anywhere; }
+  .none { color: var(--muted); font-style: italic; margin: 0; }
+  .nosvc { color: var(--muted); }
+
+  /* Soup, Pizza, Deli and Bakery share one heading and their cards touch. */
+  .bottom { margin-top: 12px; }
+  .group-head {
+    margin: 0 0 8px; font-size: 1.1rem; color: var(--accent);
+  }
+  .bottom-grid { row-gap: 0; }
+
+  @media (max-width: 480px) {
+    .cell { padding: 8px; font-size: .8rem; }
+    .cell ul { padding-left: 14px; }
+    .hall-name { font-size: 1.05rem; }
+    .hall-hours { font-size: .75rem; }
+  }
 </style>
 </head>
 <body>
@@ -124,7 +145,7 @@
 
   <p class="status" id="status">Checking the dining site...</p>
   <div id="errors"></div>
-  <div class="halls" id="halls"></div>
+  <div id="halls"></div>
 </main>
 
 <script>
@@ -142,6 +163,49 @@
   let loadId = 0;
 
   const el = id => document.getElementById(id);
+
+  // Stations pinned to the top, in this order.
+  const TOP = [/^signature maize$/i, /^halal$/i, /^24 carrots$/i];
+  // Stations pinned to the bottom group, in this order.
+  const BOTTOM = [/^soup$/i, /^pizziti$/i, /^deli$/i, /^mbakery$/i];
+  const WILD_FIRE = 'Wild Fire Maize / King\'s Hawaiian Grill';
+  const HIDDEN = [/^sabroso$/i, /^two oceans$/i];
+
+  // Renames and merges station names so the same station lines up across halls.
+  function canonical(name) {
+    if (HIDDEN.some(re => re.test(name))) return null;
+    if (/^(wild ?fire maize|kings hawaiian grill)$/i.test(name)) return WILD_FIRE;
+    return name;
+  }
+
+  function rankOf(name) {
+    const t = TOP.findIndex(re => re.test(name));
+    if (t !== -1) return t;
+    const b = BOTTOM.findIndex(re => re.test(name));
+    if (b !== -1) return 100 + b;
+    return 10;
+  }
+
+  // One row per station across all halls. Top stations first, then the rest
+  // (most halls first, then A to Z), then the bottom group in its fixed order.
+  function buildRows(halls) {
+    const rows = new Map();
+    halls.forEach(hall => {
+      (hall.stations || []).forEach(st => {
+        const name = canonical(st.station);
+        if (!name) return;
+        if (!rows.has(name)) rows.set(name, { name, byHall: {} });
+        const row = rows.get(name);
+        row.byHall[hall.id] = [...(row.byHall[hall.id] || []), ...st.items];
+      });
+    });
+    return [...rows.values()].sort((a, b) => {
+      const ra = rankOf(a.name), rb = rankOf(b.name);
+      if (ra !== rb) return ra - rb;
+      const ca = Object.keys(a.byHall).length, cb = Object.keys(b.byHall).length;
+      return cb - ca || a.name.localeCompare(b.name);
+    });
+  }
 
   function setDate(s) {
     selected = s;
@@ -173,53 +237,110 @@
       if (day.getMonth() !== shown.getMonth()) b.classList.add('other');
       if (s === todayStr) b.classList.add('today');
       b.setAttribute('aria-pressed', String(s === selected));
-      b.addEventListener('click', () => { setDate(s); el('calendar').classList.remove('open'); el('calToggle').setAttribute('aria-expanded', 'false'); });
+      b.addEventListener('click', () => {
+        setDate(s);
+        el('calendar').classList.remove('open');
+        el('calToggle').setAttribute('aria-expanded', 'false');
+      });
       grid.appendChild(b);
     }
   }
 
+  function makeCell(text, cls) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const p = document.createElement('p');
+    p.className = cls || 'none'; p.textContent = text;
+    cell.appendChild(p);
+    return cell;
+  }
+
+  function appendRow(grid, row, halls) {
+    const band = document.createElement('div');
+    band.className = 'station-band';
+    band.textContent = row.name;
+    grid.appendChild(band);
+    halls.forEach(hall => {
+      let cell;
+      if (hall.error) {
+        cell = makeCell('Could not load this hall.');
+      } else if (!hall.stations || hall.stations.length === 0) {
+        cell = makeCell('No dinner menu posted for this day.');
+      } else if (!row.byHall[hall.id]) {
+        cell = makeCell('Not offered here.');
+      } else {
+        cell = document.createElement('div');
+        cell.className = 'cell';
+        const ul = document.createElement('ul');
+        row.byHall[hall.id].forEach(item => {
+          const li = document.createElement('li');
+          li.textContent = item;
+          if (/no service/i.test(item)) li.className = 'nosvc';
+          ul.appendChild(li);
+        });
+        cell.appendChild(ul);
+      }
+      grid.appendChild(cell);
+    });
+  }
+
   function renderHalls(data) {
-    const halls = el('halls');
-    halls.replaceChildren();
-    const errors = el('errors');
-    errors.replaceChildren();
+    const wrap = el('halls');
+    wrap.replaceChildren();
+    el('errors').replaceChildren();
+
+    // Pinned hall names, each linking to that hall's page on the UVM site.
+    const heads = document.createElement('div');
+    heads.className = 'menu-grid colheads';
     data.halls.forEach(hall => {
-      const card = document.createElement('section');
-      card.className = 'hall';
-      const h = document.createElement('h2'); h.textContent = hall.name;
-      const hours = document.createElement('div'); hours.className = 'hours';
-      hours.textContent = 'Dinner, 4:30 pm to 9:00 pm';
-      card.append(h, hours);
+      const a = document.createElement('a');
+      a.className = 'colhead';
+      a.href = `https://dining.umich.edu/menus-locations/dining-halls/${hall.id}/?menuDate=${selected}`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const name = document.createElement('span');
+      name.className = 'hall-name'; name.textContent = hall.name;
+      const hours = document.createElement('span');
+      hours.className = 'hall-hours'; hours.textContent = '(4:30-9 pm)';
+      a.append(name, hours);
+      heads.appendChild(a);
 
       if (hall.error) {
-        const p = document.createElement('p'); p.className = 'none';
-        p.textContent = `Could not load this hall (${hall.error}).`;
-        card.appendChild(p);
         const e = document.createElement('div'); e.className = 'error';
         e.textContent = `${hall.name}: ${hall.error}`;
-        errors.appendChild(e);
-      } else if (!hall.stations || hall.stations.length === 0) {
-        const p = document.createElement('p'); p.className = 'none';
-        p.textContent = 'No dinner menu posted for this day.';
-        card.appendChild(p);
-      } else {
-        hall.stations.forEach(st => {
-          const wrap = document.createElement('div'); wrap.className = 'station';
-          const sh = document.createElement('h3'); sh.textContent = st.station;
-          wrap.appendChild(sh);
-          const ul = document.createElement('ul');
-          st.items.forEach(item => {
-            const li = document.createElement('li');
-            li.textContent = item;
-            if (/no service/i.test(item)) li.className = 'nosvc';
-            ul.appendChild(li);
-          });
-          wrap.appendChild(ul);
-          card.appendChild(wrap);
-        });
+        el('errors').appendChild(e);
       }
-      halls.appendChild(card);
     });
+    wrap.appendChild(heads);
+
+    const rows = buildRows(data.halls);
+    const top = rows.filter(r => rankOf(r.name) < 100);
+    const bottom = rows.filter(r => rankOf(r.name) >= 100);
+
+    const middle = document.createElement('div');
+    middle.className = 'menu-grid';
+    top.forEach(row => appendRow(middle, row, data.halls));
+    wrap.appendChild(middle);
+
+    if (bottom.length) {
+      const group = document.createElement('div');
+      group.className = 'bottom';
+      const head = document.createElement('h2');
+      head.className = 'group-head';
+      head.textContent = 'Soup/Pizza/Deli/Bakery';
+      const grid = document.createElement('div');
+      grid.className = 'menu-grid bottom-grid';
+      bottom.forEach(row => appendRow(grid, row, data.halls));
+      group.append(head, grid);
+      wrap.appendChild(group);
+    }
+
+    if (rows.length === 0) {
+      const none = document.createElement('p');
+      none.className = 'none';
+      none.textContent = 'No dinner menu posted for this day.';
+      wrap.appendChild(none);
+    }
   }
 
   async function loadMenus() {

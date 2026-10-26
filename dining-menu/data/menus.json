@@ -1,0 +1,5456 @@
+{
+ "generatedAt": "2026-10-26T00:09:52.570Z",
+ "halls": [
+  {
+   "id": "mosher-jordan",
+   "name": "Mosher Jordan"
+  },
+  {
+   "id": "east-quad",
+   "name": "East Quad"
+  },
+  {
+   "id": "south-quad",
+   "name": "South Quad"
+  }
+ ],
+ "days": {
+  "2026-10-25": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Grilled Pork Chops",
+        "Long Grain Rice",
+        "Roasted Broccoli",
+        "Chimichurri Sauce"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chicken Vietnamese Chili Stir Fry",
+        "Brown Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu Vietnamese Chili Stir Fry",
+        "Brown Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Lebanese Chicken",
+        "Zucchini and Summer Squash",
+        "Roasted Brussels Sprouts"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Sweet Potato Quinoa Burger",
+        "French Fries",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Pumpkin Pie",
+        "Vegan Eclair Cake",
+        "Golden Cake with Chocolate Frosting",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:19.520Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Black Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Hamburger Buns",
+        "Carolina Pulled Pork Sliders",
+        "Dill Pickle Chips",
+        "Roasted Broccoli",
+        "Arugula",
+        "Macaroni & Cheese"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Carrot Osso Bucco",
+        "Green Beans",
+        "Medium Grain Rice",
+        "Crispy Veggie Patty",
+        "Risotto with Green Peas",
+        "Tempeh and Vegetable Jambalaya",
+        "Creole Rice"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Beef Vindaloo",
+        "Lemon Parsley Rice",
+        "Roasted Cauliflower",
+        "Cilantro Chutney"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Pizza",
+        "Pepperoni Pizza",
+        "Cheese Bread",
+        "Beef Taco Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Seasoned Curly Fries",
+        "Beef & Mushroom Blend Burger w/ American"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "S'mores Cake",
+        "Strawberry Shortcake Bar",
+        "Chocolate Chunk Cookies",
+        "Almond Toffee Bars",
+        "Chocolate Coconut Cream Pie",
+        "Vegan Eclair Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:19.526Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Cordon Bleu",
+        "Au Gratin Potatoes",
+        "Steamed Broccoli"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Carrot Osso Bucco",
+        "Cilantro Lime White Rice",
+        "Green Beans",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Roasted Broccoli",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Sweet Moroccan Beef",
+        "Oven Roasted Garlic Yukon Potatoes",
+        "Green Peas"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Vegetable Soup with Basil",
+        "Teriyaki Chicken Breast",
+        "BBQ Tempeh",
+        "Basmati Rice",
+        "Roasted Zucchini",
+        "Chocolate Chip Cookies",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Sugar Cookies",
+        "S'mores Cake",
+        "Golden Cake with Chocolate Frosting",
+        "Almond Toffee Bars",
+        "Vegan Eclair Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:19.535Z"
+    }
+   ]
+  },
+  "2026-10-26": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken & Wild Rice Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Blackened Chicken Thigh",
+        "Oven Roasted Garlic Yukon Potatoes",
+        "Kale Saute",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Crispy Sichuan Chicken",
+        "Medium Grain Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Grilled Tofu with Lime and Cilantro",
+        "Oven Roasted Garlic Yukon Potatoes",
+        "Kale Saute",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Mediterranean Baked Monkfish",
+        "Basmati Rice",
+        "Zucchini and Summer Squash",
+        "Lemon Wedges",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Caramelized Onion & Chicken Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Battered Cod Sandwich",
+        "Turkey Burger on King's Hawaiian Bun",
+        "Cajun Seasoned Turkey Burger",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Raspberry Swirl Cheesecake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:21.077Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Garden Vegetable Soup",
+        "Chicken Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Brown Sugar and Sesame Glazed Salmon",
+        "Nori Seaweed",
+        "Purple Rice",
+        "Spinach Saute",
+        "Scrambled Eggs",
+        "Charred Corn",
+        "Soy Sauce",
+        "Kim Chi"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Vegetable Kofta w/ Cashews and Coconut",
+        "Basmati Rice with Butternut Squash",
+        "Cilantro",
+        "Mongolian Tofu with Fried Noodles",
+        "Veggie Delight Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Berbere Chicken",
+        "Mediterranean Yellow Rice",
+        "Roasted Vegetable Medley"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Roasted Garlic Pizza",
+        "Cheese Bread",
+        "Margherita Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Turkey Burger on White Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Raspberry Swirl Cheesecake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:21.082Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Fall Harvest Soup",
+        "Broccoli Cheddar Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Salmon with Chimichurri Sauce",
+        "Gouda Risotto",
+        "Spinach Saute"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Cauliflower Chickpea Tacos",
+        "Yellow Rice",
+        "Fresh Pico De Gallo",
+        "Black Bean Burger w/ White Bun",
+        "Zucchini and Summer Squash",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Herb Grilled Halal Chicken Breast",
+        "Oven Roasted Garlic Yukon Potatoes",
+        "Roasted Butternut Squash",
+        "Gremolata Pesto"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Feta Cheese Bread",
+        "Vegetable Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Chicken Breast Sandwich on White Bun",
+        "Turkey Burger on White Bun",
+        "Steak Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Tomato Rice Soup",
+        "Herb Baked Chicken Thighs",
+        "Basil Garlic Tofu",
+        "Roasted Yukon Potatoes",
+        "Zucchini & Summer Squash",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Maize and Blue Cookies",
+        "Raspberry Swirl Cheesecake",
+        "Vegan Palmier Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:21.088Z"
+    }
+   ]
+  },
+  "2026-10-27": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Baked Penne w/ Meatballs",
+        "Steamed Broccoli",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Rice Noodles w/ Beef & Vegetables",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Rice Noodles w/ Tofu & Vegetable",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Tuscan Chicken",
+        "Long Grain Rice",
+        "Lemon Garlic Swiss Chard"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Pork",
+        "King's Hawaiian Bun",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:22.636Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Vegan Tomato Soup",
+        "Beef Barley Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Taco Chicken",
+        "Tempeh Taco Crumbles",
+        "Creamy Pinto Beans",
+        "Mexican Rice",
+        "Small Flour Tortillas",
+        "Tortilla Chips",
+        "Mexican Cheese Blend",
+        "Shredded Lettuce",
+        "Pickled Jalapeno Peppers",
+        "Sour Cream",
+        "Guacamole",
+        "Mild Salsa"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Blackened Tempeh",
+        "Sunshine Quinoa Salad",
+        "Vegan Chili Cornbread Pie",
+        "Fresh Pico De Gallo",
+        "Broccoli Alfredo Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Ancho Chicken",
+        "Roasted Potato Duo",
+        "Sauteed Green Beans"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Thai Chicken Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef & Mushroom Blend Burger w/ American",
+        "Beef and Mushroom Blended Burger",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Vegan Raspberry Hazelnut Linzer Cookies",
+        "Banana Icebox Pudding"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:22.640Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Buffalo Chicken Soup",
+        "Tomato Rice Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal Chipotle Roast Chicken",
+        "Arroz a la Poblana",
+        "Sauteed Mixed Peppers & Onions",
+        "Corn and Black Bean Salsa"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu Poke",
+        "Cauliflower Quinoa Burger on White Bun",
+        "Lemon Garlic Swiss Chard",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Beef Birria",
+        "Au Gratin Chipotle Potatoes",
+        "Kale Saute",
+        "Fresh Pico De Gallo"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "BBQ Ham and Pineapple Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Criss Cross Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Moo Shoo Pork",
+        "Medium Grain Rice",
+        "Small Flour Tortillas"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Matzo Ball Soup",
+        "Chicken Banh Mi",
+        "Tofu Banh Mi Sandwich",
+        "Kettle Chips",
+        "Vegetable Blend",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Oatmeal Raisin Cookies",
+        "Banana Icebox Pudding",
+        "Vegan Raspberry Hazelnut Linzer Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:22.646Z"
+    }
+   ]
+  },
+  "2026-10-28": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Vegan Tomato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Blackened Catfish",
+        "Medium Grain Rice",
+        "Roasted Green Beans",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Buffalo Chicken Wings",
+        "Macaroni Salad",
+        "Carrots",
+        "Ranch Dip"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Blackened Tempeh",
+        "Medium Grain Rice",
+        "Roasted Green Beans",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Herb Baked Chicken",
+        "Seasoned Redskin Potatoes",
+        "Spinach Saute",
+        "Gremolata Pesto"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Sweet Potato Quinoa Burger",
+        "Sweet Potato Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Peanut Butter Pie",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:24.189Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Minestrone Soup",
+        "Italian Wedding Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Lemon Pepper Chicken Wings",
+        "Celery Sticks",
+        "Carrot Sticks",
+        "Ranch Dip"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Broccoli Quinoa Power Bowl w/ Coconut",
+        "Vegetable Pakora",
+        "Cilantro Chutney"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Sweet Moroccan Beef",
+        "Dirty Rice",
+        "Grilled Vegetables"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Chicken Ranch Pizza with Bacon",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Chocolate Peanut Butter Pie",
+        "Chocolate Raspberry Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:24.191Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Shrimp Bisque",
+        "Authentic Minestrone"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Korean Style Pork Loin",
+        "Medium Grain Rice",
+        "Spicy Ginger Slaw",
+        "Kim Chi"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Pea and Potato Curry",
+        "Basmati Rice",
+        "Rajma",
+        "Cilantro Chutney",
+        "Crispy Veggie Patty on White Bun",
+        "Roasted Broccoli",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Marrakesh Chicken Breast",
+        "Seasoned Roasted Potatoes",
+        "Kale Saute",
+        "Falafel Relish"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Buffalo Chicken Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Beef Teriyaki",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Navy Bean Soup",
+        "Beef Stew",
+        "Potato, Lentil, and Coconut Curry",
+        "Rice Pilaf",
+        "Carrot Coins",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "White Chocolate Macadamia Nut Cookies",
+        "Chocolate Peanut Butter Pie",
+        "Chocolate Raspberry Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:24.201Z"
+    }
+   ]
+  },
+  "2026-10-29": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Tortilla Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "BBQ Meatloaf",
+        "Garlicky Mashed Potatoes",
+        "Roasted Cauliflower",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chicken Taco Meat",
+        "Black Beans",
+        "Tortilla Chips",
+        "Rice with Green Chiles",
+        "Fresh Pico De Gallo"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Falafel Cake Power Bowl",
+        "Falafel Relish"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Marrakesh Chicken Breast",
+        "Medium Grain Rice",
+        "Roasted Green Beans",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Sriracha Chicken",
+        "King's Hawaiian Bun",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:25.735Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken & Wild Rice Soup",
+        "Corn Chowder"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Lasagna Rollups with Meat Sauce",
+        "Grilled Zucchini & Carrots",
+        "Bread Sticks"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Mushroom Ramen",
+        "Eggplant Parmesan",
+        "Baked Butternut Squash",
+        "Mexican Vegetarian Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Marrakesh Chicken Thighs",
+        "Roasted Brussels Sprouts",
+        "Basmati Rice"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Mushroom Chive Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef & Mushroom Blend Burger w/ American",
+        "Beef and Mushroom Blended Burger",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Double Chocolate Cookie",
+        "M&M Torte"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:25.737Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Noodle Soup",
+        "Black Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Beef Lasagna",
+        "Fresh Steamed Broccoli Florets",
+        "Garlic Bread"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Baked Butternut Squash",
+        "Quinoa",
+        "White Bean Mint and Red Onion Salad",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Carrot Coins",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Piri-Piri Chicken",
+        "Garlicky Mashed Potatoes",
+        "Corn with Cumin, Chili, and Tomato"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "BLT Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Chicken Breast Sandwich on White Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Beef Coconut Panang",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "UNIT CHOICE MEAL",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Maize and Blue Cookies",
+        "M&M Torte",
+        "Double Chocolate Cookie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:25.757Z"
+    }
+   ]
+  },
+  "2026-10-30": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "French Onion Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal BBQ Chicken Thigh",
+        "Seasoned Roasted Potatoes",
+        "Zucchini and Summer Squash"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chicken Lo Mein",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Vegetable Edamame Lo Mein",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Grilled Salmon",
+        "Basmati Rice",
+        "Sauteed Swiss Chard",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Homestyle Chicken Tenders",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Pineapple Upside Down Cake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:27.299Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Butternut Squash Bisque",
+        "Loaded Baked Potato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Carolina Brisket",
+        "Mustard Roasted Potatoes",
+        "Sauteed Green Beans"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tempeh Coconut Panang with Rice",
+        "Vegetable Egg Rolls",
+        "Sweet Chili Sauce",
+        "Wild Mushroom Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Italian Grilled Shrimp",
+        "Soft Polenta with Quattro Formaggi",
+        "Steamed Broccoli"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheeseburger Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Homestyle Chicken Tenders",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Blossom Cookie with Pistachios",
+        "Pineapple Upside Down Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:27.293Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "New England Clam Chowder",
+        "Three Bean Chili"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Smoked Shredded BBQ Chicken",
+        "King Hawaiian Pretzel Slider Buns",
+        "Macaroni & Cheese",
+        "Fresh Steamed Broccoli Florets"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Koshari",
+        "Black Bean Burger w/ White Bun",
+        "Peas and Carrots",
+        "Sunshine Quinoa Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Italian Grilled Shrimp",
+        "Orzo & Bulgur Pilaf",
+        "Roasted Green Beans"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Philly Cheese Steak Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Homestyle Chicken Tenders",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Pineapple Upside Down Cake",
+        "Blossom Cookie with Pistachios"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:27.305Z"
+    }
+   ]
+  },
+  "2026-10-31": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Cream of Tomato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "BBQ Chipotle Ribs",
+        "Roasted Red Potatoes",
+        "Sauteed Swiss Chard"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Huli Huli Chicken",
+        "Medium Grain Rice",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Mushroom Goulash",
+        "Medium Grain Rice",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Shrimp",
+        "Fettuccine Alfredo",
+        "Pesto Sauce"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "Mojo Grilled Chicken Sandwich",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Tres Leches Cake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:28.883Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Broccoli Cheddar Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "BBQ Meatloaf",
+        "Mashed Potatoes",
+        "Green Beans"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu with Coconut, Barley, and Quinoa",
+        "Hunan Vegetables Blend",
+        "Risotto with Garlic Basil Tofu",
+        "Mixed Pepper Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chicken Biryani",
+        "Mango",
+        "Green Peas",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Breakfast Pizza with Meat",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Sugar Cookies",
+        "Tres Leches Cake",
+        "Raspberry Bars"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:28.894Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Biryani",
+        "Roasted Broccoli",
+        "Mint Garnish"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu with Coconut, Barley, and Quinoa",
+        "Hunan Vegetables Blend",
+        "Cauliflower Quinoa Burger on White Bun",
+        "Sauteed Sugar Snap Peas",
+        "UNIT CHOICE MEAL"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "BBQ Meatloaf",
+        "Mashed Potatoes",
+        "Vegetable Blend"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Roasted Red Pepper Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Sugar Cookies",
+        "Chocolate Tres Leches Cake",
+        "Raspberry Bars"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:28.893Z"
+    }
+   ]
+  },
+  "2026-11-01": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Herb Roasted Turkey Breast",
+        "Basmati Rice",
+        "Sauteed Swiss Chard"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chicken Fried Rice",
+        "Spring Rolls",
+        "Chopped Green Onions",
+        "Sweet Chili Sauce"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Vegan Fried Rice",
+        "Spring Rolls",
+        "Chopped Green Onions",
+        "Sweet Chili Sauce"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chile Rubbed Chicken Thigh",
+        "Roasted Red Potatoes",
+        "Roasted Broccoli",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Cherry Pie",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:30.436Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Tortellini Soup",
+        "Maize Chowder"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Marsala",
+        "Potato Gnocchi with Basil Pesto",
+        "Asparagus Spears"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Sukiyaki-Style Udon Bowl",
+        "Bean and Cheese Tostada",
+        "Fresh Pico De Gallo",
+        "Shredded Lettuce",
+        "Sour Cream",
+        "Veggie Delight Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Ancho Flank Steak",
+        "Baked Sweet Potatoes",
+        "Jalapeno Honey Glaze",
+        "Southwest Salad"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pineapple Fruit Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Cherry Pie",
+        "Iced Oatmeal Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:30.441Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Sukiyaki-Style Udon Bowl",
+        "Crispy Veggie Patty on White Bun",
+        "Spinach Saute",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Texas Flank Steak",
+        "Baked Sweet Potatoes",
+        "Southwest Salad"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Penne Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Smoke",
+       "items": [
+        "Lemon Roasted Chicken",
+        "Rice Pilaf",
+        "Fresh Steamed Broccoli Florets"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Tomato Rice Soup",
+        "Chicken Breast Dakota",
+        "Balsamic Marinated Tofu",
+        "Quinoa",
+        "Grilled Vegetables",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Maize and Blue Cookies",
+        "Dutch Apple Pie",
+        "Iced Oatmeal Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:30.447Z"
+    }
+   ]
+  },
+  "2026-11-02": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Alfredo Pasta",
+        "Garlic Bread",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chili Lime Shrimp",
+        "Small Flour Tortillas",
+        "Cilantro Lime White Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Taco Lentils",
+        "White Corn Tortillas",
+        "Cilantro Lime White Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Traditional Jamaican Jerk Chicken",
+        "Jasmine Rice",
+        "West Indies Cabbage"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Chicken Parmesan Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Battered Cod Sandwich",
+        "Turkey Burger on King's Hawaiian Bun",
+        "Turkey Burger with Provolone",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Cheesecake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:31.984Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Cream of Broccoli Soup",
+        "Chicken Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Lemon Roasted Chicken",
+        "Seasonal Vegetable",
+        "Yukon Gold Potatoes"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Chickpea & Vegetable Tagine",
+        "Quinoa Salad",
+        "Cilantro",
+        "Palak Paneer",
+        "Basmati Rice",
+        "Mushroom Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Herbed Whitefish Fillets",
+        "Baked Butternut Squash",
+        "Olive Rice Azteca",
+        "Peach Sauce",
+        "Avocado Cilantro Lime Topping"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Roasted Mushroom & Spinach Pizza",
+        "Buffalo Chicken Pizza",
+        "Cheese Pizza",
+        "Cheese Bread"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Cheesecake",
+        "Double Vanilla Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:31.983Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Pennsylvania Dutch Chicken Soup",
+        "Harira Algerian Tomato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Chickpea & Vegetable Tagine",
+        "Quinoa",
+        "Cilantro",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Roasted Zucchini",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Braised Chicken w/ Moroccan Spices",
+        "Basmati Rice",
+        "Sauteed Green Beans"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Penne Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Artichoke Vegetable Pizza",
+        "Mixed Pepper Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Chicken Breast Sandwich on White Bun",
+        "Turkey Burger on White Bun",
+        "Steak Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Smoke",
+       "items": [
+        "Shrimp & Scallop Fajitas",
+        "Tex Mex Rice",
+        "Fresh Pico De Gallo",
+        "Guacamole",
+        "Sour Cream"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Chicken & Rice Soup",
+        "Blackened Chicken",
+        "Blackened Tempeh",
+        "Rice Pilaf",
+        "Grilled Zucchini & Carrots",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Oatmeal Raisin Cookies",
+        "Cheesecake",
+        "Double Vanilla Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:32.002Z"
+    }
+   ]
+  },
+  "2026-11-03": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Macaroni & Cheese",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Halal Beef Bulgogi",
+        "Medium Grain Rice",
+        "Kim Chi",
+        "Gochujang Mayonnaise",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Seitan Bulgogi",
+        "Medium Grain Rice",
+        "Kim Chi",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Lebanese Chicken",
+        "Quinoa",
+        "Roasted Green Beans"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Pork",
+        "King's Hawaiian Bun",
+        "Sweet Potato Quinoa Burger",
+        "Sweet Potato Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:33.539Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Authentic Minestrone",
+        "Hearty Beef Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Taco Beef",
+        "Tofu Tacos Filling",
+        "Spicy Black Beans",
+        "Mexican Rice",
+        "Small Flour Tortillas",
+        "Tortilla Chips",
+        "Mexican Cheese Blend",
+        "Shredded Lettuce",
+        "Pickled Jalapeno Peppers",
+        "Sour Cream",
+        "Guacamole",
+        "Mild Salsa"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Basil Garlic Tofu",
+        "Vegan Mushroom Risotto",
+        "Vegetable Stew with Dumplings",
+        "Roasted Zucchini",
+        "Blanco Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Moroccan Chicken",
+        "Jasmine Rice",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Bacon Jalapeno Pineapple Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Blueberry Pie",
+        "Vegan Thumbprint Cookies w/ Coconut",
+        "Lemon Cream Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:33.542Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Hearty Beef Soup",
+        "Vegetable Gumbo"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Dijon & Balsamic Grilled Tempeh",
+        "White Bean & Potato Hash",
+        "Black Bean Burger w/ White Bun",
+        "Roasted Cauliflower",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Balsamic Glazed Chicken Thighs",
+        "Orange and Herb Quinoa",
+        "Roasted Butternut Squash"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Margherita Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Pork Lo Mein",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Smoke",
+       "items": [
+        "Roasted Turkey Breast",
+        "Au Gratin Potatoes",
+        "Roasted Green Beans"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Navy Bean Soup",
+        "Lamb Korma",
+        "Malaysian Vegetable Coconut Curry",
+        "Lemon Parsley Rice",
+        "Glazed Baby Carrots",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Sugar Cookies",
+        "Lemon Cream Cake",
+        "Vegan Thumbprint Cookies w/ Coconut"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:33.546Z"
+    }
+   ]
+  },
+  "2026-11-04": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Penne Pasta with Meat Sauce",
+        "Steamed Broccoli"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Halal Grilled Chicken Thigh",
+        "Basmati Rice",
+        "Zucchini and Summer Squash"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Moroccan Vegetable Stew",
+        "Basmati Rice"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chicken Gyro",
+        "Garlic Naan Bread",
+        "Basmati Rice",
+        "Pickled Vegetables",
+        "Garlic Sauce"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Cauliflower Quinoa Burger",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Vernor's Pound Cake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:35.094Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Vegetable Soup",
+        "Cream of Potato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Homemade Sweet Chili Chicken Wings",
+        "Macaroni Salad",
+        "Fried Breaded Cauliflower",
+        "Celery Sticks",
+        "Carrot Sticks",
+        "Ranch Dressing"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Filipino Vegetable Pancit",
+        "Spring Rolls",
+        "Tofu and Basil Stir Fry",
+        "Brown Rice",
+        "Tomato Parmesan Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Baked Halal Chicken",
+        "Sundried Tomatoes Sauce",
+        "Paprika Roasted Potatoes",
+        "Herbed Provence Green Beans"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "BBQ Chicken Pizza",
+        "Pepperoni Pizza",
+        "Cheese Bread",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "White Chocolate Macadamia Nut Cookies",
+        "Key Lime Cookie",
+        "Vernor's Pound Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:35.083Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Vegetable Soup",
+        "Cream of Potato Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Filipino Vegetable Pancit",
+        "Spring Rolls",
+        "Cauliflower Quinoa Burger on White Bun",
+        "Roasted Green Beans",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Baked Halal Chicken",
+        "Chimichurri BBQ Sauce",
+        "Paprika Roasted Potatoes",
+        "Spinach Saute"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Bowtie Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Chicken Ranch Pizza with Bacon",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Chicken Breast Sandwich on White Bun",
+        "Beef and Mushroom Blended Burger",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Mongolian Beef with Fried Noodles",
+        "Fresh Broccoli Florettes"
+       ]
+      },
+      {
+       "station": "Smoke",
+       "items": [
+        "Thai Style Fried Rice with Shrimp"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Vegetable Gumbo",
+        "Korean Chuck Eye",
+        "Korean BBQ Tofu",
+        "Medium Grain Rice",
+        "Stir Fry Bok Choy Topping",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Oatmeal Raisin Cookies",
+        "Vernor's Pound Cake",
+        "Key Lime Cookie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:35.102Z"
+    }
+   ]
+  },
+  "2026-11-05": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Pub Style Fish",
+        "French Fries",
+        "Creamy Coleslaw Salad",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Sesame Chicken",
+        "Medium Grain Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Koshari",
+        "Macaroni Pasta",
+        "Mint Garnish"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Italian Chicken",
+        "Oven Roasted Garlic Potatoes",
+        "Roasted Broccoli",
+        "Pesto Sauce"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Sriracha Chicken",
+        "King's Hawaiian Bun",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:36.646Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Cream of Tomato Soup",
+        "Minnesota Wild Rice Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Baked Boneless Ham",
+        "Pickled Cucumber and Onions",
+        "Chili Lime Kale",
+        "Baked Sweet Potatoes"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu Piccata",
+        "Spaghetti Pasta",
+        "Green Beans",
+        "Garlic Bread",
+        "Jerk Tofu",
+        "Baked Plantains",
+        "Vegetable Blend",
+        "Mango Salsa",
+        "Mixed Pepper Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Beef Pasilla Tortilla Casserole",
+        "Street Taco Salad"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza",
+        "Sriracha Chicken Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Peanut Butter Cookies",
+        "Chocolate Cookie Torte",
+        "Orange Cardamom Vegan Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:36.641Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Cream of Mushroom Soup",
+        "Minnesota Wild Rice Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Cajun Tofu Bowtie Pasta",
+        "Bread Sticks",
+        "Crispy Veggie Patty on White Bun",
+        "Roasted Butternut Squash",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "White Lamb Pasta Bake Halal",
+        "Greek Salad"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Bowtie Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Roasted Mushroom & Spinach Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Kung Pao Chicken",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Smoke",
+       "items": [
+        "Baked Boneless Ham",
+        "Baked Sweet Potatoes",
+        "Roasted Brussels Sprouts"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "UNIT CHOICE MEAL",
+        "Authentic Minestrone",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Sugar Cookies",
+        "Chocolate Cookie Torte",
+        "Orange Cardamom Vegan Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:36.654Z"
+    }
+   ]
+  },
+  "2026-11-06": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal Beef Bulgogi",
+        "Criss Cross Fries",
+        "Kim Chi",
+        "Sriracha Mayonnaise",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Texas BBQ Ribs",
+        "Seasoned Roasted Potatoes",
+        "Southwest Coleslaw",
+        "Sweet Baby Ray's BBQ Sauce"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "BBQ Tempeh",
+        "Seasoned Roasted Potatoes",
+        "Sauteed Swiss Chard"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Red Curry with Shrimp and Vegetables",
+        "Basmati Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Homestyle Chicken Tenders",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Key Lime Squares",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:38.187Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Smoked Salmon Chowder w/Bacon",
+        "Southwestern Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Beef Barbacoa",
+        "Baked Butternut Squash",
+        "Sauteed Green Beans"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tex Mex Stuffed Sweet Potato Skins",
+        "Chopped Green Onions",
+        "Cilantro",
+        "Tricolor Tortellini w/ Basil Pesto",
+        "Roasted Broccoli",
+        "Greek Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Hawaiian Chicken",
+        "Pineapple Rice",
+        "Roasted Cauliflower"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Roasted Vegetable Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Homestyle Chicken Tenders",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Vegan Tuxedo Cake",
+        "Key Lime Squares"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:38.194Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Tortellini Soup",
+        "Southwestern Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Rotisserie Chicken Breast",
+        "Garlicky Mashed Potatoes",
+        "Mushroom Marsala Sauce",
+        "Spinach Saute"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Noodles w/ Vegetable Chile Sauce",
+        "Tofu",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Roasted Zucchini & Red Onion",
+        "Ruby Wild Grain Blend"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Sweet Moroccan Beef",
+        "Lemon Parsley Rice",
+        "Curry Roasted Carrots",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Penne Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Supreme Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Criss Cross Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Key Lime Squares",
+        "Vegan Tuxedo Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:38.198Z"
+    }
+   ]
+  },
+  "2026-11-07": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Beef Pepper Steak",
+        "Brown Rice",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Stir Fried Chicken",
+        "Vegetable Yakisoba",
+        "Chopped Green Onions",
+        "Black and White Sesame Seeds"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Vegetable Yakisoba",
+        "Chopped Green Onions",
+        "Black and White Sesame Seeds"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Grilled Chicken Thigh",
+        "Baked Sweet Potatoes",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "Beef Hot Dog",
+        "Coney Island Chili",
+        "Nacho Cheese Sauce",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:39.729Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Black Bean Chili",
+        "UNIT CHOICE MEAL"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "BBQ Chipotle Ribs",
+        "Au Gratin Potatoes",
+        "Cream Style Corn"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tofu Donburi Rice Bowl",
+        "Chiles Poblanos Rellenos de Queso",
+        "Ancho Lime Sweet Potatoes",
+        "Roasted Broccoli",
+        "Mixed Berry Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Grilled North African Chicken",
+        "West African Jollof Rice",
+        "Roasted Broccoli",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Italian Sausage Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Dutch Apple Pie",
+        "Lemon Gem Cookie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:39.732Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal Beef Nachos",
+        "Shredded Lettuce",
+        "Fresh Pico De Gallo",
+        "Sour Cream"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Jerk Tofu",
+        "Black Beans and Brown Rice",
+        "Fresh Pineapple Salsa",
+        "Black Bean Burger w/ White Bun",
+        "Green Peas",
+        "UNIT CHOICE MEAL"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Grilled North African Chicken",
+        "West African Jollof Rice",
+        "Spinach Saute",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Alfredo Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "White Chocolate Macadamia Nut Cookies",
+        "Lemon Gem Cookie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:39.775Z"
+    }
+   ]
+  },
+  "2026-11-08": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Beef Hunan with Rice",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Pork Carnitas",
+        "White Corn Tortillas",
+        "Yellow Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Spicy Black Beans",
+        "White Corn Tortillas",
+        "Yellow Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chicken Alfredo Pasta",
+        "Garlic Bread"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Cauliflower Quinoa Burger",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Blueberry Pie",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:41.522Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Leblabi Soup",
+        "UNIT CHOICE MEAL"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal Mojito Chicken",
+        "Sauteed Swiss Chard",
+        "Cuban Black Beans & Rice",
+        "Fresh Pineapple Salsa"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Chana Saag",
+        "Basmati Rice",
+        "Pickled Red Onions",
+        "Cilantro",
+        "Mojito Tofu",
+        "Sauteed Zucchini Squash and Onion",
+        "Quinoa",
+        "Mango Margherita Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chicken Gnocchi Pasta Primavera",
+        "Garlic Bread"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Bread",
+        "Apple Fruit Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Fish Taco",
+        "Corn and Black Bean Salsa",
+        "Tortilla Chips"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Raspberry Brownie Bar",
+        "Blueberry Pie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:41.608Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Florida Style BBQ Halal Beef",
+        "Hamburger Buns",
+        "Creamy Coleslaw Salad",
+        "Kettle Potato Chips"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Lentil Stew",
+        "Jasmine Rice",
+        "Lebanese Green Beans",
+        "Cauliflower Quinoa Burger on White Bun",
+        "Peas and Carrots",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Mojito Chicken Thigh",
+        "Cuban Black Beans & Rice",
+        "Spinach Saute",
+        "Fresh Pineapple Salsa"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Authentic Minestrone",
+        "Chicken Tostada",
+        "Fresh Pico de Gallo",
+        "Tofu Mojito",
+        "Mexican Rice",
+        "Corn with Cumin, Chili, and Tomato",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Oatmeal Raisin Cookies",
+        "Blueberry Pie",
+        "Raspberry Bars"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:41.655Z"
+    }
+   ]
+  },
+  "2026-11-09": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Broccoli Bake",
+        "Long Grain Rice",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Paneer Tikka",
+        "Basmati Rice",
+        "Pickled Vegetables"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Pea and Potato Curry",
+        "Basmati Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Traditional Jamaican Jerk Chicken",
+        "Red Beans & Rice",
+        "West Indies Cabbage"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Sriracha Chicken Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Battered Cod Sandwich",
+        "Turkey Burger on King's Hawaiian Bun",
+        "Cajun Seasoned Turkey Burger",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Mango Cheesecake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:43.186Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Spinach, Shiitake & Tofu Soup",
+        "Chicken Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Herb Grilled Halal Chicken Breast",
+        "Ruby Wild Grain Blend",
+        "Roasted Michigan Vegetables"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tempeh Swiss Steak",
+        "Mushrooms and Pearl Onions Sauteed",
+        "Fresh Whipped Potatoes",
+        "Glazed Baby Carrots",
+        "Samosas",
+        "Jasmine Rice",
+        "Mango Chutney",
+        "Dal",
+        "Corn & Black Bean Salsa Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chili Lime Scallops",
+        "Sliced Jalapeno Peppers",
+        "Cilantro",
+        "Esquites"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Herbed Potato Flatbread Pizza",
+        "Cheese Bread",
+        "Vegetable Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Turkey Sloppy Joe w/ White Bun",
+        "Sweet & Spicy Pickle Chips",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Triple Berry Crisp",
+        "Mango Cheesecake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:43.190Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Cream of Tomato Soup",
+        "Italian Style Chicken Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Herb Grilled Halal Chicken Breast",
+        "Basmati Rice",
+        "Curry Roasted Carrots"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Tempeh Swiss Steak",
+        "Fresh Whipped Potatoes",
+        "Mushrooms and Pearl Onions Sauteed",
+        "Crispy Veggie Patty on White Bun",
+        "Spinach Saute",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chili Lime Scallops",
+        "Esquites",
+        "Sauteed Mixed Peppers & Onions",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Cavatappi",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "BBQ Chicken Pizza",
+        "Vegetable Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Chicken Breast Sandwich on White Bun",
+        "Turkey Burger on White Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Navy Bean Soup",
+        "North African Grilled Chicken",
+        "Tempeh Triangles w/ Brown Rice",
+        "Brown Rice",
+        "Carrot Coins",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Sugar Cookies",
+        "Mango Cheesecake",
+        "Triple Berry Crisp"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:43.194Z"
+    }
+   ]
+  },
+  "2026-11-10": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Grilled Pork Chops",
+        "Stuffing with Gravy",
+        "Roasted Brussels Sprouts"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Italian Sausage",
+        "Penne Pasta",
+        "Carbonara Sauce",
+        "Sauteed Mixed Peppers & Onions",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Spiced Lentil Taco Filling",
+        "Spicy Black Beans",
+        "Tortilla Chips",
+        "Mexican Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Taco Beef",
+        "Spicy Black Beans",
+        "Tortilla Chips",
+        "Mexican Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Pork",
+        "King's Hawaiian Bun",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:44.728Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Butternut Squash Soup w/ Coconut Milk",
+        "Broccoli Cheddar Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chorizo",
+        "Tempeh Taco Crumbles",
+        "Tex Mex Rice",
+        "Spicy Black Beans",
+        "Small Flour Tortillas",
+        "Tortilla Chips",
+        "Pickled Jalapeno Peppers",
+        "Mexican Cheese Blend",
+        "Shredded Lettuce",
+        "Guacamole",
+        "Sour Cream",
+        "Mild Salsa"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Michigan Farmers 4 Bean Stew",
+        "Brown Rice",
+        "Vegetable & Paneer Korma w/Almond&Cashew",
+        "Garlic Naan Bread",
+        "Cilantro",
+        "Provolone Crispy Veggie Patty Sandwich",
+        "Potato Chips"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Carolina Brisket",
+        "BBQ Baked Beans",
+        "Roasted Potato Duo",
+        "East Carolina Slaw"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Bread",
+        "Cheese Pizza",
+        "Pepperoni Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Peanut Butter Cookies",
+        "Vegan Chocolate Chip Cookie Bar",
+        "Key Lime Pie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:44.735Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Italian Wedding Soup",
+        "Broccoli Cheddar Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "BBQ Chicken Drumsticks",
+        "Macaroni & Cheese",
+        "Roasted Green Beans"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Korean Bibimbap",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "Carrot Coins",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Carolina Brisket",
+        "BBQ Baked Beans",
+        "Roasted Brussels Sprouts"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Supreme Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Steak Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Beef and Vegetable Stir Fry",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Chicken Noodle Soup",
+        "Chicken Fried Rice",
+        "Tofu Fried Rice",
+        "Sauteed Sugar Snap Peas",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "White Chocolate Macadamia Nut Cookies",
+        "Key Lime Pie",
+        "Vegan Chocolate Chip Cookie Bar"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:44.738Z"
+    }
+   ]
+  },
+  "2026-11-11": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Grandma Shubert's Meatloaf W/ Gravy",
+        "White Split Top Bread",
+        "Green Beans"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Italian Chicken Drumsticks",
+        "Seasoned Roasted Potatoes",
+        "Roasted Zucchini",
+        "Gremolata Pesto"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Chole Masala",
+        "Jasmine Rice",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Chicken Paprikash",
+        "Mashed Potatoes",
+        "Peas and Carrots"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Sweet Potato Quinoa Burger",
+        "Sweet Potato Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Pecan Praline Bread Pudding",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:46.299Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Bacon & Kale Soup",
+        "Vegetable Barley Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Yankee Pot Roast",
+        "Beef Mushroom Gravy",
+        "Parmesan Roasted Potatoes",
+        "Carrots"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Korean Style Tofu Power Bowl",
+        "Risotto Cakes",
+        "Mixed Pepper Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Blackened Chicken Thigh",
+        "Crispy Salt & Vinegar Potatoes",
+        "Chili Lime Kale",
+        "Skillet Corn Sauce"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Pizza",
+        "Pesto Chicken Pizza",
+        "Cheese Bread",
+        "Pepperoni Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Chicken Wings",
+        "Buffalo Sauce",
+        "Macaroni Salad",
+        "Celery Sticks",
+        "Carrot Sticks",
+        "Blue Cheese Salad Dressing"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Pecan Praline Bread Pudding",
+        "Chocolate Raspberry Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:46.282Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Beef Barley Soup",
+        "Vegetable Barley Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken & Dumplings",
+        "Peas and Carrots"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Monterey Tofu",
+        "Brown Rice",
+        "Roasted Cauliflower",
+        "Black Bean Burger w/ White Bun",
+        "Roasted Zucchini & Red Onion",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Blackened Chicken Thigh",
+        "Dirty Rice",
+        "Chili Lime Kale",
+        "Skillet Corn Sauce"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Cavatappi",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pesto Chicken Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Chicken Patty w/ White Bun",
+        "Potato Tots"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Teriyaki Chicken with Vegetables",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Three Bean Chili",
+        "Gyro Chicken",
+        "Pita Bread",
+        "Mediterranean Tofu Gyro",
+        "Falafel Relish",
+        "Pearl Couscous Salad w/ Almonds",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Oatmeal Raisin Cookies",
+        "Pecan Praline Bread Pudding",
+        "Chocolate Raspberry Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:46.290Z"
+    }
+   ]
+  },
+  "2026-11-12": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Halal Churrasco Roast Beef",
+        "Seasoned Roasted Potatoes",
+        "Roasted Cauliflower",
+        "Chimichurri Sauce",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Turkey Sobaheg w/ Peanuts",
+        "Wild Rice Pilaf"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "3 Sisters Stew",
+        "Roasted Delicata Squash with Pepitas"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Cornmeal Crusted Whitefish",
+        "Pinenut Gremolata",
+        "Smashed Sunchokes w Sumac & Maple Syrup"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Pulled Sriracha Chicken",
+        "King's Hawaiian Bun",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Zucchini Corn Cakes",
+        "Wojapi Berry Sauce",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:47.838Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Potato, Spinach & Tomato Soup",
+        "Chicken Rice Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Cornmeal Crusted Whitefish",
+        "Pinenut Gremolata",
+        "Roasted Root Vegetables"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "3 Sisters Stew",
+        "Roasted Delicata Squash with Pepitas",
+        "Tofu Sofritas Burrito Bowl",
+        "Cilantro",
+        "Ricotta & Fresh Tomato Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Braised Chicken w/ Moroccan Spices",
+        "Garlic Peppercorn Roasted Gold Potatoes",
+        "Roasted Baby Carrots"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Pizza",
+        "Pepperoni Pizza",
+        "Roasted Mushroom & Spinach Pizza",
+        "Cheese Bread"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Vegan Maple Oatmeal Cookie Sandwich",
+        "Sweet and Salty Peanut Butter Torte"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:47.832Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Chicken Rice Soup",
+        "Tuscan Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Cornmeal Crusted Whitefish",
+        "Chipotle Hominy",
+        "Roasted Root Vegetables",
+        "Pinenut Gremolata"
+       ]
+      },
+      {
+       "station": "Signature Blue",
+       "items": [
+        "3 Sisters Stew",
+        "Roasted Delicata Squash with Pepitas"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Cuban Black Beans & Rice",
+        "Fresh Pico De Gallo",
+        "Guacamole",
+        "Cauliflower Quinoa Burger on White Bun",
+        "Kale Saute",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Braised Chicken w/ Moroccan Spices",
+        "Garlic Peppercorn Roasted Red Potatoes",
+        "Spinach Saute"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Bowtie Pasta",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Greek Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Chicken Breast Sandwich on White Bun",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "Sweet and Sour Pork",
+        "Medium Grain Rice"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Tomato Rice Soup",
+        "UNIT CHOICE MEAL",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Sugar Cookies",
+        "Sweet and Salty Peanut Butter Torte",
+        "Vegan Maple Oatmeal Cookie Sandwich"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:47.845Z"
+    }
+   ]
+  },
+  "2026-11-13": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Chicken Wings",
+        "General Tso Sauce",
+        "Medium Grain Rice",
+        "Black and White Sesame Seeds"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Moo Shoo Pork",
+        "Small Flour Tortillas",
+        "Medium Grain Rice",
+        "Hoisin Sauce",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Chickpea & Vegetable Tagine",
+        "Seasoned Quinoa",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Apricot Lamb Stew",
+        "Seasoned Quinoa",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Chicken & Beef Meatballs",
+        "King's Hawaiian Bun",
+        "Marinara Sauce",
+        "Crispy Veggie Patty on Hawaiian Bun",
+        "Seasoned Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maple Pumpkin Cheesecake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:49.378Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "New England Clam Chowder",
+        "Vegetable Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Salisbury Steak",
+        "Oven Roasted Garlic Potatoes",
+        "Sauteed Green Beans"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Cachapa",
+        "Spicy Black Beans",
+        "Fresh Pico De Gallo",
+        "Guacamole",
+        "Vegan Bun Chay w/ Peanuts",
+        "Flatbread Pizza Con Queso"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "BBQ Chicken",
+        "Hoppin' John Black Eyed Peas and Rice",
+        "Corn on the Cob"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Chicken Broccoli Alfredo Pizza",
+        "Cheese Pizza",
+        "Pepperoni Pizza",
+        "Cheese Bread"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Homestyle Chicken Tenders",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Golden Cake with Chocolate Frosting",
+        "Maple Pumpkin Cheesecake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:49.385Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "New England Clam Chowder",
+        "Southwestern Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Lemon Baked Catfish",
+        "Risotto with Green Peas",
+        "Grilled Vegetables"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Cachapa",
+        "Spicy Black Beans",
+        "Fresh Pico De Gallo",
+        "Guacamole",
+        "Crispy Veggie Patty on White Bun",
+        "Roasted Cauliflower",
+        "Orange and Herb Quinoa"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Grilled Halal Honey Lime Chicken",
+        "Mexican Rice",
+        "Black Bean Salsa"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Penne Pasta",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Caramelized Onion & Chicken Pizza",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Homestyle Chicken Tenders",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Maple Pumpkin Cheesecake",
+        "Golden Cake with Chocolate Frosting"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:49.389Z"
+    }
+   ]
+  },
+  "2026-11-14": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Lasagna Rollups with Meat Sauce",
+        "Garlic Bread"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Blackened Catfish",
+        "Oven Roasted Garlic Potatoes",
+        "Kale Saute",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "BBQ Tempeh",
+        "Oven Roasted Garlic Potatoes",
+        "Kale Saute",
+        "Lemon Wedges"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Santa Fe Chicken Tenderloin",
+        "Long Grain Rice",
+        "Zucchini and Summer Squash"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Homestyle Chicken Tenders",
+        "Sweet Potato Quinoa Burger",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Red Velvet Cake",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:50.932Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "UNIT CHOICE MEAL",
+        "Navy Bean Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Baked Boneless Ham",
+        "Baked Sweet Potatoes",
+        "Roasted Cauliflower"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Eggplant Zaalouk",
+        "Toasted Almond Couscous",
+        "Marinated Shaved Brussel Sprouts",
+        "Vegetable Cannelloni",
+        "Panzanella Salad",
+        "Triple Onion Cheese Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Herb Baked Chicken",
+        "Sun-Dried Tomato Cream Sauce",
+        "Parmesan & Green Onion Potatoes",
+        "Herbed Provence Green Beans"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza",
+        "Supreme Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blend Burger w/ American",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Maize and Blue Cookies",
+        "Chocolate Coconut Cream Pie",
+        "Red Velvet Cake"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:50.931Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Texas BBQ Ribs",
+        "Rotisserie Roasted Gold Potatoes",
+        "Roasted Brussels Sprouts"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Blackened Tofu",
+        "Long Grain Rice",
+        "Vegetable Creole",
+        "Sweet Potato Quinoa Burger on White Bun",
+        "UNIT CHOICE MEAL"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Garlic Peppercorn Chicken Breast",
+        "Wild Rice Blend",
+        "Winter Vegetable Blend"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Gemelli Pasta",
+        "Creamy Pesto Sauce",
+        "Marinara Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Criss Cross Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Red Velvet Cake",
+        "Chocolate Coconut Cream Pie"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:51.016Z"
+    }
+   ]
+  },
+  "2026-11-15": {
+   "halls": [
+    {
+     "id": "mosher-jordan",
+     "name": "Mosher Jordan",
+     "stations": [
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Tortellini w/ Red Pepper Cream Sauce",
+        "Parsley"
+       ]
+      },
+      {
+       "station": "World Palate Maize",
+       "items": [
+        "Chicken Curry",
+        "Garlic Naan Bread",
+        "Basmati Rice"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Vegetable Curry",
+        "Basmati Rice"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Herb Baked Chicken",
+        "Seasoned Roasted Potatoes",
+        "Roasted Broccoli"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza",
+        "Cheese Bread"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "Kings Hawaiian Grill",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Beef & Mushroom Blended Burger w/ Cheese",
+        "Mojo Grilled Chicken Sandwich",
+        "Black Bean Burger w/ King's Hawaiian Bun",
+        "French Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Cherry Pie",
+        "Chocolate Chunk Cookies"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:52.549Z"
+    },
+    {
+     "id": "east-quad",
+     "name": "East Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "UNIT CHOICE MEAL",
+        "Vegetable Noodle Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Taiwanese Style Three Cup Chicken",
+        "Brown Rice",
+        "Hunan Vegetables Blend",
+        "Chopped Green Onions"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "White Bean & Potato Hash",
+        "Avocado Wedge",
+        "Provolone Crispy Veggie Patty Sandwich",
+        "Potato Chips",
+        "Blanco Flatbread Pizza"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Halal Sweet Moroccan Beef",
+        "Yukon Gold Potatoes",
+        "Roasted Green Beans"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Cheese Bread",
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Pub Style Fish",
+        "Seasoned Curly Fries"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Cherry Pie",
+        "Vegan Ginger Molasses Cookie Bars"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:52.570Z"
+    },
+    {
+     "id": "south-quad",
+     "name": "South Quad",
+     "stations": [
+      {
+       "station": "Soup",
+       "items": [
+        "Nacho Corn Mexicali Soup"
+       ]
+      },
+      {
+       "station": "Signature Maize",
+       "items": [
+        "Pulled Sriracha Chicken",
+        "Hamburger Buns",
+        "Creamy Coleslaw Salad",
+        "Kettle Potato Chips"
+       ]
+      },
+      {
+       "station": "24 Carrots",
+       "items": [
+        "Taiwanese Three Cup Stir Fry with Tofu",
+        "Hunan Vegetables Blend",
+        "Brown Rice",
+        "Crispy Veggie Patty on White Bun",
+        "Carrot Coins",
+        "Tabbouleh Salad"
+       ]
+      },
+      {
+       "station": "Halal",
+       "items": [
+        "Lamb Vindaloo",
+        "Basmati Rice",
+        "Roasted Green Beans",
+        "Cilantro"
+       ]
+      },
+      {
+       "station": "Vita",
+       "items": [
+        "Bowtie Pasta",
+        "Alfredo Sauce",
+        "Cacciatore Sauce"
+       ]
+      },
+      {
+       "station": "Sabroso",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Pizziti",
+       "items": [
+        "Pepperoni Pizza",
+        "Cheese Pizza"
+       ]
+      },
+      {
+       "station": "Wild Fire Maize",
+       "items": [
+        "Beef and Mushroom Blended Burger",
+        "Turkey Burger on White Bun",
+        "Criss Cross Fries"
+       ]
+      },
+      {
+       "station": "Two Oceans",
+       "items": [
+        "No Service at this Time"
+       ]
+      },
+      {
+       "station": "Kosher",
+       "items": [
+        "Tuscan Bean Soup",
+        "Corned Beef",
+        "Garbanzo Beans with Stewed Tomato",
+        "Oven Browned Potatoes",
+        "Carrot Coins",
+        "Romaine Salad",
+        "Fresh Fruit Cup"
+       ]
+      },
+      {
+       "station": "Deli",
+       "items": [
+        "Sandwiches Made to Order"
+       ]
+      },
+      {
+       "station": "MBakery",
+       "items": [
+        "Chocolate Chunk Cookies",
+        "Oatmeal Raisin Cookies",
+        "Cherry Pie",
+        "Vegan Ginger Molasses Cookie Bars"
+       ]
+      }
+     ],
+     "error": null,
+     "checkedAt": "2026-10-26T00:09:52.563Z"
+    }
+   ]
+  }
+ }
+}

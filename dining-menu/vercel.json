@@ -1,0 +1,8 @@
+{
+  "framework": null,
+  "functions": {
+    "api/menu.mjs": {
+      "maxDuration": 10
+    }
+  }
+}
