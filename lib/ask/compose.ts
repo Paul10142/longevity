@@ -1,5 +1,6 @@
 /**
- * Stage 4 — compose (design §5, §6.4). Opus 5.5 at low effort, streaming.
+ * Stage 4 — compose (design §5, §6.4). Opus 5.5 at low effort, streaming on the API
+ * and one piece through the local claude CLI when `LLM_BACKEND=claude-code` (design §5.1).
  *
  * One call. The composer is given the question and up to 150 numbered claims and
  * nothing else; the cited `[n]` set IS the evidence set (selection happens inside
@@ -7,7 +8,7 @@
  * never substance (docs/ask-the-library-design.md §4).
  */
 
-import { claudeStream, type ClaudeStreamResult } from '../llm'
+import { claudeCompletion, claudeStream, llmBackend, type ClaudeStreamResult } from '../llm'
 import { ASK_COMPOSE_MODEL, type Candidate } from './types'
 import { FOLLOW_UPS_TAG } from './parse'
 
@@ -80,8 +81,25 @@ export function buildUserPrompt(input: ComposeInput): string {
 
 export type ComposeResult = ClaudeStreamResult
 
-/** Stream the brief. `onText` receives the raw deltas (markers still in candidate numbering). */
+/**
+ * Write the brief. `onText` receives the raw text (markers still in candidate numbering).
+ *
+ * `LLM_BACKEND=api` (the live site) streams from the Anthropic API: many small deltas.
+ * `LLM_BACKEND=claude-code` (Paul's Mac) asks the local `claude` CLI, which cannot stream:
+ * the whole brief arrives as one piece, there are no token counts, and the API is never
+ * used as a fallback (`noFallback`), so a missing or signed-out CLI is an error, not a bill.
+ */
 export async function composeBrief(input: ComposeInput, onText: (delta: string) => void): Promise<ComposeResult> {
+  if (llmBackend() === 'claude-code') {
+    const text = await claudeCompletion(COMPOSER_SYSTEM, buildUserPrompt(input), {
+      model: ASK_COMPOSE_MODEL,
+      effort: 'low',
+      maxTokens: COMPOSE_MAX_TOKENS,
+      noFallback: true,
+    })
+    onText(text)
+    return { text, model: ASK_COMPOSE_MODEL, stopReason: null, inputTokens: 0, outputTokens: 0, fellBack: false, firstTokenMs: null }
+  }
   return claudeStream(COMPOSER_SYSTEM, buildUserPrompt(input), {
     model: ASK_COMPOSE_MODEL,
     effort: 'low',

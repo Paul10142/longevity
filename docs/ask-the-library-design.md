@@ -163,11 +163,47 @@ only lever, default `medium`, so pass `low` explicitly) and the server-side
 refusal fallback (`fallbacks: "default"`, beta header
 `server-side-fallback-2026-07-01`) so a safety-filter decline on a medical
 question re-runs on a fallback model instead of failing the physician's
-request. The `claude-code` backend is not used by the web app.
+request. The live site always runs on this API path; the `claude-code` backend
+is the at-home option in §5.1.
+
+### 5.1 Subscription mode: Ask on Paul's Claude plan (decided 2026-10-25)
+
+Paul's decision, in his words: "add a subscription-billed mode for Ask the
+Library when I run it on my Mac, and keep the API for the live site."
+
+- **One switch, the pipeline's own:** `LLM_BACKEND=claude-code` makes every
+  model call go through the local `claude` CLI, which bills his Claude
+  subscription. Unset (or `api`) uses the Anthropic API. Vercel has the variable
+  unset, so the live site stays on the API. At home he uncomments one line in
+  `.env.local` (`LLM_BACKEND=claude-code`) and runs `npm run dev`; commenting it
+  out again returns to the API.
+- **The whole path moves, not just the composer.** Expansion and the audit
+  (Haiku 5.5) and the composer (Opus 5.5, low effort) all use the CLI's existing
+  non-streaming call (`claudeJson` / `claudeCompletion` in `lib/llm.ts`, the same
+  bare, repo-free CLI session the pipeline uses). `claudeStream` is not used.
+- **What the physician sees changes in one way only.** The CLI cannot stream,
+  so the brief appears all at once: events are `retrieval`, one `delta` with the
+  whole finished brief (markers already renumbered, follow-ups removed), then
+  `done`, the same shape a cached answer has (§6.7). The `/ask` screen already
+  renders a single delta. Time to first word equals total time.
+- **Recorded and priced honestly.** Migration 035 adds `ask_answers.backend`
+  (`api` or `claude-code`). A subscription answer is stored with
+  `backend = 'claude-code'`, `stage_stats.billing = 'subscription'`, cost $0
+  (`lib/ask/cost.ts`) and null token counts (the CLI reports none).
+  Subscription answers also serve as cache hits for the live site (same model,
+  same prompt, same trust contract).
+- **Never a silent fallback to the API.** Ask passes `noFallback` on every call,
+  so `LLM_FALLBACK_TO_API=1` cannot rescue it. A missing `claude` command or a
+  signed-out one raises `CliUnavailableError`, and the screen says what to fix
+  ("Subscription mode is on (LLM_BACKEND=claude-code) but the claude command is
+  not signed in …"). A full subscription window or five CLI failures in a row
+  (the pipeline's circuit breaker) also end the question with a plain message.
+- **Needs the CLI on that machine only.** The deployed site never sets the
+  variable, so nothing here changes what production needs.
 
 ## 6. Design details
 
-### 6.1 Migration 033 — `search_claims` and the answer tables
+### 6.1 Migration 034 — `search_claims` and the answer tables
 
 ```sql
 -- Question-time retrieval: deeper HNSW search than dedup needs.
@@ -397,6 +433,18 @@ minimum, 21.9 s median, 40.7 s maximum**; first word 6.6 s / 10.2 s / 30.7 s.
   among the candidates in all 15 runs; the first two are the expected result
   of consolidation having already merged near-identical claims.
 
+**Subscription mode (§5.1), one real question, 2026-10-26:** "What is the
+evidence that VO2 max predicts mortality, and how should I train to improve
+it?" through `LLM_BACKEND=claude-code` (`scripts/measureAsk.ts --claude-code`),
+same live corpus and a live extraction run. 150 candidates (union 395), 32
+cited, 517 words, groundedness 0.89. Stages (s): embed 5.8, expand 3.7,
+retrieve 4.5, provenance 0.7, compose 17.4, audit 15.2. **Total and first word
+32.4 s** (the brief lands all at once), cost **$0**. Against the API runs of
+the same question (median total 21.9 s, first word 9-11 s, $0.16) it is about
+10 s slower in total and the physician waits the full time before seeing
+anything; expansion costs 3.7 s instead of 1.0 s and the audit 15 s instead of
+8 s (after the response, so not waited for). One question, not a distribution.
+
 ## 8. Measurement (principle 6: build the ruler first)
 
 An eval set `eval/ask-questions.json` of 30 questions physicians would ask
@@ -420,7 +468,7 @@ Re-run after any change to the prompt, thresholds or models (as
 
 **Phase 0 — plumbing and a usable MVP (two Sonnet build windows, parallel).**
 
-- Window A, backend: migration 033; `lib/ask/*`; `claudeStream` in
+- Window A, backend: migration 034 (035 adds the backend column); `lib/ask/*`; `claudeStream` in
   `lib/llm.ts`; `/api/ask` stream, `/api/ask/[id]`, feedback; `speaker` +
   `date` added to the claim-members payload; unit tests for union/dedupe,
   the evidence floor, `parseBrief`, marker resolution (fake candidates, no

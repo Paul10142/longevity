@@ -1,7 +1,7 @@
 /**
  * Measure the Ask the Library question path on real questions (design §7).
  *
- *   npx tsx --env-file=.env.local scripts/measureAsk.ts [--refresh] ["a question" ...]
+ *   npx tsx --env-file=.env.local scripts/measureAsk.ts [--refresh] [--claude-code] ["a question" ...]
  *
  * Runs `ask()` in-process (no HTTP), times the first streamed word and the full
  * answer from the caller's side, waits for the async audit, then reads each
@@ -10,9 +10,12 @@
  * `ask_answers` with asked_by = 'measure' (they ARE real answers and will serve
  * as cache hits, hence --refresh to force a fresh run).
  *
- * Bills the API (about $0.10 per question): the API backend is forced.
+ * Bills the API (about $0.15 per question) unless `--claude-code` is given: then
+ * the whole path runs through the local `claude` CLI on the subscription ($0, one
+ * delta at the end instead of a stream; design §5.1). Never read from the
+ * environment, so a stray LLM_BACKEND cannot change what a measurement bills.
  */
-process.env.LLM_BACKEND = 'api'
+process.env.LLM_BACKEND = process.argv.includes('--claude-code') ? 'claude-code' : 'api'
 
 import { ask } from '../lib/ask/ask'
 import { loadAnswer } from '../lib/ask/store'

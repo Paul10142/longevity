@@ -8,7 +8,7 @@
  * question: retrieval falls back to the question as typed.
  */
 
-import { claudeJson } from '../llm'
+import { CliUnavailableError, claudeJson } from '../llm'
 import { ASK_EXPAND_MODEL } from './types'
 
 /** The question itself plus up to three rewrites: at most four searches. */
@@ -46,9 +46,11 @@ export function normalizePhrasings(question: string, raw: unknown): string[] {
 
 export async function expandQuestion(question: string): Promise<string[]> {
   try {
-    const res = await claudeJson<{ phrasings?: unknown }>(SYSTEM, question, 500, ASK_EXPAND_MODEL, 'low')
+    const res = await claudeJson<{ phrasings?: unknown }>(SYSTEM, question, 500, ASK_EXPAND_MODEL, 'low', { noFallback: true })
     return normalizePhrasings(question, res.phrasings)
   } catch (e) {
+    // A missing or signed-out claude CLI is not a bad expansion: stop now with the real reason.
+    if (e instanceof CliUnavailableError) throw e
     console.warn(`[ask] expansion failed, searching the question as typed: ${e instanceof Error ? e.message : String(e)}`)
     return normalizePhrasings(question, [])
   }

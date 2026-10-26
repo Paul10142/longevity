@@ -7,6 +7,9 @@ export const ASK_EXPAND_MODEL = 'claude-haiku-5-5'
 export const ASK_COMPOSE_MODEL = 'claude-opus-5-5'
 export const ASK_AUDIT_MODEL = 'claude-haiku-5-5'
 
+/** Which backend answered (`LLM_BACKEND`, lib/llm.ts): the Anthropic API, or the local claude CLI on a subscription. */
+export type AskBackend = 'api' | 'claude-code'
+
 /** One claim retrieved for a question. */
 export type Candidate = {
   id: string

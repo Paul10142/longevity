@@ -3,12 +3,12 @@
  *
  * `ask_answers` is three things at once: the log the admin reads, the cache that
  * keeps a repeated question at $0, and (its `not_covered` rows) the content
- * roadmap. Service-role only; RLS on with no policies (migration 033).
+ * roadmap. Service-role only; RLS on with no policies (migrations 034 and 035).
  */
 
 import { supabaseAdmin } from '../supabaseServer'
 import type { Sentence } from '../blocks'
-import type { AskStatus, CachedInfo, RelatedTopic, StoredCandidate } from './types'
+import type { AskBackend, AskStatus, CachedInfo, RelatedTopic, StoredCandidate } from './types'
 
 /** A stored answer is stale once the corpus has grown by more than this share (design §6.6). */
 export const STALE_GROWTH = 0.1
@@ -44,6 +44,8 @@ export type AnswerRow = {
   dangling_markers: number
   model: string | null
   effort: string | null
+  /** Which backend wrote it: 'api' or 'claude-code' (the developer's subscription). */
+  backend: AskBackend
   latency_ms: number | null
   first_token_ms: number | null
   input_tokens: number | null
@@ -58,7 +60,7 @@ export type AnswerRow = {
 
 const ANSWER_COLUMNS =
   'id, question, question_norm, status, candidates, cited_claim_ids, body_markdown, sentences, follow_ups, related_topics, ' +
-  'thin, dangling_markers, model, effort, latency_ms, first_token_ms, input_tokens, output_tokens, stage_stats, ' +
+  'thin, dangling_markers, model, effort, backend, latency_ms, first_token_ms, input_tokens, output_tokens, stage_stats, ' +
   'groundedness_score, corpus_claims, asked_by, error, created_at'
 
 export type NewAnswer = Omit<AnswerRow, 'id' | 'created_at' | 'groundedness_score'> & {

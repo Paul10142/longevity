@@ -53,7 +53,7 @@ export async function auditSentences(sentences: Sentence[], statementById: Map<s
       // Low effort and room to spare: Haiku 5.5 thinks adaptively, and at 2000 tokens
       // the thinking alone could use the whole budget and leave no JSON (4 of 5
       // measured audits came back "Empty Claude response", 2026-10-25).
-      claudeJson<{ ungrounded?: unknown }>(AUDIT_SYSTEM, buildAuditItems(sentences, statementById), AUDIT_MAX_TOKENS, ASK_AUDIT_MODEL, 'low')
+      claudeJson<{ ungrounded?: unknown }>(AUDIT_SYSTEM, buildAuditItems(sentences, statementById), AUDIT_MAX_TOKENS, ASK_AUDIT_MODEL, 'low', { noFallback: true })
     )
     const u = usage.get(ASK_AUDIT_MODEL)
     return {
