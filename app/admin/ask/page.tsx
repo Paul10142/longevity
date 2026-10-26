@@ -41,7 +41,7 @@ async function loadRows(status: string): Promise<{ rows: AskAnswerRow[] } | { pr
   if (res.error?.code === "42703") res = await fetchRows(COLUMNS)
   if (res.error) {
     if (res.error.code && NOT_SET_UP.has(res.error.code)) {
-      return { problem: "The answers table does not exist yet. Apply migration 033 to turn this log on." }
+      return { problem: "The answers table does not exist yet. Apply the Ask the Library migration to turn this log on." }
     }
     return { problem: res.error.message }
   }
