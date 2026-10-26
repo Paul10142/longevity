@@ -8,6 +8,7 @@
  */
 
 import { supabaseAdmin } from './supabaseServer'
+import { withNetworkRetry } from './networkRetry'
 import type { Job, JobType } from './types'
 
 function db() {
@@ -83,13 +84,15 @@ export async function heartbeatJob(
   jobId: string,
   progress?: Record<string, unknown>
 ): Promise<void> {
-  const { error } = await db()
-    .from('jobs')
-    .update({
-      locked_at: new Date().toISOString(),
-      ...(progress ? { progress } : {}),
-    })
-    .eq('id', jobId)
+  const { error } = await withNetworkRetry('heartbeat job', () =>
+    db()
+      .from('jobs')
+      .update({
+        locked_at: new Date().toISOString(),
+        ...(progress ? { progress } : {}),
+      })
+      .eq('id', jobId)
+  )
   if (error) throw new Error(`Failed to heartbeat job ${jobId}: ${error.message}`)
 }
 
@@ -101,6 +104,8 @@ export async function heartbeatJob(
  * deferred or completed is left alone.
  */
 export async function touchJob(jobId: string): Promise<void> {
+  // No withNetworkRetry here: startJobHeartbeat already tries again every interval, and a retrying
+  // touch would stack up behind the timer during a drop.
   const { error } = await db()
     .from('jobs')
     .update({ locked_at: new Date().toISOString() })
@@ -137,18 +142,20 @@ export function startJobHeartbeat(
  * checkpoint. Used when a handler yields mid-work to stay under its time budget.
  */
 export async function requeueJob(jobId: string, progress?: Record<string, unknown>): Promise<void> {
-  const { error } = await db()
-    .from('jobs')
-    .update({
-      status: 'queued',
-      locked_at: null,
-      run_after: new Date().toISOString(),
-      // A budget yield is healthy progress, not a failed attempt — reset the
-      // retry counter so only genuine errors count toward max_attempts.
-      attempts: 0,
-      ...(progress ? { progress } : {}),
-    })
-    .eq('id', jobId)
+  const { error } = await withNetworkRetry('requeue job', () =>
+    db()
+      .from('jobs')
+      .update({
+        status: 'queued',
+        locked_at: null,
+        run_after: new Date().toISOString(),
+        // A budget yield is healthy progress, not a failed attempt — reset the
+        // retry counter so only genuine errors count toward max_attempts.
+        attempts: 0,
+        ...(progress ? { progress } : {}),
+      })
+      .eq('id', jobId)
+  )
   if (error) throw new Error(`Failed to requeue job ${jobId}: ${error.message}`)
 }
 
@@ -163,29 +170,33 @@ export async function requeueJob(jobId: string, progress?: Record<string, unknow
  * handler last wrote it, so the job resumes where it stopped.
  */
 export async function deferJob(job: Job, resumeAt: Date, reason: string): Promise<void> {
-  const { error } = await db()
-    .from('jobs')
-    .update({
-      status: 'queued',
-      locked_at: null,
-      run_after: resumeAt.toISOString(),
-      attempts: Math.max(0, job.attempts - 1),
-      error: reason.substring(0, 2000),
-    })
-    .eq('id', job.id)
+  const { error } = await withNetworkRetry('defer job', () =>
+    db()
+      .from('jobs')
+      .update({
+        status: 'queued',
+        locked_at: null,
+        run_after: resumeAt.toISOString(),
+        attempts: Math.max(0, job.attempts - 1),
+        error: reason.substring(0, 2000),
+      })
+      .eq('id', job.id)
+  )
   if (error) throw new Error(`Failed to defer job ${job.id}: ${error.message}`)
 }
 
 export async function completeJob(jobId: string, progress?: Record<string, unknown>): Promise<void> {
-  const { error } = await db()
-    .from('jobs')
-    .update({
-      status: 'done',
-      finished_at: new Date().toISOString(),
-      error: null,
-      ...(progress ? { progress } : {}),
-    })
-    .eq('id', jobId)
+  const { error } = await withNetworkRetry('complete job', () =>
+    db()
+      .from('jobs')
+      .update({
+        status: 'done',
+        finished_at: new Date().toISOString(),
+        error: null,
+        ...(progress ? { progress } : {}),
+      })
+      .eq('id', jobId)
+  )
   if (error) throw new Error(`Failed to complete job ${jobId}: ${error.message}`)
 }
 
@@ -198,23 +209,25 @@ export async function failJob(job: Job, err: unknown): Promise<void> {
   const willRetry = job.attempts < job.max_attempts
   const backoffMs = Math.pow(2, job.attempts - 1) * 30_000
 
-  const { error } = await db()
-    .from('jobs')
-    .update(
-      willRetry
-        ? {
-            status: 'queued',
-            error: message.substring(0, 2000),
-            run_after: new Date(Date.now() + backoffMs).toISOString(),
-            locked_at: null,
-          }
-        : {
-            status: 'failed',
-            error: message.substring(0, 2000),
-            finished_at: new Date().toISOString(),
-          }
-    )
-    .eq('id', job.id)
+  const { error } = await withNetworkRetry('record job failure', () =>
+    db()
+      .from('jobs')
+      .update(
+        willRetry
+          ? {
+              status: 'queued',
+              error: message.substring(0, 2000),
+              run_after: new Date(Date.now() + backoffMs).toISOString(),
+              locked_at: null,
+            }
+          : {
+              status: 'failed',
+              error: message.substring(0, 2000),
+              finished_at: new Date().toISOString(),
+            }
+      )
+      .eq('id', job.id)
+  )
   if (error) throw new Error(`Failed to record failure for job ${job.id}: ${error.message}`)
 }
 
