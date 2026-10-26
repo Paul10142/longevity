@@ -24,6 +24,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
+import { AsyncLocalStorage } from 'node:async_hooks'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -163,6 +164,32 @@ const CLI_REFUSAL = /safeguards flagged this message|violates? our Usage Policy/
 type Backend = 'api' | 'claude-code'
 function backend(): Backend {
   return process.env.LLM_BACKEND === 'claude-code' ? 'claude-code' : 'api'
+}
+
+/**
+ * Per-scope token accounting for the API backend. `trackLlmUsage(fn)` runs `fn`
+ * and returns, alongside its result, the tokens every API call made inside it
+ * spent, by model. Scoped with AsyncLocalStorage so concurrent requests (the web
+ * app answers several questions at once) never see each other's calls. Outside a
+ * scope nothing is recorded and nothing changes.
+ */
+export type ModelUsage = { calls: number; inputTokens: number; outputTokens: number }
+const usageScope = new AsyncLocalStorage<Map<string, ModelUsage>>()
+
+function recordUsage(model: string, usage: { input_tokens?: number; output_tokens?: number } | undefined): void {
+  const scope = usageScope.getStore()
+  if (!scope || !usage) return
+  const u = scope.get(model) ?? { calls: 0, inputTokens: 0, outputTokens: 0 }
+  u.calls++
+  u.inputTokens += usage.input_tokens ?? 0
+  u.outputTokens += usage.output_tokens ?? 0
+  scope.set(model, u)
+}
+
+export async function trackLlmUsage<T>(fn: () => Promise<T>): Promise<{ result: T; usage: Map<string, ModelUsage> }> {
+  const scope = new Map<string, ModelUsage>()
+  const result = await usageScope.run(scope, fn)
+  return { result, usage: scope }
 }
 
 let client: Anthropic | null = null
@@ -408,6 +435,7 @@ async function apiText(
   }
 
   const msg = (await getAnthropic().messages.create(params as never)) as Anthropic.Message
+  recordUsage(model, msg.usage)
   if (msg.stop_reason === 'refusal') {
     const d = msg.stop_details
     throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
@@ -433,6 +461,97 @@ export async function claudeJson<T>(
   const text = await claudeText(system, user, maxTokens, model, effort, opts.noThinking)
   if (!text.trim()) throw new Error(`Empty Claude response (${model})`)
   return JSON.parse(extractJson(text)) as T
+}
+
+export type ClaudeStreamOptions = {
+  model?: string
+  effort?: Effort
+  maxTokens?: number
+  /** Called with each text delta as it arrives. */
+  onText?: (delta: string) => void
+}
+
+export type ClaudeStreamResult = {
+  /** The text of the answer that was served (after a refusal fallback, only the fallback model's text). */
+  text: string
+  /** The model that produced it (differs from the requested one after a fallback). */
+  model: string
+  stopReason: string | null
+  inputTokens: number
+  outputTokens: number
+  /** The safety filter declined the requested model and the API re-ran the request on a fallback. */
+  fellBack: boolean
+  /** Milliseconds from the call to the first text delta; null if no text arrived. */
+  firstTokenMs: number | null
+}
+
+/**
+ * Stream a text answer from the Anthropic API (the web app's path: `Ask the
+ * Library`, docs/ask-the-library-design.md §5). Always the `api` backend — the
+ * `claude-code` CLI bills a developer subscription and cannot serve a request.
+ *
+ * Opus 5.5 cannot run without thinking, so effort is the only lever: pass it
+ * explicitly (the model's own default is `medium`). Thinking blocks are not
+ * forwarded; the first text delta therefore arrives after the thinking.
+ *
+ * `fallbacks: "default"` (beta `server-side-fallback-2026-07-01`) re-runs a
+ * request the safety filter declined on the model Anthropic recommends, inside
+ * the same call, so a legitimate medical question that trips the filter is not
+ * a failed request. The SDK's types predate the scalar form, hence the cast.
+ * A refusal that survives the whole chain throws ModelRefusalError.
+ */
+export async function claudeStream(
+  system: string,
+  user: string,
+  opts: ClaudeStreamOptions = {}
+): Promise<ClaudeStreamResult> {
+  const model = opts.model ?? CLAUDE_MODEL
+  const params: Record<string, unknown> = {
+    model,
+    max_tokens: opts.maxTokens ?? 4000,
+    system,
+    messages: [{ role: 'user', content: user }],
+    betas: ['server-side-fallback-2026-07-01'],
+    fallbacks: 'default',
+  }
+  if (supportsAdaptiveThinking(model)) {
+    params.thinking = { type: 'adaptive' }
+    if (opts.effort) params.output_config = { effort: opts.effort }
+  }
+
+  const startedAt = Date.now()
+  let firstTokenMs: number | null = null
+  let text = ''
+  let fellBack = false
+
+  const stream = getAnthropic().beta.messages.stream(params as never)
+  for await (const ev of stream) {
+    if (ev.type === 'content_block_start' && (ev.content_block as { type: string }).type === 'fallback') {
+      // The requested model declined part-way; what follows is the fallback model's answer.
+      fellBack = true
+      text = ''
+    } else if (ev.type === 'content_block_delta' && ev.delta.type === 'text_delta') {
+      if (firstTokenMs === null) firstTokenMs = Date.now() - startedAt
+      text += ev.delta.text
+      opts.onText?.(ev.delta.text)
+    }
+  }
+  const final = await stream.finalMessage()
+  recordUsage(final.model, final.usage)
+
+  if (final.stop_reason === 'refusal') {
+    const d = final.stop_details
+    throw new ModelRefusalError(model, [d?.category, d?.explanation].filter(Boolean).join(': ') || 'refusal')
+  }
+  return {
+    text,
+    model: final.model,
+    stopReason: final.stop_reason,
+    inputTokens: final.usage.input_tokens,
+    outputTokens: final.usage.output_tokens,
+    fellBack,
+    firstTokenMs,
+  }
 }
 
 /**
