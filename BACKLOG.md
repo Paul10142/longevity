@@ -15,6 +15,15 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **❓ 2026-10-25 — "ASK THE LIBRARY" DESIGNED, NOT BUILT (branch `claude/query-knowledge-synthesis-1dcab3`).** Paul pulled
+> Physician Q&A (P3.5, "Phase 8, last in the sequence") forward: a physician asks a question, the system retrieves every
+> relevant claim, writes a cited brief, links the episodes. Full plan, measured corpus facts, phases and the four decisions
+> waiting on Paul: [`docs/ask-the-library-design.md`](docs/ask-the-library-design.md). Two findings that matter beyond this
+> feature: **41,090 of 41,449 active claims are untagged**, so topic articles reach ~1% of the corpus and vector search is the
+> only door to the rest; and **`match_claims` returns at most ~34 rows** no matter what is asked (`hnsw.ef_search` = 40), so
+> the plan adds a deeper `search_claims` RPC (migration 033). Nothing is built; no PR. Build starts in Sonnet windows after
+> Paul answers §10.
+
 > **🔁 2026-10-16 — CAPTION REPLACEMENT IS NOW RESUMABLE (branch `claude/modest-easley-f95cb0`).** `retireSourceClaims.ts --resume <backup.json> --apply`
 > re-applies steps 1–6 from the backup's own plan, idempotently (repeat = zero writes; re-derive checkpointed per claim in a `.progress.json`
 > sidecar); a plain `--source`/`--twins` re-run now refuses (exit 2) when an earlier attempt for that source was cut short and prints the exact
@@ -2085,6 +2094,11 @@ almost everything on missing data.
 RAG over claims + verified references. Last in the sequence deliberately: it
 inherits every trust property of the layers under it, so it is only as
 trustworthy as the groundedness gate and reference resolution make it.
+
+> **2026-10-25: pulled forward by Paul and designed as "Ask the Library"** —
+> see [`docs/ask-the-library-design.md`](docs/ask-the-library-design.md). The
+> trust argument above still holds and is why the design carries its own
+> groundedness audit, marker rule and eval gates (§4, §8 there).
 
 ---
 

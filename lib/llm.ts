@@ -24,6 +24,7 @@
 
 import Anthropic from '@anthropic-ai/sdk'
 import { execFile } from 'node:child_process'
+import { createLimiter, envLimit } from './concurrency'
 import { existsSync, mkdirSync, renameSync, writeFileSync } from 'node:fs'
 import { homedir, tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -46,11 +47,21 @@ import {
  */
 export const cliStats = { calls: 0, failures: 0, wallMs: 0, lastError: '', lastErrorAt: '' }
 
+/**
+ * Process-wide ceiling on `claude -p` children alive at once (CLI_MAX_INFLIGHT, default 16 = the
+ * old EXTRACT_CONCURRENCY of one job). Extraction fans one job out to 16 calls; with several
+ * workers in one process (scripts/extractDeepgram.ts --workers N) this cap, not the job count, is
+ * what bounds local CPU/RAM and the burst against the plan's rate limits. Calls beyond it wait for
+ * a slot BEFORE the circuit-breaker and usage-gate checks run, so a call that waited does not
+ * spawn into a window that closed while it queued.
+ */
+export const cliLimiter = createLimiter(envLimit('CLI_MAX_INFLIGHT', 16))
+
 export function formatCliStats(): string {
   const { calls, failures, wallMs, lastError, lastErrorAt } = cliStats
   const mean = calls ? (wallMs / calls / 1000).toFixed(1) : '0.0'
   const tail = failures ? ` — last failure ${lastErrorAt}: ${lastError.slice(0, 120)}` : ''
-  return `cli: ${calls} call(s), ${failures} failed, mean ${mean}s${tail}`
+  return `cli: ${calls} call(s), ${failures} failed, mean ${mean}s, peak ${cliLimiter.peak}/${cliLimiter.max} in flight${tail}`
 }
 
 /**
@@ -207,7 +218,22 @@ function extractJson(s: string): string {
  *  because the CLI now gets no repo context at all. That is the correct posture
  *  for a bulk data-processing call.
  */
-function claudeCodeText(
+async function claudeCodeText(
+  system: string,
+  user: string,
+  model: string,
+  effort?: Effort,
+  noThinking = false
+): Promise<string> {
+  const release = await cliLimiter.acquire()
+  try {
+    return await spawnClaudeCli(system, user, model, effort, noThinking)
+  } finally {
+    release()
+  }
+}
+
+function spawnClaudeCli(
   system: string,
   user: string,
   model: string,

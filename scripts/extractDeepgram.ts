@@ -55,6 +55,10 @@
  * One extract-only run and one consolidate-only run may hold the corpus together (lane
  * locks, lib/writerLock.ts); neither may run beside a maintenance writer or a second run of
  * its own lane. Lane modes need migration 032.
+ *
+ * Workers (2026-10-25, docs/EXTRACTION_RUNBOOK.md §10-11): `--extract-only --workers N` works on N
+ * extract_source jobs at once INSIDE this one process, so the lane lock, the circuit breaker, the
+ * usage gate and the Claude-call cap (CLI_MAX_INFLIGHT) stay process-wide. Default 1 = the old loop.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -78,9 +82,12 @@ async function main() {
   const deadline = Date.now() + hours * 3_600_000
   const runStartedAt = new Date().toISOString()
 
-  const { parseLane, laneJobTypes, laneHealTypes, laneEnqueuesExtractions, laneLabel, consolidateShouldWait } =
-    await import('../lib/pipelineLanes')
+  const {
+    parseLane, laneJobTypes, laneHealTypes, laneEnqueuesExtractions, laneLabel, consolidateShouldWait,
+    parseWorkers, freshBatchSize, WORKERS_WARN_ABOVE,
+  } = await import('../lib/pipelineLanes')
   const lane = parseLane(args)
+  const workers = parseWorkers(args, lane)
   if (lane !== 'all' && process.env.ALLOW_MEMBERED_REEXTRACT === '1') {
     // That override makes extraction run a library-wide claim reconcile, which is
     // unsafe beside another lane. Do it as a plain (no flag) run instead.
@@ -98,6 +105,7 @@ async function main() {
   else acquireLaneLock(lane, laneLabel(lane))
   const { enqueueJob } = await import('../lib/jobs')
   const { runWorkerTick } = await import('../lib/worker')
+  const { drainPool } = await import('../lib/drainPool')
   const { supabaseAdmin } = await import('../lib/supabaseServer')
   const { selectAllPaged } = await import('../lib/pagination')
   const { formatCliStats, cliCircuit } = await import('../lib/llm')
@@ -110,8 +118,15 @@ async function main() {
 
   console.log(
     `[${now()}] deepgram extraction${lane === 'all' ? '' : ` — ${lane.toUpperCase()}-ONLY lane`} — deadline in ${hours}h` +
-      (laneEnqueuesExtractions(lane) ? `, batch ${batch}` : '')
+      (laneEnqueuesExtractions(lane) ? `, batch ${batch}` : '') +
+      (workers > 1 ? `, ${workers} workers` : '')
   )
+  if (workers > WORKERS_WARN_ABOVE) {
+    console.log(
+      `[${now()}] warning: ${workers} workers. The database's API pool is about 7 connections and timed out on 2026-10-20 ` +
+        `with one job at a time; watch the log for "fetch failed" / timeout errors and drop to ${WORKERS_WARN_ABOVE} if they appear.`
+    )
+  }
 
   /** Sources that already carry insights — never re-enqueue (would double them). */
   async function extractedIds(): Promise<Set<string>> {
@@ -295,7 +310,7 @@ async function main() {
       // than stacking more jobs that will fail the same way.
       const stalled = healed > 0 && extracted.size === lastExtracted
       lastExtracted = extracted.size
-      const fresh = stalled ? [] : remaining.slice(0, batch)
+      const fresh = stalled ? [] : remaining.slice(0, freshBatchSize(batch, workers))
       if (stalled) console.log(`[${now()}] stalled — pausing fresh enqueues this round`)
 
       for (const id of fresh) await enqueueJob('extract_source', { source_id: id })
@@ -320,22 +335,31 @@ async function main() {
       // `processed` counts only jobs that SUCCEEDED or yielded. A job that threw
       // is not progress: a round of nothing but failures sleeps (below) instead
       // of spinning, which is how one poison job used to keep rounds "busy".
-      let processed = 0
-      let failedJobs = 0
-      let limitHit: UsageLimitErr | undefined
-      for (;;) {
-        const tick = await runWorkerTick(15 * 60_000, laneTypes ? { jobTypes: laneTypes } : {})
-        processed += tick.processed - tick.failed
-        failedJobs += tick.failed
+      // With several workers, a worker that finds the queue empty pulls the next pending source
+      // (in the same newest-first order) instead of waiting for the slowest job of a fixed batch.
+      let nextFeed = fresh.length
+      const feed =
+        workers > 1 && !stalled
+          ? async () => {
+              if (nextFeed >= remaining.length) return false
+              await enqueueJob('extract_source', { source_id: remaining[nextFeed++] })
+              return true
+            }
+          : undefined
+      const drained = await drainPool({
+        workers,
+        // A tick for the lane's job types only; `all` claims anything, as before.
+        tick: () => runWorkerTick(15 * 60_000, laneTypes ? { jobTypes: laneTypes } : {}),
+        feed,
+        pastDeadline: () => Date.now() >= deadline,
         // Also read the breaker itself: a halt swallowed inside a handler never reaches the tick.
-        halted = tick.halt ?? cliCircuit.halted
-        if (halted) break
-        if (tick.usageLimit) {
-          limitHit = tick.usageLimit
-          break
-        }
-        if (tick.processed === 0 || Date.now() >= deadline) break
-      }
+        haltedNow: () => cliCircuit.halted,
+      })
+      const processed = drained.processed
+      const failedJobs = drained.failed
+      const limitHit: UsageLimitErr | undefined = drained.limitHit ?? undefined
+      halted = drained.halted
+      if (workers > 1) console.log(`[${now()}] round ${round}: jobs per worker ${drained.perWorker.join(' / ')}`)
       console.log(
         `[${now()}] round ${round}: drained ${processed} job(s)` +
           `${failedJobs ? `, ${failedJobs} failed` : ''}; ${formatCliStats()}`

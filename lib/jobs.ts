@@ -94,6 +94,45 @@ export async function heartbeatJob(
 }
 
 /**
+ * Refresh only the lock time of a RUNNING job (never its checkpoint). claim_next_job() re-claims a
+ * running job whose locked_at is more than 10 minutes old, and a handler heartbeats its checkpoint
+ * only between batches; with several workers in one process a long batch would otherwise let a
+ * second worker take over a live job. Conditional on status so a job that has since been requeued,
+ * deferred or completed is left alone.
+ */
+export async function touchJob(jobId: string): Promise<void> {
+  const { error } = await db()
+    .from('jobs')
+    .update({ locked_at: new Date().toISOString() })
+    .eq('id', jobId)
+    .eq('status', 'running')
+  if (error) throw new Error(`Failed to touch job ${jobId}: ${error.message}`)
+}
+
+/**
+ * Keep a running job's lock fresh while its handler works, every `intervalMs` (default 60 s,
+ * JOB_HEARTBEAT_MS), for at most `maxMs` (default 60 min, JOB_HEARTBEAT_MAX_MS). The cap is the
+ * safety valve: a handler that is truly hung stops being refreshed and the job becomes reclaimable,
+ * as it always was. A failed refresh is logged and skipped (the next one tries again). Returns the stop function.
+ */
+export function startJobHeartbeat(
+  jobId: string,
+  intervalMs = Number(process.env.JOB_HEARTBEAT_MS) || 60_000,
+  maxMs = Number(process.env.JOB_HEARTBEAT_MAX_MS) || 60 * 60_000
+): () => void {
+  const begun = Date.now()
+  const timer = setInterval(() => {
+    if (Date.now() - begun > maxMs) {
+      clearInterval(timer)
+      return
+    }
+    touchJob(jobId).catch(e => console.warn(`[jobs] heartbeat skipped for ${jobId}: ${e instanceof Error ? e.message : e}`))
+  }, intervalMs)
+  timer.unref()
+  return () => clearInterval(timer)
+}
+
+/**
  * Return a job to the queue (same row) so the next claim resumes it from its
  * checkpoint. Used when a handler yields mid-work to stay under its time budget.
  */
