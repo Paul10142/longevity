@@ -25,9 +25,6 @@
     font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
     line-height: 1.45;
   }
-  header { background: var(--accent); color: #fff; padding: 16px; }
-  header h1 { margin: 0; font-size: 1.4rem; }
-  header p { margin: 4px 0 0; opacity: .85; font-size: .9rem; }
   main { max-width: 1200px; margin: 0 auto; padding: 16px; }
 
   .daybar {
@@ -86,8 +83,8 @@
     color: var(--accent); text-decoration: none; min-width: 0;
   }
   .colhead:hover .hall-name { text-decoration: underline; }
-  .hall-name { display: block; font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
-  .hall-hours { display: block; font-size: .85rem; color: var(--muted); font-weight: 400; }
+  .hall-name { font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
+  .hall-hours { font-size: .85rem; color: var(--muted); font-weight: 400; }
 
   .station-band {
     grid-column: 1 / -1; margin-top: 8px; font-size: .8rem; font-weight: 700;
@@ -102,11 +99,7 @@
   .none { color: var(--muted); font-style: italic; margin: 0; }
   .nosvc { color: var(--muted); }
 
-  /* Soup, Pizza, Deli and Bakery share one heading and their cards touch. */
-  .bottom { margin-top: 12px; }
-  .group-head {
-    margin: 0 0 8px; font-size: 1.1rem; color: var(--accent);
-  }
+  /* Soup, Pizza, Deli and Bakery share one gray heading and their cards touch. */
   .bottom-grid { row-gap: 0; }
 
   @media (max-width: 480px) {
@@ -118,11 +111,6 @@
 </style>
 </head>
 <body>
-<header>
-  <h1>Dinner Menus: Mosher Jordan, East Quad, South Quad</h1>
-  <p>Live from the University of Michigan dining site</p>
-</header>
-
 <main>
   <div class="daybar">
     <div class="nav">
@@ -255,11 +243,13 @@
     return cell;
   }
 
-  function appendRow(grid, row, halls) {
-    const band = document.createElement('div');
-    band.className = 'station-band';
-    band.textContent = row.name;
-    grid.appendChild(band);
+  function appendRow(grid, row, halls, showBand = true) {
+    if (showBand) {
+      const band = document.createElement('div');
+      band.className = 'station-band';
+      band.textContent = row.name;
+      grid.appendChild(band);
+    }
     halls.forEach(hall => {
       let cell;
       if (hall.error) {
@@ -302,7 +292,7 @@
       name.className = 'hall-name'; name.textContent = hall.name;
       const hours = document.createElement('span');
       hours.className = 'hall-hours'; hours.textContent = '(4:30-9 pm)';
-      a.append(name, hours);
+      a.append(name, ' ', hours);
       heads.appendChild(a);
 
       if (hall.error) {
@@ -323,16 +313,14 @@
     wrap.appendChild(middle);
 
     if (bottom.length) {
-      const group = document.createElement('div');
-      group.className = 'bottom';
-      const head = document.createElement('h2');
-      head.className = 'group-head';
-      head.textContent = 'Soup/Pizza/Deli/Bakery';
       const grid = document.createElement('div');
       grid.className = 'menu-grid bottom-grid';
-      bottom.forEach(row => appendRow(grid, row, data.halls));
-      group.append(head, grid);
-      wrap.appendChild(group);
+      const band = document.createElement('div');
+      band.className = 'station-band';
+      band.textContent = 'Soup/Pizza/Deli/Bakery';
+      grid.appendChild(band);
+      bottom.forEach(row => appendRow(grid, row, data.halls, false));
+      wrap.appendChild(grid);
     }
 
     if (rows.length === 0) {
