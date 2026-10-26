@@ -302,6 +302,10 @@ sources per claim, the `raw_insights` of A and of earlier sources through `claim
 | `match_claims` search while claims are being added | Read of a growing table | Same as inside a single run today. |
 | Vercel/web worker (`/api/worker/tick`), `pipeline work` | Claim any type | Not covered by the lock: do not use while a lane is live. |
 
+### The faithfulness judge is the last step of a run (2026-10-23)
+
+When the loop ends (plain run or `--consolidate-only`, never `--extract-only`, never after a halt), the run — still holding its lock — spawns `scripts/flagClaims.ts fidelity --sources <the sources it consolidated> --holdout 5`. It flags and hides the facts the judge rejects (`claims.status='flagged'`, reviewed at `/admin/flags`) and sets 5 random judged facts aside in `fidelity_holdout` (needs migration 033) so they appear at the end of `/admin/fidelity` for Paul to label. The `STOP` block is preceded by `judge: …` lines; a judge failure is logged and never fails the run or its sources. Env: `JUDGE_AFTER_RUN=0` off, `JUDGE_HOLDOUT_PER_RUN` (default 5), `JUDGE_AFTER_RUN_MAX_MIN` (default 180). Judging costs about 50 s per fact, so a 9-hour run adds up to 3 h at most; a cut-off judge is resumed with the command in its log line. The Batch 1 replace loop (`scratchpad/batch1/replace3.sh`, outside the repo) does not call it: run `extract_with_fidelity.sh`-style `flagClaims.ts fidelity --source <id>` after it.
+
 
 ## 10. Guards for running several workers in one process (2026-10-25)
 

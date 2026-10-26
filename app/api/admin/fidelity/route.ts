@@ -4,6 +4,7 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 import pairsJson from "@/eval/extraction-eval-pairs.json"
 import runJson from "@/eval/extraction-run.json"
 import { pendingRechecks } from "@/lib/fidelity"
+import { isHoldoutPairId } from "@/lib/judgeHoldout"
 
 export const dynamic = "force-dynamic"
 
@@ -25,6 +26,8 @@ const VALID_LABELS = ["FAITHFUL", "ADDED_DETAIL", "DROPPED_QUALIFIER", "UNRESOLV
  *        ?export=goldset returns the eval/extraction-goldset.json shape that
  *        `evalExtraction.ts score` reads (judge verdict fills unlabeled pairs,
  *        marked unconfirmed — same convention as the old static worksheet).
+ *        After the 40 static pairs come the hold-out pairs each overnight run sets aside
+ *        (table fidelity_holdout, migration 033). The goldset export stays the 40 only.
  * POST → { pair_id, label } upserts a ruling; { pair_id, label: null } clears it.
  *        Re-posting the SAME label is how a re-check is confirmed: it bumps
  *        updated_at past JUDGE_COMPARED_AT (lib/fidelity.ts).
@@ -63,6 +66,20 @@ export async function GET(request: NextRequest) {
     return NextResponse.json(goldset)
   }
 
+  // Hold-out pairs from overnight runs. A missing table (migration 033 not applied yet)
+  // just means none: the 40 original pairs must keep working.
+  type HoldoutRow = {
+    pair_id: string; source_title: string; statement: string; context_note: string | null
+    direct_quote: string | null; quote_verified: boolean; chunk_text: string
+    judge_verdict: string; judge_offending: string; judge_reasoning: string
+  }
+  const { data: holdoutData } = await supabaseAdmin
+    .from("fidelity_holdout")
+    .select("pair_id, source_title, statement, context_note, direct_quote, quote_verified, chunk_text, judge_verdict, judge_offending, judge_reasoning")
+    .order("created_at", { ascending: true })
+    .order("pair_id", { ascending: true })
+  const holdout = (holdoutData ?? []) as HoldoutRow[]
+
   const recheck = pendingRechecks(
     (labelRows ?? []) as LabelRow[],
     new Map([...runById].map(([id, r]) => [id, r.verdict]))
@@ -87,7 +104,22 @@ export async function GET(request: NextRequest) {
       needs_recheck: recheck.has(p.id),
     }
   })
-  return NextResponse.json({ items })
+  const holdoutItems = holdout.map((h, i) => ({
+    n: items.length + i + 1,
+    id: h.pair_id,
+    source: `New batch: ${h.source_title}`,
+    statement: h.statement,
+    context: h.context_note,
+    quote: h.direct_quote,
+    quote_verified: h.quote_verified,
+    chunk: h.chunk_text,
+    judge_verdict: h.judge_verdict,
+    judge_offending: h.judge_offending,
+    judge_reasoning: h.judge_reasoning,
+    label: labelById.get(h.pair_id)?.label ?? null,
+    needs_recheck: false,
+  }))
+  return NextResponse.json({ items: [...items, ...holdoutItems] })
 }
 
 export async function POST(request: NextRequest) {
@@ -95,7 +127,12 @@ export async function POST(request: NextRequest) {
 
   const body = (await request.json()) as { pair_id?: string; label?: string | null }
   const pairId = body.pair_id
-  if (!pairId || !(pairsJson as Pair[]).some(p => p.id === pairId)) {
+  let known = !!pairId && (pairsJson as Pair[]).some(p => p.id === pairId)
+  if (!known && pairId && isHoldoutPairId(pairId)) {
+    const { data } = await supabaseAdmin.from("fidelity_holdout").select("pair_id").eq("pair_id", pairId).maybeSingle()
+    known = !!data
+  }
+  if (!pairId || !known) {
     return NextResponse.json({ error: "Unknown pair_id" }, { status: 400 })
   }
 

@@ -223,7 +223,12 @@ async function report(): Promise<void> {
  * raised flag sets the claim to `flagged`, hiding it from articles until it is
  * ruled on at /admin/flags. FIDELITY_SHADOW_MODE=1 records flags without hiding.
  */
-async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?: string): Promise<void> {
+async function runFidelity(
+  limit: number | undefined,
+  dryRun: boolean,
+  sourceIds: string[] = [],
+  holdout = 0
+): Promise<void> {
   const db = await loadDb()
   const { selectAllPaged } = await import('../lib/pagination')
   const { judgeFidelity, isRealFidelity, isViolation } = await import('../lib/extractionFidelity')
@@ -238,18 +243,23 @@ async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?
   // per member: a claim's members are near-paraphrases of one idea, so the seed
   // is a fair proxy for whether extraction invented substance.
   let claims: { id: string }[]
-  if (sourceId) {
-    // Claims that have at least one member insight from this source.
-    const memberClaims = await selectAllPaged<{ claim_id: string }>(
-      (from, to) => db
-        .from('claim_members')
-        .select('claim_id, raw_insights!inner(source_id)')
-        .eq('raw_insights.source_id', sourceId)
-        .order('claim_id', { ascending: true })
-        .range(from, to)
-    )
-    const ids = Array.from(new Set(memberClaims.map(m => m.claim_id)))
-    claims = ids.map(id => ({ id }))
+  if (sourceIds.length) {
+    // Claims that have at least one member insight from these sources (one per
+    // source for the standing flow; a whole run's sources for the overnight
+    // last step, which passes them all so the hold-out is drawn across the run).
+    const ids = new Set<string>()
+    for (const sid of sourceIds) {
+      const memberClaims = await selectAllPaged<{ claim_id: string }>(
+        (from, to) => db
+          .from('claim_members')
+          .select('claim_id, raw_insights!inner(source_id)')
+          .eq('raw_insights.source_id', sid)
+          .order('claim_id', { ascending: true })
+          .range(from, to)
+      )
+      for (const m of memberClaims) ids.add(m.claim_id)
+    }
+    claims = Array.from(ids).map(id => ({ id }))
   } else {
     claims = await selectAllPaged<{ id: string }>(
       (from, to) => db.from('claims').select('id').eq('status', 'active').order('created_at', { ascending: true }).range(from, to)
@@ -265,17 +275,23 @@ async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?
   let todo = claims.filter(c => !flagged.has(c.id))
   const outsideLimit = limit && todo.length > limit ? todo.length - limit : 0
   if (limit) todo = todo.slice(0, limit)
-  console.log(`extraction_fidelity: judging ${todo.length} claim(s)${sourceId ? ` from source ${sourceId.slice(0, 8)}` : ''}${outsideLimit ? ` (${outsideLimit} more beyond --limit)` : ''}…`)
+  console.log(`extraction_fidelity: judging ${todo.length} claim(s)${sourceIds.length ? ` from ${sourceIds.length === 1 ? `source ${sourceIds[0].slice(0, 8)}` : `${sourceIds.length} sources`}` : ''}${outsideLimit ? ` (${outsideLimit} more beyond --limit)` : ''}…`)
 
   let flags = 0, checked = 0
+  // Every real verdict (faithful or not) is a candidate for the hold-out.
+  type Judged = {
+    claimId: string; sourceId: string; statement: string; contextNote: string | null
+    directQuote: string | null; chunk: string; verdict: string; offending: string; reasoning: string
+  }
+  const judged: Judged[] = []
   for (const c of todo) {
     // Seed member + its chunk.
     const { data: mem } = await db
       .from('claim_members')
-      .select('matched_by, raw_insights(statement, context_note, direct_quote, chunks(content))')
+      .select('matched_by, raw_insights(source_id, statement, context_note, direct_quote, chunks(content))')
       .eq('claim_id', c.id)
       .order('matched_by', { ascending: true }) // 'auto' < 'human' < 'seed'; take seed if present below
-    type M = { matched_by: string; raw_insights: { statement: string; context_note: string | null; direct_quote: string | null; chunks: { content: string } | null } | null }
+    type M = { matched_by: string; raw_insights: { source_id: string; statement: string; context_note: string | null; direct_quote: string | null; chunks: { content: string } | null } | null }
     const members = (mem ?? []) as M[]
     const seed = members.find(m => m.matched_by === 'seed') ?? members[0]
     const chunk = seed?.raw_insights?.chunks?.content
@@ -287,6 +303,11 @@ async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?
     })
     checked++
     if (!isRealFidelity({ verdict: v.verdict, offending: v.offending, reasoning: v.reasoning })) continue
+    judged.push({
+      claimId: c.id, sourceId: seed.raw_insights.source_id, statement: seed.raw_insights.statement,
+      contextNote: seed.raw_insights.context_note, directQuote: seed.raw_insights.direct_quote, chunk,
+      verdict: v.verdict, offending: v.offending, reasoning: v.reasoning,
+    })
     if (!isViolation(v.verdict)) continue
     flags++
     if (dryRun) {
@@ -299,6 +320,49 @@ async function runFidelity(limit: number | undefined, dryRun: boolean, sourceId?
     if ((checked % 25) === 0) console.log(`  …${checked} checked, ${flags} flagged`)
   }
   console.log(`extraction_fidelity: ${flags} flag(s) over ${checked} claim(s) checked${dryRun ? ' (dry run)' : ''}`)
+
+  if (holdout > 0 && !dryRun) await setAsideHoldout(db, judged, holdout)
+}
+
+/**
+ * Hold-out (Paul, 2026-10-14): file a few of the facts just judged at
+ * /admin/fidelity for him to label, so the judge keeps being scored against human
+ * rulings. Random but reproducible (seeded from the batch stamp). Never throws:
+ * a missing table (migration 033 not applied) or a write error is logged, and the
+ * flags above are already saved.
+ */
+async function setAsideHoldout(
+  db: Awaited<ReturnType<typeof loadDb>>,
+  judged: { claimId: string; sourceId: string; statement: string; contextNote: string | null; directQuote: string | null; chunk: string; verdict: string; offending: string; reasoning: string }[],
+  want: number
+): Promise<void> {
+  try {
+    const { pickHoldout, holdoutPairId } = await import('../lib/judgeHoldout')
+    // Never re-file a fact that is already waiting for, or has, a ruling.
+    const { data: filed, error: fErr } = await db.from('fidelity_holdout').select('pair_id')
+    if (fErr) throw new Error(fErr.message)
+    const have = new Set(((filed ?? []) as { pair_id: string }[]).map(r => r.pair_id))
+    const fresh = judged.filter(j => !have.has(holdoutPairId(j.claimId)))
+    const batch = new Date().toISOString().slice(0, 19) + 'Z'
+    const picked = pickHoldout(fresh, want, Date.parse(batch) / 1000)
+    if (!picked.length) { console.log('holdout: nothing new to set aside'); return }
+
+    const titles = new Map<string, string>()
+    const { data: srcs } = await db.from('sources').select('id, title').in('id', Array.from(new Set(picked.map(p => p.sourceId))))
+    for (const s of (srcs ?? []) as { id: string; title: string | null }[]) titles.set(s.id, s.title ?? '')
+
+    const rows = picked.map(p => ({
+      pair_id: holdoutPairId(p.claimId), claim_id: p.claimId,
+      source_title: titles.get(p.sourceId) ?? '', statement: p.statement,
+      context_note: p.contextNote, direct_quote: p.directQuote, quote_verified: !!p.directQuote,
+      chunk_text: p.chunk, judge_verdict: p.verdict, judge_offending: p.offending, judge_reasoning: p.reasoning, batch,
+    }))
+    const { error } = await db.from('fidelity_holdout').upsert(rows, { onConflict: 'pair_id', ignoreDuplicates: true })
+    if (error) throw new Error(error.message)
+    console.log(`holdout: set aside ${rows.length} of ${judged.length} judged fact(s) for labelling at /admin/fidelity (batch ${batch})`)
+  } catch (err) {
+    console.warn(`holdout: NOT recorded — ${err instanceof Error ? err.message : err} (is migration 033 applied?)`)
+  }
 }
 
 // ── manual review lane ──────────────────────────────────────
@@ -355,12 +419,15 @@ async function main() {
   switch (cmd) {
     case 'run': await run(a === '--dry-run'); return
     case 'fidelity': {
-      // fidelity [--dry-run] [--limit N] [--source <id>]
+      // fidelity [--dry-run] [--limit N] [--source <id> | --sources <id,id,…>] [--holdout N]
       const args = process.argv.slice(3)
       const dry = args.includes('--dry-run')
       const li = args.indexOf('--limit')
       const si = args.indexOf('--source')
-      await runFidelity(li > -1 ? Number(args[li + 1]) : undefined, dry, si > -1 ? args[si + 1] : undefined)
+      const mi = args.indexOf('--sources')
+      const hi = args.indexOf('--holdout')
+      const sourceIds = mi > -1 ? args[mi + 1].split(',').filter(Boolean) : si > -1 ? [args[si + 1]] : []
+      await runFidelity(li > -1 ? Number(args[li + 1]) : undefined, dry, sourceIds, hi > -1 ? Number(args[hi + 1]) : 0)
       return
     }
     case 'report': await report(); return
@@ -373,7 +440,7 @@ async function main() {
       await resolveFlag(a, b); return
     }
     default:
-      console.log('usage: npx tsx --env-file=.env.local scripts/flagClaims.ts <run [--dry-run]|fidelity [--dry-run] [--limit N]|report|flag <claim_id> "note"|resolve <flag_id> <resolution>>')
+      console.log('usage: npx tsx --env-file=.env.local scripts/flagClaims.ts <run [--dry-run]|fidelity [--dry-run] [--limit N] [--source <id>|--sources <a,b>] [--holdout N]|report|flag <claim_id> "note"|resolve <flag_id> <resolution>>')
       process.exit(1)
   }
 }
