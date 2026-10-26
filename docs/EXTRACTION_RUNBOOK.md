@@ -302,3 +302,15 @@ sources per claim, the `raw_insights` of A and of earlier sources through `claim
 | `match_claims` search while claims are being added | Read of a growing table | Same as inside a single run today. |
 | Vercel/web worker (`/api/worker/tick`), `pipeline work` | Claim any type | Not covered by the lock: do not use while a lane is live. |
 
+
+## 10. Guards for running several workers in one process (2026-10-25)
+
+Groundwork for `--extract-only --workers N` (§11). Each applies to every run, with one worker too:
+
+| Guard | Knob (default) | What it prevents |
+|---|---|---|
+| Job heartbeat | `JOB_HEARTBEAT_MS` (60000), `JOB_HEARTBEAT_MAX_MS` (3600000) | `claim_next_job` re-claims a running job whose `locked_at` is over 10 min old; extraction only checkpoints between 16-chunk batches. A second worker could take a live job, and the fresh-run path then deletes that source's `raw_insights` and re-extracts. Now every running job refreshes its lock each minute (never its checkpoint), for at most an hour, so a hung handler is still reclaimable. |
+| Claude call cap | `CLI_MAX_INFLIGHT` (16) | `claude -p` children alive at once in the process, across all jobs. A queued call re-checks the circuit breaker and usage gate when it gets a slot. The log's `cli:` line now ends with `peak X/Y in flight`. |
+| Insert cap | `EXTRACT_DB_WRITE_CONCURRENCY` (3) | Simultaneous `raw_insights` writes (1536-float embeddings each) against the database's ~7-connection API pool and the 30 s client timeout. |
+
+No change to what is written or to job claiming. With one worker the only visible difference is the insert cap (at most 3 chunk inserts at once instead of up to 16) and the new `peak` text in the `cli:` line.
