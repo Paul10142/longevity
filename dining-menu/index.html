@@ -153,9 +153,9 @@
   // Stations pinned to the top, in this order.
   const TOP = [/^signature maize$/i, /^halal$/i, /^24 carrots$/i];
   // Stations pinned to the bottom group, in this order.
-  const BOTTOM = [/^soup$/i, /^pizziti$/i, /^deli$/i, /^mbakery$/i];
+  const BOTTOM = [/^soup$/i, /^mbakery$/i];
   const WILD_FIRE = 'Wild Fire Maize / King\'s Hawaiian Grill';
-  const HIDDEN = [/^sabroso$/i, /^two oceans$/i];
+  const HIDDEN = [/^sabroso$/i, /^two oceans$/i, /^pizziti$/i, /^deli$/i];
 
   // Renames and merges station names so the same station lines up across halls.
   function canonical(name) {
@@ -287,10 +287,11 @@
     return groups;
   }
 
-  // Draws one row of the grid: a single station (full-width label, one card per hall),
-  // or two stations from different halls side by side (each label sits above its card).
+  // Draws one row of the grid. A station offered at every hall gets a full-width label
+  // and one card per hall. A station at only one hall, or two stations from different
+  // halls side by side, put each label directly above its card in that hall's column.
   function appendGroup(grid, group, halls, showBand) {
-    if (group.length === 1) {
+    if (group.length === 1 && Object.keys(group[0].byHall).length > 1) {
       const row = group[0];
       if (showBand) grid.appendChild(bandEl(row.name));
       halls.forEach(hall => grid.appendChild(cellFor(row, hall)));
@@ -350,7 +351,7 @@
       grid.className = 'menu-grid bottom-grid';
       const band = document.createElement('div');
       band.className = 'station-band';
-      band.textContent = 'Soup/Pizza/Deli/Bakery';
+      band.textContent = 'Soup/Bakery';
       grid.appendChild(band);
       bottom.forEach(row => appendGroup(grid, [row], data.halls, false));
       wrap.appendChild(grid);
