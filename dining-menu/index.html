@@ -99,8 +99,6 @@
   .none { color: var(--muted); font-style: italic; margin: 0; }
   .nosvc { color: var(--muted); }
 
-  /* Soup, Pizza, Deli and Bakery share one gray heading and their cards touch. */
-  .bottom-grid { row-gap: 0; }
 
   @media (max-width: 480px) {
     .cell { padding: 8px; font-size: .8rem; }
@@ -243,34 +241,69 @@
     return cell;
   }
 
-  function appendRow(grid, row, halls, showBand = true) {
-    if (showBand) {
-      const band = document.createElement('div');
-      band.className = 'station-band';
-      band.textContent = row.name;
-      grid.appendChild(band);
+  function bandEl(text) {
+    const band = document.createElement('div');
+    band.className = 'station-band';
+    band.textContent = text;
+    return band;
+  }
+
+  // The card for one station at one hall. Returns an empty spacer when the hall
+  // doesn't offer the station, so the other halls' cards stay in their columns.
+  function cellFor(row, hall) {
+    if (hall.error) return makeCell('Could not load this hall.');
+    if (!hall.stations || hall.stations.length === 0) return makeCell('No dinner menu posted for this day.');
+    if (!row.byHall[hall.id]) return document.createElement('div');
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const ul = document.createElement('ul');
+    row.byHall[hall.id].forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      if (/no service/i.test(item)) li.className = 'nosvc';
+      ul.appendChild(li);
+    });
+    cell.appendChild(ul);
+    return cell;
+  }
+
+  // Pairs single-hall stations from different halls (Kosher at South Quad with
+  // World Palate Maize at Mosher Jordan) so they share one row.
+  function pairRows(rows) {
+    const groups = [];
+    const used = new Set();
+    rows.forEach((row, i) => {
+      if (used.has(i)) return;
+      used.add(i);
+      const group = [row];
+      const halls = Object.keys(row.byHall);
+      if (halls.length === 1) {
+        const j = rows.findIndex((other, k) => k > i && !used.has(k) &&
+          Object.keys(other.byHall).length === 1 && !other.byHall[halls[0]]);
+        if (j !== -1) { used.add(j); group.push(rows[j]); }
+      }
+      groups.push(group);
+    });
+    return groups;
+  }
+
+  // Draws one row of the grid: a single station (full-width label, one card per hall),
+  // or two stations from different halls side by side (each label sits above its card).
+  function appendGroup(grid, group, halls, showBand) {
+    if (group.length === 1) {
+      const row = group[0];
+      if (showBand) grid.appendChild(bandEl(row.name));
+      halls.forEach(hall => grid.appendChild(cellFor(row, hall)));
+      return;
     }
     halls.forEach(hall => {
-      let cell;
-      if (hall.error) {
-        cell = makeCell('Could not load this hall.');
-      } else if (!hall.stations || hall.stations.length === 0) {
-        cell = makeCell('No dinner menu posted for this day.');
-      } else if (!row.byHall[hall.id]) {
-        cell = makeCell('Not offered here.');
-      } else {
-        cell = document.createElement('div');
-        cell.className = 'cell';
-        const ul = document.createElement('ul');
-        row.byHall[hall.id].forEach(item => {
-          const li = document.createElement('li');
-          li.textContent = item;
-          if (/no service/i.test(item)) li.className = 'nosvc';
-          ul.appendChild(li);
-        });
-        cell.appendChild(ul);
+      const col = document.createElement('div');
+      const row = group.find(r => r.byHall[hall.id]);
+      if (row) {
+        if (showBand) col.appendChild(bandEl(row.name));
+        col.appendChild(cellFor(row, hall));
       }
-      grid.appendChild(cell);
+      grid.appendChild(col);
     });
   }
 
@@ -309,7 +342,7 @@
 
     const middle = document.createElement('div');
     middle.className = 'menu-grid';
-    top.forEach(row => appendRow(middle, row, data.halls));
+    pairRows(top).forEach(group => appendGroup(middle, group, data.halls, true));
     wrap.appendChild(middle);
 
     if (bottom.length) {
@@ -319,7 +352,7 @@
       band.className = 'station-band';
       band.textContent = 'Soup/Pizza/Deli/Bakery';
       grid.appendChild(band);
-      bottom.forEach(row => appendRow(grid, row, data.halls, false));
+      bottom.forEach(row => appendGroup(grid, [row], data.halls, false));
       wrap.appendChild(grid);
     }
 
