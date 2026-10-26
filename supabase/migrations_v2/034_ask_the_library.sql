@@ -1,5 +1,6 @@
--- 033_ask_the_library.sql
+-- 034_ask_the_library.sql
 --
+-- (Numbered 034 because open PR 37 holds 033_fidelity_holdout.sql; applied to the database 2026-10-25.)
 -- "Ask the Library" (docs/ask-the-library-design.md, approved by Paul 2026-10-25).
 -- A physician asks a question; the app retrieves every relevant claim, writes a
 -- short cited brief, and logs the exchange. This migration is the database half.
