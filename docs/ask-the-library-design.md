@@ -31,7 +31,7 @@ One box. One question. In under a minute:
    library pages (topic articles) that exist for the subject, and three
    follow-up questions.
 
-The answer is a *brief*, not an article: about 250–400 words unless the
+The answer is a *brief*, not an article: about 300–500 words unless the
 question asks for a full review. Depth is one click away in the evidence panel
 and the episode list. (Decision A in §10.)
 
@@ -249,7 +249,7 @@ three nearest topics with visible articles and logs the question with
   experts differ". Never merge numbers into a range the claims do not state.
 - Order: bottom line → what to do (only if actionable claims exist) → key
   points by theme → where experts differ → what is not covered. Headings as
-  `###`. 250–400 words unless the question asks for a full review.
+  `###`. 300–500 words unless the question asks for a full review.
 - Physician register. No source narration in the prose ("the podcast said");
   attribution lives in the citation layer. No mention of "claims".
 - End with `FOLLOW_UPS:` and three short questions the library can answer
@@ -377,11 +377,17 @@ minimum, 21.9 s median, 40.7 s maximum**; first word 6.6 s / 10.2 s / 30.7 s.
   the estimated 12k (150 candidates of about 200 tokens each). A cap of about
   80 candidates would roughly halve it and tighten the briefs; recall impact
   not yet tested. Expansion is about $0.0001 and the audit about $0.002.
-- **Briefs overrun the 250-400-word target** (398-590 words, median 435) even
-  after two prompt tightenings (a hard limit, then "aim for about 300"); at low
-  effort the model does not hold a word limit with 150 claims in front of it.
-  Candidate cap (above) or a stated 450-word target are the options; a
-  length check plus trim pass would add a second call.
+- **Briefs land inside the widened 300-500-word target in 4 of 5 runs**
+  (398, 430, 435, 478 and 590 words, median 435). Paul widened the target from
+  250-400 on 2026-10-25 after the first measurements showed the model running
+  long even after two prompt tightenings (at low effort it does not hold a hard
+  word limit with 150 claims in front of it), so the composer prompt now asks
+  for 300-500 words and the tightening ("never exceed 400", "plan fewer,
+  denser points") was removed. The one miss (590, the VO2 max question) is the
+  broadest question; the candidate cap (above) is the lever if it matters.
+  Prompt rules 1 and 4 (choose the 10-20 strongest claims; one sentence for
+  agreeing claims, one bullet per disagreement) stay, since the table above was
+  measured with them. Not re-measured after the change to rule 7.
 - **The audit works but is noisy**: groundedness 0.74-0.96 (mean 0.89), each
   score = share of about 30 sentences flagged. Not calibrated against the gold
   set yet, so treat it as a trend line, not a gate. Its first version
@@ -443,7 +449,7 @@ Nothing here is needed to prove the feature.
 
 | | Decision | Options | Recommendation |
 |---|---|---|---|
-| A | Answer shape | (a) brief, 250–400 words, depth in the panel; (b) full custom article per question; (c) brief now, "build the full article" button that saves a page | **(a)**; (c) is a Phase 2 button once briefs are trusted |
+| A | Answer shape | (a) brief, 300–500 words, depth in the panel; (b) full custom article per question; (c) brief now, "build the full article" button that saves a page | **(a)**; (c) is a Phase 2 button once briefs are trusted |
 | B | Writer model | (a) Opus 5.5 at low effort, ≈ $0.10/question, ~30 s; (b) Sonnet 5.5, ≈ half the cost and time | **(a)** — the v3.2 invariant says prose is Opus; switch only if measured latency breaks the function limit |
 | C | Who sees it first | (a) admin password only (Paul and whoever he hands it to); (b) public behind the existing site | **(a)** until Phase 2 accounts |
 | D | Approve this plan | read §1, §4, §9 | build Phase 0 |
