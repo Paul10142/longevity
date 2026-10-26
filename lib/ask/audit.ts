@@ -17,6 +17,7 @@ import { setAudit } from './store'
 
 /** Sentences audited per call; a brief is ~15-25 sentences, this is only a ceiling on pathological output. */
 const MAX_AUDITED = 80
+const AUDIT_MAX_TOKENS = 6000
 
 export const AUDIT_SYSTEM =
   'You audit a physician brief for groundedness. For each numbered sentence, decide whether EVERY factual or clinical assertion in it is supported by its listed supporting claims. A sentence with no supporting claims is fine only if it asserts nothing (a transition or framing line). Do not penalise wording that is a faithful paraphrase. Return STRICT JSON {"ungrounded":[<indices of sentences containing an assertion NOT supported by their claims>]}.'
@@ -49,7 +50,10 @@ export async function auditSentences(sentences: Sentence[], statementById: Map<s
   const startedAt = Date.now()
   try {
     const { result, usage } = await trackLlmUsage(() =>
-      claudeJson<{ ungrounded?: unknown }>(AUDIT_SYSTEM, buildAuditItems(sentences, statementById), 2000, ASK_AUDIT_MODEL)
+      // Low effort and room to spare: Haiku 5.5 thinks adaptively, and at 2000 tokens
+      // the thinking alone could use the whole budget and leave no JSON (4 of 5
+      // measured audits came back "Empty Claude response", 2026-10-25).
+      claudeJson<{ ungrounded?: unknown }>(AUDIT_SYSTEM, buildAuditItems(sentences, statementById), AUDIT_MAX_TOKENS, ASK_AUDIT_MODEL, 'low')
     )
     const u = usage.get(ASK_AUDIT_MODEL)
     return {

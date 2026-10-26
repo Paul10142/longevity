@@ -276,7 +276,7 @@ test('the composer prompt states the trust rules', () => {
   assert.match(COMPOSER_SYSTEM, /only source/i)
   assert.match(COMPOSER_SYSTEM, /Where Experts Differ/)
   assert.match(COMPOSER_SYSTEM, /FOLLOW_UPS:/)
-  assert.match(COMPOSER_SYSTEM, /250 to 400 words/)
+  assert.match(COMPOSER_SYSTEM, /never exceed 400/)
 })
 
 // --- store: cache -----------------------------------------------------------

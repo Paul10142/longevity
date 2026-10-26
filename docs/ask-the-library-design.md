@@ -277,17 +277,37 @@ since you asked" by diffing the cited set against a re-run.
 
 ### 6.7 API and UI
 
-- `POST /api/ask` `{ question }` → NDJSON stream, one event per line:
-  `{type:'retrieval', count, thin:boolean}` → `{type:'delta', text}` ×N →
-  `{type:'done', answer_id, cited:[{n, claim_id}], follow_ups, latency_ms}`,
-  or `{type:'not_covered', nearest_topics}` or `{type:'error', message}`.
-  Cached answers send `retrieval` then one `delta` with the whole body.
-- `GET /api/ask/[id]` → the stored answer (for sharing and the admin log).
-- `POST /api/ask/[id]/feedback` `{ rating, note }`.
+- `POST /api/ask` `{ question, refresh? }` → NDJSON stream, one JSON event per
+  line (`Content-Type: application/x-ndjson`). As built (2026-10-25):
+  `{type:'retrieval', count, thin, cached?}` → `{type:'delta', text}` ×N →
+  `{type:'done', answer_id, cited:[{n, claim_id}], follow_ups, latency_ms,
+  body, thin, related_topics:[{id,name,slug,similarity}], cached?}`, **or**
+  `{type:'retrieval', …}` → `{type:'not_covered', answer_id, nearest_topics,
+  cached?}`, **or** `{type:'error', message}` at any point. 400 for a bad
+  question (JSON `{error}`, nothing streamed), 401 for a non-admin.
+  - `delta.text` is already clean: markers are rewritten to single `[n]`
+    numbered 1, 2, 3 … by **first appearance**, so `cited[i].n === i + 1`;
+    unresolvable markers are removed; the `FOLLOW_UPS:` tail is never streamed.
+    The concatenated deltas equal `done.body` (sent so a client can reconcile).
+    A half-arrived marker is held back, so a delta never ends mid-`[4`.
+  - `cached` = `{answered_at, stale, match:'exact'|'near'}`. A cached answer
+    sends `retrieval` (with `cached`), one `delta` with the whole body, then
+    `done`. `refresh:true` skips the cache.
+  - A sentence that cites two claims prints back-to-back markers (`[1][2]`).
+- `GET /api/ask/[id]` → the stored answer: `{id, question, status, body,
+  cited, follow_ups, thin, related_topics, claims, episodes, answered_at,
+  latency_ms, groundedness_score, error}`. `claims` is keyed by claim id with
+  the representative evidence (`statement, context, evidence_type,
+  source_count, quote, speaker, start_ms, episode`), so the evidence panel opens
+  without another call; `episodes` is "Go deeper" (`source_id, title, date,
+  episode_number, links, video_url, cited_count, cited_numbers`, most-cited
+  first). Public links only. For a `not_covered` answer `body` is null and
+  `related_topics` holds the nearest topics. 404 for an unknown id.
+- `POST /api/ask/[id]/feedback` `{ rating: 1 | -1, note? }` → `{ok:true}`.
 - `/ask` page: question box, six example chips, streaming body with `[n]`
   rendered as chips, right-hand evidence panel driven by
-  `/api/claims/[id]/members` (already returns quote, speaker-less for now,
-  source links, `start_ms`; add `speaker` and `sources.date` to that payload),
+  `/api/claims/[id]/members` (returns quote, source links, `start_ms`; now also
+  `speaker` and `source.date`/`episode_number`, added 2026-10-25),
   "Go deeper" episode list, related pages, feedback, follow-ups.
 - Gate: add `/ask` and `/api/ask` to `UNRELEASED` in `middleware.ts` so only
   the admin session sees it (Decision C).
@@ -321,6 +341,55 @@ streaming starts the response early, which is what keeps the 60 s Hobby cap
 survivable. **Verify the cap in build**: if `maxDuration` cannot cover p95,
 fall back to the queue (`jobs` type `answer_question`, page polls) for the
 compose stage, as the CLAUDE.md convention prefers.
+
+### 7.1 Measured in Phase 0 (2026-10-25)
+
+Five real questions through `ask()` in-process (`scripts/measureAsk.ts`), API
+backend, live corpus (about 42,000 active claims) **while an extraction run was
+writing to the same database**. Table = the final run (run 3, final composer
+prompt); times in seconds; tokens In/Out; cost includes the audit.
+
+| Question | Candidates (union) | Cited | Words | First Word | Total | Retrieve | Compose | Expand Tokens | Compose Tokens | Audit Tokens | Cost | Groundedness |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| What is the evidence that VO2 max predicts mortality, an… | 150 (354) | 29 | 590 | 9.0 | 21.9 | 3.3 | 13.5 | 299/119 | 32170/1434 | 14843/1918 | $0.160 | 0.92 |
+| How much protein per day should an older adult eat to pr… | 150 (278) | 34 | 398 | 11.0 | 20.6 | 2.7 | 13.5 | 291/92 | 27894/1297 | 9848/1950 | $0.140 | 0.92 |
+| When should a statin or other ApoB-lowering therapy be s… | 150 (285) | 34 | 435 | 10.2 | 21.3 | 2.0 | 16.0 | 302/118 | 32914/1545 | 11904/1324 | $0.164 | 0.96 |
+| What are the risks and benefits of GLP-1 agonists for we… | 150 (206) | 37 | 478 | 9.1 | 20.5 | 2.0 | 13.9 | 302/89 | 26308/1278 | 7594/1668 | $0.132 | 0.93 |
+| Which sleep interventions have the best evidence for imp… | 150 (278) | 28 | 430 | 12.6 | 22.5 | 2.4 | 15.6 | 293/106 | 23655/1597 | 5317/1865 | $0.128 | 0.74 |
+
+Across all 15 runs (3 passes of the same five questions): total **18.4 s
+minimum, 21.9 s median, 40.7 s maximum**; first word 6.6 s / 10.2 s / 30.7 s.
+
+- **Latency is not near the 60 s cap.** The compose call itself is a steady
+  13-16 s (2.5-5.5 s to its first token). The one slow run (40.7 s) was a
+  retrieval and embedding spike (8.2 s + 15.6 s) while the extraction run was
+  busy, not the model. Verdict: Hobby's 60 s is survivable today, with about
+  20 s of headroom in the worst run seen. **The job-queue fallback is not
+  needed yet; revisit if the p95 of real use passes about 45 s.** (Not built.)
+- **First word is slower than the 7 s estimate** (median 10 s): about 4-6 s is
+  spent before compose starts (embed, expand 1 s, retrieval 2-3 s typical,
+  provenance 0.5 s). The biggest non-model piece is `search_claims` running
+  four deep scans plus a per-hit `latest_source_date` subquery. Proposal, not
+  built: drop that subquery from the function and fetch dates for the top ~200
+  ranked candidates in one batched query.
+- **Cost is $0.13-0.16 per new question (mean $0.145)**, at the top of the
+  $0.10-0.15 estimate, because the composer reads **24-34k input tokens**, not
+  the estimated 12k (150 candidates of about 200 tokens each). A cap of about
+  80 candidates would roughly halve it and tighten the briefs; recall impact
+  not yet tested. Expansion is about $0.0001 and the audit about $0.002.
+- **Briefs overrun the 250-400-word target** (398-590 words, median 435) even
+  after two prompt tightenings (a hard limit, then "aim for about 300"); at low
+  effort the model does not hold a word limit with 150 claims in front of it.
+  Candidate cap (above) or a stated 450-word target are the options; a
+  length check plus trim pass would add a second call.
+- **The audit works but is noisy**: groundedness 0.74-0.96 (mean 0.89), each
+  score = share of about 30 sentences flagged. Not calibrated against the gold
+  set yet, so treat it as a trend line, not a gate. Its first version
+  returned empty output for 4 of 5 answers (Haiku 5.5's thinking used the whole
+  2000-token budget); fixed with low effort and a 6000-token budget.
+- Zero dangling markers, zero twins collapsed and zero known contradictions
+  among the candidates in all 15 runs; the first two are the expected result
+  of consolidation having already merged near-identical claims.
 
 ## 8. Measurement (principle 6: build the ruler first)
 
