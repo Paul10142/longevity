@@ -22,6 +22,7 @@ const publicNav = [
 const previewNav = [
   { name: "Medical Library", href: "/topics" },
   { name: "Search", href: "/search" },
+  { name: "Ask", href: "/ask" },
 ] as const
 
 // The Admin hover menu. One flat list of the main admin destinations so the
@@ -32,6 +33,7 @@ const adminMenu = [
   { name: "Topics", href: "/admin/topics" },
   { name: "Merge Reviews", href: "/admin/reviews" },
   { name: "Insights", href: "/admin/insights/review" },
+  { name: "Ask Log", href: "/admin/ask" },
 ] as const
 
 type Pillar = {
