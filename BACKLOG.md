@@ -15,6 +15,12 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **✅ 2026-10-30 — PETER ATTIA DRIVE BATCH DONE.** All 409 Drive episodes have Deepgram transcripts, extracted and consolidated
+> (543 extract and 543 consolidate jobs done, none queued or failed); 49,286 active claims, 505 quarantined for review at `/admin/flags`.
+> Left open: the end-of-run fidelity judge stopped at its 180-minute cap after 42 sources (resume with
+> `scripts/flagClaims.ts fidelity --sources <ids>`; Opus cost, Paul decides). The parked `tag_claims` job is skipped on purpose. Runner lessons are in
+> `docs/EXTRACTION_RUNBOOK.md` §13. Re-query counts before quoting any of these.
+
 > **❓ 2026-10-25 — "ASK THE LIBRARY" DESIGNED, NOT BUILT (branch `claude/query-knowledge-synthesis-1dcab3`).** Paul pulled
 > Physician Q&A (P3.5, "Phase 8, last in the sequence") forward: a physician asks a question, the system retrieves every
 > relevant claim, writes a cited brief, links the episodes. Full plan, measured corpus facts, phases and the four decisions
