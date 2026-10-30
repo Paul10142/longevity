@@ -352,3 +352,18 @@ at most `NET_RETRY_MAX_MS` (default 4 min, inside the 10-minute stale-lock windo
 Every one of them is safe to repeat (fixed-value updates; the chunk insert clears its rows first). `claim_next_job` is deliberately
 not retried (a lost answer would leave a job claimed, and a repeat would claim a second). A real database error is never retried.
 A drop longer than the budget still fails the job as before; it is requeued with backoff and its checkpoint, as always.
+
+## 13. Runner lessons from the Drive batch (2026-10-30)
+
+- **Open the monitor first.** At the start of any extraction run open the Extraction Monitor (§7) and set its `run/current` doc to the real
+  state; refresh the `snapshot` each report. The page falls back to the snapshot when its live database link has no permission.
+- **Plug the Mac in.** On battery it takes "maintenance sleeps" even under `caffeinate`, which stalled the lanes for hours and looked like a
+  database outage (`fetch failed`). Check `pmset -g batt` before a long run; keep-awake alone is not enough.
+- **Two workers.** `WORKERS=2 zsh scratchpad/batch2/lane.sh extract` passes `--workers 2`; measured about 1.8x facts per hour over one worker
+  (estimate, one clean hour). The last 35 episodes extracted in about 1 hour 40 minutes with 0 failed Claude calls.
+- **Restart on new code.** After merging pipeline changes, stop both lanes (SIGTERM), `git pull --ff-only`, restart; interrupted jobs
+  resume from checkpoints and stale `running` locks are reclaimed after 10 minutes.
+- **The end-of-run judge has a 180-minute cap** and can end early on a network error; it is resumable (`flagClaims.ts fidelity --sources`).
+- **Usage cap.** `USAGE_PAUSE_AT=1` lifts the in-process 90% pause; the launchd guard has its own `threshold` in
+  `~/.claude/usage-guard/config.json`. Lift both only on Paul's explicit word, and restore 0.9 afterwards.
+
