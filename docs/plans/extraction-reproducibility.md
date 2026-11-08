@@ -95,8 +95,9 @@ has not risen more than 2 points. The consolidation lane restarts when the quote
 merged the 21 identical-quote splits in a dry run Paul has looked at. Paul confirmed the 5%
 bar on 2026-11-08.
 
-**Anecdotes (section 4b):** Paul decided on 2026-11-08 that anecdotes are captured but kept
-out of the corpus. The plan stores them as ordinary insights carrying a new exclusion flag
+**Anecdotes (section 4b):** Paul said on 2026-11-08 that anecdotes are captured but kept out
+of the corpus; the parent window's reading of his words is before him as a yes/no, and the
+exhaustive-prompt experiment (E2) waits for it. The plan stores them as ordinary insights carrying a new exclusion flag
 (one migration), which consolidation skips, so articles and Ask the Library never see them;
 the 178 anecdotes already inside claims await a backfill decision.
 
@@ -404,7 +405,7 @@ members of claims (172 claims). The exhaustive prompt will produce many more.
 
 | Option | What changes | Good | Bad | Verdict |
 |---|---|---|---|---|
-| **A. Exclusion flag on `raw_insights`** | Migration 039 adds `raw_insights.corpus_excluded boolean not null default false` with a partial index; the extraction insert sets it true when kind = `Anecdote`. `consolidateSource` drops excluded rows from `pending` (today pending = "no `claim_members` row", `lib/consolidation.ts:791-827`, so without the column every drain would pick them up again). Articles and Ask the Library read `claims` only (`match_claims` keeps `c.status = 'active'`), so an insight that never becomes a claim never reaches them. The admin review and export pages and the episode page already read `insight_type` and can show anecdotes behind a filter. | One column, one line in the extraction insert, about ten lines in consolidation. Anecdotes keep quote, offsets, speaker and timestamp; the fidelity judge still checks them. Reversible: flip the flag and the next drain consolidates them. The rule is visible in the data, not only in code. | Needs a migration (Supabase SQL Editor, like every schema change here). | **Recommended.** |
+| **A. Exclusion flag on `raw_insights`** | Migration 040 (039 is taken by PR #61's `039_speaker_names.sql`, held, merges first) adds `raw_insights.corpus_excluded boolean not null default false` with a partial index; the extraction insert sets it true when kind = `Anecdote`. `consolidateSource` drops excluded rows from `pending` (today pending = "no `claim_members` row", `lib/consolidation.ts:791-827`, so without the column every drain would pick them up again). Articles and Ask the Library read `claims` only (`match_claims` keeps `c.status = 'active'`), so an insight that never becomes a claim never reaches them. The admin review and export pages and the episode page already read `insight_type` and can show anecdotes behind a filter. | One column, one line in the extraction insert, about ten lines in consolidation. Anecdotes keep quote, offsets, speaker and timestamp; the fidelity judge still checks them. Reversible: flip the flag and the next drain consolidates them. The rule is visible in the data, not only in code. | Needs a migration (Supabase SQL Editor, like every schema change here). | **Recommended.** |
 | **B. Separate `anecdotes` table** | A migration creates a second table with the same columns; extraction routes anecdotes there. | Hard separation. | Needs a migration too, and duplicates the insight schema and every reader (review page, export, episode page, fidelity flags, timing repair). | No. |
 | **C. No migration** | Filter `insight_type = 'Anecdote'` out of the pending query in code. | Nothing to apply. | The type alone cannot tell "excluded" from "kept": the 178 Haiku-era anecdotes already inside claims look identical to new ones, and a later decision to keep some anecdotes (a clinician's case series, say) has nowhere to live. | No. |
 
@@ -505,7 +506,7 @@ plan's author reviews the numbers. Concurrency 8; usage guard checked before eve
 |---|---|---|---|---|---|---|---|
 | **E1a** | Copy A twice, the configuration that built the library (Haiku 4.5, v1 prompt, char chunks, live hygiene, CLI) | Noise floor of the old pipeline; proves the harness | 2 | Always first. Expect 15–25% pass-specific. Report to the parent window. | 0.5M | 20 min | ≈ $1.8 / — |
 | **E1b** | Copy A twice, `main` today (Opus 5.5, v2 prompt, gate + repair, char chunks, live hygiene, CLI) | How much PR #59 already closed | 2 | Report to the parent window. If same-copy < 5%, run copy B once against E1b as the cross-copy check and skip E2. | 0.5M | 40 min | ≈ $6.7 / $4.6 |
-| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | Anecdote rule decided 2026-11-08 (section 4b); runs after E1b. If same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
+| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | Anecdote rule (section 4b) is before Paul as a yes/no; **E2 starts only when the parent window relays his yes** (E1a and E1b take about an hour anyway). Then: if same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E3** | E2 + context before/after + speaker-turn chunks + cached hygiene (fixes B1, B2, C): A×2 + B×1 | Boundaries and context | 3 | Boundary share should fall to the matched facts' share; coverage disagreement < 5%. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E4** | E3 configuration on cheaper models, CLI: Haiku 5.5 A×2, Sonnet 5.5 A×2 | Whether a cheaper model matches Opus (for the top-up only) | 4 | Informational: Opus 5.5 is decided. A model within 1 point of Opus on every metric becomes a top-up option for Paul. | 1.6M | 30 min | ≈ $7 / $6 |
 | **E4c** (optional, API credits) | E3 configuration on Haiku 4.5, API route, temperature 0: A×2 | Dice versus instructions | 2 | Diagnostic only; needs the parent window's ok to spend API credits. | 0.8M | 10 min | — / $2.4 |
@@ -627,8 +628,9 @@ To be written when the fixes ship, not now:
    differing facts"); section 7's 5% / 5% / +2 points stand.
 3. ~~Anecdotes.~~ **Decided 2026-11-08:** captured, labelled `Anecdote`, phrased without the
    personal framing, kept out of the corpus (Paul's words in section 4b). Still for Paul to
-   confirm in one go: that reading, storage option A (migration 039 exclusion flag) and the
-   backfill of the 178 existing anecdotes. E2 proceeds.
+   confirm in one go: that reading, storage option A (migration 040 exclusion flag) and the
+   backfill of the 178 existing anecdotes. **E2 waits for Paul's yes on the reading**, relayed by
+   the parent window; E1a and E1b take about an hour, so no time is lost.
 4. ~~Model tier.~~ **Decided: Opus 5.5** (PR #59, confirmed 2026-11-08). Open: whether a
    cheaper model may run the library top-up if E4 shows it matches Opus on the bar.
 5. Approve the library top-up (section 8) once E5b shows the size of the gap, and choose
