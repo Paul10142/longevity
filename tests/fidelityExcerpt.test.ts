@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { buildExcerpt, excerptLink } from '../lib/fidelityExcerpt'
+import { alignWords, buildExcerpt, excerptLink, sameEpisodeTitle, wordsOf } from '../lib/fidelityExcerpt'
 
 const timed = [
   { text: 'Peter Attia: So what is NDMA?', start_ms: 1000, end_ms: 4000 },
@@ -51,4 +51,46 @@ test('link: video 30 s before, else video, else episode page, else none', () => 
   assert.deepEqual(excerptLink({ article_url: 'https://example.com/ep' }, 5000), { href: 'https://example.com/ep', kind: 'episode' })
   assert.equal(excerptLink({ url: 'https://pod.supercast.com/feed?key=x' }, 5000), null)
   assert.equal(excerptLink(null, 5000), null)
+})
+
+// An episode long enough for word matching to have something to vote on.
+const longEpisode = [
+  { text: 'Host: Welcome to the show today we are talking about the risk factors for dementia in older adults.', start_ms: 1000, end_ms: 9000 },
+  { text: 'Guest: If you look at the risk factors for Alzheimer disease every single one is also a risk factor for stroke and vascular disease.', start_ms: 20000, end_ms: 30000 },
+  { text: 'Host: And what about the pathology findings when you look at the brain after death in men and women.', start_ms: 40000, end_ms: 50000 },
+]
+
+test('older caption-style chunk (no labels, different punctuation) still finds its place and the quote time', () => {
+  const chunk =
+    'welcome to the show today we are talking about the risk factors for dementia in older adults ' +
+    'if you look at the risk factors for alzheimers disease every single one is also a risk factor for stroke and vascular disease ' +
+    'and what about the pathology findings when you look at the brain after death'
+  const ex = buildExcerpt(chunk, longEpisode, null, "if you look at the risk factors for Alzheimer's disease every single one is also a risk factor for stroke")
+  assert.ok(ex)
+  assert.equal(ex.fuzzy, true)
+  assert.equal(ex.mode, 'timed')
+  assert.equal(ex.quoteFound, true)
+  assert.equal(ex.startFrom, 'quote')
+  assert.equal(ex.startMs, 20000)
+  assert.ok(ex.turns.some(t => t.hit))
+})
+
+test('passage found but quote absent: time falls back to the passage start', () => {
+  const chunk = 'and what about the pathology findings when you look at the brain after death in men and women'
+  const ex = buildExcerpt(chunk, longEpisode, null, null)
+  assert.ok(ex)
+  assert.equal(ex.startFrom, 'passage')
+  assert.equal(ex.startMs, 40000)
+})
+
+test('alignWords: unrelated text does not align', () => {
+  const hay = wordsOf('one two three four five six seven eight nine ten eleven twelve')
+  assert.equal(alignWords(hay, wordsOf('completely different words about something else entirely here today')), null)
+})
+
+test('episode titles match across dash style, case and a trailing bar or cut-off', () => {
+  assert.equal(sameEpisodeTitle('#374 – The evolutionary biology | ', '#374 - The evolutionary biology | Carole Hooven, Ph.D.'), true)
+  assert.equal(sameEpisodeTitle('#351 ‒ Male fertility', '#351 - male fertility'), true)
+  assert.equal(sameEpisodeTitle('#374 – The evo', '#375 - Other'), false)
+  assert.equal(sameEpisodeTitle('', 'anything'), false)
 })

@@ -5,7 +5,7 @@ import pairsJson from "@/eval/extraction-eval-pairs.json"
 import runJson from "@/eval/extraction-run.json"
 import { pendingRechecks } from "@/lib/fidelity"
 import { isHoldoutPairId } from "@/lib/judgeHoldout"
-import { buildExcerpt, excerptLink, type Excerpt, type ExcerptLink } from "@/lib/fidelityExcerpt"
+import { buildExcerpt, excerptLink, sameEpisodeTitle, type Excerpt, type ExcerptLink } from "@/lib/fidelityExcerpt"
 import type { SourceLinkInput } from "@/lib/sourceLinks"
 
 export const dynamic = "force-dynamic"
@@ -91,8 +91,15 @@ async function loadExtras(
         if (data) sources.set(id, data as unknown as SourceRow)
       }),
       ...titles.map(async title => {
-        const { data } = await db.from("sources").select(sourceCols).eq("title", title).limit(1)
-        sourceByTitle.set(title, ((data ?? [])[0] as unknown as SourceRow | undefined) ?? null)
+        // The title a pair was filed under can be cut short, end in "|" or use another dash,
+        // so look up by its opening characters and compare normalized.
+        const lead = title.split(/\s*[‒–—−-]/)[0].trim()
+        const prefix = (lead.length >= 3 ? lead : title.slice(0, 14)).replace(/[%_,()\\]/g, "_")
+        const { data: cands } = await db.from("sources").select("id, title").ilike("title", `${prefix}%`).limit(60)
+        const hit = ((cands ?? []) as { id: string; title: string | null }[]).find(c => sameEpisodeTitle(title, c.title))
+        if (!hit) return void sourceByTitle.set(title, null)
+        const { data } = await db.from("sources").select(sourceCols).eq("id", hit.id).maybeSingle()
+        sourceByTitle.set(title, (data as unknown as SourceRow | null) ?? null)
       }),
     ])
 
@@ -102,9 +109,10 @@ async function loadExtras(
         ? sources.get(insight.source_id) ?? null
         : sourceByTitle.get(c.source.replace(/^New batch: /, "")) ?? null
       const excerpt = buildExcerpt(c.chunk, source?.timed_transcript, source?.transcript, c.quote)
-      // Time of the quote: the insight's own, else the start of the turn that holds it.
-      const quoteTurn = excerpt?.turns.find(t => t.hit && t.start_ms !== null)
-      const startMs = insight?.start_ms ?? quoteTurn?.start_ms ?? null
+      // Time of the quote: where the quote itself sits in the stored transcript, else the
+      // insight's own stored time, else where the passage the judge read starts.
+      const startMs =
+        excerpt?.startFrom === "quote" ? excerpt.startMs : insight?.start_ms ?? excerpt?.startMs ?? null
       out.set(c.id, { excerpt, link: excerptLink(source, startMs) })
     }
   } catch {
