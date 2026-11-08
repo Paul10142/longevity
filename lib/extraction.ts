@@ -18,6 +18,7 @@ import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import { createLimiter, envLimit } from './concurrency'
 import { withNetworkRetry } from './networkRetry'
+import { bareName, bareNames, isCredentialOnly } from './personName'
 import { canonicalHostLabel, showForSource, isHostName, DEFAULT_SHOW, type Show } from './shows'
 import {
   normalizeYouTubeSegments,
@@ -148,11 +149,15 @@ export function sanitizeSpeaker(raw: unknown): string | null {
   const s = raw.trim()
   if (!s || s.length > 80) return null
   if (/^(host|guest|speaker|interviewer|interviewee|narrator|unknown|unclear|n\/?a|none|null)s?$/i.test(s)) return null
+  // A speaker is the bare name: `Sally Greenwald, M.D.` and `Sally Greenwald` are one
+  // person (sources.authors carries the credentials; attributions never do).
+  const bare = bareName(s)
+  if (!bare || isCredentialOnly(bare)) return null
   // One canonical spelling for a HOST — "Dr. Peter Attia" / "peter attia"
   // variants would otherwise fragment the attribution rollups. Every registered
   // show's host collapses (lib/shows.ts), not just the episode's own: Attia
   // guesting on Huberman Lab must roll up with Attia on The Drive.
-  return canonicalHostLabel(s)
+  return canonicalHostLabel(bare)
 }
 
 /**
@@ -171,11 +176,13 @@ export async function inferGuestsFromIntro(transcript: string, show: Show = DEFA
       CLAUDE_JUDGMENT_MODEL
     )
     if (!Array.isArray(parsed.guests)) return []
-    return parsed.guests
-      .filter((g): g is string => typeof g === 'string')
-      .map(g => g.trim())
-      .filter(g => g.length > 1 && g.length <= 80 && !isHostName(show, g))
-      .slice(0, 6)
+    return bareNames(
+      parsed.guests
+        .filter((g): g is string => typeof g === 'string')
+        .map(g => g.trim())
+        .filter(g => g.length > 1 && g.length <= 80),
+      name => isHostName(show, name)
+    ).slice(0, 6)
   } catch (err) {
     // A full usage window is not "could not tell" — defer, don't hedge forever.
     rethrowIfUsageLimit(err)
@@ -686,7 +693,9 @@ export async function extractSource(
   // prefix, then authors[0], then The Drive (lib/shows.ts showForSource), so the
   // 409 Drive rows and the pre-feed rows with no external_id still resolve to him.
   const show = showForSource(source)
-  const metaGuests = (source.authors ?? []).filter(a => a && !isHostName(show, a))
+  // `authors` carries each guest as the show writes them (`Sally Greenwald, M.D., M.P.H.`);
+  // the prompt, like the transcript's `Name:` labels, uses the bare name.
+  const metaGuests = bareNames(source.authors ?? [], name => isHostName(show, name))
   let participants = checkpoint?.participants
   if (!participants) {
     let guests = metaGuests

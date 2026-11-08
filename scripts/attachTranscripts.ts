@@ -71,7 +71,9 @@ async function main() {
   // The feed manifest written by fetchPodcastFeed is only the FALLBACK for a row
   // whose `sources.authors` is null. Guests come from `authors` (host =
   // `authors[0]`, guests = the rest), which `refreshGuests.ts --apply` corrects,
-  // so apply the guest plan BEFORE attaching (see guestsForLabels).
+  // so apply the guest plan BEFORE attaching (see guestsForLabels). `authors` holds
+  // each guest as the show writes them (`Sally Greenwald, M.D.`); the speaker labels
+  // baked into the transcript are bare (`Sally Greenwald:`), which guestsForLabels does.
   let guestsByKey = new Map<string, string[]>()
   try {
     const man = JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')) as {
