@@ -298,15 +298,15 @@ export function FidelityWorksheetClient() {
 
   return (
     <div className="space-y-4">
+      {/* Pinned under the site header while scrolling: only this one short row (progress and jump buttons). */}
       <div
         style={{ "--site-header": `${headerH}px` } as React.CSSProperties}
-        // Stuck under the site header on wider screens; on a phone it is too tall to pin, so it scrolls.
-        className="sm:sticky sm:top-[var(--site-header)] z-40 -mx-1 px-1 py-2 bg-background border-b flex items-center gap-3 flex-wrap"
+        className="sticky top-[var(--site-header)] z-40 -mx-1 px-1 py-2 bg-background border-b flex items-center gap-x-3 gap-y-1 flex-wrap"
       >
-        <span className="text-sm font-medium tabular-nums">
+        <span className="text-sm font-medium tabular-nums whitespace-nowrap">
           {labeled}/{items.length} labeled
         </span>
-        <div className="h-1.5 w-40 rounded-full bg-muted overflow-hidden">
+        <div className="h-1.5 w-16 sm:w-40 shrink rounded-full bg-muted overflow-hidden">
           <div className="h-full bg-foreground/70 rounded-full" style={{ width: `${(100 * labeled) / items.length}%` }} />
         </div>
         <Button
@@ -323,6 +323,10 @@ export function FidelityWorksheetClient() {
             Next re-check ({rechecks} left)
           </Button>
         )}
+      </div>
+
+      {/* Scrolls away with the page. */}
+      <div className="flex items-center gap-3 flex-wrap">
         <label className="text-xs text-muted-foreground flex items-center gap-2 cursor-pointer min-h-[44px]">
           <input
             type="checkbox"
@@ -393,7 +397,7 @@ export function FidelityWorksheetClient() {
         <Card
           key={item.id}
           id={`pair-${item.n}`}
-          className={item.needs_recheck ? "border-amber-500" : ""}
+          className={`scroll-mt-48 ${item.needs_recheck ? "border-amber-500" : ""}`}
         >
           <CardContent className="pt-5 space-y-3">
             {item.needs_recheck && (
