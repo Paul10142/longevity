@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
 import type { Excerpt, ExcerptLink } from "@/lib/fidelityExcerpt"
+import { findSpan } from "@/lib/flagReview"
 import { formatTimestamp } from "@/lib/transcriptView"
 
 type Item = {
@@ -101,51 +102,92 @@ function TurnLines({ excerpt }: { excerpt: Excerpt }) {
   )
 }
 
+/** Chunk text with the quote highlighted when it can be found (plain-text fallback). */
+function PlainChunk({ chunk, quote }: { chunk: string; quote: string | null }) {
+  const span = quote ? findSpan(chunk, quote) : null
+  return (
+    <p className="whitespace-pre-wrap text-sm leading-relaxed text-foreground/90">
+      {span ? (
+        <>
+          {chunk.slice(0, span.start)}
+          <mark className="rounded bg-yellow-200 px-0.5 text-foreground dark:bg-yellow-700/60">
+            {chunk.slice(span.start, span.end)}
+          </mark>
+          {chunk.slice(span.end)}
+        </>
+      ) : (
+        chunk
+      )}
+    </p>
+  )
+}
+
+/**
+ * "Transcript Excerpt": the words are a link to the video; a separate button opens or
+ * closes the text (closed by default). Works for every card, with or without a link,
+ * speaker lines or times.
+ */
 function TranscriptExcerpt({ item }: { item: Item }) {
+  const [open, setOpen] = useState(false)
   const link = item.excerpt_link
+  const ex = item.excerpt
   const hint =
     link?.kind === "video-at-time"
-      ? "opens the video about 30 seconds before the quote"
+      ? ex?.startFrom === "passage"
+        ? "opens the video about 30 seconds before this passage; the quote itself could not be placed"
+        : "opens the video about 30 seconds before the quote"
       : link?.kind === "video"
-        ? "opens the video (start time unknown)"
+        ? "opens the video from the start; no timed transcript is stored for this episode"
         : link?.kind === "episode"
           ? "opens the episode page"
-          : null
+          : "no video or episode link is stored for this pair"
+  const panelId = `excerpt-${item.id.replace(/[^a-zA-Z0-9_-]/g, "-")}`
   return (
-    <details className="rounded-lg border text-sm">
-      <summary className="flex min-h-[44px] cursor-pointer select-none flex-wrap items-center gap-x-2 px-3 py-2 font-medium">
+    <div className="rounded-lg border text-sm">
+      <div className="flex min-h-[44px] flex-wrap items-center gap-x-3 gap-y-1 px-3 py-1">
+        <button
+          type="button"
+          onClick={() => setOpen(o => !o)}
+          aria-expanded={open}
+          aria-controls={panelId}
+          className="inline-flex min-h-[44px] min-w-[44px] items-center gap-1.5 rounded-md px-2 font-medium hover:bg-muted"
+        >
+          <span aria-hidden>{open ? "▾" : "▸"}</span>
+          {open ? "Hide Excerpt" : "Show Excerpt"}
+        </button>
         {link ? (
           <a
             href={link.href}
             target="_blank"
             rel="noopener noreferrer"
-            onClick={e => e.stopPropagation()}
-            className="text-primary underline underline-offset-2"
+            className="inline-flex min-h-[44px] items-center font-medium text-primary underline underline-offset-2"
           >
             Transcript Excerpt
             <span className="sr-only"> (opens in a new tab)</span>
-            <span aria-hidden> ↗</span>
+            <span aria-hidden>&nbsp;↗</span>
           </a>
         ) : (
-          <span>Transcript Excerpt</span>
+          <span className="font-medium">Transcript Excerpt</span>
         )}
-        {hint && <span className="text-xs font-normal text-foreground/70">({hint})</span>}
-      </summary>
-      <div className="max-h-96 overflow-y-auto border-t px-3 py-3">
-        {item.excerpt ? (
-          <>
-            <TurnLines excerpt={item.excerpt} />
-            {!item.excerpt.quoteFound && item.quote && (
-              <p className="mt-3 text-xs text-amber-800 dark:text-amber-400">
-                The quote could not be located in this text, so nothing is highlighted.
-              </p>
-            )}
-          </>
-        ) : (
-          <p className="whitespace-pre-wrap text-foreground/90">{item.chunk}</p>
-        )}
+        <span className="text-xs text-foreground/70">({hint})</span>
       </div>
-    </details>
+      {open && (
+        <div id={panelId} className="max-h-96 overflow-y-auto border-t px-3 py-3">
+          {ex ? (
+            <>
+              <TurnLines excerpt={ex} />
+              {!ex.quoteFound && item.quote && (
+                <p className="mt-3 text-xs text-amber-800 dark:text-amber-400">
+                  The quote could not be located in this text, so nothing is highlighted.
+                </p>
+              )}
+            </>
+          ) : (
+            <PlainChunk chunk={item.chunk} quote={item.quote} />
+          )}
+        </div>
+      )}
+    </div>
   )
 }
 
@@ -160,6 +202,18 @@ export function FidelityWorksheetClient() {
   const [kept, setKept] = useState<Set<string>>(new Set())
   // Pair ids with a save in flight, so a slow network can't double-fire.
   const saving = useRef(new Set<string>())
+
+  // The site header is stuck to the top of the screen; the filter bar sits just under it.
+  const [headerH, setHeaderH] = useState(80)
+  useEffect(() => {
+    const measure = () => {
+      const h = document.querySelector("header")?.getBoundingClientRect().height
+      if (h) setHeaderH(Math.round(h))
+    }
+    measure()
+    window.addEventListener("resize", measure)
+    return () => window.removeEventListener("resize", measure)
+  }, [])
 
   useEffect(() => {
     fetch("/api/admin/fidelity")
@@ -244,11 +298,15 @@ export function FidelityWorksheetClient() {
 
   return (
     <div className="space-y-4">
-      <div className="sticky top-0 z-10 -mx-1 px-1 py-2 bg-background/95 backdrop-blur border-b flex items-center gap-3 flex-wrap">
-        <span className="text-sm font-medium tabular-nums">
+      {/* Pinned under the site header while scrolling: only this one short row (progress and jump buttons). */}
+      <div
+        style={{ "--site-header": `${headerH}px` } as React.CSSProperties}
+        className="sticky top-[var(--site-header)] z-40 -mx-1 px-1 py-2 bg-background border-b flex items-center gap-x-3 gap-y-1 flex-wrap"
+      >
+        <span className="text-sm font-medium tabular-nums whitespace-nowrap">
           {labeled}/{items.length} labeled
         </span>
-        <div className="h-1.5 w-40 rounded-full bg-muted overflow-hidden">
+        <div className="h-1.5 w-16 sm:w-40 shrink rounded-full bg-muted overflow-hidden">
           <div className="h-full bg-foreground/70 rounded-full" style={{ width: `${(100 * labeled) / items.length}%` }} />
         </div>
         <Button
@@ -265,6 +323,10 @@ export function FidelityWorksheetClient() {
             Next re-check ({rechecks} left)
           </Button>
         )}
+      </div>
+
+      {/* Scrolls away with the page. */}
+      <div className="flex items-center gap-3 flex-wrap">
         <label className="text-xs text-muted-foreground flex items-center gap-2 cursor-pointer min-h-[44px]">
           <input
             type="checkbox"
@@ -335,7 +397,7 @@ export function FidelityWorksheetClient() {
         <Card
           key={item.id}
           id={`pair-${item.n}`}
-          className={item.needs_recheck ? "border-amber-500" : ""}
+          className={`scroll-mt-48 ${item.needs_recheck ? "border-amber-500" : ""}`}
         >
           <CardContent className="pt-5 space-y-3">
             {item.needs_recheck && (
