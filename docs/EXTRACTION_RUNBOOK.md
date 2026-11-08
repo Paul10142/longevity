@@ -380,6 +380,7 @@ section is what that window (and the runner, afterwards) follows.
 | Where | What it uses from the show |
 | --- | --- |
 | `ingestFeedSources.ts --show <prefix>` | feed URL variable, key prefix, `series` and `article_url` written on create, host as `authors[0]`, whether titles carry a number |
+| `refreshGuests.ts --show <prefix>` | the same feed and prefix, the host (never a guest, always `authors[0]`), `strictGuests` for the fallback title rule |
 | `fetchPodcastFeed.ts --show <prefix>` | the same feed and prefix; `series` goes into `manifest.json`, which is merged, not rewritten, so shows can share one audio folder |
 | `transcribeDeepgram.ts` | host-name keyterms (the show's own, then the shared medical list) |
 | `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman). An unregistered prefix is skipped with a message, never guessed |
@@ -398,9 +399,30 @@ section is what that window (and the runner, afterwards) follows.
    under an older id, new.
 4. `npx tsx --env-file=.env.local scripts/ingestFeedSources.ts --show <prefix> --dry-run` and read it before any write: the show header,
    the guest list per episode (the host must never be one), the `older` list, and the first new row (`series`, `article_url`, `authors`).
-5. Only then `ingestFeedSources.ts --show <prefix>` (writes rows), `fetchPodcastFeed.ts --show <prefix> --keys … --fit-budget`, and the rest of
-   the usual flow: `transcribeDeepgram.ts`, `attachTranscripts.ts`, `extractDeepgram.ts`. Each step needs the same go-ahead it always did: the
-   Deepgram spend is Paul's decision per batch.
+5. Only then `ingestFeedSources.ts --show <prefix>` (writes rows). It writes the guest names its title rule finds; step 6 replaces them with
+   Claude's reading, so do step 6 before anything downstream uses `authors`.
+6. **Guest names** (`scripts/refreshGuests.ts`; added 2026-11-08). Claude reads each title and its show notes and says who the guest is, the way
+   a person would; the old title rule lost real guests (`James Clear (#183 rebroadcast)`) and invented others (`M.P.H.`, `Quarterly Podcast
+   Summary #6`). It costs subscription calls on the bulk tier (about 20 episodes per call), no Deepgram, no audio. Run
+   `sh ~/.claude/usage-guard/check.sh` first (exit 1 = stop).
+   1. **Plan, read-only:** `npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --out <file outside the repo>`. It reads the
+      feed and the existing `sources` rows, asks Claude, and prints the counts (decided by Claude / by the title rule and why / rows that would
+      change) and every row whose `authors` would change, old next to new. **Read it.** A guest list that looks wrong goes to Paul, not into
+      the database. Exit code 2 means the run stopped early (usage limit, halted or missing `claude` CLI): the plan is marked incomplete,
+      `--apply` refuses it, and the fix is to wait and make a new plan, not to apply what is there.
+   2. **Apply exactly that plan:** `npx tsx --env-file=.env.local scripts/refreshGuests.ts --apply <file>` (`--dry-run` first if in doubt). It
+      updates only `sources.authors`, only the rows the plan marks changed, and the host stays `authors[0]`. If any of those rows no longer
+      holds what the plan saw (a hand correction, a re-ingest), **nothing is written** (exit 1, with the rows listed): make a new plan and read
+      it again. Re-running after a network failure skips finished rows.
+   3. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
+      rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
+   4. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
+      `(#183 rebroadcast)` notes removed, the host dropped from guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
+      were just created, applying the plan is part of the ingest.
+   `scripts/evalGuestNames.ts` re-measures accuracy against the hand-labelled `tests/fixtures/guest-gold.json` (100 titles); run it after any
+   change to the prompt or to `lib/guestNames.ts`, and label a few episodes of a new show into the fixture first.
+7. `fetchPodcastFeed.ts --show <prefix> --keys … --fit-budget`, and the rest of the usual flow: `transcribeDeepgram.ts`, `attachTranscripts.ts`,
+   `extractDeepgram.ts`. Each step needs the same go-ahead it always did: the Deepgram spend is Paul's decision per batch.
 
 **Gotchas the first two extra shows turned up**
 
@@ -413,3 +435,8 @@ section is what that window (and the runner, afterwards) follows.
 - FoundMyFitness already had 17 rows from an earlier published-transcript path (`fmf-<slug>`). The ingest and `checkFeeds` match them to their
   feed episode by title and leave them alone, instead of creating a second row and a second transcription. Doubt means no match.
 - Episode numbers are only unique within a show: the ingest matches existing rows by number inside the same show only.
+- Guest names: Claude proposes, a deterministic check disposes. A name must read as a name, appear in the title or the first 600 characters of
+  the notes, and not be the host; otherwise that episode falls back to the title rule and the plan says why. The same check puts the title's
+  spelling on a guest (`Matt Walker`, not the notes' `Matthew Walker`), because `authors` is how one guest's claims are pooled across episodes.
+  Known limit: a guest named only in a long list deep in the notes is missed (the window is 600 characters), and an episode whose notes are
+  empty is read from the title alone.
