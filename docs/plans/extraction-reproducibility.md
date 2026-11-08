@@ -469,7 +469,7 @@ plan's author reviews the numbers. Concurrency 8; usage guard checked before eve
 |---|---|---|---|---|---|---|---|
 | **E1a** | Copy A twice, the configuration that built the library (Haiku 4.5, v1 prompt, char chunks, live hygiene, CLI) | Noise floor of the old pipeline; proves the harness | 2 | Always first. Expect 15–25% pass-specific. Report to the parent window. | 0.5M | 20 min | ≈ $1.8 / — |
 | **E1b** | Copy A twice, `main` today (Opus 5.5, v2 prompt, gate + repair, char chunks, live hygiene, CLI) | How much PR #59 already closed | 2 | Report to the parent window. If same-copy < 5%, run copy B once against E1b as the cross-copy check and skip E2. | 0.5M | 40 min | ≈ $6.7 / $4.6 |
-| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | If same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
+| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | **Waits for Paul's anecdotes answer** (hub row `la-2026-11-08-reproducibility-bar-call`): the prompt wording depends on it. Then: if same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E3** | E2 + context before/after + speaker-turn chunks + cached hygiene (fixes B1, B2, C): A×2 + B×1 | Boundaries and context | 3 | Boundary share should fall to the matched facts' share; coverage disagreement < 5%. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E4** | E3 configuration on cheaper models, CLI: Haiku 5.5 A×2, Sonnet 5.5 A×2 | Whether a cheaper model matches Opus (for the top-up only) | 4 | Informational: Opus 5.5 is decided. A model within 1 point of Opus on every metric becomes a top-up option for Paul. | 1.6M | 30 min | ≈ $7 / $6 |
 | **E4c** (optional, API credits) | E3 configuration on Haiku 4.5, API route, temperature 0: A×2 | Dice versus instructions | 2 | Diagnostic only; needs the parent window's ok to spend API credits. | 0.8M | 10 min | — / $2.4 |
@@ -587,9 +587,12 @@ To be written when the fixes ship, not now:
    experiment spend", relayed by the parent window). The likely path E1a → E1b → E2 → E3 →
    E4 → E6 runs in a Sonnet session; E5 and E7 only if the decision rules call for them,
    and the parent window hears before either starts.
-2. Confirm the resume bar in section 7 (5% / 5% / +2 points), or set a different one.
+2. Confirm the resume bar in section 7 (5% / 5% / +2 points), or set a different one. Put to
+   Paul by the parent window on 2026-11-08 (hub row `la-2026-11-08-reproducibility-bar-call`);
+   E1a and E1b do not wait for it.
 3. Keep anecdotes and conversational facts under "capture everything" (kept as kind
-   `Anecdote` for synthesis to rank) or still drop them at extraction.
+   `Anecdote` for synthesis to rank) or still drop them at extraction. Put to Paul on the same
+   hub row; **E2 waits for the answer** because the exhaustive prompt's wording depends on it.
 4. ~~Model tier.~~ **Decided: Opus 5.5** (PR #59, confirmed 2026-11-08). Open: whether a
    cheaper model may run the library top-up if E4 shows it matches Opus on the bar.
 5. Approve the library top-up (section 8) once E5b shows the size of the gap, and choose
