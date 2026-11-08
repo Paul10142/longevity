@@ -437,6 +437,13 @@ section is what that window (and the runner, afterwards) follows.
       source alone). `authors` that is just the host means the episode has no guest (the other speaker stays `Speaker 2`); the manifest is
       consulted only for a row whose `authors` is empty, and the attach prints how many rows that was. `repairDeepgramTiming.ts` follows the same
       rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
+      **A third voice** (two or more voices besides the host, one named guest): the guest is named only when one voice holds 80%+ of the
+      non-host words with every other voice under 10%, AND a short Claude read of the first five minutes names the same voice (one small
+      subscription call, only for such an episode); anything else leaves every non-host voice as `Speaker N` and the attach prints why.
+      `SKIP_GUEST_VOICE_READ=1` skips the read (tests). If the read is unavailable (usage window full, `claude` missing) the episode is
+      **not attached** and the attach exits 2: run it again. `scripts/previewGuestVoices.ts --dir <audio-root> --keys <k,…>` shows, read-only,
+      what a list of episodes would get. It fires on a stray third voice (Huberman); it does not name FoundMyFitness episodes, where the
+      host's interview voice is the second voice.
    4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
    5. **Every new batch runs this by itself** (Paul, 2026-11-08: "apply this plan to all future podcast episodes"). After
