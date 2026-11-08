@@ -411,6 +411,17 @@ section is what that window (and the runner, afterwards) follows.
    a person would; the old title rule lost real guests (`James Clear (#183 rebroadcast)`) and invented others (`M.P.H.`, `Quarterly Podcast
    Summary #6`). It costs subscription calls on the bulk tier (about 20 episodes per call), no Deepgram, no audio. Run
    `sh ~/.claude/usage-guard/check.sh` first (exit 1 = stop).
+   **The names rule (Paul, 2026-11-08, for every show and every future episode): `sources.authors` holds each guest as the show writes
+   them, credentials included, one element per person (`Sally Greenwald, M.D., M.P.H.`, `Max Diehn, M.D. Ph.D.`, `Arthur Brooks Ph.D.`,
+   `Dr. Andrew Huberman`); speaker labels are the bare name (`Sally Greenwald:`).** Never a credential as its own element, never only some
+   of several, never one the title does not give. Roles (`U.S. Senator`), series labels and junk (`(#183 rebroadcast)`, `Pt. 2`) are not
+   part of the name. The rule holds at every step that touches a name: the ingest's title rule (`parseGuests`, `lib/podcastFeed.ts`) gives
+   a new episode its first authors with credentials attached, `refreshGuests.ts` (Claude reads the title and notes; the check copies the
+   credentials from the text, so the model cannot add or lose one) refines them, and `lib/personName.ts` `bareName` turns a written name into
+   the label for `attachTranscripts.ts`, `repairDeepgramTiming.ts` and the extraction prompt (a credential in a label would make one person two
+   speakers, and corroboration counts distinct speakers). Because labels are bare, adding credentials to `authors` never changes a stored
+   transcript. A credential the code does not recognise is the one way a title can still lose one: `splitName` and `credentialRun` in
+   `lib/personName.ts` hold the list, so add it there (and a test) when a plan shows a credential missing.
    1. **Plan, read-only:** `npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --out <file outside the repo>`. It reads the
       feed and the existing `sources` rows, asks Claude, and prints the counts (decided by Claude / by the title rule and why / rows that would
       change) and every row whose `authors` would change, old next to new. **Read it.** A guest list that looks wrong goes to Paul, not into
@@ -428,8 +439,9 @@ section is what that window (and the runner, afterwards) follows.
       rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
    4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
-   5. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
-      `(#183 rebroadcast)` notes removed, the host dropped from guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
+   5. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, the
+      `(#183 rebroadcast)` notes removed, a credential left standing as a guest of its own folded back onto its name, the host dropped from
+      guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
       were just created, applying the plan is part of the ingest.
    `scripts/evalGuestNames.ts` re-measures accuracy against the hand-labelled `tests/fixtures/guest-gold.json` (100 titles); run it after any
    change to the prompt or to `lib/guestNames.ts`, and label a few episodes of a new show into the fixture first.

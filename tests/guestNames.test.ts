@@ -16,6 +16,7 @@ import {
   BATCH_SIZE,
   GuestReplyError,
   appearsIn,
+  bareName,
   buildGuestPrompt,
   buildPlan,
   checkPlan,
@@ -31,16 +32,19 @@ import {
   resolveGuests,
   sameAuthors,
   sameGuestSet,
+  sameWrittenGuests,
   sharedSurname,
   stopKindOf,
   stripHonorifics,
   titleSpelling,
   validateGuests,
+  writtenForm,
   type GuestEpisode,
   type GuestLlm,
   type GuestPlan,
   type SourceRow,
 } from '../lib/guestNames'
+import { isCredentialOnly } from '../lib/personName'
 import { parseGuests } from '../lib/podcastFeed'
 import { isHostName, showByPrefix, type Show } from '../lib/shows'
 import { PipelineHaltError, UsageLimitError } from '../lib/usageLimit'
@@ -113,7 +117,26 @@ test('the prompt names the show and its host, and gives one block per episode', 
 
 test('the prompt carries no real guest names (the gold set must test generalisation, not memory)', () => {
   const { system } = buildGuestPrompt(fmf, [])
-  for (const real of ['James Clear', 'Matt Walker', 'Kyle Allred', 'Annie Duke', 'Ric Elias']) assert.ok(!system.includes(real), real)
+  for (const real of ['James Clear', 'Matt Walker', 'Kyle Allred', 'Annie Duke', 'Ric Elias', 'Sally Greenwald', 'Max Diehn', 'Arthur Brooks', 'David Allison', 'Bridget Sumser', 'BJ Miller']) {
+    assert.ok(!system.includes(real), real)
+  }
+})
+
+test('the prompt asks for credentials kept with the name, one string per guest, and no longer says to leave them out', () => {
+  const { system } = buildGuestPrompt(attia, [])
+  assert.match(system, /Keep each guest's credentials/)
+  assert.match(system, /ONE string/)
+  assert.match(system, /never only one of several/)
+  assert.match(system, /never a guest of its own and never a separate list item/)
+  assert.match(system, /"Jane Roe, M\.D\., M\.P\.H\."/)
+  assert.match(system, /"Sam Doe, M\.D\. Ph\.D\."/)
+  assert.match(system, /"Alex Poe Ph\.D\."/)
+  assert.match(system, /"Pat Lee, Ph\.D\."/)
+  assert.match(system, /"Kim Fox, L\.C\.S\.W\."/)
+  assert.doesNotMatch(system, /Leave out honorifics, credentials/)
+  // Roles and series labels still go.
+  assert.match(system, /Leave out roles that are not credentials/)
+  assert.match(system, /"U\.S\. Senator Dr\. Jane Roe, M\.P\.H\." is "Dr\. Jane Roe, M\.P\.H\."/)
 })
 
 // ---------------------------------------------------------------------------
@@ -167,6 +190,12 @@ test('stripHonorifics removes titles and credentials but keeps Jr., II and surna
   assert.equal(stripHonorifics('Tran Do'), 'Tran Do')
   assert.equal(stripHonorifics('Jane Roe, DO'), 'Jane Roe')
   assert.equal(stripHonorifics('  Jane   Roe  '), 'Jane Roe')
+  // Several credentials, with and without commas between them: all of them go, and the bare name is the same function.
+  assert.equal(stripHonorifics('Sally Greenwald, M.D., M.P.H.'), 'Sally Greenwald')
+  assert.equal(stripHonorifics('Max Diehn, M.D. Ph.D.'), 'Max Diehn')
+  assert.equal(stripHonorifics('Tom Dayspring, M.D., FACP, FNLA'), 'Tom Dayspring')
+  assert.equal(stripHonorifics('Bridget Sumser, L.C.S.W.'), 'Bridget Sumser')
+  assert.equal(bareName('Mohit Khera, M.D., M.B.A., M.P.H.'), 'Mohit Khera')
 })
 
 test('notANameReason rejects brackets, numbers, episode notes, joined names and runs of words', () => {
@@ -223,21 +252,112 @@ test('titleSpelling lets the title win over a longer or shorter spelling of the 
   assert.equal(titleSpelling('Jane Roe', 'Sam Roe on sleep'), 'Jane Roe')
   assert.equal(titleSpelling('Bill Harris', '#83 - Bill Harris, Ph.D.: Omega-3'), 'Bill Harris')
   assert.equal(titleSpelling('Derek', 'x'), 'Derek')
+  // A listed short form is the same first name even though neither is a prefix of the other.
+  assert.equal(titleSpelling('Thomas Doe', '#22 – Tom Doe, M.D., FACP – Part III of V: HDL'), 'Tom Doe')
+  assert.equal(titleSpelling('William Roe', '#68 Dr. Bill Roe on the Omega-3 Index'), 'Bill Roe')
+  assert.equal(titleSpelling('Tom Doe', 'Dr. Thomas Doe on lipids'), 'Thomas Doe')
+  // ...but never across a different surname or an unrelated first name.
+  assert.equal(titleSpelling('Thomas Poe', '#22 – Tom Doe, M.D.'), 'Thomas Poe')
+  assert.equal(titleSpelling('Thomas Doe', '#22 – Tim Doe, M.D.'), 'Thomas Doe')
+})
+
+test('validateGuests puts the title\'s short first name and credentials on a guest the model wrote in full', () => {
+  const e = ep('attia-22', '#22 – Tom Doe, M.D., FACP, FNLA – Part III of V: HDL', 'In this series, Thomas Doe, M.D., FACP, FNLA, a lipidologist, shares what he knows.')
+  const v = validateGuests(attia, e, ['Thomas Doe, M.D., FACP, FNLA'])
+  assert.deepEqual(v.ok && v.guests, ['Tom Doe, M.D., FACP, FNLA'])
 })
 
 // ---------------------------------------------------------------------------
 // Validation
 // ---------------------------------------------------------------------------
 
-test('validateGuests keeps names that are in the title or notes, and strips credentials', () => {
+test('validateGuests keeps names that are in the title or notes, with every credential the title writes', () => {
   const e = ep('attia-1', '#317 ‒ Reforming medicine | Marty Makary, M.D., M.P.H.')
-  assert.deepEqual(validateGuests(attia, e, ['Dr. Marty Makary, M.D.']), { ok: true, guests: ['Marty Makary'], droppedHost: [] })
+  // However the model wrote the credentials (one, none, all), the title's own are what is kept.
+  for (const proposed of ['Dr. Marty Makary, M.D.', 'Marty Makary', 'Marty Makary, M.D., M.P.H.']) {
+    assert.deepEqual(validateGuests(attia, e, [proposed]), { ok: true, guests: ['Marty Makary, M.D., M.P.H.'], droppedHost: [] }, proposed)
+  }
+})
+
+test('validateGuests writes each guest as the title writes them: the cases from Paul\'s review of The Drive', () => {
+  const guests = (title: string, proposed: string[], notes: string | null = null) => {
+    const v = validateGuests(attia, ep('attia-x', title, notes), proposed)
+    assert.ok(v.ok, JSON.stringify(v))
+    return (v as { guests: string[] }).guests
+  }
+  // 371: both credentials, not just the first.
+  assert.deepEqual(guests('#371 – Women’s sexual health: desire, arousal | Sally Greenwald, M.D., M.P.H.', ['Sally Greenwald']), ['Sally Greenwald, M.D., M.P.H.'])
+  // 260: three credentials.
+  assert.deepEqual(guests('#260 ‒ Men’s sexual health | Mohit Khera, M.D., M.B.A., M.P.H.', ['Mohit Khera']), ['Mohit Khera, M.D., M.B.A., M.P.H.'])
+  // 354: two guests, each with their own credential, and no credential as a guest of its own.
+  assert.deepEqual(
+    guests('#354 – What the dying can teach us | BJ Miller, M.D. and Bridget Sumser, L.C.S.W.', ['BJ Miller', 'Bridget Sumser', 'L.C.S.W.']),
+    ['BJ Miller, M.D.', 'Bridget Sumser, L.C.S.W.']
+  )
+  // Credentials with no comma, with and without a space between them.
+  assert.deepEqual(guests('#280 ‒ Cultivating happiness | Arthur Brooks Ph.D.', ['Arthur Brooks']), ['Arthur Brooks Ph.D.'])
+  assert.deepEqual(guests('#xx ‒ Radiation | Max Diehn, M.D. Ph.D.', ['Max Diehn']), ['Max Diehn, M.D. Ph.D.'])
+  assert.deepEqual(guests('#368 ‒ The protein debate | David Allison, Ph.D.', ['David Allison']), ['David Allison, Ph.D.'])
+  // Fellowships, and a credential list the old rule truncated.
+  assert.deepEqual(guests('#22 – Tom Dayspring, M.D., FACP, FNLA – Part III of V: HDL', ['Tom Dayspring']), ['Tom Dayspring, M.D., FACP, FNLA'])
+  assert.deepEqual(guests('#143 - John Ioannidis, M.D., D.Sc.: Why most research is flawed', ['John Ioannidis']), ['John Ioannidis, M.D., D.Sc.'])
+  assert.deepEqual(guests('#350 ‒ Injury prevention | Kyler Brown, D.C.', ['Kyler Brown']), ['Kyler Brown, D.C.'])
+})
+
+test('validateGuests: series and episode notes still go, so #183 is James Clear and nothing else', () => {
+  assert.deepEqual(guests183('Building & Changing Habits | James Clear (#183 rebroadcast)'), ['James Clear'])
+  assert.deepEqual(guests183('James Clear: Building & Changing Habits (#183 rebroadcast)'), ['James Clear'])
+  assert.deepEqual(guests183('#201 - Deep dive back into Zone 2 | Iñigo San-Millán, Ph.D. (Pt. 2)', 'Iñigo San-Millán'), ['Iñigo San-Millán, Ph.D.'])
+})
+
+function guests183(title: string, name = 'James Clear'): string[] {
+  const v = validateGuests(attia, ep('attia-0183', title), [name])
+  assert.ok(v.ok)
+  return (v as { guests: string[] }).guests
+}
+
+test('validateGuests keeps a Dr. the text writes, and takes the notes\' rendering for a guest only the notes name', () => {
+  const huberman = showByPrefix('huberman') as Show
+  assert.deepEqual(
+    (validateGuests(fmf, ep('fmf-110', '#110 How To Build Lasting Happiness | Dr. Arthur Brooks'), ['Arthur Brooks']) as { guests: string[] }).guests,
+    ['Dr. Arthur Brooks']
+  )
+  const e = ep('huberman-g1', 'GUEST SERIES | The Biology of Sleep', '<p>My guest is Dr. Jane Roe, MD, a professor of sleep science. She joins me.</p>')
+  assert.deepEqual(validateGuests(huberman, e, ['Jane Roe']), { ok: true, guests: ['Dr. Jane Roe, MD'], droppedHost: [] })
+  // The title names the guest and writes no credentials: the title decides, the notes' credentials are not borrowed.
+  const t = ep('attia-9', 'Habits | Jane Roe', 'Jane Roe, Ph.D. is a professor.')
+  assert.deepEqual(validateGuests(attia, t, ['Jane Roe, Ph.D.']), { ok: true, guests: ['Jane Roe'], droppedHost: [] })
+})
+
+test('validateGuests never adds a credential the text does not write, and a model cannot lose one the text has', () => {
+  const e = ep('attia-10', 'Habits | Jane Roe, Ph.D.')
+  assert.deepEqual((validateGuests(attia, e, ['Jane Roe, M.D., M.P.H., Ph.D.']) as { guests: string[] }).guests, ['Jane Roe, Ph.D.'])
+  assert.deepEqual((validateGuests(attia, e, ['Jane Roe']) as { guests: string[] }).guests, ['Jane Roe, Ph.D.'])
+})
+
+test('validateGuests copies a credential the built-in list lacks when the model names it and the text writes it', () => {
+  const e = ep('attia-11', 'Habits | Jane Roe, FRSA (Pt. 2)')
+  assert.deepEqual((validateGuests(attia, e, ['Jane Roe, FRSA']) as { guests: string[] }).guests, ['Jane Roe, FRSA'])
+  // Not a credential: a role the model glued on is neither part of the bare name nor copied.
+  const r = ep('attia-12', 'Habits | Jane Roe, Founder of Acme')
+  assert.deepEqual((validateGuests(attia, r, ['Jane Roe, Founder of Acme']) as { guests: string[] }).guests, ['Jane Roe'])
+})
+
+test('validateGuests does not read a topic word after a name as a credential', () => {
+  const e = ep('attia-13', 'Habits | Rick Doe PhD MDMA and psychedelics')
+  assert.deepEqual((validateGuests(attia, e, ['Rick Doe']) as { guests: string[] }).guests, ['Rick Doe PhD'])
+})
+
+test('validateGuests drops a credential listed on its own instead of rejecting the episode', () => {
+  const e = ep('attia-14', 'Habits | Sam Doe, M.D., M.P.H.')
+  assert.deepEqual(validateGuests(attia, e, ['Sam Doe', 'M.P.H.']), { ok: true, guests: ['Sam Doe, M.D., M.P.H.'], droppedHost: [] })
 })
 
 test('validateGuests accepts a guest named only in the notes (the title is a series label)', () => {
   const e = ep('huberman-g1', 'GUEST SERIES | The Biology of Sleep', '<p>My guest is Dr. Jane Roe, a professor of sleep science.</p>')
   const v = validateGuests(showByPrefix('huberman') as Show, e, ['Jane Roe'])
-  assert.deepEqual(v, { ok: true, guests: ['Jane Roe'], droppedHost: [] })
+  // The notes' rendering is copied, "Dr." included (the title names nobody).
+  assert.deepEqual(v, { ok: true, guests: ['Dr. Jane Roe'], droppedHost: [] })
 })
 
 test('validateGuests rejects the whole episode when any name is not in the text it was shown', () => {
@@ -266,7 +386,7 @@ test('validateGuests normalises spelling to the text and removes duplicates', ()
   const e = ep('fmf-1', 'Dr. Dominic D’Agostino on the ketogenic diet', 'Dominic D’Agostino, Ph.D. joins Rhonda.')
   assert.deepEqual(validateGuests(fmf, e, ["Dominic D'Agostino", 'Dr. Dominic D’Agostino']), {
     ok: true,
-    guests: ['Dominic D’Agostino'],
+    guests: ['Dr. Dominic D’Agostino'],
     droppedHost: [],
   })
   const m = ep('attia-5', 'Matt Walker on sleep', 'Dr. Matthew Walker explains.')
@@ -297,6 +417,11 @@ test('fallbackGuests is the title rule with the host removed and duplicates fold
   for (const title of [t, '#307 ‒ Exercise for aging people | Peter Attia', 'Dr. Peter Attia | Jane Roe']) {
     for (const g of fallbackGuests(attia, title)) assert.ok(!isHostName(attia, g), `${title} -> ${g}`)
   }
+})
+
+test('fallbackGuests never lists a credential split off a name as a guest', () => {
+  const t = '#371 – Women’s sexual health | Sally Greenwald, M.D., M.P.H.'
+  for (const g of fallbackGuests(attia, t)) assert.ok(!/^(?:m\.?d\.?|m\.?p\.?h\.?)$/i.test(g), g)
 })
 
 test('decideEpisode: Claude when the answer validates, the title rule (with the reason) when it does not', () => {
@@ -428,7 +553,25 @@ test('resolveGuests sends an episode the reply forgot to the title rule', async 
 // Comparing guest lists
 // ---------------------------------------------------------------------------
 
-test('sameAuthors is exact and ordered; sameGuestSet ignores order, case and accents', () => {
+test('writtenForm copies honorific and credentials from the title, then the notes, and falls back to the bare name', () => {
+  const e = ep('x', '#371 | Sally Greenwald, M.D., M.P.H.', 'Dr. Sally Greenwald, MD joins Peter.')
+  assert.equal(writtenForm('Sally Greenwald', e), 'Sally Greenwald, M.D., M.P.H.')
+  assert.equal(writtenForm('Sam Doe', e), 'Sam Doe', 'a name the text does not hold is returned as given')
+  assert.equal(writtenForm('Mark Bell', ep('y', '#28 – Mark and Chris Bell: steroids')), 'Mark Bell')
+  // A sentence's full stop after a dotless credential is not part of it.
+  assert.equal(writtenForm('Jane Roe', ep('z', 'Notes', 'Today: Jane Roe, MD. She is a doctor.')), 'Jane Roe, MD')
+  assert.equal(writtenForm('Jane Roe', ep('z', 'Notes', 'Today: Jane Roe, Ph.D. She is a doctor.')), 'Jane Roe, Ph.D.')
+  // Two mentions, credentials on the second: they are kept.
+  assert.equal(writtenForm('Jane Roe', ep('z', 'Jane Roe on sleep | Jane Roe, Ph.D.')), 'Jane Roe, Ph.D.')
+})
+
+test('sameAuthors is exact and ordered; sameGuestSet ignores order, case, accents and credentials; sameWrittenGuests does not ignore credentials', () => {
+  assert.ok(sameGuestSet(['Sally Greenwald, M.D., M.P.H.'], ['Sally Greenwald']))
+  assert.ok(sameGuestSet(['Dr. Arthur Brooks'], ['Arthur Brooks Ph.D.']))
+  assert.ok(sameWrittenGuests(['Sally Greenwald, M.D.'], ['sally greenwald, M.D.']))
+  assert.ok(sameWrittenGuests(['Sally Greenwald, M.D., M.P.H.', 'Bo Doe'], ['Bo Doe', 'Sally Greenwald, M.D., M.P.H.']))
+  assert.ok(!sameWrittenGuests(['Sally Greenwald, M.D.'], ['Sally Greenwald, M.D., M.P.H.']))
+  assert.ok(!sameWrittenGuests(['Sally Greenwald'], ['Sally Greenwald, M.D.']))
   assert.ok(sameAuthors(['Dr. Peter Attia', 'Jane Roe'], ['Dr. Peter Attia', 'Jane Roe']))
   assert.ok(sameAuthors(null, []))
   assert.ok(!sameAuthors(['a', 'b'], ['b', 'a']))
@@ -568,7 +711,7 @@ test('checkPlan touches only the rows the plan changes: an unrelated row that mo
 
 test('the gold set is well formed: unique keys, known shows, expected guests never include the host', () => {
   const gold = JSON.parse(readFileSync(resolve('tests/fixtures/guest-gold.json'), 'utf8')) as {
-    episodes: { show: string; key: string; title: string; notes: string; expected: string[]; unsure?: boolean }[]
+    episodes: { show: string; key: string; title: string; notes: string; expected: string[]; expected_full?: string[]; unsure?: boolean }[]
   }
   assert.ok(gold.episodes.length >= 60)
   const keys = new Set<string>()
@@ -580,6 +723,14 @@ test('the gold set is well formed: unique keys, known shows, expected guests nev
     keys.add(g.key)
     assert.ok(g.title && Array.isArray(g.expected))
     for (const name of g.expected) assert.ok(!isHostName(show as Show, name), `${g.key} lists the host ${name}`)
+    // `expected` is WHO (bare names). `expected_full` is how the show WRITES them: the same people,
+    // one string each, credentials attached, never a credential as its own element.
+    if (g.expected_full) {
+      assert.ok(sameGuestSet(g.expected_full, g.expected), `${g.key}: expected_full is not the same people as expected`)
+      assert.ok(!sameWrittenGuests(g.expected_full, g.expected), `${g.key}: expected_full equals expected, drop it`)
+      for (const w of g.expected_full) assert.ok(!isCredentialOnly(w), `${g.key}: ${w} is a credential, not a guest`)
+    }
+    for (const name of g.expected) assert.ok(bareName(name) === name, `${g.key}: expected ${name} carries an honorific or credential`)
     // Show notes carry public sponsor and donation links; a link with a key in it would be a leaked credential.
     assert.ok(!/[?&](?:key|token|secret|auth|apikey|api_key|sig|signature)=/i.test(g.notes), `${g.key}: notes carry a credential-looking URL`)
     assert.ok(!/\.(?:mp3|m4a|xml|rss)\b/i.test(g.notes), `${g.key}: notes carry an audio or feed URL`)
