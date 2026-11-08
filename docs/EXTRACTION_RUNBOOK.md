@@ -96,7 +96,7 @@ credit — never start it without Paul's yes in chat.**
 
 | Log shows | Meaning | Runner does |
 |---|---|---|
-| `PAUSE — usage window 96% full, pausing before the limit …` or `PAUSE — usage limit reached; resets <time> …`, later `RESUME — paused 62m (…)` | The subscription window (shared with Paul's own sessions) is nearly full or full. **Expected, not a fault.** The supervisor stops calling the CLI, jobs keep their checkpoints and spend no retry attempts, and it wakes 90 s after the reset (never more than 6 h in one sleep; a reset after the run's deadline ends the run). It pauses at 90% full in the five-hour OR the weekly window (`USAGE_PAUSE_AT`, a fraction; Paul, 2026-10-18), so calls do not fail first. A background agent, `~/.claude/usage-guard`, applies the same 90% line to jobs with no gate of their own (below). | Do not kill or restart. Report the lost time from the `STOP` block (`usage-limit pauses: N, Xm lost`) or by adding up the `RESUME` lines. If a `PAUSE` says "after this run's deadline", the window reopens too late (weekly limit): the run ended by design; tell Paul when it resets. |
+| `PAUSE — usage window 96% full, pausing before the limit …` or `PAUSE — usage limit reached; resets <time> …`, later `RESUME — paused 62m (…)` | The subscription window (shared with Paul's own sessions) is nearly full or full. **Expected, not a fault.** The supervisor stops calling the CLI, jobs keep their checkpoints and spend no retry attempts, and it wakes 90 s after the reset (never more than 6 h in one sleep; a reset after the run's deadline ends the run). It pauses at 90% full in the five-hour OR the weekly window (`USAGE_PAUSE_AT`, a fraction; Paul, 2026-10-18), so calls do not fail first. **In the last 18 hours before the weekly reset the line is 100% instead** (Paul, 2026-11-08; `USAGE_UNCAP_LAST_HOURS`, below), so a `PAUSE` at 90-99% in that stretch means the rule is off or the reset time was unknown. A background agent, `~/.claude/usage-guard`, applies the same 90% line to jobs with no gate of their own (below). | Do not kill or restart. Report the lost time from the `STOP` block (`usage-limit pauses: N, Xm lost`) or by adding up the `RESUME` lines. If a `PAUSE` says "after this run's deadline", the window reopens too late (weekly limit): the run ended by design; tell Paul when it resets. |
 | `[worker] job … deferred: usage limit …` | A job parked by the pause above. Its attempts were not spent. | Nothing. |
 | `hit your session limit` repeated many times with **no** `PAUSE` line, or `cli:` stats showing thousands of failed calls | Pre-2026-10-12 behaviour (the old supervisor hammered the CLI for an hour: 10,744 failed calls). Means the run is on old code. | Report it; do not restart mid-run. |
 | `TypeError: fetch failed`, `paged select failed`, rounds "died … sleeping" | The Mac cannot reach Supabase (2026-10-12: ~3 h outage, transient). The supervisor backs off to 15 min and STOPs after ~3 h. | After a STOP: if the database is reachable now, restart once. Report the outage window. |
@@ -138,7 +138,7 @@ After a weekly stop, Paul says "proceed with extraction".
 `LA extraction pipeline` pattern matches them and the `claude -p` children of both (checked 2026-10-18 against the real
 command lines); `retireSourceClaims` is still spared. The guard does **not** restart a lane by itself (only the replace loop has a
 `restart` entry): after a stop the runner starts the lane again when `~/.claude/state/usage-paused` is gone, and the lane's own
-`usageGate` (`USAGE_PAUSE_AT`, 90%) pauses it before the guard has to.
+`usageGate` (`USAGE_PAUSE_AT`, 90%; 100% in the last 18 hours before the weekly reset, see §13) pauses it before the guard has to.
 
 ## 5. Reporting (when the run ends, or when Paul asks)
 
@@ -364,8 +364,14 @@ A drop longer than the budget still fails the job as before; it is requeued with
 - **Restart on new code.** After merging pipeline changes, stop both lanes (SIGTERM), `git pull --ff-only`, restart; interrupted jobs
   resume from checkpoints and stale `running` locks are reclaimed after 10 minutes.
 - **The end-of-run judge has a 180-minute cap** and can end early on a network error; it is resumable (`flagClaims.ts fidelity --sources`).
-- **Usage cap.** `USAGE_PAUSE_AT=1` lifts the in-process 90% pause; the launchd guard has its own `threshold` in
-  `~/.claude/usage-guard/config.json`. Lift both only on Paul's explicit word, and restore 0.9 afterwards.
+- **Usage cap.** The in-process 90% pause lifts **by itself** in the last 18 hours before the weekly plan window resets
+  (Paul, 2026-11-08), the same rule as the launchd guard's `uncapLastHours` in `~/.claude/usage-guard/config.json`. Lanes no
+  longer need `USAGE_PAUSE_AT=1` for that stretch: the reset time is read from each Claude call (`sevenDay.resetsAt`), the line
+  becomes 100% (a full window still pauses; a real limit is handled as before), and it returns to 90% at the reset. A missing or
+  past reset time keeps 90%. `USAGE_UNCAP_LAST_HOURS=<hours>` changes the width; `0` (or anything invalid) turns the rule off. An
+  explicit `USAGE_PAUSE_AT` always wins: `USAGE_PAUSE_AT=1` lifts the pause at any time, `USAGE_PAUSE_AT=0.9` keeps 90% even
+  inside the last 18 hours. Outside that stretch, lift both lines only on Paul's explicit word, and restore 0.9 afterwards.
+  The rule is read when a lane starts, so a lane started on older code needs a restart (§ "Restart on new code") to get it.
 
 
 ## 14. Adding a show (2026-11-08)

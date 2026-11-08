@@ -27,8 +27,20 @@
  * (0-1). Env: USAGE_PAUSE_AT. Paul chose 90% on 2026-10-18 so an overnight
  * run cannot use up the plan; `~/.claude/usage-guard` enforces the same line
  * for jobs that have no gate of their own.
+ *
+ * Exception (Paul, 2026-11-08): in the last UNCAP_LAST_HOURS before the WEEKLY
+ * window resets, the line moves to 1 (pause only at a full window), because
+ * whatever is left of the week is lost at the reset. The reset time is the
+ * live `sevenDay.resetsAt` from the latest CLI call. An explicit USAGE_PAUSE_AT
+ * always wins, and a missing, stale or past reset time keeps this 90% line.
+ * `~/.claude/usage-guard` applies the same rule (its `uncapLastHours`).
  */
 export const DEFAULT_PAUSE_AT = 0.9
+/**
+ * How long before the weekly reset the 90% line is lifted (hours). Env:
+ * USAGE_UNCAP_LAST_HOURS; 0 or an invalid value turns the rule off.
+ */
+export const UNCAP_LAST_HOURS = 18
 /** Wake this long AFTER the stated reset, so the first call lands inside the new window. */
 export const RESET_MARGIN_MS = 90_000
 /** One sleep never exceeds this; a 5-hour window cannot need more. */
@@ -297,16 +309,56 @@ export function noteLimitReached(err: UsageLimitError, nowMs: number = Date.now(
   usageState.blockedUntil = Math.max(usageState.blockedUntil, until)
 }
 
-export function pauseThreshold(): number {
-  const v = Number(process.env.USAGE_PAUSE_AT)
-  return Number.isFinite(v) && v > 0 && v <= 1 ? v : DEFAULT_PAUSE_AT
+type Env = Record<string, string | undefined>
+
+/**
+ * Hours before the weekly reset in which the pause line is lifted. USAGE_UNCAP_LAST_HOURS
+ * unset = UNCAP_LAST_HOURS; set to 0 or anything that is not a positive number = rule off.
+ */
+export function uncapLastHours(env: Env = process.env): number {
+  const raw = env.USAGE_UNCAP_LAST_HOURS
+  if (raw === undefined) return UNCAP_LAST_HOURS
+  const v = Number(raw)
+  return Number.isFinite(v) && v > 0 ? v : 0
+}
+
+/**
+ * True when the weekly window resets in the future, but within `uncapLastHours()` from `nowMs`.
+ * Only the weekly window's own reset counts (never the five-hour one); a missing snapshot, a
+ * missing reset time or a reset that has already passed is false, so the normal line applies.
+ */
+export function inUncapWindow(nowMs: number, snapshot: RateLimitSnapshot | null, env: Env = process.env): boolean {
+  const hours = uncapLastHours(env)
+  const resetsAt = snapshot?.sevenDay?.resetsAt
+  if (hours <= 0 || resetsAt == null || !Number.isFinite(resetsAt)) return false
+  const left = resetsAt - nowMs
+  return left > 0 && left <= hours * 3_600_000
+}
+
+/**
+ * The utilization (0-1) at which the gate pauses. An explicit USAGE_PAUSE_AT always wins (an
+ * invalid one falls back to the plain 90%, with no uncap, so a typo cannot lift the cap).
+ * Otherwise 90%, except inside the last UNCAP_LAST_HOURS before the weekly reset, where it is 1.
+ * Pure given its arguments; the defaults read the live clock, snapshot and process env.
+ */
+export function pauseThreshold(
+  nowMs: number = Date.now(),
+  snapshot: RateLimitSnapshot | null = usageState.snapshot,
+  env: Env = process.env,
+): number {
+  const explicit = env.USAGE_PAUSE_AT
+  if (explicit !== undefined && explicit.trim() !== '') {
+    const v = Number(explicit)
+    return Number.isFinite(v) && v > 0 && v <= 1 ? v : DEFAULT_PAUSE_AT
+  }
+  return inUncapWindow(nowMs, snapshot, env) ? 1 : DEFAULT_PAUSE_AT
 }
 
 /**
  * Should the next CLI call be refused? Returns the error to throw, or null.
- * Pure given `usageState`, `nowMs` and the threshold.
+ * Pure given `usageState`, `nowMs` and the threshold (which defaults to `pauseThreshold(nowMs)`).
  */
-export function usageGate(nowMs: number = Date.now(), threshold: number = pauseThreshold()): UsageLimitError | null {
+export function usageGate(nowMs: number = Date.now(), threshold: number = pauseThreshold(nowMs)): UsageLimitError | null {
   if (usageState.blockedUntil > nowMs) {
     return new UsageLimitError('reached', usageState.blockedUntil, null, 'still inside the limit window')
   }
