@@ -34,7 +34,7 @@
  * Nothing here touches the database or the network; scripts/refreshGuests.ts does.
  */
 import { bareName, credentialRun, foldForMatch, honorificBefore, isCredentialOnly, splitName, stripHonorifics } from './personName'
-import { overridesByKey, type GuestOverride } from './guestOverrides'
+import { CHANNEL_ALIASES, overridesByKey, type GuestOverride } from './guestOverrides'
 import { parseGuests } from './podcastFeed'
 import { isHostName, type Show } from './shows'
 import { PipelineHaltError, UsageLimitError } from './usageLimit'
@@ -399,6 +399,30 @@ export function pseudonymForm(name: string): string | null {
 }
 
 /**
+ * A guest the text names by first name and the INITIALS of a channel listed in
+ * `CHANNEL_ALIASES` (`Derek from MPMD`, `Derek (MPMD)`, `Derek, MPMD`), or the channel
+ * written out after `from`/`of`/`at` (`Derek from More Plates More Dates`). `raw` is what
+ * the model proposed: the bare first name (`Derek`), or `Derek from MPMD` copied from the
+ * title. Returns the one written form `Derek, More Plates More Dates`, or null when `raw`
+ * is not such a first name or the text does not write that first name next to the channel,
+ * so a first name alone, or beside a channel nobody confirmed, is left to the normal path.
+ */
+export function channelAliasForm(raw: string, text: string): string | null {
+  const m = /^(\p{L}[\p{L}'’-]*)(?:\s+(?:from|of|at)\s+(\p{Lu}[\p{Lu}\p{N}]+))?$/u.exec(raw.trim())
+  if (!m) return null
+  const first = foldForMatch(m[1])
+  for (const [initials, channel] of Object.entries(CHANNEL_ALIASES)) {
+    if (m[2] && m[2] !== initials) continue
+    const marker = `${initials}|${channel.trim().split(/\s+/).join('\\s+')}`
+    const re = new RegExp(`(?<![\\p{L}\\p{N}'’-])(\\p{L}[\\p{L}'’-]*)\\s*(?:from|of|at|\\(|[:,–—|-])\\s*(?:${marker})(?![\\p{L}\\p{N}'’-])`, 'gu')
+    for (const hit of text.matchAll(re)) {
+      if (foldForMatch(hit[1]) === first) return `${m[1]}, ${channel}`
+    }
+  }
+  return null
+}
+
+/**
  * A guest the model gave by first name only, when the show notes write the whole name:
  * the title says `Dr. Darya and Kevin Rose`, the notes say `Darya Rose`, and the model
  * copies the title's one word. The notes' two-word form wins, but only when it is
@@ -456,6 +480,14 @@ export function validateGuests(show: Show, ep: GuestEpisode, proposed: readonly 
     if (isHostName(show, raw)) { droppedHost.push(raw); continue }
     // A credential on its own (`M.P.H.`) is not a guest; it belongs to the name before it, which the text supplies.
     if (isCredentialOnly(raw)) continue
+    // `Derek` / `Derek from MPMD`, with the text writing the initials of a confirmed channel: the same pseudonymous
+    // guest as `Derek: More Plates, More Dates`, written `Derek, More Plates More Dates`. The text's own words are the check.
+    const aliased = channelAliasForm(raw, text)
+    if (aliased) {
+      const aliasKey = foldForMatch(aliased)
+      if (!seen.has(aliasKey)) { seen.add(aliasKey); guests.push(aliased) }
+      continue
+    }
     // A pseudonym and its channel is one name written `Derek, More Plates More Dates`, however the model punctuated
     // it. Read it BEFORE `splitName`, which would take everything after the comma for credentials it does not know.
     const pseudo = pseudonymForm(raw)

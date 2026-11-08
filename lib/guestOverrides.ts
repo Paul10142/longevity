@@ -41,10 +41,25 @@ export const GUEST_OVERRIDES: readonly GuestOverride[] = [
   { key: 'fmf-0019', guests: ['Dr. Darya Rose', 'Kevin Rose'], why: `${PAUL_2026_11_08} (the title writes only "Dr. Darya"; the notes give the surname)` },
   { key: 'fmf-0069', guests: ['Roger Seheult', 'Kyle Allred'], why: `${PAUL_2026_11_08} (Kyle Allred is named only in the notes)` },
   { key: 'fmf-0073', guests: ['Kyle Allred'], why: `${PAUL_2026_11_08} (Kyle Allred is named only in the notes)` },
+  { key: 'fmf-0106', guests: ['Derek, More Plates More Dates'], why: `${PAUL_2026_11_08} ("Derek from MPMD" is the same Derek as Drive #274 and #291, so he keeps the channel name)` },
   // The Drive: a pseudonymous guest keeps the channel name the show attaches to the first name.
   { key: 'attia-0274', guests: ['Derek, More Plates More Dates'], why: `${PAUL_2026_11_08} (a pseudonymous guest keeps his channel name)` },
   { key: 'attia-0291', guests: ['Derek, More Plates More Dates'], why: `${PAUL_2026_11_08} (a pseudonymous guest keeps his channel name)` },
 ]
+
+/**
+ * Channels a guest publishes under, by the initials the titles write them with (Paul,
+ * 2026-11-08: `Derek from MPMD` is the same Derek as `Derek: More Plates, More Dates`, so
+ * he is written `Derek, More Plates More Dates` in every episode). A pseudonymous guest
+ * keeps the channel the way a credential travels with a name; the model is not asked to
+ * expand initials (it would be guessing), so `channelAliasForm` does it from this list,
+ * and only when the episode's own text writes the first name next to those initials.
+ *
+ * ADDING ONE. Only a channel a person has confirmed, in the same commit that records it.
+ */
+export const CHANNEL_ALIASES: Readonly<Record<string, string>> = {
+  MPMD: 'More Plates More Dates',
+}
 
 /** The overrides as a lookup by feed key. */
 export function overridesByKey(list: readonly GuestOverride[] = GUEST_OVERRIDES): Map<string, GuestOverride> {

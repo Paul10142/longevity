@@ -749,7 +749,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"Derek from MPMD\" is one guest, Derek"
+   "note": "\"Derek from MPMD\" is one guest, Derek. Paul 2026-11-08: the same Derek as Drive #274 and #291, so he is written with the channel, as one name; MPMD is the channel's initials (CHANNEL_ALIASES).",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "fmf",

@@ -10,6 +10,7 @@ import assert from 'node:assert/strict'
 
 import {
   buildPlan,
+  channelAliasForm,
   checkPlan,
   fallbackGuests,
   fullerName,
@@ -118,6 +119,38 @@ test('Drive #274 and #291: the guest is Derek, More Plates More Dates, however t
   assert.equal(isCredentialOnly('More Plates More Dates'), false)
 })
 
+const T106 = '#106 How To Increase Your Testosterone Levels Naturally | Derek from MPMD'
+const N106 = 'In this episode, Derek from More Plates More Dates highlights common pitfalls that suppress testosterone.'
+
+test('FoundMyFitness #106: Derek from MPMD is the same Derek, written with the channel (Paul, 2026-11-08)', () => {
+  const e106 = ep('fmf-0106', T106, N106)
+  for (const said of ['Derek', 'Derek from MPMD']) {
+    assert.deepEqual(guestsOf(fmf, e106, [said]), ['Derek, More Plates More Dates'], said)
+  }
+  // Only the title carries the initials: the same result.
+  assert.deepEqual(guestsOf(fmf, ep('fmf-0106', T106), ['Derek']), ['Derek, More Plates More Dates'])
+  // The channel written out after "from" in the notes is enough on its own.
+  assert.deepEqual(guestsOf(fmf, ep('fmf-0106', 'Testosterone Naturally', N106), ['Derek']), ['Derek, More Plates More Dates'])
+  // Two ways of saying one guest are one guest.
+  assert.deepEqual(guestsOf(fmf, e106, ['Derek', 'Derek from MPMD']), ['Derek, More Plates More Dates'])
+})
+
+test('channelAliasForm only joins a first name to a confirmed channel the text writes beside it', () => {
+  assert.equal(channelAliasForm('Derek', 'Topic | Derek (MPMD)'), 'Derek, More Plates More Dates')
+  assert.equal(channelAliasForm('Derek', 'Topic | Derek, MPMD'), 'Derek, More Plates More Dates')
+  // No channel beside the name: left to the normal path.
+  assert.equal(channelAliasForm('Derek', 'Topic | Derek'), null)
+  // The initials are in the text but beside someone else.
+  assert.equal(channelAliasForm('Sam', 'Topic | Derek from MPMD'), null)
+  // A surname, a credential, a channel nobody confirmed, other initials.
+  assert.equal(channelAliasForm('Derek Smith', 'Topic | Derek Smith from MPMD'), null)
+  assert.equal(channelAliasForm('Derek, M.D.', 'Topic | Derek from MPMD'), null)
+  assert.equal(channelAliasForm('Derek from XYZ', 'Topic | Derek from XYZ'), null)
+  assert.equal(channelAliasForm('Derek from MPMD', 'Topic | Derek from XYZ'), null)
+  // A lower-case look-alike is not the initials.
+  assert.equal(channelAliasForm('Derek', 'Topic | Derek from mpmd'), null)
+})
+
 test('a channel the text does not hold next to the first name is still rejected', () => {
   const v = validateGuests(attia, ep('attia-0274', T274), ['Derek, Some Other Channel'])
   assert.equal(v.ok, false)
@@ -156,6 +189,7 @@ test('the override list holds the rows Paul confirmed on 2026-11-08', () => {
   assert.deepEqual(by.get('fmf-0019')?.guests, ['Dr. Darya Rose', 'Kevin Rose'])
   assert.deepEqual(by.get('fmf-0069')?.guests, ['Roger Seheult', 'Kyle Allred'])
   assert.deepEqual(by.get('fmf-0073')?.guests, ['Kyle Allred'])
+  assert.deepEqual(by.get('fmf-0106')?.guests, ['Derek, More Plates More Dates'])
   assert.deepEqual(by.get('attia-0274')?.guests, ['Derek, More Plates More Dates'])
   assert.deepEqual(by.get('attia-0291')?.guests, ['Derek, More Plates More Dates'])
 })

@@ -446,7 +446,7 @@ section is what that window (and the runner, afterwards) follows.
       instead. It asks Claude about those rows only, prints every row it changes (old next to new), and applies through the same stale-plan guard
       as `--apply`, so a row someone changed in between stops the write (exit 1) and nothing is written. Add `--dry-run` to read first. Exit 2
       means the run stopped early (usage limit, halted `claude`): nothing is applied; wait and run it again. It writes only `sources.authors`.
-   6. **Hand-set rows survive every re-run** (`lib/guestOverrides.ts`). A guest list a person set by hand (the 8 FoundMyFitness rows and
+   6. **Hand-set rows survive every re-run** (`lib/guestOverrides.ts`). A guest list a person set by hand (the 9 FoundMyFitness rows and
       Drive #274/#291 of 2026-11-08) is listed there with who decided and why. The reader does not ask the model about those episodes, and
       `--apply` writes the listed guests over whatever a plan proposed (it prints the rows it replaced), so neither a re-plan nor an older plan
       can undo them. Add a row there in the commit that records the decision; `tests/guestNameCases.test.ts` checks the list is well formed. The 17
@@ -455,7 +455,10 @@ section is what that window (and the runner, afterwards) follows.
       `William Harris`) is applied BEFORE the check that a name appears in the text, so the guest is no longer lost; a first name the model
       copied from the title (`Dr. Darya`) takes the surname the notes give (`Dr. Darya Rose`) only when the notes give it one way; and a guest
       the text knows only by a first name and the channel they publish under is ONE element, `Derek, More Plates More Dates` (the channel
-      travels like a credential: the speaker label is the bare `Derek`). An abbreviation (`Derek from MPMD`) is not enough to make one.
+      travels like a credential: the speaker label is the bare `Derek`). An abbreviation is not enough to make one, with one exception: the
+      initials of a channel a person confirmed (`CHANNEL_ALIASES` in `lib/guestOverrides.ts`, today `MPMD`) are expanded in code when the text
+      writes the first name beside them, so `Derek from MPMD` is the same `Derek, More Plates More Dates` (Paul, 2026-11-08). Add a channel there
+      only with a person's confirmation.
    8. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, the
       `(#183 rebroadcast)` notes removed, a credential left standing as a guest of its own folded back onto its name, the host dropped from
       guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
