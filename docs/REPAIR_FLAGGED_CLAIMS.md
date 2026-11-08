@@ -15,7 +15,10 @@ Starts from every open `extraction_fidelity` flag whose claim is `status = 'flag
    (`false_positive`), claim goes back to `active`. Outcome `canonical_ok`.
 2. **Another insight supports the claim.** The judge only ever read the seed passage. Each other member's
    own statement (closest to the claim's wording first, at most 3) is judged against its own passage;
-   the first `FAITHFUL` one is adopted verbatim. No model wrote it. Outcome `repaired`, source `member`.
+   the first `FAITHFUL` one is adopted verbatim. No model wrote it. A member whose wording is under half as
+   long as the claim's current statement (`MIN_ADOPT_LENGTH_RATIO` in `lib/claimRepair.ts`) is not judged or
+   adopted, because it would narrow a rich several-insight claim to one insight's sentence (Paul, option B,
+   2026-11-08); each skipped member is recorded as a `member_skipped` attempt and the claim goes on to the rewrite. Outcome `repaired`, source `member`.
 3. **Rewrite.** Opus 5.5 (`lib/llm.ts`, `LLM_BACKEND=claude-code`) rewrites the claim from the failing
    passage under `REPAIR_RULES`, given the judge's verdict, offending phrase and reasoning. A guard rejects a
    rewrite that states a number the passage never says (the guard's only grounding is the passage), then the

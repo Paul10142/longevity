@@ -15,7 +15,8 @@
  *   1. Another member insight supports the claim: the judge only ever read the SEED passage
  *      (Paul's point). Judge each other member's own statement against its own passage; the
  *      first FAITHFUL one is adopted verbatim (`member`). No model wrote it, so nothing in it
- *      can be invented.
+ *      can be invented. A member much shorter than the claim (under MIN_ADOPT_LENGTH_RATIO of
+ *      its length) is not adopted, so a rich claim is not silently narrowed (option B, 2026-11-08).
  *   2. Opus rewrites the claim from the failing passage under lib/repairRules.ts, a numeric
  *      guard rejects an invented number before the judge sees it, and the SAME judge
  *      (lib/extractionFidelity.ts) re-reads the result. Two failed rewrites stop the claim
@@ -68,7 +69,7 @@ export type RepairOutcome =
 export type RepairSource = 'member' | 'rewrite' | 'unchanged'
 
 export type Attempt = {
-  kind: 'canonical_check' | 'member' | 'rewrite'
+  kind: 'canonical_check' | 'member' | 'member_skipped' | 'rewrite'
   statement: string
   rawInsightId?: string
   judge?: FidelityResult
@@ -91,6 +92,10 @@ export type RepairResult = {
 
 /** Judging every other member would turn one repair into dozens of calls; the closest few are enough. */
 export const MAX_MEMBER_TRIES = 3
+/** Option B (Paul, 2026-11-08): another member's wording is adopted only when it is at least this
+ *  fraction as long as the claim's current statement. A much shorter one would silently narrow a
+ *  rich several-insight claim to one insight's sentence, so those go to the Opus rewrite instead. */
+export const MIN_ADOPT_LENGTH_RATIO = 0.5
 /** "A claim that fails twice stays hidden for Paul's review." */
 export const MAX_REWRITES = 2
 /** A repaired claim is one or two sentences. */
@@ -121,6 +126,20 @@ export function pickSeed(members: MemberPassage[]): MemberPassage | null {
 
 /** Other members worth judging for adoption, closest to the claim's current wording first. */
 export function memberCandidates(input: RepairInput, seed: MemberPassage): MemberPassage[] {
+  return memberPool(input, seed).filter(m => !tooNarrowToAdopt(m.statement, input.claim)).slice(0, MAX_MEMBER_TRIES)
+}
+
+/** Other members that would have been judged but for being much shorter than the claim (option B). */
+export function narrowMembersSkipped(input: RepairInput, seed: MemberPassage): MemberPassage[] {
+  return memberPool(input, seed).filter(m => tooNarrowToAdopt(m.statement, input.claim))
+}
+
+/** True when a member's wording is much shorter than the claim's current statement (option B). */
+export function tooNarrowToAdopt(memberStatement: string, claim: string): boolean {
+  return memberStatement.trim().length < MIN_ADOPT_LENGTH_RATIO * claim.trim().length
+}
+
+function memberPool(input: RepairInput, seed: MemberPassage): MemberPassage[] {
   return input.members
     .filter(m => m.rawInsightId !== seed.rawInsightId && m.chunk && m.statement.trim())
     // A member whose wording is the seed's or the claim's own was already judged unfaithful.
@@ -128,7 +147,6 @@ export function memberCandidates(input: RepairInput, seed: MemberPassage): Membe
     .filter((m, i, all) => all.findIndex(o => sameText(o.statement, m.statement)) === i)
     .map(m => ({ m, s: similarity(m.statement, input.claim) }))
     .sort((a, b) => b.s - a.s || b.m.statement.length - a.m.statement.length || a.m.rawInsightId.localeCompare(b.m.rawInsightId))
-    .slice(0, MAX_MEMBER_TRIES)
     .map(x => x.m)
 }
 
@@ -231,7 +249,14 @@ export async function repairClaim(input: RepairInput, deps: RepairDeps): Promise
     }
   }
 
-  // 1. Another member's own wording, judged against its own passage.
+  // 1. Another member's own wording, judged against its own passage. Members much shorter than the
+  //    claim are left out (option B) and recorded, so the audit shows why the rewrite ran.
+  for (const m of narrowMembersSkipped(input, seed)) {
+    attempts.push({
+      kind: 'member_skipped', statement: m.statement, rawInsightId: m.rawInsightId,
+      guard: `not adopted: ${m.statement.trim().length} characters against the claim's ${input.claim.trim().length} (under ${Math.round(MIN_ADOPT_LENGTH_RATIO * 100)}%), so it would narrow the claim`,
+    })
+  }
   for (const m of memberCandidates(input, seed)) {
     const j = await deps.judge(m.statement, m.chunk, { contextNote: m.contextNote, directQuote: m.directQuote })
     attempts.push({ kind: 'member', statement: m.statement, rawInsightId: m.rawInsightId, judge: j })
