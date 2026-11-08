@@ -34,6 +34,17 @@ async function handleExtractSource(job: Job): Promise<void> {
 
   const progress = job.progress as Partial<ExtractCheckpoint> & { run_id?: string }
 
+  // A skipped source (migration 038) is a re-post or copy of an episode we already hold. A job
+  // can still exist for one — queued before it was marked, or by hand — and extracting it would
+  // double-count the episode. Checked once per job (a resumed job already passed this check).
+  if (!progress.run_id) {
+    const { data: src } = await supabaseAdmin.from('sources').select('processing_status').eq('id', sourceId).maybeSingle()
+    if ((src as { processing_status?: string } | null)?.processing_status === 'skipped') {
+      await completeJob(job.id, { skipped: true, reason: 'source is marked skipped (re-post or copy)' })
+      return
+    }
+  }
+
   const result = await extractSource(
     sourceId,
     progress,

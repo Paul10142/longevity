@@ -36,6 +36,13 @@
  * unchanged: the REAL balance wins when the key can read it, the ledger is the
  * fallback, and spend at or past --budget stops the run before any request.
  *
+ * SKIPPED EPISODES ARE NEVER TRANSCRIBED. A source row marked `skipped` (migration 038)
+ * is a rebroadcast, a re-release, an "Essentials" cut or a copy of an episode the
+ * library already holds. Its audio is left out BEFORE the budget plan, so it spends
+ * nothing and takes no credit from the episodes that count. This asks the database,
+ * so it FAILS CLOSED: if the lookup cannot be made, nothing is sent (a dry run only
+ * warns). `--no-duplicate-check` skips the lookup for a run that must work offline.
+ *
  * SKIP, DON'T STOP. A file whose estimated cost would cross the budget is
  * skipped and the walk continues, so the shorter episodes further down still
  * get transcribed with what is left — "as the credit gets low, make the slice
@@ -60,6 +67,7 @@ import {
   type BudgetItem,
 } from '../lib/deepgramBudget'
 import { defaultLedgerPath, describeCredit, remainingCredit, writeLedger } from '../lib/deepgramSpend'
+import { describeSkipped, lookupSkippedKeys } from '../lib/skippedSources'
 import { showByExternalId } from '../lib/shows'
 
 const API = 'https://api.deepgram.com/v1/listen'
@@ -287,6 +295,35 @@ async function main() {
   if (pending.length === 0) {
     process.stdout.write('every file here is already transcribed — nothing to do\n')
     return
+  }
+
+  // Leave out every episode the library marks skipped, before anything is priced.
+  if (!args.includes('--no-duplicate-check')) {
+    let skippedRows: Awaited<ReturnType<typeof lookupSkippedKeys>> | null = null
+    try {
+      const { supabaseAdmin: db } = await import('../lib/supabaseServer')
+      if (!db) throw new Error('Supabase is not configured')
+      skippedRows = await lookupSkippedKeys(db, pending.map(p => p.key))
+    } catch (err) {
+      const why = err instanceof Error ? err.message : String(err)
+      if (!dryRun) {
+        throw new Error(
+          `cannot tell which episodes are marked skipped (${why}). Nothing was sent, because a re-post would be billed twice. ` +
+            'Fix the connection, or pass --no-duplicate-check to transcribe without the check.'
+        )
+      }
+      process.stdout.write(`WARNING: could not check for skipped episodes (${why}) — the plan below includes every untranscribed file\n`)
+    }
+    if (skippedRows && skippedRows.size > 0) {
+      const held = pending.filter(p => skippedRows!.has(p.key))
+      process.stdout.write(`${held.length} file(s) are marked skipped (re-posts or copies of episodes in the library) — NOT transcribed, nothing spent:\n`)
+      for (const line of describeSkipped(skippedRows)) process.stdout.write(line + '\n')
+      pending.splice(0, pending.length, ...pending.filter(p => !skippedRows!.has(p.key)))
+      if (pending.length === 0) {
+        process.stdout.write('every untranscribed file is a skipped re-post — nothing to do\n')
+        return
+      }
+    }
   }
 
   if (dryRun) {

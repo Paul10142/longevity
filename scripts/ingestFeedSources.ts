@@ -25,12 +25,26 @@
  * leaves everything the pipeline owns alone — never resets `processing_status`,
  * so re-running cannot silently queue 107 finished episodes for re-extraction.
  *
+ * RE-POSTS ARE NEVER QUEUED (migration 038). Shows re-post old episodes under a
+ * new feed id: a rebroadcast, a re-release, a 30-minute "Essentials" cut, the same
+ * recording under a second title. Before a NEW row is inserted it is checked against
+ * the whole library with lib/episodeDuplicates.ts (same episode number in the title,
+ * same title once numbers and markers are ignored, same guests and length). A match is
+ * still inserted, so the feed never re-creates it, but as `processing_status =
+ * 'skipped'` with `duplicate_of` and `skip_reason`; every picker ignores skipped rows,
+ * so it is never transcribed (Deepgram bills per minute) or extracted. A title that is
+ * an `Essentials:` cut or says rebroadcast / re-release is skipped even when its
+ * original is not in the library (full episodes only). Different episode numbers are
+ * never duplicates. Only rows this run CREATES are checked; linked and refreshed rows
+ * are never changed. `--no-duplicate-check` switches the check off.
+ *
  * WHAT IS DELIBERATELY NOT STORED: the enclosure URL. It carries the membership
  * key, and a credential in a database row outlives every intention to remove it.
  * `media_url` therefore stays null; the audio lives locally, named by the key.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
+import { planNewEpisodes, type LibraryRow, type NewEpisode, type PlannedEpisode } from '../lib/episodeDuplicates'
 import { isFeedKey, matchOlderRows, parseEpisodeNumber, parseFeed, totalHours } from '../lib/podcastFeed'
 import type { OlderRow } from '../lib/podcastFeed'
 import { DEFAULT_SHOW, SHOWS, showByPrefix, showForSource } from '../lib/shows'
@@ -92,12 +106,38 @@ async function main() {
   // stable identifier. An episode number appearing on MORE THAN ONE existing row
   // is ambiguous and is left alone: a wrong match would attach a transcript to
   // the wrong episode, which is worse than a duplicate because it is invisible.
-  const { data: allExisting, error: exErr } = await db
-    .from('sources')
-    .select('id, title, external_id, authors, series')
-  if (exErr) throw new Error(`existing-row lookup failed: ${exErr.message}`)
-  type ExistingRow = { id: string; title: string | null; external_id: string | null; authors: string[] | null; series: string | null }
-  const existing = (allExisting ?? []) as ExistingRow[]
+  //
+  // PAGED: PostgREST caps one response at 1000 rows and the library is past that, so a
+  // plain select silently drops the newest rows. A dropped row would be invisible to the
+  // duplicate check below, so every read of this table goes through selectAllPaged.
+  const { selectAllPaged } = await import('../lib/pagination')
+  type ExistingRow = {
+    id: string
+    title: string | null
+    external_id: string | null
+    authors: string[] | null
+    series: string | null
+    processing_status?: string | null
+    duplicate_of?: string | null
+    created_at?: string | null
+    media_duration_sec?: number | null
+    date?: string | null
+  }
+  const baseCols = 'id, title, external_id, authors, series'
+  const dupCols = `${baseCols}, processing_status, duplicate_of, created_at, media_duration_sec, date`
+  // Migration 038 adds `duplicate_of`. Until it is applied the duplicate check still
+  // RUNS (so the report is complete) but cannot write a skipped row, so a would-be
+  // duplicate is held back — never inserted as a pending row, which is the cost this
+  // check exists to prevent.
+  let skipColumnsReady = true
+  let existing: ExistingRow[]
+  try {
+    existing = await selectAllPaged<ExistingRow>((from, to) => db.from('sources').select(dupCols).order('id').range(from, to))
+  } catch (e) {
+    if (!/duplicate_of|column/i.test(String(e))) throw new Error(`existing-row lookup failed: ${e instanceof Error ? e.message : String(e)}`)
+    skipColumnsReady = false
+    existing = await selectAllPaged<ExistingRow>((from, to) => db.from('sources').select(`${baseCols}, processing_status, created_at, media_duration_sec, date`).order('id').range(from, to))
+  }
 
   // NUMBER MATCHING IS PER SHOW. Episode numbers are only unique within a show:
   // FoundMyFitness #114 and The Drive #114 are different episodes, and matching
@@ -176,10 +216,59 @@ async function main() {
       (ambiguous.length ? ` | ${ambiguous.length} ambiguous (left alone)` : '') + '\n'
   )
 
+  // DUPLICATE CHECK. Only rows about to be CREATED are checked (a linked or refreshed
+  // row is never changed), against the whole library and against each other.
+  type Skip = { reason: string; duplicateOf: string | null }
+  const dupCheck = !has('--no-duplicate-check')
+  const planned = new Map<string, PlannedEpisode>()
+  if (dupCheck) {
+    const library: LibraryRow[] = existing.map(r => ({
+      id: r.id,
+      title: r.title ?? '',
+      series: r.series,
+      external_id: r.external_id,
+      authors: r.authors,
+      media_duration_sec: r.media_duration_sec,
+      created_at: r.created_at,
+      processing_status: r.processing_status,
+      duplicate_of: r.duplicate_of,
+      published_at: r.date,
+    }))
+    const fresh: NewEpisode[] = plans
+      .filter(p => p.action === 'create')
+      .map(p => ({
+        key: p.ep.key,
+        title: p.ep.title,
+        series: show.series,
+        external_id: p.ep.key,
+        authors: [show.host, ...p.ep.guests],
+        media_duration_sec: p.ep.duration_seconds,
+        published_at: p.ep.published_at,
+      }))
+    // Insert order: originals before the copies that point at them.
+    for (const pl of planNewEpisodes(fresh, library)) planned.set(pl.episode.key, pl)
+  }
+  const skipOf = (key: string): Skip | null => {
+    const pl = planned.get(key)
+    if (!pl || !pl.decision.skip) return null
+    const orig = pl.decision.original
+    const duplicateOf = pl.originalKey ? null : orig && !orig.row.id.startsWith('new:') ? orig.row.id : null
+    return { reason: pl.decision.reason, duplicateOf }
+  }
+  const skippedKeys = [...planned.values()].filter(pl => pl.decision.skip)
+  if (dupCheck) {
+    process.stdout.write(
+      `duplicate check: ${skippedKeys.length} of ${count('create')} new episode(s) are re-posts or copies → created as skipped, never transcribed or extracted` +
+        (skippedKeys.length && !skipColumnsReady ? ' | migration 038 NOT applied: they are held back instead of written' : '') + '\n'
+    )
+  } else {
+    process.stdout.write('duplicate check: OFF (--no-duplicate-check)\n')
+  }
+
   // What a create writes. One function so the dry run prints EXACTLY the row the
   // real run inserts. `article_url` is the public episode page and nothing else:
   // a private feed URL (the Drive's guid is a Supercast link) stays out of it.
-  const createRow = (e: (typeof episodes)[number]): Record<string, unknown> => ({
+  const createRow = (e: (typeof episodes)[number], skip?: Skip | null): Record<string, unknown> => ({
     external_id: e.key,
     episode_number: e.episode_number,
     description: e.description,
@@ -197,7 +286,8 @@ async function main() {
     article_url: isPublicUrl(e.page_url) ? e.page_url : null,
     media_type: 'audio',
     authority_tier: 'expert',
-    processing_status: 'pending',
+    processing_status: skip ? 'skipped' : 'pending',
+    ...(skip ? { duplicate_of: skip.duplicateOf, skip_reason: skip.reason } : {}),
     // media_url intentionally omitted — see the header.
   })
 
@@ -214,7 +304,15 @@ async function main() {
       process.stdout.write(`\nalready in the library under an older id (${older.length}):\n`)
       older.forEach(p => process.stdout.write(`  ${p.ep.key}  =  ${p.olderKey}  ${p.ep.title.slice(0, 60)}\n`))
     }
-    const firstCreate = plans.find(p => p.action === 'create')
+    if (skippedKeys.length > 0) {
+      process.stdout.write(`\nwould be created as SKIPPED (${skippedKeys.length}) — never transcribed or extracted:\n`)
+      skippedKeys.slice(0, 25).forEach(pl => {
+        const d = pl.decision
+        process.stdout.write(`  ${pl.episode.key}  ${pl.episode.title.slice(0, 64)}\n      ↳ ${d.skip ? d.reason : ''}\n`)
+      })
+      if (skippedKeys.length > 25) process.stdout.write(`  … and ${skippedKeys.length - 25} more\n`)
+    }
+    const firstCreate = plans.find(p => p.action === 'create' && !skipOf(p.ep.key))
     if (firstCreate) {
       const row = createRow(firstCreate.ep)
       const shown = { ...row, description: row.description ? `${String(row.description).slice(0, 40)}…` : null }
@@ -226,7 +324,16 @@ async function main() {
   let created = 0
   let linked = 0
   let refreshed = 0
-  for (const { ep: e, action, id } of plans) {
+  let createdSkipped = 0
+  let held = 0
+  // Non-creates first (they touch existing rows), then creates with originals before the
+  // copies that point at them.
+  const createOrder = dupCheck
+    ? [...planned.keys()].map(k => plans.find(p => p.action === 'create' && p.ep.key === k)!)
+    : plans.filter(p => p.action === 'create')
+  const ordered = [...plans.filter(p => p.action !== 'create'), ...createOrder]
+  const insertedIds = new Map<string, string>() // feed key → new row id, for duplicate_of
+  for (const { ep: e, action, id } of ordered) {
     if (action === 'older') continue // left alone — see the Plan type
     // Feed-derived fields that are safe to set on ANY row.
     const existingRow = id ? existing.find(r => r.id === id) : undefined
@@ -238,8 +345,16 @@ async function main() {
     }
 
     let row: Record<string, unknown>
+    let skip: Skip | null = null
     if (action === 'create') {
-      row = createRow(e)
+      skip = skipOf(e.key)
+      if (skip && !skipColumnsReady) {
+        held++
+        process.stdout.write(`  ${e.key} HELD BACK (migration 038 not applied): ${skip.reason}\n`)
+        continue
+      }
+      if (skip && planned.get(e.key)?.originalKey) skip = { ...skip, duplicateOf: insertedIds.get(planned.get(e.key)!.originalKey!) ?? null }
+      row = createRow(e, skip)
     } else {
       // LINKING TO AN EXISTING YOUTUBE ROW IS DELIBERATELY CONSERVATIVE.
       // Those rows already have extracted claims whose citations deep-link into
@@ -258,21 +373,26 @@ async function main() {
       }
     }
 
-    const q = action === 'create'
-      ? db.from('sources').insert(row)
-      : db.from('sources').update(row).eq('id', id!)
-    const { error } = await q
+    let error: { message: string } | null
+    if (action === 'create') {
+      const res = await db.from('sources').insert(row).select('id').single()
+      error = res.error
+      if (!error && res.data) insertedIds.set(e.key, (res.data as { id: string }).id)
+    } else {
+      error = (await db.from('sources').update(row).eq('id', id!)).error
+    }
     if (error) {
       process.stdout.write(`  ${e.key} FAILED (${action}): ${error.message}\n`)
       continue
     }
-    if (action === 'create') created++
+    if (action === 'create') { created++; if (skip) createdSkipped++ }
     else if (action === 'link') linked++
     else refreshed++
   }
 
-  process.stdout.write(`\ncreated ${created}, linked ${linked}, refreshed ${refreshed}\n`)
-  if (created > 0) process.stdout.write(`${created} episode(s) queued and visible in the admin source list\n`)
+  process.stdout.write(`\ncreated ${created} (${createdSkipped} of them skipped as re-posts or copies), linked ${linked}, refreshed ${refreshed}${held ? `, held back ${held}` : ''}\n`)
+  if (created - createdSkipped > 0) process.stdout.write(`${created - createdSkipped} episode(s) queued and visible in the admin source list\n`)
+  if (createdSkipped > 0) process.stdout.write(`${createdSkipped} skipped row(s) are listed, with reasons, at /admin/duplicates\n`)
   if (linked > 0) process.stdout.write(`${linked} existing YouTube-origin row(s) now carry a feed id — no duplicates created\n`)
 }
 

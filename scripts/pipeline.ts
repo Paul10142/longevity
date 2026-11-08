@@ -400,6 +400,19 @@ async function main() {
 
     case 'extract': {
       if (!arg) throw new Error('usage: npm run pipeline -- extract <source_id>')
+      // A skipped source (migration 038) is a re-post or copy of an episode we already hold:
+      // extracting it again counts the episode twice. The delete below would also strip its
+      // facts, and the reset to 'pending' at the end would put it back in every picker.
+      {
+        const { data: srcRow } = await db.from('sources').select('processing_status, skip_reason').eq('id', arg).maybeSingle()
+        const st = srcRow as { processing_status?: string; skip_reason?: string | null } | null
+        if (st?.processing_status === 'skipped' && process.env.ALLOW_SKIPPED_EXTRACT !== '1') {
+          throw new Error(
+            `Source ${arg} is marked skipped (${st.skip_reason ?? 're-post or copy'}); not extracting it. ` +
+              'Set ALLOW_SKIPPED_EXTRACT=1 only if the skip was a mistake (undo it with scripts/dedupLibrary.ts --undo).'
+          )
+        }
+      }
       // Guard (2026-10-11): the delete below strips this source's members off
       // every claim they belong to, and nothing rebuilds the wording of claims
       // that also had members from other sources. Replacing a transcript goes

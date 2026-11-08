@@ -146,6 +146,8 @@ async function main() {
         // the show's own (publisher-labelled). What is excluded is 'other',
         // i.e. YouTube auto-captions, which is the whole point.
         .in('transcript_origin', ['deepgram', 'published'])
+        // 'pending' ONLY: a row marked 'skipped' (a re-post or copy of an episode we hold,
+        // migration 038) is never picked, so it is never extracted. Do not widen this filter.
         .eq('processing_status', 'pending')
         .order('date', { ascending: false }) // newest first, as asked
         .range(from, to)
