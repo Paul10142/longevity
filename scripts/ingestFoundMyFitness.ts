@@ -4,6 +4,15 @@
  *
  *   npx tsx --env-file=.env.local scripts/ingestFoundMyFitness.ts --dry-run --limit 3
  *   npx tsx --env-file=.env.local scripts/ingestFoundMyFitness.ts --limit 20
+ *   npx tsx --env-file=.env.local scripts/ingestFoundMyFitness.ts --only luc-van-loon,robbins-diamandis --force --dry-run
+ *
+ * `--only <slug>[,<slug>]` restricts the run to those episodes. With `--force` an
+ * episode that is ALREADY ingested is rebuilt in place — same row id and
+ * external_id; only transcript, timed_transcript, authors and duration are
+ * rewritten — instead of being skipped. `--force` requires `--only`, so it can
+ * never touch an episode that was not named. (Added 2026-11-08 to repair two rows
+ * whose speaker labels were split wrong; their old facts are retired separately
+ * with `retireSourceClaims.ts --keep-row`.)
  *
  * Requires the manifest from `discoverFoundMyFitness.ts` and migration 027
  * (transcript_origin = 'published').
@@ -25,7 +34,8 @@
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
 import { readFile } from 'node:fs/promises'
-import { alignTurns, detectSpeakers, splitTurns, type TimedCaption } from '../lib/transcriptAlignment'
+import { alignTurns, type TimedCaption } from '../lib/transcriptAlignment'
+import { pageTitle, parsePublishedTranscript } from '../lib/publishedTranscript'
 
 const UA = 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120 Safari/537.36'
 const SERIES = 'FoundMyFitness'
@@ -50,63 +60,6 @@ const val = (f: string): string | undefined => {
   return i > -1 ? args[i + 1] : undefined
 }
 const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
-
-function decode(s: string): string {
-  return s
-    .replace(/&#(\d+);/g, (_, d) => String.fromCharCode(Number(d)))
-    .replace(/&amp;/g, '&')
-    .replace(/&quot;/g, '"')
-    .replace(/&#0?39;|&apos;/g, "'")
-    .replace(/&lt;/g, '<')
-    .replace(/&gt;/g, '>')
-    .replace(/&nbsp;/g, ' ')
-}
-
-const strip = (s: string) => decode(s.replace(/<[^>]+>/g, ' ')).replace(/\s+/g, ' ').trim()
-
-/**
- * The transcript, located by its SPEAKER LABELS rather than by markup.
- *
- * The first version split the HTML on `<div class="…hidden` and took the largest
- * fragment. That is not parsing — string-splitting a document fragments it at
- * arbitrary points, and the "largest pane" it produced was 55k characters of
- * something else entirely. It reported that most episodes publish no transcript;
- * a browser reading the same page found 228k characters and 379 speaker labels.
- * The site was fine. The parser was wrong.
- *
- * So: strip scripts and tags from the WHOLE page, then take the span from the
- * first speaker label to the end of the last one. Labels are the one structural
- * feature a transcript reliably has and the surrounding page does not, and they
- * survive any redesign of the markup around them.
- */
-function extractTranscript(html: string, speakers: string[]): string {
-  const body = strip(
-    html.replace(/<script[\s\S]*?<\/script>/gi, ' ').replace(/<style[\s\S]*?<\/style>/gi, ' ')
-  )
-  if (speakers.length === 0) return ''
-  const alt = speakers.map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|')
-  const re = new RegExp(`(?:${alt}):\\s`, 'g')
-  const hits = [...body.matchAll(re)]
-  if (hits.length < 5) return ''
-  const first = hits[0].index ?? 0
-  // End at the last label's turn: everything after it is page footer.
-  const last = hits[hits.length - 1].index ?? body.length
-  const tailEnd = Math.min(body.length, last + 4000)
-  return body.slice(first, tailEnd).trim()
-}
-
-function pageTitle(html: string): string {
-  const m = html.match(/<title>([^<]{3,200})<\/title>/i)
-  return m ? decode(m[1]).replace(/\s*\|\s*FoundMyFitness\s*$/i, '').trim() : ''
-}
-
-/** `Episode topic | Dr. Guest Name` → the guest. */
-function guestFromTitle(title: string): string[] {
-  if (!title.includes('|')) return []
-  const tail = title.split('|').pop()?.trim() ?? ''
-  const name = tail.replace(/^(dr\.?|prof\.?)\s+/i, '').trim()
-  return name.length > 2 && /^[A-Z]/.test(name) ? [name] : []
-}
 
 /**
  * The caption API rate-limits (HTTP 429 / Cloudflare 1015) and, when it does,
@@ -161,10 +114,26 @@ async function fetchCaptions(ids: string[]): Promise<TimedCaption[]> {
   return best
 }
 
+/** Share of the words each speaker holds: a quick check that a rebuilt interview did not collapse onto one voice. */
+function wordShares(turns: { speaker: string | null; text: string }[]): Record<string, number> {
+  const words = new Map<string, number>()
+  let total = 0
+  for (const t of turns) {
+    const n = t.text.split(/\s+/).filter(Boolean).length
+    words.set(t.speaker ?? '(none)', (words.get(t.speaker ?? '(none)') ?? 0) + n)
+    total += n
+  }
+  return Object.fromEntries([...words.entries()].sort((x, y) => y[1] - x[1]).map(([k, v]) => [k, Math.round((1000 * v) / Math.max(1, total)) / 10]))
+}
+
 async function main() {
   const manifestPath = val('--manifest') ?? 'scratchpad/fmf-episodes.json'
   const limit = Number(val('--limit')) || Infinity
   const dryRun = has('--dry-run')
+  const force = has('--force')
+  const only = val('--only')?.split(',').map(x => x.trim()).filter(Boolean) ?? null
+  if (force && !only) throw new Error('--force rebuilds existing rows, so it needs --only <slug>[,<slug>] naming exactly which ones')
+  if (only && only.length === 0) throw new Error('--only needs at least one slug')
 
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
@@ -172,32 +141,53 @@ async function main() {
   const man = JSON.parse(await readFile(manifestPath, 'utf8')) as {
     episodes: { slug: string; url: string; title: string }[]
   }
+  const episodes = only ? man.episodes.filter(e => only.includes(e.slug)) : man.episodes
+  if (only) {
+    const missing = only.filter(slug => !man.episodes.some(e => e.slug === slug))
+    if (missing.length) throw new Error(`not in the manifest ${manifestPath}: ${missing.join(', ')}`)
+  }
+
+  // One database writer at a time (docs/EXTRACTION_RUNBOOK.md §1). Dry runs only read.
+  if (!dryRun) {
+    const { acquireWriterLock } = await import('../lib/writerLock')
+    acquireWriterLock('ingestFoundMyFitness')
+  }
 
   let done = 0
   let skipped = 0
   const reasons = new Map<string, number>()
   const note = (r: string) => reasons.set(r, (reasons.get(r) ?? 0) + 1)
 
-  for (const ep of man.episodes) {
+  for (const ep of episodes) {
     if (done >= limit) break
     const key = `fmf-${ep.slug}`
 
-    const { data: existing } = await db.from('sources').select('id, processing_status').eq('external_id', key).maybeSingle()
-    if (existing) { skipped++; note('already ingested'); continue }
+    const { data: existing } = await db.from('sources')
+      .select('id, processing_status, series, transcript_origin, authors, media_duration_sec, transcript, timed_transcript')
+      .eq('external_id', key).maybeSingle()
+    if (existing && !force) { skipped++; note('already ingested'); continue }
+    if (!existing && force) { skipped++; note('--force: no such row to rebuild'); continue }
+    if (existing && (existing.series !== SERIES || existing.transcript_origin !== 'published')) {
+      skipped++
+      note(`--force: row is ${existing.series}/${existing.transcript_origin}, not a published ${SERIES} row`)
+      continue
+    }
 
     try {
       const html = await (await fetch(ep.url, { headers: { 'User-Agent': UA } })).text()
+      const title = pageTitle(html) || ep.title
       // Speakers first: they are how the transcript is found at all.
-      const pageText = strip(html.replace(/<script[\s\S]*?<\/script>/gi, ' '))
-      const speakers = detectSpeakers(pageText, 5)
-      if (speakers.length === 0) { skipped++; note('no speaker labels anywhere on the page'); continue }
+      const parsed = parsePublishedTranscript(html, { title, host: HOST })
+      if (parsed.labels.length === 0) { skipped++; note('no speaker labels anywhere on the page'); continue }
 
-      const transcript = extractTranscript(html, speakers)
+      const { transcript, turns } = parsed
       if (transcript.length < MIN_TRANSCRIPT_CHARS) {
         skipped++
         note(`transcript too short (${Math.round(transcript.length / 1000)}k chars)`)
         continue
       }
+      // Every turn must carry a speaker: a segment with no label cannot be credited to anyone.
+      if (turns.some(t => !t.speaker)) { skipped++; note('a turn has no speaker label'); continue }
 
       const ids = [...new Set([...html.matchAll(/(?:youtube\.com\/(?:embed\/|watch\?v=)|youtu\.be\/)([A-Za-z0-9_-]{11})/g)].map(m => m[1]))]
       if (ids.length === 0) { skipped++; note('no YouTube video linked'); continue }
@@ -205,7 +195,6 @@ async function main() {
       const captions = await fetchCaptions(ids.slice(0, 5))
       if (captions.length < 100) { skipped++; note('no usable captions'); continue }
 
-      const turns = splitTurns(transcript, speakers)
       const { timed, anchors, coverage } = alignTurns(turns, captions)
       if (coverage < MIN_COVERAGE) {
         skipped++
@@ -213,31 +202,53 @@ async function main() {
         continue
       }
 
-      const title = pageTitle(html) || ep.title
-      const guests = guestFromTitle(title)
       const durationSec = Math.round((timed[timed.length - 1]?.end_ms ?? 0) / 1000)
       const videoId = ids.find(() => true)
 
       process.stdout.write(
-        `  ${ep.slug}: ${turns.length} turns, speakers ${speakers.slice(0, 3).join(' / ')}, ` +
-          `${anchors} anchors, ${Math.round(coverage * 100)}% covered, ${Math.round(durationSec / 60)} min\n`
+        `  ${ep.slug}: ${turns.length} turns, speakers ${parsed.speakers.join(' / ')}, ` +
+          `${anchors} anchors, ${Math.round(coverage * 100)}% covered, ${Math.round(durationSec / 60)} min\n` +
+          `    word share ${JSON.stringify(wordShares(turns))}; authors ${JSON.stringify(parsed.authors)}; ` +
+          `aliases ${JSON.stringify([...parsed.aliases])}\n`
       )
 
       if (dryRun) { done++; await sleep(SLOW_MS); continue }
+
+      const transcriptText = timed.map(t => t.text).join(' ')
+      const timedRows = timed.map(t => ({ text: t.text, start_ms: t.start_ms, end_ms: t.end_ms }))
+
+      if (existing) {
+        // Rebuild in place: same row, same external_id. Keep the old text first.
+        const { mkdir, writeFile } = await import('node:fs/promises')
+        const dir = process.env.RETIRE_BACKUP_DIR || 'scratchpad/backups'
+        await mkdir(dir, { recursive: true })
+        const backup = `${dir}/fmf-rebuild-${ep.slug}-${new Date().toISOString().replace(/[:.]/g, '-')}.json`
+        await writeFile(backup, JSON.stringify({ id: existing.id, external_id: key, authors: existing.authors, media_duration_sec: existing.media_duration_sec, transcript: existing.transcript, timed_transcript: existing.timed_transcript }))
+        process.stdout.write(`    backup → ${backup}\n`)
+        const { error } = await db.from('sources').update({
+          authors: parsed.authors,
+          media_duration_sec: durationSec || null,
+          transcript: transcriptText,
+          timed_transcript: timedRows,
+        }).eq('id', existing.id)
+        if (error) { skipped++; note(`update failed: ${error.message.slice(0, 60)}`); continue }
+        done++
+        continue
+      }
 
       const { error } = await db.from('sources').insert({
         external_id: key,
         series: SERIES,
         type: 'podcast',
         title,
-        authors: [HOST, ...guests],
+        authors: parsed.authors,
         url: ep.url,
         youtube_url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : null,
         article_url: ep.url, // the show's own page IS the write-up here
         media_type: 'audio',
         media_duration_sec: durationSec || null,
-        transcript: timed.map(t => t.text).join(' '),
-        timed_transcript: timed.map(t => ({ text: t.text, start_ms: t.start_ms, end_ms: t.end_ms })),
+        transcript: transcriptText,
+        timed_transcript: timedRows,
         transcript_origin: 'published',
         transcript_quality: 'high',
         authority_tier: 'expert',
@@ -252,11 +263,13 @@ async function main() {
     await sleep(SLOW_MS) // someone else's server, and the caption API throttles
   }
 
-  process.stdout.write(`\n${dryRun ? 'would ingest' : 'ingested'} ${done} | skipped ${skipped}\n`)
+  const verb = force ? 'rebuilt' : 'ingested'
+  process.stdout.write(`\n${dryRun ? `would have ${verb}` : verb} ${done} | skipped ${skipped}\n`)
   for (const [r, n] of [...reasons.entries()].sort((a, b) => b[1] - a[1])) {
     process.stdout.write(`  ${n.toString().padStart(4)}  ${r}\n`)
   }
-  if (!dryRun && done > 0) process.stdout.write('\nthese are pending — run extractDeepgram.ts to draft insights\n')
+  if (!dryRun && done > 0 && !force) process.stdout.write('\nthese are pending — run extractDeepgram.ts to draft insights\n')
+  if (!dryRun && done > 0 && force) process.stdout.write('\ntranscripts replaced — now retire the old facts: retireSourceClaims.ts --source <id> --keep-row\n')
 }
 
 main().catch(e => {
