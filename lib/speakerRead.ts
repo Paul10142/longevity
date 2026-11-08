@@ -1,41 +1,20 @@
 /**
- * The confirmation read for an episode with a third voice: Claude reads the first
- * minutes of the transcript and says which speaker number is the named guest.
+ * A suggestion for the speaker review page: Claude reads the first minutes of an episode and says
+ * which speaker number is the one named guest. It only ever PRE-FILLS a highlight; it never names
+ * anyone, never writes anything, and is never part of the attach step (lib/speakerReview.ts says why
+ * a person assigns the voices).
  *
- * WHY. The speaking-share rule (lib/deepgramSegments.ts) names a guest from numbers
- * alone: one voice does 80%+ of the non-host talking. That is almost always the guest,
- * but "almost" is not enough when a wrong name is worse than no name (corroboration
- * counts distinct speakers, so a misattribution invents agreement between people who
- * never spoke). A person would check by listening to the opening: the host says "my
- * guest today is Dr. X", someone answers "thanks for having me", the next question is
- * put to that person by name. Claude does the same read on the text. The guest is named
- * ONLY when the share rule and the read pick the same voice; any other outcome (the
- * read is unsure, picks another voice, fails, or is unreadable) leaves everyone
- * numbered, and the disagreement is returned so the caller can log it.
+ * COST. One call per click of "Suggest" on one episode's page (or per episode in the read-only
+ * preview script): about five minutes of speech (roughly 1,000 words) in, one number out, on a Sonnet
+ * model at low effort through lib/llm.ts (the subscription backend when `LLM_BACKEND=claude-code`).
  *
- * COST. Only an episode the share rule would already name is read (an episode with two
- * voices never is, one with no standout voice cannot be named whatever the read says):
- * about one call per such episode (62 of the 220 episodes on disk on 2026-11-08, all
- * Huberman). Each sends about five minutes of speech (roughly 1,000 words) and gets one
- * number back, on a Sonnet model at low effort.
- *
- * SHAPE. Pure functions plus an INJECTED model call (`SpeakerLlm`), like lib/guestNames.ts,
- * so the tests never reach a model. `claudeSpeakerLlm` is the real one, through lib/llm.ts
- * (the subscription backend by default in the scripts). `SKIP_GUEST_VOICE_READ=1` skips the
- * read, for tests: the share rule then decides alone and the log says so.
+ * SHAPE. Pure functions plus an INJECTED model call (`SpeakerLlm`), like lib/guestNames.ts, so the
+ * tests never reach a model. `claudeSpeakerLlm` is the real one.
  *
  * Nothing here touches the database.
  */
-import {
-  guestVoiceCall,
-  nameSpeakers,
-  voiceShares,
-  dominantVoice,
-  type DgSegment,
-  type GuestRead,
-  type GuestVoiceCall,
-  type VoiceShare,
-} from './deepgramSegments'
+import type { DgSegment } from './deepgramSegments'
+import { openingSpeaker } from './deepgramSegments'
 import { stopKindOf } from './guestNames'
 
 /** How much of the opening is read. */
@@ -45,11 +24,6 @@ export const READ_MAX_CHARS = 12_000
 /** Sonnet, not Haiku: attributing a speaker from conversational cues is a judgment, and the call is tiny. */
 export const SPEAKER_READ_MODEL = 'claude-sonnet-5-5'
 export const SPEAKER_READ_EFFORT = 'low' as const
-
-/** `SKIP_GUEST_VOICE_READ=1` skips the read (tests). The share rule alone then decides, and the log says so. */
-export function readSkipped(env: NodeJS.ProcessEnv = process.env): boolean {
-  return env.SKIP_GUEST_VOICE_READ === '1'
-}
 
 // ---------------------------------------------------------------------------
 // The prompt
@@ -150,6 +124,9 @@ export function claudeSpeakerLlm(model: string = SPEAKER_READ_MODEL): SpeakerLlm
   }
 }
 
+/** What the read said: a speaker number, or `'unsure'`. */
+export type GuestRead = number | 'unsure'
+
 export type SpeakerReadResult = {
   read: GuestRead
   /** Why the read is `unsure` when something went wrong (a failed call, an unreadable reply); empty otherwise. */
@@ -158,9 +135,9 @@ export type SpeakerReadResult = {
 
 /**
  * Ask Claude which speaker is `guest`. Never throws for an ordinary failure (a bad reply, a
- * one-off error): that is `unsure`, which leaves everyone unnamed. A failure every later call
- * would repeat (a full usage window, a halted CLI, no `claude` command) IS thrown, so the caller
- * does not quietly bake `Speaker 2` into a transcript that a re-run could have named.
+ * one-off error): that is `unsure`. A failure every later call would repeat (a full usage window,
+ * a halted CLI, no `claude` command) IS thrown, so the caller can say so instead of showing
+ * "unsure" for every episode.
  */
 export async function readGuestSpeaker(args: {
   segments: readonly DgSegment[]
@@ -179,49 +156,21 @@ export async function readGuestSpeaker(args: {
   }
 }
 
-// ---------------------------------------------------------------------------
-// One episode: names, with the read where it is needed
-// ---------------------------------------------------------------------------
-
-export type SpeakerNaming = {
-  names: Map<number, string>
-  /** Non-host voices with their share of the non-host words. */
-  shares: VoiceShare[]
-  /** The voice the share rule would name, or null. Set only when there are two or more non-host voices and one guest. */
-  candidate: number | null
-  /** The read, when one was made (or skipped); undefined when the rule made it unnecessary. */
-  read: GuestRead | undefined
-  note: string
-  call: GuestVoiceCall
-}
-
 /**
- * Name the speakers of one episode. The read is made only when the share rule has a candidate
- * (exactly one guest, two or more non-host voices, one dominant): every other case is decided
- * by the rule alone, with no model call.
+ * The voice the read names as the guest, or null. The OPENING voice never counts: the structure
+ * of these episodes makes it the host, so a read that picks it is a cold-open clip of the guest or
+ * a mistake, and either way nothing is suggested. `why` is one plain sentence for the page.
  */
-export async function nameSpeakersWithRead(args: {
-  segments: DgSegment[]
-  guests: string[]
+export async function suggestGuestVoice(args: {
+  segments: readonly DgSegment[]
   host: string
+  guest: string
   llm: SpeakerLlm
-  skipRead?: boolean
-}): Promise<SpeakerNaming> {
-  const { segments, guests, host } = args
-  const shares = voiceShares(segments)
-  const candidate = guests.length === 1 && shares.length >= 2 ? dominantVoice(shares) : null
-  let read: GuestRead | undefined
-  let note = ''
-  if (candidate !== null) {
-    if (args.skipRead ?? readSkipped()) read = 'skipped'
-    else ({ read, note } = await readGuestSpeaker({ segments, host, guest: guests[0], llm: args.llm }))
+}): Promise<{ voice: number | null; why: string }> {
+  const { read, note } = await readGuestSpeaker(args)
+  if (read === 'unsure') return { voice: null, why: note || 'the read could not tell who the guest is' }
+  if (read === openingSpeaker(args.segments)) {
+    return { voice: null, why: 'the read picked the opening voice, which the episode structure makes the host (a cold-open clip?)' }
   }
-  return {
-    names: nameSpeakers(segments, guests, host, read),
-    shares,
-    candidate,
-    read,
-    note,
-    call: guestVoiceCall(segments, guests, read),
-  }
+  return { voice: read, why: `a read of the first five minutes says voice ${read} is ${args.guest}` }
 }

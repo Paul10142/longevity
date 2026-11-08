@@ -18,23 +18,21 @@
  * the extraction prompt needs, since it currently has to INFER who is speaking
  * from dialogue alone (only 28% of insights carry a speaker today).
  *
- * NAMING IS CONSERVATIVE. Diarization establishes that people alternate; it
+ * NAMING IS CONSERVATIVE. Diarization establishes that two people alternate; it
  * never says who they are. So:
  *   - the speaker who opens the episode is the host (these episodes begin with a
  *     scripted host intro — verified on 404, where speaker 0 delivers it),
  *   - when the source row's `authors` names EXACTLY ONE guest (host =
  *     `authors[0]`, guests = the rest), the other speaker is that guest,
- *   - with a THIRD voice (two or more voices besides the host) the guest is named
- *     only when one voice holds 80%+ of the non-host words (every other voice under
- *     10%) AND a short Claude read of the opening names the same voice
- *     (lib/deepgramSegments.ts `guestVoiceCall`, lib/speakerRead.ts). Any other
- *     outcome keeps every non-host voice unnamed, and the log says why,
- *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed.
- * The read costs one small subscription call, only for an episode the speaking-share
- * rule would already name. `SKIP_GUEST_VOICE_READ=1` skips it (tests): the share rule
- * then decides alone. `scripts/previewGuestVoices.ts` shows what a list of episodes
- * would get, without writing. (`--dry-run` here writes nothing either, but it does make
- * the read, because the speakers it prints depend on it.)
+ *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed (a third voice is
+ *     NEVER guessed: on the FoundMyFitness episodes it is the host herself),
+ *   - unless Paul has assigned them: `sources.speaker_names` (migration 038, written
+ *     only by /admin/speakers) maps `Speaker N` → a name from the row's own authors,
+ *     and this script applies it, after checking that each answer's fingerprint still
+ *     matches the voice now carrying that number (lib/speakerReview.ts
+ *     `nameSpeakersAssigned`). A mapping that no longer matches the file is ignored and
+ *     the log says so; a column that does not exist yet (migration not applied) is
+ *     treated as no mapping.
  * `authors` is where Claude's reading of the guests lands (`refreshGuests.ts
  * --apply`), so that step comes BEFORE this one; `manifest.json` is only the
  * fallback for a row whose `authors` is null.
@@ -52,19 +50,14 @@ import path from 'node:path'
 // collapsed a whole monologue onto its first timestamp (2026-10-12).
 import { buildLabelledSegments, guestsForLabels } from '../lib/deepgramSegments'
 import type { DgSegment } from '../lib/deepgramSegments'
-// The third-voice rule and its confirmation read (one small model call, only for an
-// episode the speaking-share rule would already name; none for a two-voice episode).
-import { claudeSpeakerLlm, nameSpeakersWithRead, readSkipped } from '../lib/speakerRead'
-import { stopKindOf } from '../lib/guestNames'
+// Paul's saved speaker assignments (sources.speaker_names) and how they are applied to a file.
+import { nameSpeakersAssigned, readSpeakerNames } from '../lib/speakerReview'
 // The host's name comes from the registry, by the key's prefix (`huberman-…` →
 // Andrew Huberman). It used to be a constant, which would have labelled every
 // show's opening speaker "Peter Attia".
 import { hostLabelForKey } from '../lib/shows'
 
 type DgFile = { key: string; model: string; speakers: number[]; segments: DgSegment[]; duration_seconds: number | null }
-
-// The read goes through lib/llm.ts on the developer's subscription, like the pipeline, unless told otherwise.
-process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(f)
@@ -102,11 +95,22 @@ async function main() {
   }
 
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
-  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null; authors: string[] | null }
-  const { data: rows, error } = await db
-    .from('sources')
-    .select('id, external_id, processing_status, title, authors')
-    .in('external_id', keys)
+  type SourceRow = {
+    id: string
+    external_id: string | null
+    processing_status: string | null
+    title: string | null
+    authors: string[] | null
+    /** Paul's reviewed speaker names (migration 038); absent until that migration is applied. */
+    speaker_names?: unknown
+  }
+  const baseColumns = 'id, external_id, processing_status, title, authors'
+  let { data: rows, error } = await db.from('sources').select(`${baseColumns}, speaker_names`).in('external_id', keys)
+  if (error && /speaker_names/.test(error.message)) {
+    // Migration 038 is not applied yet: no episode has a review, so there is nothing to apply.
+    process.stdout.write('note: sources.speaker_names does not exist yet (migration 038), so no saved speaker assignments are applied\n')
+    ;({ data: rows, error } = await db.from('sources').select(baseColumns).in('external_id', keys))
+  }
   if (error) throw new Error(`source lookup failed: ${error.message}`)
   const byKey = new Map(((rows ?? []) as unknown as SourceRow[]).map(r => [r.external_id as string, r]))
 
@@ -115,12 +119,9 @@ async function main() {
   let unmatched = 0
   let unknownShow = 0
   let named = 0
-  let thirdVoiceNamed = 0
-  let thirdVoiceKept = 0
-  let readUnavailable = 0
   let guestsFromManifest = 0
-  const llm = claudeSpeakerLlm()
-  if (readSkipped()) process.stdout.write('SKIP_GUEST_VOICE_READ=1: the confirmation read is skipped, so the speaking-share rule decides alone\n')
+  let assignedApplied = 0
+  let assignedIgnored = 0
 
   for (const [i, file] of files.entries()) {
     if (attached >= limit) break
@@ -145,26 +146,10 @@ async function main() {
 
     const choice = guestsForLabels({ row, manifestGuests: guestsByKey.get(key), host })
     if (choice.from === 'manifest') guestsFromManifest++
-    let naming
-    try {
-      naming = await nameSpeakersWithRead({ segments: dg.segments, guests: choice.guests, host, llm })
-    } catch (err) {
-      // A full usage window, a halted CLI or no `claude` command: every later read would fail too. Attaching now would
-      // bake `Speaker 2` into a transcript the next run could have named, so this episode is left for that run.
-      if (!stopKindOf(err)) throw err
-      readUnavailable++
-      process.stdout.write(`  ${key}: NOT attached, the guest-confirmation read is unavailable (${err instanceof Error ? err.message.slice(0, 120) : String(err)}); run again\n`)
-      continue
-    }
-    const names = naming.names
-    if (naming.candidate !== null) {
-      if (naming.call.speaker !== null) thirdVoiceNamed++
-      else thirdVoiceKept++
-      process.stdout.write(
-        `  ${key}: third voice, guest ${naming.call.speaker !== null ? `named: ${choice.guests[0]} is voice ${naming.call.speaker}` : 'LEFT UNNAMED'} — ${naming.call.reason}` +
-          (naming.note ? ` (${naming.note})` : '') + '\n'
-      )
-    }
+    const assigned = nameSpeakersAssigned(dg.segments, choice.guests, host, readSpeakerNames(row.speaker_names))
+    const names = assigned.names
+    if (assigned.applied.length > 0) { process.stdout.write(`  ${key}: applied Paul's speaker assignments: ${assigned.applied.join('; ')}\n`); assignedApplied++ }
+    if (assigned.ignored) { process.stdout.write(`  ${key}: saved speaker assignments NOT applied: ${assigned.ignored}\n`); assignedIgnored++ }
     const hasRealName = [...names.values()].some(n => n !== host && !n.startsWith('Speaker '))
 
     const timed = buildLabelledSegments(dg.segments, names)
@@ -205,14 +190,11 @@ async function main() {
       `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
       `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
   )
-  if (thirdVoiceNamed + thirdVoiceKept > 0) {
+  if (assignedApplied + assignedIgnored > 0) {
     process.stdout.write(
-      `${thirdVoiceNamed + thirdVoiceKept} episode(s) had a third voice: guest named in ${thirdVoiceNamed}, left unnamed in ${thirdVoiceKept} (the read was unsure or disagreed with the share rule)\n`
+      `speaker assignments: applied for ${assignedApplied} episode(s)` +
+        (assignedIgnored ? `, NOT applied for ${assignedIgnored} (the file no longer matches what was reviewed; review it again on /admin/speakers)` : '') + '\n'
     )
-  }
-  if (readUnavailable > 0) {
-    process.stdout.write(`${readUnavailable} episode(s) were NOT attached because the guest-confirmation read was unavailable; run again\n`)
-    process.exitCode = 2
   }
   if (guestsFromManifest > 0) {
     process.stdout.write(

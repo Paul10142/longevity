@@ -1,34 +1,36 @@
 /**
- * What would the attach step name the speakers of these episodes? READ-ONLY.
+ * Which voices does each episode have, what does the attach call them today, and who would Claude
+ * suggest for the guest? READ-ONLY.
  *
- *   npx tsx --env-file=.env.local scripts/previewGuestVoices.ts --dir <audio-root> --keys fmf-0012,fmf-0020
+ *   npx tsx --env-file=.env.local scripts/previewGuestVoices.ts --dir <audio-root> --keys fmf-0012,fmf-0020 [--suggest]
  *
  *   --dir <audio-root>   where the Deepgram files are: `<root>/<key>/<key>.deepgram.json`
  *                        (the runner's layout, scratchpad/batch3/audio) or `<root>/<key>.deepgram.json`.
  *   --keys <k1,k2,…>     the episodes (`sources.external_id`), required.
- *   --probe-read         DIAGNOSTIC: also make the confirmation read for an episode the share rule would NOT
- *                        name, and print what it says and whether the opening voice is only an intro/outro.
- *                        It never changes a proposed label; it exists to see why a rule does not fire.
+ *   --suggest            also ask Claude (one small call per episode that has exactly one guest and two or
+ *                        more voices besides the host) which voice is the guest. Off by default: no model call.
  *
- * For each episode it prints a table: the id, the title, each voice's number and share of the
- * non-host words, the label that voice carries TODAY (the rule without the third-voice step), and the
- * label it would carry NOW (share rule + confirmation read). One line under each episode says why.
+ * For each episode it prints a table: the id, the title, each voice's number and share of the non-host
+ * words, the label the attach gives that voice TODAY (the unchanged two-voice rule: a third voice is
+ * `Speaker N`, never guessed), and, with `--suggest`, the name Claude would pre-select on the review page
+ * (/admin/speakers). A saved review (`sources.speaker_names`, migration 038) is shown with what a re-attach
+ * would do with it.
  *
- * WHAT IT DOES AND DOES NOT TOUCH. It SELECTs the episode's row (title, authors, status) and reads
- * the Deepgram file from disk. It writes nothing: no database write, no file, no transcript. The only
- * outside call is the confirmation read (lib/speakerRead.ts): one small model call per episode the
- * share rule would name, on the subscription backend by default. `SKIP_GUEST_VOICE_READ=1` makes no
- * call at all (the share rule then decides alone and the table says "skipped").
+ * WHAT IT DOES AND DOES NOT TOUCH. It SELECTs the episode rows (title, authors, status, and the saved review
+ * when the column exists) and reads the Deepgram file from disk. It writes nothing: no database write, no
+ * file, no transcript. The only outside call is the optional suggestion read (lib/speakerRead.ts), on the
+ * subscription backend by default.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 
-import { guestsForLabels, nameSpeakers, openingSpeaker } from '../lib/deepgramSegments'
+import { guestsForLabels, nameSpeakers, openingSpeaker, voiceOrder } from '../lib/deepgramSegments'
 import type { DgSegment } from '../lib/deepgramSegments'
 import { stopKindOf } from '../lib/guestNames'
-import { claudeSpeakerLlm, nameSpeakersWithRead, readGuestSpeaker, readSkipped } from '../lib/speakerRead'
+import { claudeSpeakerLlm, suggestGuestVoice } from '../lib/speakerRead'
+import { nameSpeakersAssigned, readSpeakerNames } from '../lib/speakerReview'
 import { hostLabelForKey } from '../lib/shows'
 
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
@@ -52,42 +54,43 @@ async function findDeepgramFile(root: string, key: string): Promise<{ file: stri
   return null
 }
 
-/**
- * Words the opening voice speaks in the middle of the episode, as a share of all its words: close to 0 means it is a
- * produced intro and outro (a different recording from the conversation), not the person doing the interview.
- */
-function openerMiddleShare(segments: DgSegment[], opener: number): number {
-  const end = segments[segments.length - 1]?.start_ms ?? 0
-  const w = (s: DgSegment) => s.text.split(/\s+/).filter(Boolean).length
-  const mine = segments.filter(s => s.speaker === opener)
-  const all = mine.reduce((a, s) => a + w(s), 0)
-  const mid = mine.filter(s => s.start_ms > end * 0.15 && s.start_ms < end * 0.85).reduce((a, s) => a + w(s), 0)
-  return all > 0 ? mid / all : 0
+const wordCount = (text: string) => text.split(/\s+/).filter(Boolean).length
+
+/** Each non-host voice's words and its share of ALL non-host words, in first-appearance order. */
+function voiceShares(segments: DgSegment[]): { speaker: number; words: number; share: number }[] {
+  const order = voiceOrder(segments)
+  const words = new Map(order.map(v => [v, 0]))
+  for (const s of segments) if (s.speaker !== null && words.has(s.speaker)) words.set(s.speaker, (words.get(s.speaker) ?? 0) + wordCount(s.text))
+  const total = [...words.values()].reduce((a, b) => a + b, 0)
+  return order.map(speaker => ({ speaker, words: words.get(speaker) ?? 0, share: total > 0 ? (words.get(speaker) ?? 0) / total : 0 }))
 }
 
 const pad = (s: string, n: number) => (s.length > n ? `${s.slice(0, n - 1)}…` : s.padEnd(n))
-const pct = (x: number) => `${(x * 100).toFixed(1)}%`
+const pct = (x: number) => `${(x * 100).toFixed(0)}%`
 
 async function main() {
   const root = val('--dir')
-  const probe = args.includes('--probe-read')
+  const suggest = args.includes('--suggest')
   const keys = (val('--keys') ?? '').split(',').map(k => k.trim()).filter(Boolean)
-  if (!root || keys.length === 0) throw new Error('usage: previewGuestVoices.ts --dir <audio-root> --keys <k1,k2,…>')
+  if (!root || keys.length === 0) throw new Error('usage: previewGuestVoices.ts --dir <audio-root> --keys <k1,k2,…> [--suggest]')
 
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
-  type Row = { id: string; external_id: string | null; title: string | null; authors: string[] | null; processing_status: string | null }
-  const { data, error } = await db.from('sources').select('id, external_id, title, authors, processing_status').in('external_id', keys)
+  type Row = { id: string; external_id: string | null; title: string | null; authors: string[] | null; processing_status: string | null; speaker_names?: unknown }
+  const base = 'id, external_id, title, authors, processing_status'
+  let { data, error } = await db.from('sources').select(`${base}, speaker_names`).in('external_id', keys)
+  if (error && /speaker_names/.test(error.message)) {
+    process.stdout.write('note: sources.speaker_names does not exist yet (migration 038 is not applied): no saved reviews to show\n')
+    ;({ data, error } = await db.from('sources').select(base).in('external_id', keys))
+  }
   if (error) throw new Error(`source lookup failed: ${error.message}`)
   const byKey = new Map(((data ?? []) as unknown as Row[]).map(r => [r.external_id as string, r]))
 
   const llm = claudeSpeakerLlm()
-  if (readSkipped()) process.stdout.write('SKIP_GUEST_VOICE_READ=1: no confirmation read is made; the share rule decides alone\n')
   process.stdout.write(
-    `${pad('Episode', 10)}${pad('Title', 46)}${pad('Voice', 7)}${pad('Words', 8)}${pad('Share', 8)}${pad("Today's label", 24)}Proposed label\n`
+    `${pad('Episode', 10)}${pad('Title', 45)}${pad('Voice', 7)}${pad('Words', 8)}${pad('Share', 7)}${pad('Label today', 14)}${suggest ? 'Suggested for the guest' : ''}\n`
   )
 
-  let changed = 0
   for (const key of keys) {
     const row = byKey.get(key)
     const host = hostLabelForKey(key)
@@ -105,48 +108,52 @@ async function main() {
     const { guests } = guestsForLabels({ row, manifestGuests, host })
 
     const today = nameSpeakers(dg.segments, guests, host)
-    let naming
-    try {
-      naming = await nameSpeakersWithRead({ segments: dg.segments, guests, host, llm })
-    } catch (err) {
-      if (!stopKindOf(err)) throw err
-      process.stdout.write(`${pad(key, 10)}stopped: the confirmation read is unavailable (${err instanceof Error ? err.message.slice(0, 100) : String(err)})\n\n`)
-      continue
+    const shares = voiceShares(dg.segments)
+    const hostVoice = openingSpeaker(dg.segments)
+
+    // The suggestion: only when exactly one guest is listed and there is more than one voice to choose among.
+    let suggestedVoice: number | null = null
+    let why = ''
+    if (suggest) {
+      if (guests.length !== 1) why = guests.length === 0 ? 'no guest is listed' : `${guests.length} guests are listed; not suggested`
+      else if (shares.length < 2) why = 'one voice besides the host: the attach already names it'
+      else {
+        try {
+          const r = await suggestGuestVoice({ segments: dg.segments, host, guest: guests[0], llm })
+          suggestedVoice = r.voice
+          why = r.why
+        } catch (err) {
+          if (!stopKindOf(err)) throw err
+          why = `stopped: the suggestion read is unavailable (${err instanceof Error ? err.message.slice(0, 100) : String(err)})`
+        }
+      }
     }
 
-    const hostVoice = openingSpeaker(dg.segments)
     const voices = [
       ...(hostVoice === null ? [] : [{ speaker: hostVoice, words: null as number | null, share: null as number | null }]),
-      ...naming.shares,
+      ...shares,
     ]
     voices.forEach((v, i) => {
-      const t = today.get(v.speaker) ?? '?'
-      const p = naming.names.get(v.speaker) ?? '?'
-      if (t !== p) changed++
+      const suggested = suggestedVoice === v.speaker ? `${guests[0]}   <- suggested` : ''
       process.stdout.write(
-        `${pad(i === 0 ? key : '', 10)}${pad(i === 0 ? row.title ?? '' : '', 46)}${pad(String(v.speaker), 7)}${pad(v.words === null ? '' : String(v.words), 8)}` +
-          `${pad(v.share === null ? '(host)' : pct(v.share), 8)}${pad(t, 24)}${p}${t !== p ? '   <- changed' : ''}\n`
+        `${pad(i === 0 ? key : '', 10)}${pad(i === 0 ? row.title ?? '' : '', 45)}${pad(String(v.speaker), 7)}${pad(v.words === null ? '' : String(v.words), 8)}` +
+          `${pad(v.share === null ? '(host)' : pct(v.share), 7)}${pad(today.get(v.speaker) ?? '?', 14)}${suggested}\n`
       )
     })
-    process.stdout.write(
-      `${pad('', 10)}authors: ${(row.authors ?? []).join(' | ') || '(none)'}; status ${row.processing_status}\n` +
-        `${pad('', 10)}why: ${naming.call.reason}${naming.note ? ` (${naming.note})` : ''}\n`
-    )
-    if (probe && hostVoice !== null) {
-      const mid = openerMiddleShare(dg.segments, hostVoice)
-      let said = 'not asked (needs exactly one guest)'
-      if (guests.length === 1 && naming.shares.length >= 1) {
-        const r = naming.read !== undefined ? { read: naming.read, note: '' } : await readGuestSpeaker({ segments: dg.segments, host, guest: guests[0], llm })
-        said = r.read === 'unsure' ? `unsure${r.note ? ` (${r.note})` : ''}` : r.read === 'skipped' ? 'skipped' : `voice ${r.read} is ${guests[0]}`
-      }
+    process.stdout.write(`${pad('', 10)}authors: ${(row.authors ?? []).join(' | ') || '(none)'}; status ${row.processing_status}\n`)
+    if (suggest) process.stdout.write(`${pad('', 10)}suggestion: ${suggestedVoice === null ? 'none' : `voice ${suggestedVoice}`} — ${why}\n`)
+
+    const saved = readSpeakerNames(row.speaker_names)
+    if (Object.keys(saved).length > 0) {
+      const result = nameSpeakersAssigned(dg.segments, guests, host, saved)
       process.stdout.write(
-        `${pad('', 10)}probe: voice ${hostVoice} speaks ${(mid * 100).toFixed(0)}% of its words in the middle 70% of the episode` +
-          `${mid < 0.05 ? ' (a produced intro/outro, not the interviewer)' : ''}; the read says: ${said}\n`
+        `${pad('', 10)}saved review: ${Object.entries(saved).map(([l, a]) => `${l} → ${a.name ?? 'not a guest'}`).join('; ')}; ` +
+          `a re-attach ${result.ignored ? `would IGNORE it (${result.ignored})` : `would apply ${result.applied.length} name(s)`}\n`
       )
     }
     process.stdout.write('\n')
   }
-  process.stdout.write(`${changed} voice label(s) would change. Nothing was written.\n`)
+  process.stdout.write('Nothing was written.\n')
 }
 
 main().catch(e => {
