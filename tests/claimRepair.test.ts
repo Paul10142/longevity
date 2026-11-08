@@ -2,7 +2,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  repairClaim, stakesTier, orderCandidates, stratifiedSample, guardRewrite, memberCandidates, pickSeed, lostNumbers,
+  repairClaim, stakesTier, orderCandidates, stratifiedSample, guardRewrite, memberCandidates, pickSeed, lostNumbers, tooNarrowToAdopt, narrowMembersSkipped, MIN_ADOPT_LENGTH_RATIO,
   type MemberPassage, type RepairDeps, type RepairInput, type Candidate,
 } from '../lib/claimRepair'
 import { parseRewrite, buildRepairUser, REPAIR_SYSTEM, REPAIR_RULES } from '../lib/repairRules'
@@ -52,6 +52,39 @@ test('another member that is faithful to its own passage is adopted verbatim, wi
   assert.equal(r.newStatement, 'Zone 2 training is useful.')
   assert.equal(r.memberRawInsightId, 'm2')
   assert.equal(d.rewriteCalls, 0)
+})
+
+test('option B: a member much shorter than the claim is not judged or adopted; the rewrite runs and the skip is recorded', async () => {
+  const long = 'Protein quality is measured by DIAAS, which reflects amino acid content and digestibility; animal sources score above 100 and many plant sources score lower, so mixing plant proteins can close the gap.'
+  const seed = member('m1', 'Seed wording adds a thing.', 'Protein quality passage.', 'seed')
+  const short = member('m2', 'Plant foods are less digestible.', 'Plant foods are less digestible, he said.')
+  const d = deps({ 'Protein quality is measured by DIAAS, which reflects digestibility.': FAITHFUL }, [
+    { action: 'rewrite', statement: 'Protein quality is measured by DIAAS, which reflects digestibility.', changes: 'kept the measure' },
+  ])
+  const r = await repairClaim(input(long, [seed, short]), d)
+  assert.equal(r.outcome, 'repaired')
+  assert.equal(r.source, 'rewrite')
+  assert.ok(!d.judgeCalls.includes('Plant foods are less digestible.'))
+  const skipped = r.attempts.filter(a => a.kind === 'member_skipped')
+  assert.equal(skipped.length, 1)
+  assert.equal(skipped[0].rawInsightId, 'm2')
+  assert.match(skipped[0].guard ?? '', /narrow/)
+})
+
+test('option B: a member close in length to the claim is still adopted', () => {
+  const claim = 'Zone 2 training is useful for building aerobic base.'
+  assert.equal(tooNarrowToAdopt('Zone 2 training builds aerobic base.', claim), false)
+  assert.equal(tooNarrowToAdopt('Zone 2 helps.', claim), true)
+  // the cutoff is inclusive of exactly the ratio
+  assert.equal(tooNarrowToAdopt('x'.repeat(MIN_ADOPT_LENGTH_RATIO * 100), 'y'.repeat(100)), false)
+})
+
+test('option B: narrow members do not use up the tries and are listed separately', () => {
+  const seed = member('s', 'Sleep needs seven hours and good light exposure each morning.', 'c', 'seed')
+  const claim = 'Sleep needs seven hours and good light exposure each morning.'
+  const ms = [seed, member('n', 'Sleep matters.', 'c'), member('a', 'Sleep needs about seven hours and morning light exposure.', 'c')]
+  assert.deepEqual(memberCandidates(input(claim, ms), seed).map(m => m.rawInsightId), ['a'])
+  assert.deepEqual(narrowMembersSkipped(input(claim, ms), seed).map(m => m.rawInsightId), ['n'])
 })
 
 test('a canonical that already passes against the seed passage is left alone', async () => {
