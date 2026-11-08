@@ -60,9 +60,10 @@ export default function FidelityPage() {
             <Card>
               <CardContent className="pt-5">
                 <p className="text-sm font-medium mb-3">
-                  On each card: the bold statement is what the AI <em>extracted</em>; the transcript excerpt is
-                  what was <em>actually said</em>. Your question is always — does the statement stay inside what
-                  the excerpt supports?
+                  On each card: the <strong>Claim</strong> on the left is what the AI <em>extracted</em>; the{" "}
+                  <strong>Quote from the Episode</strong> on the right (with its transcript excerpt) is what was{" "}
+                  <em>actually said</em>. Your question is always — does the claim stay inside what the quote
+                  supports?
                 </p>
                 <div className="grid gap-3 sm:grid-cols-2">
                   {VERDICT_GUIDE.map(v => (
