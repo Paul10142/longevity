@@ -4,6 +4,8 @@ import { useEffect, useMemo, useRef, useState } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
+import type { Excerpt, ExcerptLink } from "@/lib/fidelityExcerpt"
+import { formatTimestamp } from "@/lib/transcriptView"
 
 type Item = {
   n: number
@@ -20,6 +22,10 @@ type Item = {
   label: string | null
   /** Paul and the judge disagree and he has not looked again since they were compared. */
   needs_recheck: boolean
+  /** The chunk as one line per speaker turn, when the transcript has speaker labels. */
+  excerpt: Excerpt | null
+  /** Where "Transcript Excerpt" points (video ~30 s before the quote, else the episode page), or null. */
+  excerpt_link: ExcerptLink | null
 }
 
 const VERDICTS = [
@@ -63,6 +69,85 @@ const chipClass = (on: boolean) =>
   `min-h-[44px] rounded-md border px-3 text-sm font-medium transition-colors ${
     on ? "bg-foreground text-background border-foreground" : "bg-background hover:border-foreground/40"
   }`
+
+/** One line per speaker turn: time, speaker, text; the quote is highlighted. */
+function TurnLines({ excerpt }: { excerpt: Excerpt }) {
+  return (
+    <ol className="space-y-2">
+      {excerpt.turns.map((t, i) => (
+        <li key={i} className="grid grid-cols-[3.25rem_1fr] gap-x-2 text-sm leading-relaxed text-foreground/90">
+          <span className="pt-0.5 text-xs tabular-nums text-foreground/70">
+            {t.start_ms !== null ? formatTimestamp(t.start_ms) : ""}
+          </span>
+          <p>
+            {t.speaker && <span className="font-semibold">{t.speaker}: </span>}
+            {t.clippedStart && "… "}
+            {t.hit ? (
+              <>
+                {t.text.slice(0, t.hit[0])}
+                <mark className="rounded bg-yellow-200 px-0.5 text-foreground dark:bg-yellow-700/60">
+                  {t.text.slice(t.hit[0], t.hit[1])}
+                </mark>
+                {t.text.slice(t.hit[1])}
+              </>
+            ) : (
+              t.text
+            )}
+            {t.clippedEnd && " …"}
+          </p>
+        </li>
+      ))}
+    </ol>
+  )
+}
+
+function TranscriptExcerpt({ item }: { item: Item }) {
+  const link = item.excerpt_link
+  const hint =
+    link?.kind === "video-at-time"
+      ? "opens the video about 30 seconds before the quote"
+      : link?.kind === "video"
+        ? "opens the video (start time unknown)"
+        : link?.kind === "episode"
+          ? "opens the episode page"
+          : null
+  return (
+    <details className="rounded-lg border text-sm">
+      <summary className="flex min-h-[44px] cursor-pointer select-none flex-wrap items-center gap-x-2 px-3 py-2 font-medium">
+        {link ? (
+          <a
+            href={link.href}
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={e => e.stopPropagation()}
+            className="text-primary underline underline-offset-2"
+          >
+            Transcript Excerpt
+            <span className="sr-only"> (opens in a new tab)</span>
+            <span aria-hidden> ↗</span>
+          </a>
+        ) : (
+          <span>Transcript Excerpt</span>
+        )}
+        {hint && <span className="text-xs font-normal text-foreground/70">({hint})</span>}
+      </summary>
+      <div className="max-h-96 overflow-y-auto border-t px-3 py-3">
+        {item.excerpt ? (
+          <>
+            <TurnLines excerpt={item.excerpt} />
+            {!item.excerpt.quoteFound && item.quote && (
+              <p className="mt-3 text-xs text-amber-800 dark:text-amber-400">
+                The quote could not be located in this text, so nothing is highlighted.
+              </p>
+            )}
+          </>
+        ) : (
+          <p className="whitespace-pre-wrap text-foreground/90">{item.chunk}</p>
+        )}
+      </div>
+    </details>
+  )
+}
 
 export function FidelityWorksheetClient() {
   const [items, setItems] = useState<Item[] | null>(null)
@@ -280,42 +365,34 @@ export function FidelityWorksheetClient() {
               )}
             </div>
 
+            {/* Card order, top to bottom: columns, decision bar, judge (if shown), transcript excerpt.
+                Each block is one self-contained piece of JSX, so reordering is a cut and paste. */}
             <div className="grid gap-3 md:grid-cols-2">
-              <section
-                aria-label="Claim"
-                className="rounded-lg border border-sky-300 bg-sky-50 p-4 dark:border-sky-800 dark:bg-sky-950/40"
-              >
-                <h3 className="inline-block rounded-full bg-sky-800 px-2.5 py-0.5 text-xs font-semibold text-white">
+              <section aria-label="Claim" className="rounded-lg border p-4">
+                <h3 className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
                   Claim
                 </h3>
-                <p className="mt-2 text-base font-semibold leading-snug text-foreground">{item.statement}</p>
+                <p className="mt-2 text-base font-medium leading-snug text-foreground">{item.statement}</p>
               </section>
 
-              <section
-                aria-label="Quote from the Episode"
-                className="rounded-lg border border-amber-300 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-950/30"
-              >
-                <h3 className="inline-block rounded-full bg-amber-800 px-2.5 py-0.5 text-xs font-semibold text-white">
+              <section aria-label="Quote from the Episode" className="rounded-lg border p-4">
+                <h3 className="inline-block rounded-full bg-muted px-2.5 py-0.5 text-xs font-semibold text-foreground">
                   Quote from the Episode
                 </h3>
                 {item.quote ? (
-                  <blockquote className="mt-2 border-l-4 border-amber-500 pl-3 font-serif text-sm italic leading-relaxed text-foreground/90">
+                  <p className="mt-2 text-base font-medium italic leading-snug text-foreground">
                     &ldquo;{item.quote}&rdquo;
-                  </blockquote>
+                  </p>
                 ) : (
-                  <p className="mt-2 text-sm italic text-foreground/80">No direct quote was recorded for this claim.</p>
+                  <p className="mt-2 text-base font-medium leading-snug text-foreground">
+                    No direct quote was recorded for this claim.
+                  </p>
                 )}
                 {item.context && (
                   <p className="mt-3 text-sm text-foreground/80">
                     <span className="font-semibold">Context Note:</span> {item.context}
                   </p>
                 )}
-                <details className="mt-3 text-sm">
-                  <summary className="cursor-pointer select-none py-2 font-medium text-foreground/80">
-                    Transcript Excerpt
-                  </summary>
-                  <p className="mt-1 max-h-72 overflow-y-auto whitespace-pre-wrap text-foreground/80">{item.chunk}</p>
-                </details>
               </section>
             </div>
 
@@ -343,6 +420,8 @@ export function FidelityWorksheetClient() {
                 {item.judge_reasoning && <div className="text-muted-foreground">{item.judge_reasoning}</div>}
               </div>
             )}
+
+            <TranscriptExcerpt item={item} />
           </CardContent>
         </Card>
       ))}
