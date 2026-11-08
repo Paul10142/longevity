@@ -95,6 +95,7 @@ async function main() {
 
   let attached = 0
   let skippedDone = 0
+  let skippedDup = 0
   let unmatched = 0
   let unknownShow = 0
   let named = 0
@@ -109,6 +110,10 @@ async function main() {
     // orphan the claims already built from the old one — that is the separate
     // "redo the 107" job, with its own reconciliation.
     if (row.processing_status === 'succeeded') { skippedDone++; continue }
+    // A skipped row (migration 038) is a re-post or copy of an episode we already hold. Writing
+    // its transcript would set it back to 'pending' below and queue the duplicate for extraction
+    // — the exact cost the skip exists to prevent. Its transcript file, if one exists, is left alone.
+    if (row.processing_status === 'skipped') { skippedDup++; continue }
     // No registered host means no safe name for the opening speaker. Skip loudly
     // rather than guess: a wrong name is worse than a skipped file.
     const host = hostLabelForKey(key)
@@ -161,6 +166,7 @@ async function main() {
 
   process.stdout.write(
     `\n${dryRun ? 'would attach' : 'attached'} ${attached} | already extracted, left alone ${skippedDone} | ` +
+      (skippedDup ? `skipped re-posts, left alone ${skippedDup} | ` : '') +
       `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
       `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
   )
