@@ -12,9 +12,11 @@ import {
   DEFAULT_PAUSE_AT,
   MAX_PAUSE_MS,
   RESET_MARGIN_MS,
+  UNCAP_LAST_HOURS,
   UNKNOWN_RESET_PAUSE_MS,
   UsageLimitError,
   asUsageLimit,
+  inUncapWindow,
   isRefusalError,
   MAX_HEALS_PER_JOB,
   quarantineReason,
@@ -23,10 +25,13 @@ import {
   noteRateLimit,
   parseCliStream,
   parseUsageLimit,
+  pauseThreshold,
   planPause,
   rethrowIfUsageLimit,
   resetUsageState,
+  uncapLastHours,
   usageGate,
+  type RateLimitSnapshot,
 } from '../lib/usageLimit'
 
 const REAL = "You've hit your session limit · resets 12:40am (America/Detroit)"
@@ -219,6 +224,158 @@ test('gate: a limit message with no time blocks for the default pause', () => {
 function usageLimitReached(resetAt: number) {
   return new UsageLimitError('reached', resetAt)
 }
+
+// ── the gate: no 90% line in the last hours before the weekly reset ────────
+// Paul, 2026-11-08: whatever is left of the week is lost at the reset, so for the
+// last UNCAP_LAST_HOURS (18) the lanes pause only at a full window.
+
+const HOUR = 3_600_000
+/** Five-hour window at `five`, weekly window at `week` resetting `weekResetInHours` after NOW. */
+const weeklySnap = (five: number, week: number, weekResetInHours: number | null): RateLimitSnapshot => ({
+  status: 'allowed',
+  fiveHour: { utilization: five, resetsAt: NOW + 2 * HOUR },
+  sevenDay: { utilization: week, resetsAt: weekResetInHours == null ? null : NOW + weekResetInHours * HOUR },
+  resetsAt: NOW + 2 * HOUR,
+})
+
+/** Run `fn` with these env vars set (undefined = unset), restoring the originals afterwards. */
+function withEnv(vars: Record<string, string | undefined>, fn: () => void) {
+  const saved: Record<string, string | undefined> = {}
+  for (const k of Object.keys(vars)) saved[k] = process.env[k]
+  try {
+    for (const [k, v] of Object.entries(vars)) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+    fn()
+  } finally {
+    for (const [k, v] of Object.entries(saved)) {
+      if (v === undefined) delete process.env[k]
+      else process.env[k] = v
+    }
+  }
+}
+const NO_ENV = { USAGE_PAUSE_AT: undefined, USAGE_UNCAP_LAST_HOURS: undefined }
+
+test('uncap: the rule is 18 hours by default', () => {
+  assert.equal(UNCAP_LAST_HOURS, 18)
+  assert.equal(uncapLastHours({}), 18)
+})
+
+test('uncap: inside the last 18 hours a 95% window does not pause (five-hour and weekly)', () => {
+  withEnv(NO_ENV, () => {
+    noteRateLimit(weeklySnap(0.95, 0.5, 10), NOW)
+    assert.equal(pauseThreshold(NOW), 1)
+    assert.equal(usageGate(NOW), null, 'five-hour window at 95%')
+    noteRateLimit(weeklySnap(0.1, 0.95, 10), NOW)
+    assert.equal(usageGate(NOW), null, 'weekly window at 95%')
+  })
+})
+
+test('uncap: the edge is inclusive at exactly 18 h and closed again at 18.1 h', () => {
+  withEnv(NO_ENV, () => {
+    noteRateLimit(weeklySnap(0.95, 0.5, 18), NOW)
+    assert.equal(usageGate(NOW), null, 'exactly 18 h left')
+    noteRateLimit(weeklySnap(0.95, 0.5, 18.1), NOW)
+    assert.equal(pauseThreshold(NOW), DEFAULT_PAUSE_AT)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'just outside: 18.1 h left')
+  })
+})
+
+test('uncap: a full window still pauses inside the last 18 hours; a rejected status still blocks', () => {
+  withEnv(NO_ENV, () => {
+    noteRateLimit(weeklySnap(1, 0.5, 10), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'five-hour window full')
+    noteRateLimit(weeklySnap(0.1, 1, 10), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'weekly window full')
+    noteRateLimit({ ...weeklySnap(0.1, 0.5, 10), status: 'rejected' }, NOW)
+    assert.equal(usageGate(NOW)?.kind, 'reached')
+    noteLimitReached(usageLimitReached(NOW + HOUR), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'reached', 'the limit message still blocks')
+  })
+})
+
+test('uncap: a past, missing or unknown weekly reset keeps the 90% line (fails safe)', () => {
+  withEnv(NO_ENV, () => {
+    noteRateLimit(weeklySnap(0.95, 0.5, -1 / 3600), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'reset 1 s ago')
+    noteRateLimit(weeklySnap(0.95, 0.5, 0), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'reset exactly now')
+    noteRateLimit(weeklySnap(0.95, 0.5, null), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'weekly reset time missing')
+    noteRateLimit({ ...weeklySnap(0.95, 0.5, 10), sevenDay: null }, NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'no weekly window in the snapshot')
+    resetUsageState()
+    assert.equal(pauseThreshold(NOW), DEFAULT_PAUSE_AT, 'no snapshot yet')
+  })
+})
+
+test('uncap: only the weekly reset counts, not the five-hour one', () => {
+  withEnv(NO_ENV, () => {
+    // Five-hour window resets in 2 h (inside 18 h) but the week resets in 3 days.
+    noteRateLimit(weeklySnap(0.95, 0.5, 72), NOW)
+    assert.equal(pauseThreshold(NOW), DEFAULT_PAUSE_AT)
+    assert.equal(usageGate(NOW)?.kind, 'approaching')
+  })
+})
+
+test('uncap: an explicit USAGE_PAUSE_AT always wins, inside the window too', () => {
+  noteRateLimit(weeklySnap(0.95, 0.5, 10), NOW)
+  withEnv({ USAGE_PAUSE_AT: '0.9', USAGE_UNCAP_LAST_HOURS: undefined }, () => {
+    assert.equal(pauseThreshold(NOW), 0.9)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', 'explicit 0.9 inside the window still pauses at 95%')
+  })
+  withEnv({ USAGE_PAUSE_AT: '0.97', USAGE_UNCAP_LAST_HOURS: undefined }, () => {
+    assert.equal(pauseThreshold(NOW), 0.97)
+    assert.equal(usageGate(NOW), null)
+  })
+  // An explicit 1 lifts the line even outside the window (the old way to uncap a lane).
+  noteRateLimit(weeklySnap(0.95, 0.5, 72), NOW)
+  withEnv({ USAGE_PAUSE_AT: '1', USAGE_UNCAP_LAST_HOURS: undefined }, () => {
+    assert.equal(usageGate(NOW), null)
+  })
+  // An explicit but invalid value is not "unset": it falls back to 90% and does not uncap.
+  noteRateLimit(weeklySnap(0.95, 0.5, 10), NOW)
+  withEnv({ USAGE_PAUSE_AT: '90', USAGE_UNCAP_LAST_HOURS: undefined }, () => {
+    assert.equal(pauseThreshold(NOW), DEFAULT_PAUSE_AT)
+    assert.equal(usageGate(NOW)?.kind, 'approaching')
+  })
+  // A blank value counts as unset.
+  withEnv({ USAGE_PAUSE_AT: '  ', USAGE_UNCAP_LAST_HOURS: undefined }, () => {
+    assert.equal(usageGate(NOW), null)
+  })
+})
+
+test('uncap: rule off (0 or an invalid USAGE_UNCAP_LAST_HOURS) pauses at 95% inside the window', () => {
+  noteRateLimit(weeklySnap(0.95, 0.5, 10), NOW)
+  for (const off of ['0', '-3', 'abc', '']) {
+    withEnv({ USAGE_PAUSE_AT: undefined, USAGE_UNCAP_LAST_HOURS: off }, () => {
+      assert.equal(uncapLastHours(), 0, `"${off}" is off`)
+      assert.equal(pauseThreshold(NOW), DEFAULT_PAUSE_AT)
+      assert.equal(usageGate(NOW)?.kind, 'approaching', `"${off}" pauses at 95%`)
+    })
+  }
+})
+
+test('uncap: USAGE_UNCAP_LAST_HOURS sets the width of the window', () => {
+  withEnv({ USAGE_PAUSE_AT: undefined, USAGE_UNCAP_LAST_HOURS: '6' }, () => {
+    noteRateLimit(weeklySnap(0.95, 0.5, 5), NOW)
+    assert.equal(usageGate(NOW), null, '5 h left, inside a 6 h window')
+    noteRateLimit(weeklySnap(0.95, 0.5, 10), NOW)
+    assert.equal(usageGate(NOW)?.kind, 'approaching', '10 h left, outside a 6 h window')
+  })
+})
+
+test('uncap: pauseThreshold is pure given its arguments (no clock, state or env read)', () => {
+  const s = weeklySnap(0.95, 0.5, 10)
+  assert.equal(pauseThreshold(NOW, s, {}), 1)
+  assert.equal(pauseThreshold(NOW, s, { USAGE_PAUSE_AT: '0.9' }), 0.9)
+  assert.equal(pauseThreshold(NOW, s, { USAGE_UNCAP_LAST_HOURS: '0' }), DEFAULT_PAUSE_AT)
+  assert.equal(pauseThreshold(NOW + 11 * HOUR, s, {}), DEFAULT_PAUSE_AT, 'after the reset')
+  assert.equal(pauseThreshold(NOW, null, {}), DEFAULT_PAUSE_AT)
+  assert.equal(inUncapWindow(NOW, s, {}), true)
+  assert.equal(inUncapWindow(NOW, weeklySnap(0.1, 0.1, 19), {}), false)
+})
 
 // ── the supervisor's sleep ─────────────────────────────────────────────────
 
