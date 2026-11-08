@@ -31,7 +31,15 @@ export type Src = {
   transcript_origin: string
   processing_status: string
 }
-export type RowAction = 'delete' | 'clear'
+/**
+ * What happens to the source row once its facts are gone:
+ *  - 'delete' — a duplicate row, removed outright;
+ *  - 'clear'  — a caption row: transcript wiped, back to `pending` for its Deepgram transcript;
+ *  - 'keep'   — a row whose transcript was just REBUILT and must survive as it is: only its
+ *               processing state is reset to `pending`, so the standing extract flow re-reads it.
+ *               (Added 2026-11-08 for the two FoundMyFitness rows re-split at their hidden labels.)
+ */
+export type RowAction = 'delete' | 'clear' | 'keep'
 export type InsightRow = { id: string; statement: string; context_note: string | null; direct_quote: string | null; chunk_id: string | null; created_at: string }
 export type MemberRow = { claim_id: string; raw_insight_id: string; matched_by: string; match_confidence: number | null }
 export type Survivor = { raw_insight_id: string; source_id: string; statement: string; context_note: string | null; created_at: string }
@@ -66,6 +74,8 @@ export type SourceState = {
   chunks: number
   /** transcript/timed_transcript null, pending, no error — only meaningful when `exists`. */
   cleared: boolean
+  /** pending, no error, never processed — the transcript is not looked at. Only meaningful when `exists`. */
+  pendingClean: boolean
 }
 
 /** Everything the procedure needs from the database. Writes must be idempotent. */
@@ -99,6 +109,8 @@ export interface RetireStore {
   deleteChunksOf(sourceId: string): Promise<void>
   deleteSourceRow(sourceId: string): Promise<void>
   clearSourceRow(sourceId: string): Promise<void>
+  /** Keep the transcript; set processing back to pending/no error/never processed. */
+  resetSourceRow(sourceId: string): Promise<void>
 }
 
 // ---- backup + progress files ----------------------------------------------------
@@ -217,7 +229,7 @@ export type StepCounts = {
   reviewsClosed: number
   insightsDeleted: boolean
   chunksDeleted: boolean
-  rowAction: 'deleted' | 'cleared' | 'already-done' | 'skipped-replaced'
+  rowAction: 'deleted' | 'cleared' | 'reset' | 'already-done' | 'skipped-replaced'
 }
 
 export type ApplyOptions = {
@@ -239,7 +251,7 @@ function chunk<T>(xs: T[], n: number): T[][] {
  * done — even when there is no progress file (backups from the earlier script).
  */
 export function reachedDeleteStep(plan: Plan, src: SourceState): boolean {
-  return !src.exists || (src.origin === 'other' && src.insights === 0 && plan.insights.length > 0)
+  return !src.exists || (src.origin === plan.source.transcript_origin && src.insights === 0 && plan.insights.length > 0)
 }
 
 /**
@@ -326,10 +338,12 @@ export async function applyPlan(store: RetireStore, plan: Plan, opts: ApplyOptio
 
   // 5. delete the caption version — but never a row that has already been replaced
   //    by its Deepgram transcript (a resume after the attach step must not wipe it).
+  //    "Replaced" means its transcript origin is no longer what it was when the plan
+  //    was made (a caption row is 'other'; a kept published row stays 'published').
   const src = await store.sourceState(s.id)
   if (!src.exists) {
     counts.rowAction = 'already-done'
-  } else if (src.origin !== 'other') {
+  } else if (src.origin !== plan.source.transcript_origin) {
     counts.rowAction = 'skipped-replaced'
     log(`  source ${s.id} is now '${src.origin}', not a caption row — its rows are left alone`)
   } else {
@@ -338,6 +352,11 @@ export async function applyPlan(store: RetireStore, plan: Plan, opts: ApplyOptio
     if (plan.rowAction === 'delete') {
       await store.deleteSourceRow(s.id)
       counts.rowAction = 'deleted'
+    } else if (plan.rowAction === 'keep') {
+      if (!src.pendingClean) {
+        await store.resetSourceRow(s.id)
+        counts.rowAction = 'reset'
+      }
     } else if (!src.cleared) {
       await store.clearSourceRow(s.id)
       counts.rowAction = 'cleared'
