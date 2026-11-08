@@ -608,7 +608,7 @@ test('buildPlan puts the host first, counts what Claude and the fallback decided
   assert.equal(plan.show, 'attia')
   assert.equal(plan.host, attia.host)
   assert.equal(plan.made_at, MADE_AT)
-  assert.deepEqual(plan.counts, { episodes: 3, claude: 2, fallback: 1, no_row: 1, changed: 1 })
+  assert.deepEqual(plan.counts, { episodes: 3, claude: 2, fallback: 1, no_row: 1, changed: 1, override: 0 })
   const [one, two, three] = plan.rows
   assert.deepEqual(one.proposed_authors, [attia.host, 'Jane Roe'])
   assert.deepEqual(one.current_authors, [attia.host, 'Jane Roe (#1 rebroadcast)'])
