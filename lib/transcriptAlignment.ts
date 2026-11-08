@@ -169,9 +169,24 @@ const NOT_A_NAME = new Set([
 ])
 
 /**
+ * Lowercase particles that sit INSIDE a surname ("Luc van Loon", "Ursula von der
+ * Leyen", "Leonardo da Vinci"). A label regex that only accepts capitalised words
+ * reads "Luc van Loon:" as the one-word label "Loon:", which is how an
+ * 88-turn FoundMyFitness interview came out attributed to the host alone
+ * (2026-11-08). The list is closed on purpose: an open "any lowercase word" rule
+ * would turn ordinary sentences ("…said to Rhonda:") into names. Not included:
+ * "do", "al", "el" (an English verb and two real first names).
+ */
+const NAME_PARTICLES = ['van', 'von', 'de', 'der', 'den', 'da', 'di', 'du', 'la', 'le', 'del', 'della', 'dos', 'das', 'ten', 'ter', 'bin']
+const NAME_WORD = "[A-Z][a-zA-Z.'\u2019-]+"
+/** One to three capitalised words (particles allowed between them) before a colon. */
+const LABEL_RE_SOURCE = `(${NAME_WORD}(?:\\s+(?:(?:${NAME_PARTICLES.join('|')})\\s+)*${NAME_WORD}){0,2}):\\s`
+
+/**
  * Speaker names that appear as inline labels, most frequent first.
  *
- * Accepts ONE to THREE capitalised words. Requiring two was a real bug: shows
+ * Accepts ONE to THREE capitalised words (lowercase particles such as "van" or
+ * "de" may sit between them). Requiring two was a real bug: shows
  * label turns by first name as often as by full name ("Judith:", "Rhonda:",
  * "Peter:"), and demanding a surname silently rejected most FoundMyFitness
  * episodes as unlabelled — 125 of 142 — when they were labelled all along.
@@ -194,7 +209,7 @@ export function detectSpeakers(text: string, min = 3): string[] {
   // "Judith:" 24 times. The guards below (sentence-lead trim, NOT_A_NAME, a
   // minimum count, and requiring two distinct speakers) do the filtering that
   // the anchor was pretending to do.
-  for (const m of text.matchAll(/([A-Z][a-zA-Z.'\u2019-]+(?:\s+[A-Z][a-zA-Z.'\u2019-]+){0,2}):\s/g)) {
+  for (const m of text.matchAll(new RegExp(LABEL_RE_SOURCE, 'g'))) {
     const n = trimSentenceLead(m[1].trim())
     if (!n || NOT_A_NAME.has(n.toLowerCase())) continue
     // A bare token ending in '.' that survived the trim is an abbreviation on
@@ -209,29 +224,105 @@ export function detectSpeakers(text: string, min = 3): string[] {
   return found.length >= 2 ? found : []
 }
 
+const CREDENTIALS = new Set(['md', 'phd', 'ph.d.', 'ph.d', 'm.d.', 'm.d', 'mph', 'rd', 'do', 'dsc', 'msc', 'ms', 'bsc', 'jr', 'jr.', 'sr', 'sr.'])
+const HONORIFIC_PREFIX = /^(?:dr|prof|professor|mr|mrs|ms|mx)\.?\s+/i
+
+const nameTokens = (n: string) => n.trim().split(/\s+/).filter(Boolean)
+const lower = (s: string) => s.toLowerCase().replace(/[.,]/g, '')
+
+/**
+ * Person names found in a page title: `Luc van Loon` from "Dr. Luc van Loon:
+ * Optimizing Protein Intake", both guests from "Peter Diamandis, MD, and Tony
+ * Robbins: Strategies…", and the part after the last `|` ("Topic | Dr. Guest").
+ *
+ * These names are only ever used to RESOLVE labels that name the same person
+ * more briefly ("Dr. Diamandis" → "Peter Diamandis"); a topic that happens to look
+ * like a name can at worst fail to resolve anything, because it must share a
+ * surname with a real label to matter. They are never added as authors on their
+ * own.
+ */
+export function namesFromTitle(title: string): string[] {
+  const parts = title.includes('|') ? [title.split('|').pop() ?? ''] : [title.split(':')[0]]
+  const out: string[] = []
+  for (const part of parts) {
+    for (const piece of part.split(/,|&|\band\b/i)) {
+      const cleaned = nameTokens(piece.trim().replace(HONORIFIC_PREFIX, ''))
+        .filter(t => !CREDENTIALS.has(t.toLowerCase()))
+        .join(' ')
+      const toks = nameTokens(cleaned)
+      const okWord = (t: string) => /^[A-Z][a-zA-Z.'\u2019-]+$/.test(t) || NAME_PARTICLES.includes(t)
+      if (toks.length >= 2 && toks.length <= 5 && toks.every(okWord) && /^[A-Z]/.test(toks[0]) && /^[A-Z]/.test(toks[toks.length - 1])) {
+        out.push(toks.join(' '))
+      }
+    }
+  }
+  return [...new Set(out)]
+}
+
+/**
+ * Map the labels a transcript uses to ONE canonical name per person.
+ *
+ * Publishers label the same person several ways in one transcript: the host is
+ * "Dr. Patrick" in one episode and "Rhonda" in another, a guest "Dr. Diamandis".
+ * Left alone, each variant is a different speaker — and corroboration counts
+ * DISTINCT speakers, so a host who is "Rhonda Patrick" in 20 episodes and "Dr.
+ * Patrick" in one is counted as two people.
+ *
+ * A label is resolved only against names we already trust (`knownNames`: the host,
+ * names read from the title, and full multi-word labels in the text), and only
+ * when it names exactly ONE of them: an honorific + surname ("Dr. Patrick") or a
+ * lone first name or surname ("Rhonda", "Loon"). Ambiguous or unknown labels are
+ * left exactly as written — never guessed.
+ */
+export function resolveSpeakerAliases(labels: string[], knownNames: string[]): Map<string, string> {
+  const full = [...new Set(knownNames.map(n => n.trim()).filter(n => nameTokens(n).length >= 2))]
+  const aliases = new Map<string, string>()
+  for (const label of labels) {
+    if (full.includes(label)) continue
+    const hasHonorific = HONORIFIC_PREFIX.test(label)
+    const core = nameTokens(label.replace(HONORIFIC_PREFIX, ''))
+    if (core.length >= 2) {
+      // "Dr. Rhonda Patrick" is the same person as "Rhonda Patrick", not a second speaker.
+      if (hasHonorific) aliases.set(label, core.join(' '))
+      continue
+    }
+    if (core.length !== 1) continue
+    const token = lower(core[0])
+    const hits = full.filter(n => {
+      const t = nameTokens(n)
+      return lower(t[t.length - 1]) === token || lower(t[0]) === token
+    })
+    if (hits.length === 1) aliases.set(label, hits[0])
+  }
+  return aliases
+}
+
 /**
  * Split a published transcript into turns on inline `Name:` labels.
  *
  * Only the names in `knownSpeakers` start a turn. That is deliberate: with
  * single-name labels allowed, a permissive rule would split on any capitalised
  * word before a colon and shatter the transcript into fragments attributed to
- * nobody.
+ * nobody. `aliases` renames a label to its canonical speaker (see
+ * `resolveSpeakerAliases`); a label with no alias keeps its own text.
  */
-export function splitTurns(text: string, knownSpeakers: string[]): Turn[] {
+export function splitTurns(text: string, knownSpeakers: string[], aliases?: Map<string, string>): Turn[] {
   if (knownSpeakers.length === 0) return [{ speaker: null, text }]
   const alt = knownSpeakers
     .slice()
     .sort((a, b) => b.length - a.length) // longest first: "Rhonda Patrick" before "Rhonda"
     .map(n => n.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))
     .join('|')
-  const re = new RegExp(`(${alt}):\\s`, 'g')
+  // The lookbehind keeps "Tony" from matching inside "Anthony:".
+  const re = new RegExp(`(?<![A-Za-z])(${alt}):\\s`, 'g')
   const turns: Turn[] = []
   let cursor = 0
   let speaker: string | null = null
   for (const m of text.matchAll(re)) {
     const body = text.slice(cursor, m.index).trim()
     if (body) turns.push({ speaker, text: body })
-    speaker = m[1].trim()
+    const label = m[1].trim()
+    speaker = aliases?.get(label) ?? label
     cursor = (m.index ?? 0) + m[0].length
   }
   const tail = text.slice(cursor).trim()

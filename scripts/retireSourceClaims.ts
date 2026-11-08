@@ -4,6 +4,8 @@
  *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --twins             # every caption row that has a Deepgram twin (dry run)
  *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --source <id>       # one caption row (dry run)
  *   …                                                             --apply            # write, after a JSON backup
+ *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --source <id> --keep-row [--apply]
+ *                                       # a PUBLISHED-transcript row whose transcript was just rebuilt: retire its facts, keep the row and its text
  *   npx tsx --env-file=.env.local scripts/retireSourceClaims.ts --resume <backup.json> [--apply]
  *                                       # finish an interrupted --apply from its own backup (dry run without --apply)
  *
@@ -26,6 +28,13 @@
  *      link, a feed/Deepgram row exists for the same episode) is deleted
  *      outright, a linked row is cleared to `pending` for its Deepgram transcript;
  *   6. verify in SQL before moving on.
+ *
+ * `--keep-row` (2026-11-08) is for a source that is NOT a caption row but whose facts must
+ * go anyway because its transcript was rebuilt (two FoundMyFitness episodes split at the
+ * wrong speaker labels): steps 1–4 and 6 are the same, step 5 deletes the facts and chunks
+ * but leaves the row and its new transcript in place, only resetting it to `pending` so
+ * `extract_with_fidelity.sh` re-extracts it. It accepts `transcript_origin = 'published'`
+ * only, and only together with `--source`.
  *
  * Dry run by default; `--apply` writes. Refuses to apply while a pipeline job is
  * running or a supervisor process is alive: one database writer at a time.
@@ -51,6 +60,7 @@ import {
 const args = process.argv.slice(2)
 const APPLY = args.includes('--apply')
 const TWINS = args.includes('--twins')
+const KEEP_ROW = args.includes('--keep-row')
 const sourceIdx = args.indexOf('--source')
 const SOURCE = sourceIdx > -1 ? args[sourceIdx + 1] : null
 const resumeIdx = args.indexOf('--resume')
@@ -64,6 +74,7 @@ async function main() {
   if (!TWINS && !SOURCE && !RESUME) {
     throw new Error('pass --twins (every caption row with a Deepgram twin), --source <id>, or --resume <backup.json>')
   }
+  if (KEEP_ROW && (!SOURCE || TWINS || RESUME)) throw new Error('--keep-row goes with --source <id> alone (not --twins or --resume)')
   if (RESUME && (TWINS || SOURCE)) throw new Error('--resume takes a backup file on its own, not --twins / --source')
   if (RESUME && (!RESUME || RESUME.startsWith('--'))) throw new Error('--resume needs the path of a retire-<sourceId>-<stamp>.json backup')
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
@@ -104,7 +115,7 @@ async function main() {
         `source row: ${todo.source.exists ? `present (${todo.source.origin}), ${todo.source.insights} insights, ${todo.source.chunks} chunks` : 'gone'}`
     )
     if (todo.retireBlocked.length) console.log(`  WARNING: ${todo.retireBlocked.length} claim(s) planned for retirement now have members — they will be left alone`)
-    if (todo.source.exists && todo.source.origin !== 'other') console.log(`  NOTE: the source row is now '${todo.source.origin}' (already replaced) — step 5 will leave it alone`)
+    if (todo.source.exists && todo.source.origin !== plan.source.transcript_origin) console.log(`  NOTE: the source row is now '${todo.source.origin}' (already replaced) — step 5 will leave it alone`)
     if (!APPLY) { console.log(`\n[${now()}] DRY RUN — nothing written`); return }
     const counts = await applyPlan(store, plan, { backupPath: RESUME, log: l => console.log(l) })
     await recomputeTopicCounts()
@@ -139,25 +150,32 @@ async function main() {
       .select('id, title, external_id, episode_number, transcript_origin, processing_status').eq('id', SOURCE).single()
     if (error || !data) throw new Error(`source ${SOURCE}: ${error?.message ?? 'not found'}`)
     const src = data as Src
-    if (src.transcript_origin !== 'other') {
-      throw new Error(`source ${SOURCE} is '${src.transcript_origin}', not a caption ('other') source — refusing`)
+    if (KEEP_ROW) {
+      if (src.transcript_origin !== 'published') {
+        throw new Error(`source ${SOURCE} is '${src.transcript_origin}'; --keep-row is only for a 'published' transcript row — refusing`)
+      }
+      targets.push({ src, twinId: null, rowAction: 'keep' })
+    } else {
+      if (src.transcript_origin !== 'other') {
+        throw new Error(`source ${SOURCE} is '${src.transcript_origin}', not a caption ('other') source — refusing`)
+      }
+      // A duplicate row (another row holds this episode) is deleted; a linked row,
+      // or a row with no other copy of its episode, is cleared to pending instead.
+      let rowAction: RowAction = 'clear'
+      const m = src.title.match(/^(\d{1,3})\s*[-‒–—]/)
+      if (!src.external_id && m) {
+        const { count } = await db.from('sources').select('id', { count: 'exact', head: true })
+          .eq('episode_number', Number(m[1])).neq('id', src.id)
+        if ((count ?? 0) > 0) rowAction = 'delete'
+      }
+      targets.push({ src, twinId: null, rowAction })
     }
-    // A duplicate row (another row holds this episode) is deleted; a linked row,
-    // or a row with no other copy of its episode, is cleared to pending instead.
-    let rowAction: RowAction = 'clear'
-    const m = src.title.match(/^(\d{1,3})\s*[-‒–—]/)
-    if (!src.external_id && m) {
-      const { count } = await db.from('sources').select('id', { count: 'exact', head: true })
-        .eq('episode_number', Number(m[1])).neq('id', src.id)
-      if ((count ?? 0) > 0) rowAction = 'delete'
-    }
-    targets.push({ src, twinId: null, rowAction })
   }
   if (targets.length === 0) throw new Error('no matching caption sources')
 
   console.log(`[${now()}] ${APPLY ? 'APPLY' : 'DRY RUN'} — ${targets.length} caption source(s)\n`)
 
-  const totals = { insights: 0, members: 0, retired: 0, rederived: 0, reviews: 0, chunks: 0, deletedRows: 0, clearedRows: 0 }
+  const totals = { insights: 0, members: 0, retired: 0, rederived: 0, reviews: 0, chunks: 0, deletedRows: 0, clearedRows: 0, keptRows: 0 }
 
   for (const t of targets) {
     const s = t.src
@@ -179,7 +197,8 @@ async function main() {
     const counts = await applyPlan(store, plan, { backupPath, log: l => console.log(l) })
     if (counts.rowAction === 'deleted') totals.deletedRows++
     if (counts.rowAction === 'cleared') totals.clearedRows++
-    console.log(`  verified: insights gone, ${plan.retireIds.length} retired, ${plan.rederive.length} re-derived, ${plan.reviewIds.length} reviews closed, row ${t.rowAction}d`)
+    if (counts.rowAction === 'reset' || (t.rowAction === 'keep' && counts.rowAction === 'already-done')) totals.keptRows++
+    console.log(`  verified: insights gone, ${plan.retireIds.length} retired, ${plan.rederive.length} re-derived, ${plan.reviewIds.length} reviews closed, row ${t.rowAction === 'keep' ? 'kept (reset to pending)' : t.rowAction + 'd'}`)
   }
 
   if (APPLY) {
@@ -189,7 +208,7 @@ async function main() {
   console.log(
     `\n[${now()}] ${APPLY ? 'DONE' : 'DRY RUN'} — sources ${targets.length}: insights ${totals.insights}, members ${totals.members}, ` +
       `claims to retire ${totals.retired}, to re-derive ${totals.rederived}, reviews to close ${totals.reviews}, chunks ${totals.chunks}` +
-      (APPLY ? `; rows deleted ${totals.deletedRows}, cleared ${totals.clearedRows}` : '')
+      (APPLY ? `; rows deleted ${totals.deletedRows}, cleared ${totals.clearedRows}, kept ${totals.keptRows}` : '')
   )
 }
 

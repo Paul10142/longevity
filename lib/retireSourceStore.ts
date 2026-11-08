@@ -92,13 +92,14 @@ export async function createSupabaseRetireStore(): Promise<RetireStore> {
       fail('raw_insights count', e1)
       const { count: chunks, error: e2 } = await db.from('chunks').select('id', { count: 'exact', head: true }).eq('source_id', sourceId)
       fail('chunks count', e2)
-      if (!data) return { exists: false, origin: null, insights: insights ?? 0, chunks: chunks ?? 0, cleared: false }
+      if (!data) return { exists: false, origin: null, insights: insights ?? 0, chunks: chunks ?? 0, cleared: false, pendingClean: false }
       const row = data as { transcript_origin: string; processing_status: string; processing_error: string | null; last_processed_at: string | null }
       const { count: withText, error: e3 } = await db.from('sources').select('id', { count: 'exact', head: true })
         .eq('id', sourceId).or('transcript.not.is.null,timed_transcript.not.is.null')
       fail('sources transcript', e3)
-      const cleared = (withText ?? 0) === 0 && row.processing_status === 'pending' && row.processing_error == null && row.last_processed_at == null
-      return { exists: true, origin: row.transcript_origin, insights: insights ?? 0, chunks: chunks ?? 0, cleared }
+      const pendingClean = row.processing_status === 'pending' && row.processing_error == null && row.last_processed_at == null
+      const cleared = (withText ?? 0) === 0 && pendingClean
+      return { exists: true, origin: row.transcript_origin, insights: insights ?? 0, chunks: chunks ?? 0, cleared, pendingClean }
     },
 
     async existingInsightIds(insightIds) {
@@ -195,6 +196,12 @@ export async function createSupabaseRetireStore(): Promise<RetireStore> {
     async deleteSourceRow(sourceId) {
       const { error } = await db.from('sources').delete().eq('id', sourceId)
       fail('delete source row', error)
+    },
+    async resetSourceRow(sourceId) {
+      const { error } = await db.from('sources')
+        .update({ processing_status: 'pending', processing_error: null, last_processed_at: null })
+        .eq('id', sourceId)
+      fail('reset source row', error)
     },
     async clearSourceRow(sourceId) {
       const { error } = await db.from('sources')

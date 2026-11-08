@@ -45,7 +45,7 @@ class FakeDb {
 /** Label -> procedure step, so tests can say "cut after step 3". */
 const STEP_OF: Record<string, number> = {
   deleteMembersOf: 1, retireClaims: 2, 'rederive:reseed': 3, 'rederive:aggregates': 3, 'rederive:enrich': 3, 'rederive:vector': 3,
-  closeReviews: 4, deleteInsightsOf: 5, deleteChunksOf: 5, deleteSourceRow: 5, clearSourceRow: 5,
+  closeReviews: 4, deleteInsightsOf: 5, deleteChunksOf: 5, deleteSourceRow: 5, clearSourceRow: 5, resetSourceRow: 5,
 }
 
 function storeOf(db: FakeDb): RetireStore {
@@ -85,8 +85,9 @@ function storeOf(db: FakeDb): RetireStore {
       const s = db.sources.get(id)
       const insights = db.insights.filter(i => i.source_id === id).length
       const chunks = db.chunks.get(id) ?? 0
-      if (!s) return { exists: false, origin: null, insights, chunks, cleared: false }
-      return { exists: true, origin: s.origin, insights, chunks, cleared: s.transcript === null && s.status === 'pending' && s.error === null }
+      if (!s) return { exists: false, origin: null, insights, chunks, cleared: false, pendingClean: false }
+      const pendingClean = s.status === 'pending' && s.error === null
+      return { exists: true, origin: s.origin, insights, chunks, cleared: s.transcript === null && pendingClean, pendingClean }
     },
     async existingInsightIds(ids) { return db.insights.filter(i => ids.includes(i.id)).map(i => i.id) },
     async membersOf(ids) { return db.members.filter(m => ids.includes(m.raw_insight_id)).map(m => ({ claim_id: m.claim_id, raw_insight_id: m.raw_insight_id })) },
@@ -130,6 +131,9 @@ function storeOf(db: FakeDb): RetireStore {
     async deleteSourceRow(sourceId) { await write('deleteSourceRow', () => { db.sources.delete(sourceId) }) },
     async clearSourceRow(sourceId) {
       await write('clearSourceRow', () => { const s = db.sources.get(sourceId)!; s.transcript = null; s.status = 'pending'; s.error = null })
+    },
+    async resetSourceRow(sourceId) {
+      await write('resetSourceRow', () => { const s = db.sources.get(sourceId)!; s.status = 'pending'; s.error = null })
     },
   }
 }
@@ -441,4 +445,84 @@ test('the dry-run view (outstanding) reports exactly what is left, and nothing a
   assert.equal(empty.reviewsTodo.length, 0)
   assert.equal(empty.source.exists, false)
   assert.ok(db.writes.length > writesBefore)
+})
+
+// ---- --keep-row: a published row whose transcript was rebuilt ------------------------------
+// Same facts, same claims, same procedure — but the row and its NEW transcript must survive,
+// only reset to `pending` so the standing extract flow re-reads it. (Two FoundMyFitness
+// episodes, 2026-11-08.)
+
+const SP_SRC: Src = { id: 'S', title: 'Dr. Luc van Loon: Protein', external_id: 'fmf-luc-van-loon', episode_number: null, transcript_origin: 'published', processing_status: 'succeeded' }
+
+function keepFixture(): FakeDb {
+  const db = fixture()
+  db.sources.set('S', { id: 'S', origin: 'published', status: 'succeeded', transcript: 'rebuilt transcript with the right speakers', error: null })
+  return db
+}
+
+async function keepPlan(db: FakeDb, dir: string) {
+  const plan = await buildPlan(storeOf(db), SP_SRC, null, 'keep')
+  return { plan, backupPath: writeBackup(dir, plan) }
+}
+
+test('keep-row: facts and claims are retired like any source, the row and its new transcript stay', async () => {
+  const db = keepFixture()
+  const { plan, backupPath } = await keepPlan(db, tmp())
+  const counts = await applyPlan(storeOf(db), plan, { ...OPTS, backupPath })
+  assert.equal(counts.rowAction, 'reset')
+  assert.equal(counts.retired, 3)
+  assert.equal(counts.rederived, 2)
+  assert.equal(counts.reviewsClosed, 2)
+  assert.equal(db.insights.filter(i => i.source_id === 'S').length, 0)
+  assert.equal(db.chunks.has('S'), false)
+  // the row survives with its rebuilt transcript, back to pending, still a published row
+  const row = db.sources.get('S')!
+  assert.equal(row.transcript, 'rebuilt transcript with the right speakers')
+  assert.equal(row.status, 'pending')
+  assert.equal(row.origin, 'published')
+  assert.equal(readProgress(backupPath)!.complete, true)
+})
+
+test('keep-row: running it again is a no-op — zero writes', async () => {
+  const db = keepFixture()
+  const { plan, backupPath } = await keepPlan(db, tmp())
+  await applyPlan(storeOf(db), plan, { ...OPTS, backupPath })
+  const before = db.snapshot()
+  const writes = db.writes.length
+  const again = await applyPlan(storeOf(db), readBackup(backupPath), { ...OPTS, backupPath })
+  assert.equal(again.rowAction, 'already-done')
+  assert.equal(db.writes.length, writes)
+  assert.equal(db.snapshot(), before)
+})
+
+test('keep-row: a cut at any write, then resume, reaches the same end state', async () => {
+  const ref = keepFixture()
+  const refPlan = await keepPlan(ref, tmp())
+  await applyPlan(storeOf(ref), refPlan.plan, { ...OPTS, backupPath: refPlan.backupPath })
+  const refSnapshot = ref.snapshot()
+  for (let at = 1; at <= ref.writes.length; at++) {
+    for (const mode of ['before', 'after'] as const) {
+      const db = keepFixture()
+      const { plan, backupPath } = await keepPlan(db, tmp())
+      db.fault = { at, mode }
+      await assert.rejects(applyPlan(storeOf(db), plan, { ...OPTS, backupPath }), /connection lost/, `cut ${mode} write ${at}`)
+      db.fault = null
+      await applyPlan(storeOf(db), readBackup(backupPath), { ...OPTS, backupPath })
+      assert.equal(db.snapshot(), refSnapshot, `cut ${mode} write ${at}`)
+    }
+  }
+})
+
+test('keep-row: a row whose origin changed since the plan is left alone', async () => {
+  const db = keepFixture()
+  const { plan, backupPath } = await keepPlan(db, tmp())
+  db.fault = { at: 5, mode: 'after' }
+  await assert.rejects(applyPlan(storeOf(db), plan, { ...OPTS, backupPath }))
+  db.fault = null
+  const s = db.sources.get('S')!
+  s.origin = 'deepgram'; s.transcript = 'deepgram text'; s.status = 'succeeded'
+  const counts = await applyPlan(storeOf(db), readBackup(backupPath), { ...OPTS, backupPath })
+  assert.equal(counts.rowAction, 'skipped-replaced')
+  assert.equal(db.sources.get('S')!.transcript, 'deepgram text')
+  assert.equal(db.sources.get('S')!.status, 'succeeded')
 })
