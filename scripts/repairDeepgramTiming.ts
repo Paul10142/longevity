@@ -16,8 +16,10 @@
  *   3. copies each chunk's new timing onto its raw_insights.
  *
  * A source whose text does not match (transcript edited since, different
- * speaker naming) is reported and left alone. Dry run by default; `--apply`
- * writes under the one-writer lock. Idempotent: re-running changes nothing.
+ * speaker naming — e.g. `sources.authors` changed after the attach, since the
+ * guest names come from `authors`) is reported and left alone. Dry run by
+ * default; `--apply` writes under the one-writer lock. Idempotent: re-running
+ * changes nothing.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -39,7 +41,7 @@ async function main() {
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { nameSpeakers, buildLabelledSegments, transcriptText } = await import('../lib/deepgramSegments')
+  const { nameSpeakers, buildLabelledSegments, transcriptText, guestsForLabels } = await import('../lib/deepgramSegments')
   const { computeChunkTimings } = await import('../lib/transcriptSegments')
   const { hostLabelForKey } = await import('../lib/shows')
   if (APPLY) {
@@ -48,18 +50,21 @@ async function main() {
   }
 
   const files = (await readdir(dir)).filter(f => f.endsWith('.deepgram.json')).sort()
+  // Same rule as the attach (guestsForLabels): `sources.authors` first, the feed
+  // manifest only for a row whose authors is null. A different rule would rebuild
+  // different `Name:` labels and fail the byte-identical check below.
   let guestsByKey = new Map<string, string[]>()
   try {
     const man = JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')) as { episodes: { key: string; guests?: string[] }[] }
     guestsByKey = new Map(man.episodes.map(e => [e.key, e.guests ?? []]))
   } catch {
-    process.stdout.write('warning: no manifest.json — speaker naming may differ from the original attach\n')
+    process.stdout.write('warning: no manifest.json — rows with no `authors` may be named differently from the original attach\n')
   }
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
 
-  type Row = { id: string; external_id: string; title: string; transcript: string | null; processing_status: string; timed_transcript: unknown }
+  type Row = { id: string; external_id: string; title: string; transcript: string | null; processing_status: string; timed_transcript: unknown; authors: string[] | null }
   const rows = await selectAllPaged<Row>((from, to) =>
-    db.from('sources').select('id, external_id, title, transcript, processing_status, timed_transcript')
+    db.from('sources').select('id, external_id, title, transcript, processing_status, timed_transcript, authors')
       .eq('transcript_origin', 'deepgram').in('external_id', keys).order('id').range(from, to)
   )
   const byKey = new Map(rows.map(r => [r.external_id, r]))
@@ -81,7 +86,7 @@ async function main() {
       process.stdout.write(`  ${key}: no show is registered for this key's prefix — left alone\n`)
       continue
     }
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
+    const names = nameSpeakers(dg.segments, guestsForLabels({ row, manifestGuests: guestsByKey.get(key), host }).guests, host)
     const fine = buildLabelledSegments(dg.segments, names)
     const oldCount = Array.isArray(row.timed_transcript) ? row.timed_transcript.length : 0
 

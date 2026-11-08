@@ -20,8 +20,59 @@
  * lib/transcriptSegments.ts needs no change.
  */
 
+import { foldForMatch } from './guestNames'
+
 export type DgSegment = { text: string; speaker: number | null; start_ms: number; end_ms: number }
 export type LabelledSegment = { text: string; start_ms: number; end_ms: number }
+
+export type GuestChoice = {
+  guests: string[]
+  /** Where the list came from: the source row's `authors`, the feed manifest, or neither (no row, no manifest entry). */
+  from: 'authors' | 'manifest' | 'none'
+}
+
+/**
+ * Which guest names label the speakers of one episode.
+ *
+ * `sources.authors` is the single record of who the guests are: `[host, ...guests]`,
+ * written by the ingest and then corrected by `scripts/refreshGuests.ts` (Claude
+ * reads the title and show notes). The attach used to take guests from the
+ * `manifest.json` that `fetchPodcastFeed` writes in each audio folder, which holds
+ * only the title-rule guests, so applying a guest plan did not change the
+ * `Name:` labels baked into the transcripts.
+ *
+ *   - Row has authors: guests are `authors.slice(1)`. Authors that are just the
+ *     host mean the episode has NO guest, which is a real answer, so the manifest
+ *     is NOT consulted. Anyone who repeats the host (by the first author's name
+ *     or the show's host label) is dropped, and repeats are removed, in order.
+ *   - Row has no authors value (null or empty): the manifest guests, as before.
+ *   - No row: the manifest guests too (callers skip such an episode anyway).
+ *
+ * `manifestGuests` is passed through unchanged, so the old behaviour is exactly
+ * what a null `authors` gets.
+ */
+export function guestsForLabels(args: {
+  row: { authors: string[] | null } | null | undefined
+  manifestGuests: readonly string[] | undefined
+  /** The show's host label (`hostLabelForKey(key)`), which `nameSpeakers` puts on the opening speaker. */
+  host: string
+}): GuestChoice {
+  const { row, manifestGuests, host } = args
+  const authors = row?.authors?.filter(a => typeof a === 'string' && a.trim() !== '')
+  if (authors && authors.length > 0) {
+    const seen = new Set([foldForMatch(authors[0]), foldForMatch(host)])
+    const guests: string[] = []
+    for (const a of authors.slice(1)) {
+      const k = foldForMatch(a)
+      if (!k || seen.has(k)) continue
+      seen.add(k)
+      guests.push(a.trim())
+    }
+    return { guests, from: 'authors' }
+  }
+  if (manifestGuests) return { guests: [...manifestGuests], from: 'manifest' }
+  return { guests: [], from: 'none' }
+}
 
 /**
  * Map Deepgram's speaker indices to names, or leave them numbered.

@@ -22,8 +22,12 @@
  * never says who they are. So:
  *   - the speaker who opens the episode is the host (these episodes begin with a
  *     scripted host intro — verified on 404, where speaker 0 delivers it),
- *   - when the feed names EXACTLY ONE guest, the other speaker is that guest,
+ *   - when the source row's `authors` names EXACTLY ONE guest (host =
+ *     `authors[0]`, guests = the rest), the other speaker is that guest,
  *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed.
+ * `authors` is where Claude's reading of the guests lands (`refreshGuests.ts
+ * --apply`), so that step comes BEFORE this one; `manifest.json` is only the
+ * fallback for a row whose `authors` is null.
  * A wrong name is worse than no name: corroboration counts DISTINCT SPEAKERS, so
  * a misattribution invents agreement between people who never spoke.
  */
@@ -36,7 +40,7 @@ import path from 'node:path'
 // with scripts/repairDeepgramTiming.ts. One segment PER UTTERANCE: the first
 // attach merged a speaker's consecutive utterances into one segment, which
 // collapsed a whole monologue onto its first timestamp (2026-10-12).
-import { nameSpeakers, buildLabelledSegments } from '../lib/deepgramSegments'
+import { nameSpeakers, buildLabelledSegments, guestsForLabels } from '../lib/deepgramSegments'
 import type { DgSegment } from '../lib/deepgramSegments'
 // The host's name comes from the registry, by the key's prefix (`huberman-…` →
 // Andrew Huberman). It used to be a constant, which would have labelled every
@@ -64,7 +68,10 @@ async function main() {
   const files = (await readdir(dir)).filter(f => f.endsWith('.deepgram.json')).sort().reverse()
   if (files.length === 0) throw new Error(`no .deepgram.json files in ${dir}`)
 
-  // Guests come from the feed manifest written by fetchPodcastFeed.
+  // The feed manifest written by fetchPodcastFeed is only the FALLBACK for a row
+  // whose `sources.authors` is null. Guests come from `authors` (host =
+  // `authors[0]`, guests = the rest), which `refreshGuests.ts --apply` corrects,
+  // so apply the guest plan BEFORE attaching (see guestsForLabels).
   let guestsByKey = new Map<string, string[]>()
   try {
     const man = JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')) as {
@@ -72,14 +79,14 @@ async function main() {
     }
     guestsByKey = new Map(man.episodes.map(e => [e.key, e.guests ?? []]))
   } catch {
-    process.stdout.write('warning: no manifest.json — speakers will be numbered, not named\n')
+    process.stdout.write('warning: no manifest.json — rows with no `authors` will have numbered speakers, not named\n')
   }
 
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
-  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null }
+  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null; authors: string[] | null }
   const { data: rows, error } = await db
     .from('sources')
-    .select('id, external_id, processing_status, title')
+    .select('id, external_id, processing_status, title, authors')
     .in('external_id', keys)
   if (error) throw new Error(`source lookup failed: ${error.message}`)
   const byKey = new Map(((rows ?? []) as unknown as SourceRow[]).map(r => [r.external_id as string, r]))
@@ -89,6 +96,7 @@ async function main() {
   let unmatched = 0
   let unknownShow = 0
   let named = 0
+  let guestsFromManifest = 0
 
   for (const [i, file] of files.entries()) {
     if (attached >= limit) break
@@ -111,7 +119,9 @@ async function main() {
     const dg = JSON.parse(await readFile(path.join(dir, file), 'utf8')) as DgFile
     if (!dg.segments?.length) { process.stdout.write(`  ${key}: no segments, skipped\n`); continue }
 
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
+    const choice = guestsForLabels({ row, manifestGuests: guestsByKey.get(key), host })
+    if (choice.from === 'manifest') guestsFromManifest++
+    const names = nameSpeakers(dg.segments, choice.guests, host)
     const hasRealName = [...names.values()].some(n => n !== host && !n.startsWith('Speaker '))
 
     const timed = buildLabelledSegments(dg.segments, names)
@@ -152,6 +162,12 @@ async function main() {
       `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
       `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
   )
+  if (guestsFromManifest > 0) {
+    process.stdout.write(
+      `${guestsFromManifest} of ${attached} source rows have no \`authors\`, so their manifest guests were used ` +
+        `(refreshGuests.ts --apply is what writes authors)\n`
+    )
+  }
   if (!dryRun && attached > 0) process.stdout.write('these sources are now pending — the extraction worker will pick them up\n')
 }
 
