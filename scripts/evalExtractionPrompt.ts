@@ -398,7 +398,7 @@ function report(): void {
       if (!per.length) continue
       const m = merge(per); rows[v] = m
       const e = m.episodes || 1
-      out(`| ${v} (${m.model}, new prompt + gate) | ${m.insightsKept} | ${pct(m.insightsKept, m.baselineInsights)} | ${m.insightsFaithfulKept} | ${pct(m.final.flagged, m.final.real)} | ${kinds(m.final)} | ${pct(m.firstPass.flagged, m.firstPass.real)} | ${(m.extractSerialS / e / 60).toFixed(1)} min | $${((m.extractCost + m.judgeCost) / e).toFixed(2)} ($${(m.extractCost / e).toFixed(2)} + $${(m.judgeCost / e).toFixed(2)}) |`)
+      out(`| ${v} (${m.model}, new prompt + gate) | ${m.insightsKept} | ${eps.some(e => e.isGold) ? 'n/a (the 40 are a sample of these chunks)' : pct(m.insightsKept, m.baselineInsights)} | ${m.insightsFaithfulKept} | ${pct(m.final.flagged, m.final.real)} | ${kinds(m.final)} | ${pct(m.firstPass.flagged, m.firstPass.real)} | ${(m.extractSerialS / e / 60).toFixed(1)} min | $${((m.extractCost + m.judgeCost) / e).toFixed(2)} ($${(m.extractCost / e).toFixed(2)} + $${(m.judgeCost / e).toFixed(2)}) |`)
     }
     out()
     out('Gate behaviour (first pass):')
