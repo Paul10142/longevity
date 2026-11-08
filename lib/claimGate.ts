@@ -31,11 +31,12 @@ export function quarantinesOnRaise(rule: string, env: Record<string, string | un
  *
  * On /admin/flags, "approved" means the FLAG is right (the fact misstates its
  * source), so the claim stays hidden. "false_positive" means the fact is fine,
- * so a claim the gate hid goes back to `active`. Nothing else touches status:
- * an edit/split/archive is its own deliberate action on the claim.
+ * so a claim the gate hid goes back to `active`. "reworded" (2026-11-08) means a
+ * reviewer fixed the claim's wording and approved it, so it goes back too. Nothing
+ * else touches status: a split/archive is its own deliberate action on the claim.
  */
 export function statusAfterResolution(currentStatus: string, rule: string, resolution: string): 'active' | null {
   if (currentStatus !== 'flagged') return null
   if (!QUARANTINING_RULES.has(rule)) return null
-  return resolution === 'false_positive' ? 'active' : null
+  return resolution === 'false_positive' || resolution === 'reworded' ? 'active' : null
 }
