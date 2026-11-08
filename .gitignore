@@ -65,3 +65,11 @@ eval/article-sentence-baseline.json
 scratchpad/runs/
 scratchpad/.writer.lock
 scratchpad/backups/
+
+# Extraction comparison: raw per-run files and transcript inputs stay local; REPORT.md and summary.json are committed
+scratchpad/extraction-compare/inputs.json
+scratchpad/extraction-compare/haiku/
+scratchpad/extraction-compare/sonnet/
+scratchpad/extraction-compare/opus/
+scratchpad/extraction-compare/baseline/
+scratchpad/extraction-compare/*.log
