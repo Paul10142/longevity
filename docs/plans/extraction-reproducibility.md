@@ -3,8 +3,11 @@
 **Status:** plan only, nothing built. Written 2026-11-08 on branch
 `claude/extraction-reproducibility-plan-f7ad7a` from read-only queries against the
 LifestyleAcademy database and a read of the pipeline code. Revised the same evening after
-Paul set the bar (3:55 PM EST). No pipeline code was changed, no extraction was run, and
-nothing was written to the database.
+Paul set the bar (3:55 PM EST), and again after PR #59 merged to `main` (squash `45d017a`):
+Opus 5.5 is Paul's decided extraction model, the v2 prompt, gate and repair round are live,
+and the comparison harness `scripts/evalExtractionPrompt.ts` is on `main`. Paul approved the
+experiment spend the same evening ("Let's do the experiment spend"). No pipeline code was
+changed by this plan, no extraction was run, and nothing was written to the database.
 
 **Paul's bar (2026-11-08):**
 
@@ -32,10 +35,11 @@ targeted one).
 **Why extraction skips passages today (four reasons, all measured):**
 
 1. **We tell it to.** The production prompt says "Your job is NOT to capture everything that
-   was said … Prefer FEWER, HIGHER-VALUE, GENERALIZABLE insights" (`lib/extraction.ts:70`),
+   was said … Prefer FEWER, HIGHER-VALUE, GENERALIZABLE insights" (`lib/extraction.ts:78`),
    and again "Produce an insight ONLY if it is: conceptually important; generalizable…"
-   (`:99`). PR #59's v2 prompt keeps "Prefer FEWER, FAITHFUL insights over many loose ones".
-   A model told to choose the best few from each slice chooses a different few each time.
+   (`:107`). PR #59's v2 prompt, now live on `main`, keeps "Prefer FEWER, FAITHFUL insights
+   over many loose ones" (`lib/extractionPromptV2.ts:19`). A model told to choose the best
+   few from each slice chooses a different few each time.
    This is the largest cause.
 2. **It cannot see across the cut.** A transcript is sliced into 2,400-character windows;
    91% of the cuts land mid-sentence and only 1.4% start where a speaker starts talking.
@@ -68,16 +72,21 @@ the dice: it is to write the instructions so that the dice have nothing to decid
 every fact" leaves no "which few?" choice), to make the slicing deterministic, and to
 measure the result.
 
-**Which model extraction actually runs under:** Haiku 4.5. Confirmed three ways: the lane's
-workers show as `claude -p --model claude-haiku-4-5`; `EXTRACTION_MODEL = CLAUDE_BULK_MODEL`
-with `CLAUDE_BULK_MODEL = 'claude-haiku-4-5'` in code; and all 69,417 insights in the
-library carry `extraction_model = claude-haiku-4-5`. The judge is Opus 5.5. A stronger
-extraction model is costed as a candidate fix in sections 4 and 5.
+**Which model extraction runs under:** Haiku 4.5 built everything in the library today: the
+lane's workers showed as `claude -p --model claude-haiku-4-5`, and all 69,417 insights carry
+`extraction_model = claude-haiku-4-5`. Since PR #59 merged to `main` (`45d017a`, 2026-11-08)
+the default is **Opus 5.5** with the v2 prompt, gate and repair round, and Paul confirmed Opus
+5.5 as the extraction model. The judge is Opus 5.5 as before. The v2 prompt still says "Prefer
+FEWER, FAITHFUL insights", so the recall gap is expected to persist on `main`; E1b measures
+how much the model change alone closed.
 
-**First experiment (E1):** extract one copy of episode #183 twice with today's settings,
-file-only, and score the two passes with the harness in section 3. Two passes, about 20
-minutes, about 0.5M content tokens. It establishes the noise floor every fix is judged
-against and proves the measuring tool before any fix is spent on.
+**First experiments (E1a, E1b):** extract one copy of episode #183 twice, file-only, and
+score the two passes with the harness in section 3. E1a uses the configuration that built
+the library (Haiku 4.5, v1 prompt): two passes, about 20 minutes, about 0.5M content tokens,
+about $1.80 of plan usage. E1b uses what `main` runs today (Opus 5.5, v2 prompt, gate and
+repair): two passes, about 40 minutes, about 0.5M content tokens, about $6.70. Together they
+show how much of the gap PR #59 already closed and set the noise floor every fix is judged
+against. Approved by Paul on 2026-11-08 through the parent window; the lanes stay stopped.
 
 **Resume criteria (section 7):** the extraction lane restarts when, on episode #183, fewer
 than 5% of facts are pass-specific (same copy twice and across the twin copies), fewer than
@@ -88,9 +97,10 @@ merged the 21 identical-quote splits in a dry run Paul has looked at.
 **Already-extracted episodes (section 8):** yes, they need a second pass, because every one
 of the 440 was extracted under the "prefer fewer" instruction. The plan proposes a
 *completeness top-up* (one extra call per chunk that adds only what is missing, keeping
-every existing fact) rather than re-extraction. Cost for the whole library: about $25 on
-Haiku 5.5, about $230 on Haiku 4.5, about $550 on Sonnet 5.5, about $1,100 on Opus 5.5 at
-API prices, or about 49 hours of lane time on the subscription.
+every existing fact) rather than re-extraction. Cost for the whole library on the decided
+model, Opus 5.5: about $1,100 at API prices, or about 49 hours of lane time on the
+subscription. A cheaper model (Haiku 5.5 ≈ $25, Sonnet 5.5 ≈ $550) only if E4 shows it
+matches Opus on the bar.
 
 **Two billing routes (section 5):** the subscription route (today's `claude` command line,
 plan usage, no temperature control) and the API route (credits, temperature 0 available only
@@ -188,11 +198,14 @@ under the new configuration and need no top-up.
 
 ### 1.7 Where Sampling Is Decided in the Code
 
-- `lib/extraction.ts:70` and `:99` — the selectivity instructions quoted above; `:73` — the
-  "FULLY SUPPORTED by THIS chunk" rule.
-- `lib/extraction.ts:42` — `EXTRACTION_MODEL = CLAUDE_BULK_MODEL`; `lib/llm.ts:141` —
-  `CLAUDE_BULK_MODEL = 'claude-haiku-4-5'`; no effort flag is passed for extraction.
-- `lib/extraction.ts:340–366` — `splitIntoChunks`: paragraph path only when `\n\n` is
+- `lib/extraction.ts:78` and `:107` — the v1 selectivity instructions quoted above; `:81` —
+  the "FULLY SUPPORTED by THIS chunk" rule. `lib/extractionPromptV2.ts:19` — v2 "Prefer
+  FEWER, FAITHFUL"; `:22` — "fully supported by THIS chunk" (the same boundary rule).
+- `lib/extraction.ts:47–48` — `DEFAULT_EXTRACTION_MODEL = 'claude-opus-5-5'` (v2, the default
+  since PR #59) and `V1_EXTRACTION_MODEL = CLAUDE_BULK_MODEL` (`lib/llm.ts:141`,
+  `'claude-haiku-4-5'`, which built the library); `:167` — `extractionConfig()` reads
+  `EXTRACTION_PROMPT_VERSION`, `EXTRACTION_GATE`, `EXTRACTION_REPAIR`, `EXTRACTION_MODEL`.
+- `lib/extraction.ts:49–50, 283–320` — `CHUNK_SIZE = 2400`, `CHUNK_OVERLAP = 200`, `splitIntoChunks`: paragraph path only when `\n\n` is
   present, otherwise `forceSplit` on 2,400-character windows; the cut is the *last* space,
   period, `!`, `?` or newline in the final 300 characters, which is almost always a space,
   hence 91% mid-sentence cuts; `start = end - 200` gives the overlap.
@@ -200,7 +213,8 @@ under the new configuration and need no top-up.
   `buildTranscriptFromSegments` (single-space join, no paragraphs) → `stripNonContent` (a
   Haiku LLM pass, itself non-deterministic) → `splitIntoChunks` → `computeChunkTimings`
   (40-character anchor search) → 16-way concurrent `extractFromChunk` (`claudeJson`, 8,000
-  output tokens, 3 retries). Insights inherit the chunk's time window.
+  output tokens, 3 retries; since PR #59 the v2 path also runs the deterministic gate in
+  `lib/extractionGate.ts` and one repair call per chunk). Insights inherit the chunk's time window.
 - `lib/llm.ts` — `spawnClaudeCli` passes `-p --model <id> [--effort]` and nothing about
   sampling; `apiText` sends model, max_tokens, system, messages, adaptive thinking and
   effort. No `temperature`, `top_p` or `top_k` anywhere.
@@ -221,10 +235,29 @@ under the new configuration and need no top-up.
 | 2 | **Embedding-only candidate retrieval in consolidation.** Same-passage facts phrased differently never meet in the judge. | 0 of 21 identical-quote splits reached the judge; 7 of 21 below any defensible floor; judge never sees quotes. | ~30% (the "same passage, never merged" third) |
 | 3 | **Mid-sentence character cuts plus the "this chunk only" rule.** Facts spanning a cut are unsupported in both slices; the 200-character overlap is shorter than a quarter of the facts. | 91% of cuts mid-sentence; pass-specific facts over-represented at edges (37% vs 29%); 26% of quotes longer than the overlap. | ~8–10% directly; amplifies 1 across near-identical transcripts |
 | 4 | **LLM hygiene before chunking.** `stripNonContent` removals differ run to run, shifting every boundary. | Code path; same-copy noise floor (E1) measures it together with 1. | Part of 3 |
-| 5 | **Model tier.** Haiku 4.5 follows an "exhaustive" instruction less reliably than Sonnet/Opus and is the oldest model in the stack. | PR #59 measured fidelity gains moving to Opus 5.5; recall not yet measured. | Unknown; E4 measures it |
+| 5 | **Model tier.** Haiku 4.5 built the library; Opus 5.5 is now the decided model (PR #59, merged). | PR #59 measured fidelity: 8.9% of insights flagged on Opus 5.5 vs 33.5% on Haiku 4.5; recall not yet measured. | Unknown; E1b measures how much Opus alone closes |
 
 Not a cause: the judge prompt (never given the chance). Not a lever on our backend:
 temperature (section 5 costs the API route where it exists, as a diagnostic).
+
+---
+
+## 2b. What PR #59 (Merged 2026-11-08, `45d017a`) Already Covers
+
+| Planned fix | Covered by PR #59? | Note |
+|---|---|---|
+| F. Model tier | **Yes.** Opus 5.5 is the default extraction model. | Decided by Paul. |
+| Fidelity safety net (gate + repair) | **Yes.** `lib/extractionGate.ts` rejects invented numbers and dropped hedges with no model call; one repair call per chunk. | Lets fixes A, B1 and D err toward inclusion. |
+| Harness base | **Partly.** `scripts/evalExtractionPrompt.ts` (fetch / extract / judge / report / gate-gold, file-only, resumable) is the pattern; `lib/quoteResolve.ts` resolves quotes. | `scripts/evalReproducibility.ts` adds chunking variants, two-pass matching and the metrics in 3.1. |
+| Configuration switches | **Yes.** `extractionConfig()` with `EXTRACTION_PROMPT_VERSION`, `EXTRACTION_GATE`, `EXTRACTION_REPAIR`, `EXTRACTION_MODEL`, documented in `docs/EXTRACTION_RUNBOOK.md`. | Add `EXTRACTION_CHUNKING`, `EXTRACTION_CONTEXT_CHARS`, `EXTRACTION_HYGIENE`, `EXTRACTION_COMPLETENESS`. |
+| A. Exhaustive prompt | **No.** v2 keeps "Prefer FEWER, FAITHFUL insights over many loose ones" (`lib/extractionPromptV2.ts:19`). | The largest cause is untouched. |
+| B1. Context before/after | **No.** v2 keeps "Every insight must be fully supported by THIS chunk" (`:22`). | Boundary drop unchanged. |
+| B2. Speaker-turn chunking, C. stable hygiene | **No.** `CHUNK_SIZE = 2400`, `CHUNK_OVERLAP = 200` and `forceSplit` are unchanged. | |
+| D. Completeness second look; E and I. quote gate | **No.** | |
+
+PR #59 measured fidelity (8.9% of insights flagged on Opus 5.5 vs 33.5% on Haiku 4.5 over 8
+Attia episodes; inputs and reports copied at `scratchpad/extraction-compare-pr59/`). It did
+not measure recall or reproducibility; E1b is the first measurement of `main` on that axis.
 
 ---
 
@@ -274,12 +307,12 @@ temperature (section 5 costs the API route where it exists, as a diagnostic).
 | Same-passage misses surviving consolidation | 21 identical-quote splits / 84 pairs | 0 identical-quote splits; same-passage misses < 2% | 0 |
 | Boundary share | 37% vs 29% | equal to matched facts' share (no edge excess) | — |
 | Within-pass duplicates | not measured | < 3% | < 1% |
-| Fidelity flag rate (PR #59 judge, 40-insight sample) | PR #59's figure for the chosen model | not more than 2 points above it | — |
+| Fidelity flag rate (PR #59 judge, 40-insight sample) | 8.9% (PR #59, Opus 5.5) | not more than 2 points above it (≤ 10.9%) | — |
 
 ### 3.3 The Script
 
-`scripts/evalReproducibility.ts`, modelled on PR #59's `scripts/evalExtractionPrompt.ts`
-(same conventions: file-only, resumable per chunk, usage-guard check per pass,
+`scripts/evalReproducibility.ts`, modelled on `scripts/evalExtractionPrompt.ts` (on `main`
+since PR #59; same conventions: file-only, resumable per chunk, usage-guard check per pass,
 `trackCliCost`, output under `scratchpad/extraction-compare/reproducibility/`).
 
 ```
@@ -312,11 +345,11 @@ Rules the script enforces: refuses to run `extract` or `topup` unless
 `lib/writerLock.ts` is held; every pass records model, backend, prompt version, chunk mode,
 context size, hygiene mode, effort, temperature, start/end time and cost in its header.
 
-Variant switches reuse PR #59's `extractionConfig()` (`EXTRACTION_PROMPT_VERSION`,
+Variant switches reuse `extractionConfig()` (on `main` since PR #59) (`EXTRACTION_PROMPT_VERSION`,
 `EXTRACTION_GATE`, `EXTRACTION_REPAIR`, `EXTRACTION_MODEL`) and add
 `EXTRACTION_CHUNKING=chars|turns`, `EXTRACTION_CONTEXT_CHARS`, `EXTRACTION_HYGIENE`,
-`EXTRACTION_COMPLETENESS`. The harness lands as a PR on top of PR #59's branch so the two
-do not diverge; building it is roughly half a day and costs no LLM calls until `extract`
+`EXTRACTION_COMPLETENESS`. The harness lands as a PR against `main`, held until the parent window says "merge ok";
+building it is roughly half a day and costs no LLM calls until `extract`
 runs.
 
 ### 3.4 Baseline Without Re-Running
@@ -338,7 +371,7 @@ for the same episode.
 | **C. Hygiene made stable** | Cache `stripNonContent`'s removals per transcript hash (a `sources.hygiene_spans` column), or skip it for feeds whose ads are already cut. | Removes a hidden source of boundary drift and content loss between runs. | Cache: one column + one write per source. Skip: zero. | Skipping lets ads through on feeds that still carry them: decide per show. |
 | **D. Completeness second look (two-pass union)** | After extracting a chunk, a second call sees the text, the context and the list already extracted and returns only claims not yet covered; union the two. Also usable as the *top-up* for already-extracted episodes (section 8). | Turns a one-shot list into a near-exhaustive set even if fix A under-delivers; the direct tool for Paul's "nothing new on a second pass". | Doubles extraction calls (the cheap half); see section 5 for both routes. | Second call may re-add near-duplicates or invent (mitigate: quote must resolve; tier-1 dedup against the first list; fidelity judge). |
 | **E. Consolidation quote gate + quotes shown to the judge** | Beside `match_claims` (embedding), retrieve claims whose members' direct quotes overlap the new insight's quote (word 4-gram shingles or `pg_trgm` similarity on folded quotes, GIN-indexed) and send them to the judge regardless of embedding similarity. Show the judge both quotes. Note links as `quote-gate:judge:…`. | Fixes the "same passage, never merged" third: all 21 identical-quote splits would have reached the judge. | Migration (shingle column or trgm index) + ~60 lines in `consolidateSource`; a handful of extra judge calls per episode (≈ 4 s each). Backfill is a dry-run-then-apply sweep, no re-extraction. | The judge may still say DIFFERENT when one passage genuinely holds two facts; that is correct, the point is that the pair is judged. Coordinate with the dedup lane (88 groups, migration 038 not yet applied). |
-| **F. Stronger or newer extraction model** | Run extraction on Sonnet 5.5, Opus 5.5 (PR #59's default) or Haiku 5.5 instead of Haiku 4.5. | Better instruction-following for "every fact"; PR #59 showed fidelity gains on Opus. Haiku 5.5 is the current Haiku, ten times cheaper than Haiku 4.5 at API prices, untested here. | Section 5, per pass and per library. | Newer models always reason before answering, so run-to-run variance may not fall; measure, do not assume. Haiku 5.5 quality on this task is unknown until E4. |
+| **F. Model tier (decided: Opus 5.5)** | PR #59 moved extraction from Haiku 4.5 to Opus 5.5 and Paul confirmed it (2026-11-08). The open question is the reverse: whether a cheaper model (Haiku 5.5, Sonnet 5.5) matches Opus on the recall bar, for the library top-up only. | Opus follows an "every fact" instruction most reliably; PR #59 measured 8.9% flagged vs 33.5% on Haiku 4.5. | Section 5, per pass and per library. | Newer models reason before answering, so run-to-run variance may not fall; E1b measures it. A cheaper model is used only if E4 shows parity. |
 | **G. Smaller chunks** | ~1,200 characters (one or two turns). | "Everything in this text" is easier to honour in a small slice. | Doubles call count; on the subscription each call carries ~26k tokens of fixed context, the most expensive knob per fact. | Loses cross-sentence context (B1 mitigates). Try only if A+B+D fall short. |
 | **H. Temperature 0** | Only on the API route, only on Haiku 4.5, only under the older API version (see section 5). | Reduces run-to-run variance on byte-identical input; does nothing for near-identical copies or for a selective prompt; the option is being removed from the API. | API credits, cheap (≈ $0.6–1.2 per #183 pass). | A dead end for production; worth one diagnostic run (E4c) to show how much of the noise floor is dice versus instructions. |
 | **I. Within-source twin check** | During consolidation, insights from the same source whose quotes overlap are judged against each other first. | Removes the overlap/boundary double-extraction and gives fix A's longer lists a cheap first dedup. | Part of E. | None beyond E. |
@@ -382,7 +415,7 @@ for plan usage, not a bill.
 | Haiku 4.5 (temperature 0 possible on API) | $0.6 | $1.2 | ≈ $1.4 plan-equivalent | 5–10 min |
 | Haiku 5.5 | $0.06 | $0.12 | ≈ $0.3 | 3–5 min |
 | Sonnet 5.5 | $1.2 | $3.0 | ≈ $3.0 | 5–10 min |
-| Opus 5.5 | $2.3 | $6.0 | ≈ $5.5 | 5–10 min |
+| **Opus 5.5 (decided)** | $2.3 | $6.0 | ≈ $5.5 (PR #59 measured $2.72 per 55 chunks at today's output) | ≈ 20 min (PR #59 measured 16.5 min per 55 chunks) |
 | + completeness pass (fix D) | + same again | + same again | + same again | + 5–10 min |
 
 ### 5.2 One Average Episode in Production (50 Chunks, Extraction Only)
@@ -392,7 +425,7 @@ for plan usage, not a bill.
 | Haiku 4.5 | $0.9 | $1.8 | ≈ $2 |
 | Haiku 5.5 | $0.09 | $0.18 | ≈ $0.4 |
 | Sonnet 5.5 | $2.2 | $4.4 | ≈ $4.4 |
-| Opus 5.5 | $4.4 | $8.8 | ≈ $8 |
+| **Opus 5.5 (decided)** | $4.4 | $8.8 | ≈ $8 |
 
 Consolidation (Opus judge on the subscription, ≈ $3/episode today) is unchanged by the route
 and rises with insight count: budget 2–3× once extraction is exhaustive.
@@ -404,7 +437,7 @@ and rises with insight count: budget 2–3× once extraction is exhaustive.
 | Haiku 5.5, API | **≈ $25** | ≈ $40 | ≈ 6 h at 16 concurrent |
 | Haiku 4.5, API | ≈ $230 | ≈ $390 | ≈ 6 h |
 | Sonnet 5.5, API | ≈ $550 | ≈ $900 | ≈ 6 h |
-| Opus 5.5, API | ≈ $1,100 | ≈ $1,800 | ≈ 6 h |
+| **Opus 5.5, API (decided model)** | ≈ $1,100 | ≈ $1,800 | ≈ 6 h |
 | Any model, subscription | plan usage (Haiku ≈ $300 equivalent, Opus ≈ $1,100) | roughly double | **≈ 49 h of lane time** (8 min per 60 calls) |
 
 Plus consolidation of whatever the top-up adds (unknown until E5b measures it on #183;
@@ -415,8 +448,9 @@ judge time on the subscription spread over the batches).
 confined to the model we most want to move away from. The real reason to consider Route 2 is
 capacity and isolation: the top-up of 440 episodes is 22,000 calls, two days of lane time on
 the subscription against six hours on the API, without competing with the judge for the
-CLI's slots. Haiku 5.5 on the API is cheap enough that cost stops being the question and
-quality (E4) becomes the only one.
+CLI's slots. With Opus 5.5 decided, the library top-up costs about $1,100 of API credits or about
+49 hours of subscription lane time; E4 tells us whether a cheaper model could take the
+top-up without lowering the bar, and that is Paul's call.
 
 ---
 
@@ -424,34 +458,37 @@ quality (E4) becomes the only one.
 
 Episode #183 (68 chunks per copy, 28.5k words, copies differ by 30 characters) is the
 cleanest pair. Everything below is **file-only** through the harness: no `raw_insights`,
-`chunks`, `claims` or `jobs` writes. Nothing runs until the parent session relays Paul's
-go. The lanes are stopped, so the CLI's slots are free; the harness still runs at
-concurrency 8 and checks the usage guard before every pass.
+`chunks`, `claims` or `jobs` writes; one read-only database fetch for the inputs (PR #59's
+8-episode inputs at `scratchpad/extraction-compare-pr59/` are Attia episodes and do not
+include the twins). Paul approved the spend on 2026-11-08; the lanes stay stopped throughout.
+The runs happen in a Sonnet session ("LA/Extraction reproducibility experiments") and this
+plan's author reviews the numbers. Concurrency 8; usage guard checked before every pass;
+`caffeinate` on AC power; output under `scratchpad/extraction-compare/reproducibility/`.
 
-| # | Experiment | Isolates | Passes | Decision rule | Content tokens | Wall-clock | Cost (subscription equiv. / API) |
+| # | Experiment | Isolates | Passes | Decision rule | Content tokens | Wall-clock | Cost (plan-usage equiv. / API) |
 |---|---|---|---|---|---|---|---|
-| **E1** | Copy A twice, today's production (Haiku 4.5, v1 prompt, char chunks, live hygiene, CLI) | Noise floor of today's pipeline; proves the harness | 2 | Always first. Expect 15–25% pass-specific. | 0.5M | 20 min | ≈ $1.8 / — |
-| **E2** | Copy A twice + copy B once, exhaustive prompt (fix A) on Haiku 4.5, char chunks | The prompt alone | 3 | If same-copy < 5% and cross-copy < 5%, skip E3's isolation and run E3 as 2 passes to confirm B1/B2 do no harm. | 1.2M | 30 min | ≈ $4 / $3.6 |
-| **E3** | E2 + context before/after + speaker-turn chunks + cached hygiene (fixes B1, B2, C): A×2 + B×1 | Boundaries and context | 3 | Boundary share should fall to the matched facts' share; coverage disagreement < 5%. Proceed to E4 regardless (model choice is Paul's open question). | 1.2M | 30 min | ≈ $4 / $3.6 |
-| **E4a** | E3 configuration on Sonnet 5.5, CLI: A×2 | Model tier | 2 | Adopt if pass-specific or coverage improves ≥ 3 points over E3 at acceptable cost. | 0.8M | 15 min | ≈ $6 / $6 |
-| **E4b** | E3 configuration on Haiku 5.5, CLI: A×2 | Cheap current model | 2 | Adopt if within 1 point of the best model on every metric. | 0.8M | 10 min | ≈ $0.6 / $0.25 |
-| **E4c** (diagnostic) | E3 configuration on Haiku 4.5, API route, temperature 0: A×2 | Dice versus instructions | 2 | Reported only; tells us how much of the E3 floor is sampling noise. Not a production route. | 0.8M | 10 min | — / $2.4 |
-| **E4d** (optional) | E3 configuration on Opus 5.5, CLI: A×2 | Top of the range | 2 | Only if E4a still misses the target. | 0.8M | 15 min | ≈ $11 / $12 |
-| **E5a** | Completeness second look (fix D) on the best E3/E4 configuration: A×2 + B×1 | Recall top-up | 3 (6 pass-equivalents) | Stop if < 5%; otherwise consider fix G. | 2.4M | 50 min | ≈ $8–12 / $7–12 |
-| **E5b** | `topup` against the STORED insights of copy A (the library's current facts for #183) | How much the library is missing today | 1 | Gives the number for section 8 (expected 20–40% new facts). | 0.4M | 10 min | ≈ $1.5 / $1.2 (Haiku 4.5) |
+| **E1a** | Copy A twice, the configuration that built the library (Haiku 4.5, v1 prompt, char chunks, live hygiene, CLI) | Noise floor of the old pipeline; proves the harness | 2 | Always first. Expect 15–25% pass-specific. Report to the parent window. | 0.5M | 20 min | ≈ $1.8 / — |
+| **E1b** | Copy A twice, `main` today (Opus 5.5, v2 prompt, gate + repair, char chunks, live hygiene, CLI) | How much PR #59 already closed | 2 | Report to the parent window. If same-copy < 5%, run copy B once against E1b as the cross-copy check and skip E2. | 0.5M | 40 min | ≈ $6.7 / $4.6 |
+| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | If same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
+| **E3** | E2 + context before/after + speaker-turn chunks + cached hygiene (fixes B1, B2, C): A×2 + B×1 | Boundaries and context | 3 | Boundary share should fall to the matched facts' share; coverage disagreement < 5%. | 1.2M | 60 min | ≈ $18 / $18 |
+| **E4** | E3 configuration on cheaper models, CLI: Haiku 5.5 A×2, Sonnet 5.5 A×2 | Whether a cheaper model matches Opus (for the top-up only) | 4 | Informational: Opus 5.5 is decided. A model within 1 point of Opus on every metric becomes a top-up option for Paul. | 1.6M | 30 min | ≈ $7 / $6 |
+| **E4c** (optional, API credits) | E3 configuration on Haiku 4.5, API route, temperature 0: A×2 | Dice versus instructions | 2 | Diagnostic only; needs the parent window's ok to spend API credits. | 0.8M | 10 min | — / $2.4 |
+| **E5a** | Completeness second look (fix D) on the E3 configuration: A×2 + B×1 | Recall top-up | 3 (+3 completeness calls per chunk) | Only if E3 still ≥ 5%; tell the parent window first. | 2.4M | 120 min | ≈ $33 / $36 |
+| **E5b** | `topup` against the STORED insights of copy A (the library's current facts for #183) | How much the library is missing today | 1 | Sizes section 8; tell the parent window first. | 0.4M | 20 min | ≈ $4 / $4.4 |
 | **E6** | Quote-gate replay (fix E): the best configuration's unmatched same-passage pairs to the production judge with quotes shown, offline | Consolidation gate | 0 (60–120 judge calls) | Report how many surviving pass-specific facts the gate would merge. | 0.1M | 8 min | ≈ $1 / — |
-| | **Total if everything runs** | | 23 passes + 6 completeness pass-equivalents | | **≈ 9M** | **≈ 3.5 h** | **≈ $40–50 equivalent / ≈ $40 API** |
+| **E7** | Smaller chunks (fix G, ~1,200 characters) with context windows: A×2 | Last resort | 2 | Only if E5a still ≥ 5%; tell the parent window first. | 0.6M | 30 min | ≈ $7 / $7 |
+| | **Likely path (E1a, E1b, E2, E3, E4, E6)** | | 14 passes | | **≈ 5M** | **≈ 3.6 h** | **≈ $52 / ≈ $47** |
+| | **Everything** | | 22 passes (+3 completeness) | | **≈ 9.5M** | **≈ 6.5 h** | **≈ $100 / ≈ $100** |
 
-Each experiment is approved and run separately; the "decision rule" column says when to
-stop. The likely path (E1, E2, E3, E4a, E4b, E5b, E6) is ≈ 5M content tokens, ≈ 2 hours
-and ≈ $20 either way. Costs are extraction only; the harness's own matching uses embeddings
-(cents) and no judge unless `--judge` is passed.
+Each experiment is reported where the table says so before the next starts; the "decision
+rule" column says when to stop. Costs are extraction only; the harness's own matching uses
+embeddings (cents) and no judge unless `--judge` is passed. Opus pass time is PR #59's
+measured 16.5 minutes per 55 chunks scaled to 68 chunks; Haiku 4.5 passes are faster per
+call but the CLI's fixed overhead dominates either way.
 
-Preconditions for every run: lanes stopped (they are) or finished; usage guard green; AC
-power and `caffeinate`; concurrency 8; output under
-`scratchpad/extraction-compare/reproducibility/`; the report posted as an artifact for
-Paul with the before/after table, per his review rule.
-
+Preconditions for every run: lanes stopped (they are); usage guard green; AC power and
+`caffeinate`; concurrency 8; output under `scratchpad/extraction-compare/reproducibility/`;
+the final report posted as an artifact for Paul with the before/after table.
 ---
 
 ## 7. Criteria for Resuming the Lanes
@@ -467,7 +504,7 @@ Transcription continues throughout; nothing here touches it.
 4. Boundary share of unmatched facts no higher than that of matched facts (the edge
    excess in 1.5 is gone).
 5. Fidelity flag rate on a 40-insight sample **not more than 2 points above** PR #59's
-   figure for the chosen model (recall must not be bought with invention).
+   figure for Opus 5.5 (8.9%) (recall must not be bought with invention).
 6. Within-pass duplicates **< 3%**, or fix I is live to absorb them.
 7. One episode of a currently running show (FoundMyFitness or Huberman) extracted
    end-to-end in dry-run with the chosen configuration, and its report attached, so the
@@ -497,9 +534,9 @@ will be extracted under the new configuration.
 **Recommended: the completeness top-up, not re-extraction.** One call per chunk receives the
 chunk, its context windows and the facts already stored for it, and returns only what is
 missing. Everything Paul has reviewed stays; new facts are added and consolidated as any
-new insight would be, through the quote gate. Costs are in 5.3: about $25 on Haiku 5.5 via
-the API, about 49 hours of lane time on the subscription for any model, plus consolidation
-of what is added. Order: shows Paul publishes from first; one episode per show first as a
+new insight would be, through the quote gate. Costs are in 5.3: on Opus 5.5, about $1,100 via
+the API or about 49 hours of lane time on the subscription; a cheaper model only if E4 shows
+it matches Opus on the bar. Plus consolidation of what is added. Order: shows Paul publishes from first; one episode per show first as a
 check; the twins last (they are also the measuring stick).
 
 **Not recommended: full re-extraction.** It would create a second complete set of 69,417-plus
@@ -546,16 +583,18 @@ To be written when the fixes ship, not now:
 
 ## 10. Decisions Paul Owns
 
-1. Approve E1 (≈ 20 minutes, ≈ $1.8 equivalent) and the half-day harness build on top of
-   PR #59. Nothing else is spent until E1 reports.
+1. ~~Approve E1 and the half-day harness build.~~ **Approved 2026-11-08** ("Let's do the
+   experiment spend", relayed by the parent window). The likely path E1a → E1b → E2 → E3 →
+   E4 → E6 runs in a Sonnet session; E5 and E7 only if the decision rules call for them,
+   and the parent window hears before either starts.
 2. Confirm the resume bar in section 7 (5% / 5% / +2 points), or set a different one.
 3. Keep anecdotes and conversational facts under "capture everything" (kept as kind
    `Anecdote` for synthesis to rank) or still drop them at extraction.
-4. Model tier and route for production, after E4: the plan's prior is Haiku 5.5 if it
-   meets the bar, else Sonnet 5.5; Opus 5.5 only if both miss.
+4. ~~Model tier.~~ **Decided: Opus 5.5** (PR #59, confirmed 2026-11-08). Open: whether a
+   cheaper model may run the library top-up if E4 shows it matches Opus on the bar.
 5. Approve the library top-up (section 8) once E5b shows the size of the gap, and choose
-   its route (API ≈ 6 hours and $25–1,100 by model, or subscription ≈ 49 hours of lane
-   time).
+   its route (API ≈ 6 hours and ≈ $1,100 on Opus, or subscription ≈ 49 hours of lane time).
+6. "Merge ok" for the harness PR and for each fix PR (B1, B2, C, A, D, E) as it is ready.
 
 Fixes B1, B2 and C (context windows, speaker-turn chunking, stable hygiene) cost no model
 calls and should ship with the next extraction PR regardless of the experiments' outcome.
