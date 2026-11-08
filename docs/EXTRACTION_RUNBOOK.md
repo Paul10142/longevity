@@ -383,7 +383,7 @@ section is what that window (and the runner, afterwards) follows.
 | `refreshGuests.ts --show <prefix>` | the same feed and prefix, the host (never a guest, always `authors[0]`), `strictGuests` for the fallback title rule |
 | `fetchPodcastFeed.ts --show <prefix>` | the same feed and prefix; `series` goes into `manifest.json`, which is merged, not rewritten, so shows can share one audio folder |
 | `transcribeDeepgram.ts` | host-name keyterms (the show's own, then the shared medical list) |
-| `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman). An unregistered prefix is skipped with a message, never guessed |
+| `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman); an unregistered prefix is skipped with a message, never guessed. The other speaker's name comes from the row's `sources.authors` (host = `authors[0]`, guests = the rest), not from `manifest.json` |
 | `lib/extraction.ts` | the "Host:" line, the intro-guest prompt, the host filter and the speaker clean-up, from `sources.series` (else the key prefix, else `authors[0]`, else The Drive) |
 | `lib/sourceLinks.ts` | the "Find on <site>" search link and its label, by series |
 | `checkFeeds.ts` | the list of feeds to check |
@@ -400,7 +400,7 @@ section is what that window (and the runner, afterwards) follows.
 4. `npx tsx --env-file=.env.local scripts/ingestFeedSources.ts --show <prefix> --dry-run` and read it before any write: the show header,
    the guest list per episode (the host must never be one), the `older` list, and the first new row (`series`, `article_url`, `authors`).
 5. Only then `ingestFeedSources.ts --show <prefix>` (writes rows). It writes the guest names its title rule finds; step 6 replaces them with
-   Claude's reading, so do step 6 before anything downstream uses `authors`.
+   Claude's reading, so do step 6 before anything downstream uses `authors` (the attach in step 7 is one such use).
 6. **Guest names** (`scripts/refreshGuests.ts`; added 2026-11-08). Claude reads each title and its show notes and says who the guest is, the way
    a person would; the old title rule lost real guests (`James Clear (#183 rebroadcast)`) and invented others (`M.P.H.`, `Quarterly Podcast
    Summary #6`). It costs subscription calls on the bulk tier (about 20 episodes per call), no Deepgram, no audio. Run
@@ -414,9 +414,15 @@ section is what that window (and the runner, afterwards) follows.
       updates only `sources.authors`, only the rows the plan marks changed, and the host stays `authors[0]`. If any of those rows no longer
       holds what the plan saw (a hand correction, a re-ingest), **nothing is written** (exit 1, with the rows listed): make a new plan and read
       it again. Re-running after a network failure skips finished rows.
-   3. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
+   3. **`attachTranscripts.ts` reads `sources.authors`** (host = `authors[0]`, guests = the rest) for the `Name:` speaker labels it writes into
+      each transcript; it does not read the guests in `manifest.json`. So **apply must come before attach**: a transcript attached first keeps
+      the old labels, and fixing them means re-attaching it (possible only while the source is not yet extracted; attach leaves a `succeeded`
+      source alone). `authors` that is just the host means the episode has no guest (the other speaker stays `Speaker 2`); the manifest is
+      consulted only for a row whose `authors` is empty, and the attach prints how many rows that was. `repairDeepgramTiming.ts` follows the same
+      rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
+   4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
-   4. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
+   5. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
       `(#183 rebroadcast)` notes removed, the host dropped from guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
       were just created, applying the plan is part of the ingest.
    `scripts/evalGuestNames.ts` re-measures accuracy against the hand-labelled `tests/fixtures/guest-gold.json` (100 titles); run it after any
