@@ -29,3 +29,8 @@ test('a claim the gate did not hide is never touched', () => {
   assert.equal(statusAfterResolution('merged_into', 'extraction_fidelity', 'false_positive'), null)
   assert.equal(statusAfterResolution('flagged', 'merge_fidelity', 'false_positive'), null)
 })
+
+test('a reviewer fixing the wording (reworded) also restores the hidden claim', () => {
+  assert.equal(statusAfterResolution('flagged', 'extraction_fidelity', 'reworded'), 'active')
+  assert.equal(statusAfterResolution('flagged', 'merge_fidelity', 'reworded'), null)
+})
