@@ -20,6 +20,7 @@ import {
   mergeManifestEpisodes,
   type Episode,
 } from '../lib/podcastFeed'
+import { isCredentialOnly } from '../lib/personName'
 
 const ep = (key: string, extra: Partial<Episode> = {}): Episode => ({
   key,
@@ -181,7 +182,7 @@ test('parseFeed huberman: an item with no <link> has no page url, and never a pr
 test('parseFeed the Drive: unchanged — numbered keys, legacy guest rule, private guid never exposed as a page', () => {
   const eps = parseFeed(DRIVE_XML, 'attia')
   assert.deepEqual(eps.map(e => e.key), ['attia-0404', 'attia-0287'])
-  assert.deepEqual(eps[0].guests, ['Linus Abrams'])
+  assert.deepEqual(eps[0].guests, ['Linus Abrams, M.D.'], 'the credential stays on the name (Paul, 2026-11-08)')
   // The legacy (non-strict) rule keeps what it always returned for this title.
   assert.deepEqual(eps[1].guests, ['Dr. Someone'])
   for (const e of eps) {
@@ -195,9 +196,9 @@ test('parseFeed: a prefix that is not registered parses like the Drive did (numb
   assert.deepEqual(eps.map(e => e.key), ['mystery-0404', 'mystery-0287'])
 })
 
-test('parseGuests: legacy rule is untouched, strict rule only adds the two new forms', () => {
-  assert.deepEqual(parseGuests('#404 ‒ x | Linus Abrams, M.D.'), ['Linus Abrams'])
-  assert.deepEqual(parseGuests('#404 ‒ x | Linus Abrams, M.D.', true), ['Linus Abrams'])
+test('parseGuests: legacy rule splits as it always did, strict rule only adds the two new forms', () => {
+  assert.deepEqual(parseGuests('#404 ‒ x | Linus Abrams, M.D.'), ['Linus Abrams, M.D.'])
+  assert.deepEqual(parseGuests('#404 ‒ x | Linus Abrams, M.D.', true), ['Linus Abrams, M.D.'])
   assert.deepEqual(parseGuests('#100 AMA | AMA #52'), [])
   assert.deepEqual(parseGuests('no pipe here'), [])
   // GUEST SERIES: the legacy rule splits the topic on commas; strict reads the name before the colon.
@@ -211,6 +212,56 @@ test('parseGuests: legacy rule is untouched, strict rule only adds the two new f
   assert.deepEqual(parseGuests('Mitochondria | Derek from MPMD', true), ['Derek from MPMD'])
   // Two guests still split.
   assert.deepEqual(parseGuests('Two views | Dr. Ann Lee & Dr. Bob Roe', true), ['Dr. Ann Lee', 'Dr. Bob Roe'])
+})
+
+// Paul, 2026-11-08: "we should keep their titles". The title rule gives a new episode its FIRST authors,
+// before any Claude pass, so it must keep every credential attached to its name as ONE element.
+test('parseGuests keeps credentials on the name, as one guest, in the title\'s own punctuation (Drive shapes)', () => {
+  for (const strict of [false, true]) {
+    assert.deepEqual(parseGuests('#371 ‒ Sleep and cancer | Sally Greenwald, M.D., M.P.H.', strict), ['Sally Greenwald, M.D., M.P.H.'])
+    assert.deepEqual(parseGuests('#260 ‒ Men\'s health | Mohit Khera, M.D., M.B.A., M.P.H.', strict), ['Mohit Khera, M.D., M.B.A., M.P.H.'])
+    assert.deepEqual(parseGuests('#300 ‒ Radiation | Max Diehn, M.D. Ph.D.', strict), ['Max Diehn, M.D. Ph.D.'])
+    assert.deepEqual(parseGuests('#280 ‒ Happiness | Arthur Brooks Ph.D.', strict), ['Arthur Brooks Ph.D.'])
+    assert.deepEqual(parseGuests('#201 ‒ Obesity | David Allison, Ph.D.', strict), ['David Allison, Ph.D.'])
+    assert.deepEqual(parseGuests('#354 ‒ Dying well | BJ Miller, M.D. & Bridget Sumser, L.C.S.W.', strict), ['BJ Miller, M.D.', 'Bridget Sumser, L.C.S.W.'])
+    assert.deepEqual(parseGuests('#277 ‒ Training | Jeff Cavaliere, M.S.P.T., C.S.C.S.', strict), ['Jeff Cavaliere, M.S.P.T., C.S.C.S.'])
+    assert.deepEqual(parseGuests('#258 ‒ Lipids | Tom Dayspring, M.D., FACP, FNLA', strict), ['Tom Dayspring, M.D., FACP, FNLA'])
+    assert.deepEqual(parseGuests('#350 ‒ Dotless | Jane Roe, MD, PhD', strict), ['Jane Roe, MD, PhD'])
+    // A comma that starts a NEW guest still splits; only credentials are glued back.
+    assert.deepEqual(parseGuests('#400 ‒ Two views | Ann Lee, M.D., Bob Roe, Ph.D.', strict), ['Ann Lee, M.D.', 'Bob Roe, Ph.D.'])
+    assert.deepEqual(parseGuests('#400 ‒ Two views | Ann Lee, M.D. and Bob Roe, Ph.D.', strict), ['Ann Lee, M.D.', 'Bob Roe, Ph.D.'])
+  }
+})
+
+test('parseGuests: a credential is never a guest or a list item of its own, and a long credential run is one guest', () => {
+  for (const strict of [false, true]) {
+    const all = [
+      parseGuests('#371 ‒ x | Sally Greenwald, M.D., M.P.H.', strict),
+      parseGuests('#300 ‒ x | Max Diehn, M.D. Ph.D.', strict),
+      parseGuests('#400 ‒ x | Ann Lee, M.D. & Bob Roe, Ph.D.', strict),
+      parseGuests('#401 ‒ x | M.P.H.', strict),
+    ].flat()
+    for (const g of all) assert.ok(!isCredentialOnly(g), `${g} is a credential, not a guest`)
+  }
+  assert.deepEqual(parseGuests('#401 ‒ x | M.P.H.'), [])
+  // Seven words and 50+ characters, but it is one name with credentials: the name-shape test judges the name alone.
+  assert.deepEqual(parseGuests('#402 ‒ x | Pat Q. Smith, M.D., Ph.D., M.P.H., M.B.A.', true), ['Pat Q. Smith, M.D., Ph.D., M.P.H., M.B.A.'])
+})
+
+test('parseGuests keeps credentials and the Dr. honorific on FoundMyFitness and Huberman Lab title shapes', () => {
+  // FoundMyFitness: `#NNN … | Name, Ph.D.` and `| Dr. Name`.
+  assert.deepEqual(parseGuests('#101 Mitochondria and aging | Bruce Ames, Ph.D.', true), ['Bruce Ames, Ph.D.'])
+  assert.deepEqual(parseGuests('#102 Meditation | Dr. Richard Davidson', true), ['Dr. Richard Davidson'])
+  assert.deepEqual(parseGuests('#103 Sleep | Matthew Walker, Ph.D. & Dr. Jane Roe, M.D.', true), ['Matthew Walker, Ph.D.', 'Dr. Jane Roe, M.D.'])
+  // Huberman: no post-name credentials, the `Dr.` stays; the topic after the colon is not part of the name.
+  assert.deepEqual(parseGuests('GUEST SERIES | Dr. Matt Walker: Sleep, Dreams & Memory', true), ['Dr. Matt Walker'])
+  assert.deepEqual(parseGuests('How Food Choices Shape Memory | Dr. Scott Kanoski', true), ['Dr. Scott Kanoski'])
+  // The host is still dropped by the feed reader even with credentials attached.
+  const hostWithCreds = parseFeed(
+    `<item><title>#092 Solo | Dr. Rhonda Patrick, Ph.D.</title><guid>g1</guid><enclosure url="https://x.test/a.mp3" length="1"/></item>`,
+    'fmf'
+  )
+  assert.deepEqual(hostWithCreds[0].guests, [])
 })
 
 test('parseEpisodeNumber reads #N anywhere (the registry decides whether a show uses it)', () => {

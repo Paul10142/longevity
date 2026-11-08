@@ -227,6 +227,31 @@ export async function trackLlmUsage<T>(fn: () => Promise<T>): Promise<{ result: 
   return { result, usage: scope }
 }
 
+/**
+ * Dollar cost of CLI calls inside a scope. The `claude` CLI's final `result` event carries
+ * `total_cost_usd` (list-price basis, the CLI's own fixed overhead included), the one place
+ * a subscription-backed call reports what it would have cost. Opt-in: outside a
+ * `trackCliCost` scope nothing is recorded. Used by the extraction comparison harness.
+ */
+type CliCostTally = { usd: number; calls: number }
+const cliCostScope = new AsyncLocalStorage<CliCostTally>()
+
+export async function trackCliCost<T>(fn: () => Promise<T>): Promise<{ result: T; costUsd: number; calls: number }> {
+  const tally: CliCostTally = { usd: 0, calls: 0 }
+  const result = await cliCostScope.run(tally, fn)
+  return { result, costUsd: tally.usd, calls: tally.calls }
+}
+
+function noteCliCost(tally: CliCostTally | undefined, rawStdout: string): void {
+  if (!tally) return
+  const at = rawStdout.lastIndexOf('"total_cost_usd"')
+  if (at < 0) return
+  const m = rawStdout.slice(at).match(/^"total_cost_usd"\s*:\s*([0-9.eE+-]+)/)
+  if (!m) return
+  tally.usd += Number(m[1]) || 0
+  tally.calls++
+}
+
 let client: Anthropic | null = null
 function getAnthropic(): Anthropic {
   if (!client) {
@@ -320,6 +345,7 @@ function spawnClaudeCli(
 
   return new Promise((resolve, reject) => {
     const startedAt = Date.now()
+    const costTally = cliCostScope.getStore()
     cliStats.calls++
     const child = execFile(
       'claude',
@@ -360,6 +386,7 @@ function spawnClaudeCli(
       (err, rawStdout, stderr) => {
         cliStats.wallMs += Date.now() - startedAt
         const stream = parseCliStream(rawStdout ?? '')
+        noteCliCost(costTally, rawStdout ?? '')
         noteRateLimit(stream.rateLimit)
         // On a failed call the readable reason is the `result` event's text (the
         // raw stdout is now a wall of JSON lines).

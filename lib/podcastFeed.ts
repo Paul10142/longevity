@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { ASSUMED_BITRATE_BPS, estimateHours } from './deepgramBudget'
+import { isCredentialOnly, splitName } from './personName'
 import { showByPrefix } from './shows'
 
 /**
@@ -101,6 +102,16 @@ function looksLikeName(g: string): boolean {
  * than none, because corroboration counts DISTINCT SPEAKERS and a phantom guest
  * would invent agreement that never happened.
  *
+ * CREDENTIALS STAY ON THE NAME (Paul, 2026-11-08). A guest is returned as the title
+ * writes them: `… | Sally Greenwald, M.D., M.P.H.` gives ONE guest,
+ * `Sally Greenwald, M.D., M.P.H.`, not three (`Sally Greenwald`, `M.D.`, `M.P.H.`: the
+ * comma split used to make the credentials guests of their own, or drop them). The
+ * same goes for `Max Diehn, M.D. Ph.D.`, `Arthur Brooks Ph.D.` and `Dr. Matt Walker`.
+ * A credential is never a guest and never a list item; a speaker LABEL is the bare
+ * name (lib/personName.ts `bareName`), the credentialed form is what `sources.authors`
+ * and the episode page carry. This is the first authors an episode gets, before any
+ * Claude pass (scripts/refreshGuests.ts), so a new episode loses nothing in between.
+ *
  * `strict` (FoundMyFitness, Huberman Lab — `Show.strictGuests`) adds two forms
  * the Drive never used, and both produced phantom guests before they were
  * handled. It is OFF for the Drive on purpose: its 435 feed items must parse
@@ -119,11 +130,22 @@ export function parseGuests(title: string, strict = false): string[] {
   const tail = title.split('|').pop()?.trim() ?? ''
   if (!tail || /^AMA\b/i.test(tail)) return []
   const led = strict ? tail.match(/^((?:Dr|Prof|Professor)\.?\s+[^:]{2,60}):\s+\S/) : null
-  const names = (led ? led[1] : tail)
-    .split(/\s*(?:,|&|\band\b)\s*(?=[A-Z])/)
-    .map(g => (strict ? dropLeadingRole(g.trim()) : g.trim()))
-    .filter(g => g.length > 1 && /[A-Za-z]/.test(g) && !/^(m\.?d\.?|ph\.?d\.?|r\.?d\.?)$/i.test(g))
-  return strict ? names.filter(looksLikeName) : names
+  // Split on `,`, `&` and `and` as always, keeping each separator: a comma followed by
+  // nothing but credentials (`, M.D.`, `, M.D. Ph.D.`) is not a new guest, it goes back
+  // on the name before it.
+  const pieces = (led ? led[1] : tail).split(/(\s*(?:,|&|\band\b)\s*)(?=[A-Z])/)
+  const names: string[] = []
+  for (let i = 0; i < pieces.length; i += 2) {
+    const piece = strict ? dropLeadingRole(pieces[i].trim()) : pieces[i].trim()
+    if (names.length > 0 && i > 0 && pieces[i - 1].includes(',') && isCredentialOnly(piece)) {
+      names[names.length - 1] += `, ${piece}`
+    } else {
+      names.push(piece)
+    }
+  }
+  const kept = names.filter(g => g.length > 1 && /[A-Za-z]/.test(g) && !isCredentialOnly(g))
+  // The name-shape test judges the name alone: five credentials are not "too many words".
+  return strict ? kept.filter(g => looksLikeName(splitName(g).bare)) : kept
 }
 
 export function parseEpisodeNumber(title: string): number | null {

@@ -411,6 +411,17 @@ section is what that window (and the runner, afterwards) follows.
    a person would; the old title rule lost real guests (`James Clear (#183 rebroadcast)`) and invented others (`M.P.H.`, `Quarterly Podcast
    Summary #6`). It costs subscription calls on the bulk tier (about 20 episodes per call), no Deepgram, no audio. Run
    `sh ~/.claude/usage-guard/check.sh` first (exit 1 = stop).
+   **The names rule (Paul, 2026-11-08, for every show and every future episode): `sources.authors` holds each guest as the show writes
+   them, credentials included, one element per person (`Sally Greenwald, M.D., M.P.H.`, `Max Diehn, M.D. Ph.D.`, `Arthur Brooks Ph.D.`,
+   `Dr. Andrew Huberman`); speaker labels are the bare name (`Sally Greenwald:`).** Never a credential as its own element, never only some
+   of several, never one the title does not give. Roles (`U.S. Senator`), series labels and junk (`(#183 rebroadcast)`, `Pt. 2`) are not
+   part of the name. The rule holds at every step that touches a name: the ingest's title rule (`parseGuests`, `lib/podcastFeed.ts`) gives
+   a new episode its first authors with credentials attached, `refreshGuests.ts` (Claude reads the title and notes; the check copies the
+   credentials from the text, so the model cannot add or lose one) refines them, and `lib/personName.ts` `bareName` turns a written name into
+   the label for `attachTranscripts.ts`, `repairDeepgramTiming.ts` and the extraction prompt (a credential in a label would make one person two
+   speakers, and corroboration counts distinct speakers). Because labels are bare, adding credentials to `authors` never changes a stored
+   transcript. A credential the code does not recognise is the one way a title can still lose one: `splitName` and `credentialRun` in
+   `lib/personName.ts` hold the list, so add it there (and a test) when a plan shows a credential missing.
    1. **Plan, read-only:** `npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --out <file outside the repo>`. It reads the
       feed and the existing `sources` rows, asks Claude, and prints the counts (decided by Claude / by the title rule and why / rows that would
       change) and every row whose `authors` would change, old next to new. **Read it.** A guest list that looks wrong goes to Paul, not into
@@ -428,8 +439,29 @@ section is what that window (and the runner, afterwards) follows.
       rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
    4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
-   5. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
-      `(#183 rebroadcast)` notes removed, the host dropped from guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
+   5. **Every new batch runs this by itself** (Paul, 2026-11-08: "apply this plan to all future podcast episodes"). After
+      `ingestFeedSources.ts --show <prefix>` writes the new rows and before anything uses `authors` (the attach):
+      `npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --new --apply-now`. `--new` picks only the rows nobody has read
+      yet (in the library, not yet extracted, guests still exactly what the title rule wrote); `--keys fmf-0113,fmf-0112` picks the batch by key
+      instead. It asks Claude about those rows only, prints every row it changes (old next to new), and applies through the same stale-plan guard
+      as `--apply`, so a row someone changed in between stops the write (exit 1) and nothing is written. Add `--dry-run` to read first. Exit 2
+      means the run stopped early (usage limit, halted `claude`): nothing is applied; wait and run it again. It writes only `sources.authors`.
+   6. **Hand-set rows survive every re-run** (`lib/guestOverrides.ts`). A guest list a person set by hand (the 9 FoundMyFitness rows and
+      Drive #274/#291 of 2026-11-08) is listed there with who decided and why. The reader does not ask the model about those episodes, and
+      `--apply` writes the listed guests over whatever a plan proposed (it prints the rows it replaced), so neither a re-plan nor an older plan
+      can undo them. Add a row there in the commit that records the decision; `tests/guestNameCases.test.ts` checks the list is well formed. The 17
+      older `fmf-<slug>` rows are not feed keys, so no plan touches them.
+   7. **Short names, surnames and pseudonyms** (2026-11-08). The title's spelling of a short form (`Dr. Bill Harris` for the model's
+      `William Harris`) is applied BEFORE the check that a name appears in the text, so the guest is no longer lost; a first name the model
+      copied from the title (`Dr. Darya`) takes the surname the notes give (`Dr. Darya Rose`) only when the notes give it one way; and a guest
+      the text knows only by a first name and the channel they publish under is ONE element, `Derek, More Plates More Dates` (the channel
+      travels like a credential: the speaker label is the bare `Derek`). An abbreviation is not enough to make one, with one exception: the
+      initials of a channel a person confirmed (`CHANNEL_ALIASES` in `lib/guestOverrides.ts`, today `MPMD`) are expanded in code when the text
+      writes the first name beside them, so `Derek from MPMD` is the same `Derek, More Plates More Dates` (Paul, 2026-11-08). Add a channel there
+      only with a person's confirmation.
+   8. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, the
+      `(#183 rebroadcast)` notes removed, a credential left standing as a guest of its own folded back onto its name, the host dropped from
+      guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
       were just created, applying the plan is part of the ingest.
    `scripts/evalGuestNames.ts` re-measures accuracy against the hand-labelled `tests/fixtures/guest-gold.json` (100 titles); run it after any
    change to the prompt or to `lib/guestNames.ts`, and label a few episodes of a new show into the fixture first.
@@ -452,3 +484,18 @@ section is what that window (and the runner, afterwards) follows.
   spelling on a guest (`Matt Walker`, not the notes' `Matthew Walker`), because `authors` is how one guest's claims are pooled across episodes.
   Known limit: a guest named only in a long list deep in the notes is missed (the window is 600 characters), and an episode whose notes are
   empty is read from the title alone.
+
+## 15. Extraction prompt v2 and the gate (2026-11-08)
+
+A sample of 8 Attia episodes had 35% of claims flagged by the fidelity judge (mostly invented detail and dropped hedges), so extraction now has a rewritten prompt and a deterministic gate. Both are on by default, with Opus 5.5 as the extraction model; the old behaviour (v1 prompt, Haiku 4.5, no gate) is one variable away.
+
+| Variable | Values | Effect |
+| --- | --- | --- |
+| `EXTRACTION_PROMPT_VERSION` | `v2` (default), `v1` | `v1` is the original prompt, unchanged, with the gate off and its original model (Haiku 4.5). |
+| `EXTRACTION_GATE` | `on`, `off` | Default `on` with v2, `off` with v1. |
+| `EXTRACTION_REPAIR` | `on` (default), `off` | One repair call per chunk for insights the gate rejected. |
+| `EXTRACTION_MODEL` | model id | Default `claude-opus-5-5` (Paul's choice, 2026-11-08: 8.9% of insights flagged vs 33.5% for the old Haiku extraction); `claude-haiku-4-5` under `v1`. Stored on each insight as `extraction_model`. |
+
+The gate (`lib/extractionGate.ts`, no model call) rejects an insight when a number in it is not in its chunk, a hedge or degree word in its quoted span ("probably", "might", "seems", "very", "if", "I think", "about 40") has no equivalent in it, or its `direct_quote` is not word-for-word in the chunk (a quote with an invented tail is cut back to its verbatim start). Rejected insights get one repair round; whatever still fails is dropped. A statement that depends on something shown on screen is kept with a "Video check" line in `context_note`.
+
+Measure a change with `scripts/evalExtractionPrompt.ts` (re-extracts existing chunks into `scratchpad/extraction-compare/` JSON, never writes to the database). Results of the first comparison are in `scratchpad/extraction-compare/REPORT.md`.

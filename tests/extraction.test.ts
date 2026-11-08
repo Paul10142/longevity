@@ -115,7 +115,16 @@ test('sanitizeSpeaker: every registered host collapses to one canonical label', 
   for (const s of ['Dr. Rhonda Patrick', 'rhonda patrick', 'Rhonda Patrick, PhD']) assert.equal(sanitizeSpeaker(s), 'Rhonda Patrick', s)
   // A name that only contains a host's is a different person.
   assert.equal(sanitizeSpeaker('Peter Attia Jr.'), 'Peter Attia Jr.')
-  assert.equal(sanitizeSpeaker('Dr. Matt Walker'), 'Dr. Matt Walker')
+  // A guest is the bare name: credentials live on sources.authors, never on an attribution.
+  assert.equal(sanitizeSpeaker('Dr. Matt Walker'), 'Matt Walker')
+})
+
+test('sanitizeSpeaker: a guest written with credentials is the bare name; a lone credential is no speaker', () => {
+  assert.equal(sanitizeSpeaker('Sally Greenwald, M.D., M.P.H.'), 'Sally Greenwald')
+  assert.equal(sanitizeSpeaker('Arthur Brooks Ph.D.'), 'Arthur Brooks')
+  assert.equal(sanitizeSpeaker('Dr. Max Diehn, M.D. Ph.D.'), 'Max Diehn')
+  assert.equal(sanitizeSpeaker('Martin Luther King, Jr.'), 'Martin Luther King, Jr.')
+  for (const s of ['M.P.H.', 'MD', 'Ph.D.']) assert.equal(sanitizeSpeaker(s), null, s)
 })
 
 test('sanitizeSpeaker: role words and refusals become null', () => {

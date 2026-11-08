@@ -14,18 +14,33 @@
  * deterministic check disposes. A proposed name is accepted only when it
  *   - reads as a person's name (no brackets, digits, `Pt. 2`, `rebroadcast`),
  *   - appears in the title or the show notes the model was shown (case- and
- *     diacritic-insensitive), so a name from the model's memory is never accepted,
+ *     diacritic-insensitive), so a name from the model's memory is never accepted.
+ *     The check is on the BARE name: credentials are set aside for it and then put
+ *     back from the text itself,
  *   - is not the show's host (silently dropped: the host is always `authors[0]`),
  *   - and the list is a sensible length.
  * An episode that fails any check, or whose batch the model could not answer, falls
  * back to the title rule the ingest used (`parseGuests(title, show.strictGuests)`),
  * and the plan says so per episode.
  *
+ * CREDENTIALS. Each guest is written as the show writes them, credentials attached to
+ * the name as ONE string: `Sally Greenwald, M.D., M.P.H.`, `Arthur Brooks Ph.D.`
+ * (Paul, 2026-11-08: "we should keep their titles"). Claude finds WHO; the spelling,
+ * the punctuation and which credentials follow come from the title (or, for a guest
+ * only the notes name, the notes), so a model that drops one of several credentials, or
+ * invents one, cannot change what the show wrote. `bareName` (lib/personName.ts) gives
+ * the name without them, which is what a transcript label and a model prompt use.
+ *
  * Nothing here touches the database or the network; scripts/refreshGuests.ts does.
  */
+import { bareName, credentialRun, foldForMatch, honorificBefore, isCredentialOnly, splitName, stripHonorifics } from './personName'
+import { CHANNEL_ALIASES, overridesByKey, type GuestOverride } from './guestOverrides'
 import { parseGuests } from './podcastFeed'
 import { isHostName, type Show } from './shows'
 import { PipelineHaltError, UsageLimitError } from './usageLimit'
+
+// Kept exported from here: callers that only need the bare name import it from this module.
+export { bareName, foldForMatch, stripHonorifics }
 
 /** Episodes per model call. Small enough that one bad reply costs little. */
 export const BATCH_SIZE = 20
@@ -67,20 +82,6 @@ export function cleanDescription(html: string | null | undefined, max = DESCRIPT
   return text.length > max ? `${text.slice(0, max).trimEnd()}…` : text
 }
 
-// Letters that do not decompose into base + accent, so NFD alone would leave `Søberg` and `Soberg` different.
-const LETTER_FOLDS: Record<string, string> = { ø: 'o', æ: 'ae', œ: 'oe', ß: 'ss', đ: 'd', ł: 'l', ı: 'i' }
-
-/** Lower-case, accents removed, every run of non-letters/digits one space: the form names are compared in. */
-export function foldForMatch(s: string): string {
-  return s
-    .normalize('NFD')
-    .replace(/\p{M}+/gu, '')
-    .toLowerCase()
-    .replace(/[øæœßđłı]/g, c => LETTER_FOLDS[c])
-    .replace(/[^\p{L}\p{N}]+/gu, ' ')
-    .trim()
-}
-
 // ---------------------------------------------------------------------------
 // The prompt
 // ---------------------------------------------------------------------------
@@ -106,18 +107,18 @@ export function guestSystemPrompt(show: Show): string {
     `For each episode, list the guest(s): the people interviewed, or who join the host as a guest.`,
     ``,
     `Rules:`,
-    `1. Write each name exactly as it appears in the text you were given, first and last name. The TITLE decides the spelling: when the title names the guest, copy that spelling character for character, even if the notes spell it longer ("Dr. Sam Doe" in the title and "Samuel A. Doe" in the notes is "Sam Doe"). Use the notes' spelling only for a guest the title does not name. Never invent, complete or correct a name, and never use a name that is not in the text.`,
-    `2. Leave out honorifics, credentials and roles: "Dr.", "Prof.", "M.D.", "Ph.D.", "M.P.H.", "U.S. Senator". "U.S. Senator Dr. Jane Roe, M.P.H." is "Jane Roe". A credential is never a guest of its own.`,
+    `1. Write each name exactly as it appears in the text you were given, first and last name. The TITLE decides the spelling: when the title names the guest, copy that spelling character for character, even if the notes spell it longer ("Dr. Sam Doe" in the title and "Samuel A. Doe" in the notes is "Dr. Sam Doe"; "Sam Doe, M.D." in the title and "Samuel A. Doe, M.D." in the notes is "Sam Doe, M.D."; a nickname in brackets or a longer first name from the notes never replaces the title's spelling). Use the notes' spelling only for a guest the title does not name. Never invent, complete or correct a name, and never use a name that is not in the text. The name ends where the person's name ends: a colon, a dash, a bracket or a comma that starts the topic of the episode ends it ("Sam Doe: More Topics, More Words" is "Sam Doe").`,
+    `2. Keep each guest's credentials. Write the guest as the text writes them: the name and its credentials together in ONE string, with the punctuation between the name and its credentials as the text writes it, and nothing after the last credential. "Jane Roe, M.D., M.P.H.", "Sam Doe, M.D. Ph.D.", "Alex Poe Ph.D.", "Pat Lee, Ph.D.", "Kim Fox, L.C.S.W." are each one guest. Include every credential the text gives that person, never only one of several, and never add one the text does not give. A leading "Dr." or "Prof." stays when the text writes it. When the title names the guest, use the credentials the title gives them (none, if it gives none); when only the notes name the guest, copy the notes' rendering of the name, credentials included. A credential is never a guest of its own and never a separate list item. Leave out roles that are not credentials: "U.S. Senator Dr. Jane Roe, M.P.H." is "Dr. Jane Roe, M.P.H.".`,
     `3. Never list the host, ${show.host}, as a guest of his or her own show. (Another show's host can be a guest.)`,
     `4. Use [] when there is no guest: the host alone (solo episodes), AMAs, listener Q&A, live event Q&A, "Essentials" or recap episodes of the host alone, quarterly or podcast summaries and clip compilations (people named there are discussed, not interviewed), and talks the host gave.`,
     `5. A rebroadcast or tribute of an earlier interview ("In remembrance of Jane Roe", "a rebroadcast of the conversation with Jane Roe") has the person interviewed as its guest, even when the host is the one speaking in the notes.`,
-    `6. Brackets, episode numbers and series notes are notes about the episode, never part of a name: "Jane Roe (#12 rebroadcast)" is the guest Jane Roe; "Jane Roe (Pt. 2)" is Jane Roe. A business, brand or channel next to a person is not a second guest: "Sam, Acme Fitness Pt.2" and "Sam from AF" are the ONE guest Sam.`,
+    `6. Brackets, episode numbers and series notes are notes about the episode, never part of a name: "Jane Roe (#12 rebroadcast)" is the guest Jane Roe; "Jane Roe (Pt. 2)" is Jane Roe. A business, brand or channel next to a person is not a second guest: "Jane Roe, Acme Fitness Pt.2" and "Jane Roe from AF" are the ONE guest Jane Roe. The exception is a guest the text names only by a first name or a handle, together with the channel they publish under (a pseudonym): "Sam: Plates And Dates, Daily" and "Sam, Plates And Dates Daily Pt.2" are ONE guest, written as the first name, a comma, and the channel name as the text writes it without its punctuation or episode note: "Sam, Plates And Dates Daily". An abbreviation of a channel ("Sam from PDD") is not enough: that guest is "Sam".`,
     `7. A series label before a separator ("GUEST SERIES |", "Essentials:", "Journal Club with") is not a name. Read the notes to see who the guest is: when the notes say "my guest is Dr. X" and X is not this show's host, X is the guest, whatever the title says.`,
     `8. People who are only discussed or cited (an author whose book comes up, a scientist whose paper is read) are not guests.`,
     `9. Several guests: list each one, in the order the title names them.`,
     ``,
     `Reply with JSON only, no prose, no code fence:`,
-    `{"episodes":[{"id":"<id exactly as given>","guests":["Full Name","Full Name"]}]}`,
+    `{"episodes":[{"id":"<id exactly as given>","guests":["Full Name, M.D.","Full Name"]}]}`,
     `One entry for every episode in the batch, with the same ids.`,
   ].join('\n')
 }
@@ -199,23 +200,6 @@ export function parseGuestReply(raw: unknown): Map<string, string[]> {
 // Validation (deterministic; no model)
 // ---------------------------------------------------------------------------
 
-const LEADING_HONORIFIC = /^(?:dr|prof|professor|mr|mrs|ms|mx|sir|rev|reverend)\.?\s+/i
-// Credentials after a name: `, M.D.`, ` PhD`, `, Ph.D., M.D.`. Not Jr./Sr./II/III: those are part of the name.
-// The short ones that are also surnames (`Tran Do`, `Ms`, `Rd`) only count after a comma.
-const TRAILING_CREDENTIAL =
-  /(?:(?:,\s*|\s+)(?:m\.?d\.?|ph\.?\s?d\.?|d\.?v\.?m\.?|d\.?d\.?s\.?|m\.?p\.?h\.?|sc\.?d\.?|m\.?b\.?a\.?|f\.?a\.?c\.?[cp]\.?)|,\s*(?:d\.?o\.?|m\.?s\.?c?\.?|r\.?d\.?n?\.?|j\.?d\.?))$/i
-
-/** A name with honorifics and credentials removed (`Dr. Vivek Murthy, M.D.` -> `Vivek Murthy`). */
-export function stripHonorifics(name: string): string {
-  let n = name.replace(/\s+/g, ' ').trim()
-  for (let i = 0; i < 4; i++) {
-    const next = n.replace(LEADING_HONORIFIC, '').replace(TRAILING_CREDENTIAL, '').trim()
-    if (next === n) break
-    n = next
-  }
-  return n.replace(/[,;]+$/, '').trim()
-}
-
 // Text that is a note about the episode, not part of a person's name.
 const EPISODE_NOTE = /\b(?:pt|part|rebroadcast|episode|series|podcast|summary|q&a)\b/i
 // Lower-case connectives never occur inside a person's name; they do inside `Derek from MPMD` and `Erica and Justin Sonnenburg`.
@@ -270,24 +254,102 @@ function trimSpan(s: string): string {
   return t.replace(/[^\p{L}\p{N}.]+$/u, '')
 }
 
+/** One place a name occurs in a text: the text's own spelling of it, and where it starts and ends. */
+type NameOccurrence = { spelled: string; start: number; end: number }
+
+/**
+ * Every place `name` occurs in `text` up to punctuation, accents or case, in text order,
+ * with the text's own spelling and offsets. A span that would cross a line break is not
+ * a match (the title ends and the notes begin there).
+ */
+function nameOccurrences(name: string, text: string): NameOccurrence[] {
+  const want = foldForMatch(name)
+  // `D'Agostino` folds to two tokens but is one word of text, so try every span up to the folded length.
+  const most = want.split(' ').length
+  const words = [...text.matchAll(/\S+/g)].map(m => ({ s: m[0], at: m.index as number }))
+  const out: NameOccurrence[] = []
+  for (let i = 0; i < words.length; i++) {
+    for (let len = 1; len <= most && i + len <= words.length; len++) {
+      const first = words[i]
+      const last = words[i + len - 1]
+      const raw = text.slice(first.at, last.at + last.s.length)
+      if (/[\r\n]/.test(raw)) break
+      const span = trimSpan(raw.replace(/\s+/g, ' '))
+      // A title in capitals does not turn `Matt Walker` into `MATT WALKER`.
+      if (foldForMatch(span) !== want || (span === span.toUpperCase() && name !== name.toUpperCase())) continue
+      const lead = raw.length - raw.replace(/^[^\p{L}\p{N}]+/u, '').length
+      let end = last.at + last.s.replace(/[^\p{L}\p{N}.]+$/u, '').length
+      if (!span.endsWith('.') && text[end - 1] === '.') end -= 1
+      out.push({ spelled: span, start: first.at + lead, end })
+      break
+    }
+  }
+  return out
+}
+
 /**
  * The text's own spelling of a name that matches it only up to punctuation, accents
  * or case: the model writes `D'Agostino` for the title's `D’Agostino`, or `Pogacar`
  * for `Pogačar`. The shown spelling wins, so a row is not rewritten for a quote mark.
+ * The BARE name: honorific and credentials are not part of it (see `writtenForm`).
  */
 export function literalSpelling(name: string, text: string): string {
-  const want = foldForMatch(name)
-  // `D'Agostino` folds to two tokens but is one word of text, so try every span up to the folded length.
-  const most = want.split(' ').length
-  const words = text.split(/\s+/).filter(Boolean)
-  for (let i = 0; i < words.length; i++) {
-    for (let len = 1; len <= most && i + len <= words.length; len++) {
-      const span = trimSpan(words.slice(i, i + len).join(' '))
-      // A title in capitals does not turn `Matt Walker` into `MATT WALKER`.
-      if (foldForMatch(span) === want && (span !== span.toUpperCase() || name === name.toUpperCase())) return span
-    }
+  return nameOccurrences(name, text)[0]?.spelled ?? name
+}
+
+/**
+ * A guest as the show writes them: the bare `name` (already spelled the way the text
+ * spells it) with the `Dr.`/`Prof.` before it and the credentials after it, copied from
+ * the text. The title is read first and decides: a guest the title names carries the
+ * credentials the title gives them, none if it gives none. A guest only the notes name
+ * carries the notes' rendering. A name the text does not hold as written (a shared
+ * surname: `Mark and Chris Bell`) comes back bare.
+ *
+ * `proposedCredentials` are the credentials the model attached; they are never copied
+ * into the result, only used to recognise a credential the built-in list lacks (`FRSA`)
+ * when the text writes it. So a model cannot add a credential the text does not give,
+ * or lose one that it does.
+ */
+export function writtenForm(name: string, ep: GuestEpisode, proposedCredentials: readonly string[] = []): string {
+  // A pseudonym and its channel is already in its one written form; the text spells it with colons and commas.
+  if (pseudonymForm(name) === name) return name
+  for (const source of [ep.title, cleanDescription(ep.description)]) {
+    const found = nameOccurrences(name, source).map(o => ({ o, run: credentialRun(source.slice(o.end), proposedCredentials) }))
+    if (found.length === 0) continue
+    // A name that occurs twice and carries credentials once is written with them.
+    const pick = found.find(f => f.run) ?? found[0]
+    const honorific = honorificBefore(source, pick.o.start)
+    return `${honorific ? `${honorific} ` : ''}${pick.o.spelled}${pick.run}`
   }
   return name
+}
+
+// First names that are short forms of each other but not prefixes (`Tom`/`Thomas` share only `Th`/`To`).
+// Prefix pairs (`Matt`/`Matthew`) need no entry. Folded form, every group lower-case.
+const FIRST_NAME_FORMS = [
+  ['tom', 'thomas', 'tommy'],
+  ['bill', 'billy', 'will', 'william'],
+  ['bob', 'bobby', 'rob', 'robert'],
+  ['jim', 'jimmy', 'james'],
+  ['dick', 'rick', 'rich', 'richard'],
+  ['ted', 'ed', 'edward', 'edmund'],
+  ['jack', 'john', 'jon'],
+  ['mike', 'michael'],
+  ['dave', 'david'],
+  ['steve', 'steven', 'stephen'],
+  ['chris', 'christopher'],
+  ['tony', 'anthony'],
+  ['liz', 'beth', 'elizabeth'],
+  ['kate', 'kathy', 'katherine', 'catherine'],
+  ['peggy', 'margaret'],
+  ['hank', 'henry'],
+  ['jeff', 'jeffrey', 'geoff', 'geoffrey'],
+]
+
+function sameFirstName(a: string, b: string): boolean {
+  if (a.length === 0 || b.length === 0) return false
+  if (a.startsWith(b) || b.startsWith(a)) return true
+  return FIRST_NAME_FORMS.some(g => g.includes(a) && g.includes(b))
 }
 
 /**
@@ -296,8 +358,9 @@ export function literalSpelling(name: string, text: string): string {
  * either, and one person must not carry two spellings across a show's episodes
  * (`authors` is how a guest's claims are pooled). So when the model's name is not
  * in the title, but the title holds the same surname right after a first name that
- * is a prefix of it or begins with it (Matt/Matthew, David/David A.), the title's
- * form wins. Anything less certain is left as the model wrote it.
+ * is a prefix of it or begins with it (Matt/Matthew, David/David A.), or a listed
+ * short form of it (Tom/Thomas, Bill/William), the title's form wins. Anything less
+ * certain is left as the model wrote it.
  */
 export function titleSpelling(name: string, title: string): string {
   if (appearsIn(name, title)) return name
@@ -308,10 +371,96 @@ export function titleSpelling(name: string, title: string): string {
   const words = title.split(/\s+/).map(w => w.replace(/^[^\p{L}\p{N}]+|[^\p{L}\p{N}]+$/gu, ''))
   for (let i = 1; i < words.length; i++) {
     if (foldForMatch(words[i]) !== last) continue
-    const f = foldForMatch(words[i - 1])
-    if (f.length > 0 && (f.startsWith(first) || first.startsWith(f))) return `${words[i - 1]} ${words[i]}`
+    if (sameFirstName(foldForMatch(words[i - 1]), first)) return `${words[i - 1]} ${words[i]}`
   }
   return name
+}
+
+// A first name or handle, a separator, then the channel's words: `Derek: More Plates, More Dates`.
+const PSEUDONYM = /^(\p{L}[\p{L}'’-]*)\s*[:,–—‒|-]\s*(.+)$/u
+// An episode note after the channel (`Pt.2`, `Part II`) is not part of its name.
+const TRAILING_EPISODE_NOTE = /\s*\(?\b(?:pt|part)\b\.?\s*[\p{L}\p{N}]+\)?\s*$/iu
+
+/**
+ * A guest the text knows only by a first name or handle plus the channel they publish
+ * under (Paul, 2026-11-08: `Derek: More Plates, More Dates` is ONE guest, written
+ * `Derek, More Plates More Dates`). Returns that one written form, or null when `name`
+ * is not that shape: the channel must be two or more capitalised words, so a credential
+ * (`Sam, M.D.`), an abbreviation (`Derek from MPMD`) or a surname is never taken for one.
+ */
+export function pseudonymForm(name: string): string | null {
+  const m = PSEUDONYM.exec(name.trim())
+  if (!m) return null
+  const channel = m[2].replace(TRAILING_EPISODE_NOTE, '').replace(/[^\p{L}\p{N}'’ ]+/gu, ' ').replace(/\s+/g, ' ').trim()
+  const words = channel.split(' ')
+  if (words.length < 2 || !words.every(w => /^\p{Lu}/u.test(w))) return null
+  if (EPISODE_NOTE.test(channel) || /\d/.test(channel) || CONNECTIVE.test(channel) || isCredentialOnly(m[2])) return null
+  return `${m[1]}, ${channel}`
+}
+
+/**
+ * A guest the text names by first name and the INITIALS of a channel listed in
+ * `CHANNEL_ALIASES` (`Derek from MPMD`, `Derek (MPMD)`, `Derek, MPMD`), or that channel
+ * written out beside the first name (`Derek from More Plates More Dates`, `Derek: More
+ * Plates, More Dates`), so the result does not depend on whether the model chose to carry
+ * the channel. `raw` is what the model proposed: the bare first name (`Derek`), or
+ * `Derek from MPMD` copied from the title. Returns the one written form `Derek, More Plates More Dates`, or null when `raw`
+ * is not such a first name or the text does not write that first name next to the channel,
+ * so a first name alone, or beside a channel nobody confirmed, is left to the normal path.
+ */
+export function channelAliasForm(raw: string, text: string): string | null {
+  const m = /^(\p{L}[\p{L}'’-]*)(?:\s+(?:from|of|at)\s+(\p{Lu}[\p{Lu}\p{N}]+))?$/u.exec(raw.trim())
+  if (!m) return null
+  const first = foldForMatch(m[1])
+  for (const [initials, channel] of Object.entries(CHANNEL_ALIASES)) {
+    if (m[2] && m[2] !== initials) continue
+    // The channel written out may carry the text's own commas (`More Plates, More Dates`).
+    const marker = `${initials}|${channel.trim().split(/\s+/).join('[\\s,]+')}`
+    const re = new RegExp(`(?<![\\p{L}\\p{N}'’-])(\\p{L}[\\p{L}'’-]*)\\s*(?:from|of|at|\\(|[:,–—|-])\\s*(?:${marker})(?![\\p{L}\\p{N}'’-])`, 'gu')
+    for (const hit of text.matchAll(re)) {
+      if (foldForMatch(hit[1]) === first) return `${m[1]}, ${channel}`
+    }
+  }
+  return null
+}
+
+/**
+ * A guest the model gave by first name only, when the show notes write the whole name:
+ * the title says `Dr. Darya and Kevin Rose`, the notes say `Darya Rose`, and the model
+ * copies the title's one word. The notes' two-word form wins, but only when it is
+ * unambiguous: the first name occurs in the NOTES (never the title, whose Title Case
+ * would read `Matt Talks` as a name) followed by one capitalised word, always the same
+ * word, and the pair reads as a name. A pseudonym (`Derek: More Plates`, `Derek from
+ * MPMD`) has punctuation or a lower-case word after the first name and stays as it was.
+ */
+export function fullerName(name: string, ep: GuestEpisode): string {
+  if (name.trim().split(/\s+/).length !== 1) return name
+  const first = foldForMatch(name)
+  const found = new Set<string>()
+  const notes = cleanDescription(ep.description)
+  for (const m of notes.matchAll(/(?<![\p{L}\p{N}])(\p{Lu}[\p{L}'’-]*)[ \t]+(\p{Lu}[\p{L}'’-]*)(?![\p{L}\p{N}'’-])/gu)) {
+    if (foldForMatch(m[1]) === first) found.add(`${m[1]} ${m[2]}`)
+  }
+  if (found.size !== 1) return name
+  const full = [...found][0]
+  return notANameReason(full) ? name : full
+}
+
+/**
+ * The `Dr.`/`Prof.` the title writes before a guest's first name, for a guest whose
+ * full name the title does not hold (`Dr. Darya and …` in the title, `Darya Rose` in the
+ * notes). Empty when the title writes none or already holds the name.
+ */
+function titleHonorific(name: string, title: string): string {
+  if (appearsIn(name, title)) return ''
+  const first = foldForMatch(name).split(' ')[0]
+  for (const m of title.matchAll(/(?<![\p{L}\p{N}])\p{L}[\p{L}'’-]*(?![\p{L}\p{N}'’-])/gu)) {
+    if (foldForMatch(m[0]) === first) {
+      const h = honorificBefore(title, m.index as number)
+      if (h) return h
+    }
+  }
+  return ''
 }
 
 export type Validation =
@@ -331,18 +480,41 @@ export function validateGuests(show: Show, ep: GuestEpisode, proposed: readonly 
   const droppedHost: string[] = []
   for (const raw of proposed) {
     if (isHostName(show, raw)) { droppedHost.push(raw); continue }
-    const name = stripHonorifics(raw)
+    // A credential on its own (`M.P.H.`) is not a guest; it belongs to the name before it, which the text supplies.
+    if (isCredentialOnly(raw)) continue
+    // `Derek` / `Derek from MPMD`, with the text writing the initials of a confirmed channel: the same pseudonymous
+    // guest as `Derek: More Plates, More Dates`, written `Derek, More Plates More Dates`. The text's own words are the check.
+    const aliased = channelAliasForm(raw, text)
+    if (aliased) {
+      const aliasKey = foldForMatch(aliased)
+      if (!seen.has(aliasKey)) { seen.add(aliasKey); guests.push(aliased) }
+      continue
+    }
+    // A pseudonym and its channel is one name written `Derek, More Plates More Dates`, however the model punctuated
+    // it. Read it BEFORE `splitName`, which would take everything after the comma for credentials it does not know.
+    const pseudo = pseudonymForm(raw)
+    const parts = pseudo ? { honorific: '', bare: pseudo, credentials: [] as string[] } : splitName(raw)
+    const name = parts.bare
     if (!name) return { ok: false, reason: `empty name "${raw}"` }
     const bad = notANameReason(name)
     if (bad) return { ok: false, reason: `"${raw}" is not a name (${bad})` }
     if (isHostName(show, name)) { droppedHost.push(raw); continue }
-    if (!appearsIn(name, text) && !sharedSurname(name, text)) return { ok: false, reason: `"${name}" is not in the title or description` }
+    // The title's spelling of a short form comes first (`William Harris` -> `Bill Harris`): it comes FROM the
+    // text, so the check that a name appears in the text is made on it, not on what the model wrote.
     const fromTitle = titleSpelling(name, ep.title)
-    const spelled = fromTitle !== name ? fromTitle : literalSpelling(name, text)
+    if (fromTitle === name && !appearsIn(name, text) && !sharedSurname(name, text)) return { ok: false, reason: `"${name}" is not in the title or description` }
+    const literal = fromTitle !== name ? fromTitle : literalSpelling(name, text)
+    const spelled = pseudonymForm(name) === name ? (pseudonymForm(literal) ?? name) : fullerName(literal, ep)
     const key = foldForMatch(spelled)
     if (seen.has(key)) continue
     seen.add(key)
-    guests.push(spelled)
+    let written = writtenForm(spelled, ep, parts.credentials)
+    // `Dr. Darya` in the title, `Darya Rose` in the notes: the honorific the title gives comes along.
+    if (!/^(?:dr|prof|professor)\.?\s/i.test(written)) {
+      const h = titleHonorific(spelled, ep.title)
+      if (h) written = `${h} ${written}`
+    }
+    guests.push(written)
   }
   if (guests.length > MAX_GUESTS) return { ok: false, reason: `${guests.length} guests is more than ${MAX_GUESTS}` }
   return { ok: true, guests, droppedHost }
@@ -354,7 +526,8 @@ export function validateGuests(show: Show, ep: GuestEpisode, proposed: readonly 
 
 export type Decision = {
   guests: string[]
-  decided_by: 'claude' | 'fallback'
+  /** `override` = a guest list set by hand in lib/guestOverrides.ts; the model was not asked. */
+  decided_by: 'claude' | 'fallback' | 'override'
   reason: string
 }
 
@@ -364,7 +537,8 @@ export function fallbackGuests(show: Show, title: string): string[] {
   const seen = new Set<string>()
   for (const g of parseGuests(title, show.strictGuests)) {
     const key = foldForMatch(g)
-    if (!key || seen.has(key) || isHostName(show, g)) continue
+    // `M.P.H.` split off a name by the comma rule is a credential, not a guest.
+    if (!key || seen.has(key) || isHostName(show, g) || isCredentialOnly(g)) continue
     seen.add(key)
     out.push(g)
   }
@@ -395,6 +569,14 @@ export function decideEpisode(show: Show, ep: GuestEpisode, proposed: readonly s
 // ---------------------------------------------------------------------------
 // Running the batches
 // ---------------------------------------------------------------------------
+
+export function overrideDecision(o: GuestOverride): Decision {
+  return {
+    guests: [...o.guests],
+    decided_by: 'override',
+    reason: `guest list set by hand (lib/guestOverrides.ts): ${o.why}`,
+  }
+}
 
 /** One model call: prompt in, parsed JSON (or text) out. The script supplies `claudeJson`. */
 export type GuestLlm = (system: string, user: string) => Promise<unknown>
@@ -436,10 +618,18 @@ export async function resolveGuests(
   show: Show,
   episodes: readonly GuestEpisode[],
   llm: GuestLlm,
-  opts: { batchSize?: number; onBatch?: (done: number, total: number) => void } = {}
+  opts: { batchSize?: number; onBatch?: (done: number, total: number) => void; overrides?: ReadonlyMap<string, GuestOverride> } = {}
 ): Promise<ResolveResult> {
   const decisions = new Map<string, Decision>()
-  const batches = chunk(episodes, opts.batchSize ?? BATCH_SIZE)
+  // A guest list set by hand is final: the model is not asked, so its variance cannot undo it.
+  const overrides = opts.overrides ?? overridesByKey()
+  const toAsk: GuestEpisode[] = []
+  for (const ep of episodes) {
+    const o = overrides.get(ep.id)
+    if (o) decisions.set(ep.id, overrideDecision(o))
+    else toAsk.push(ep)
+  }
+  const batches = chunk(toAsk, opts.batchSize ?? BATCH_SIZE)
   const stats = { total: batches.length, asked: 0, failed: 0 }
   let stopped: Stopped | null = null
 
@@ -505,7 +695,8 @@ export type GuestPlan = {
   model: string
   /** Null when every batch was asked; otherwise why the run stopped (such a plan is not applied). */
   stopped: Stopped | null
-  counts: { episodes: number; claude: number; fallback: number; no_row: number; changed: number }
+  /** `override` is absent in plans made before the override list existed. */
+  counts: { episodes: number; claude: number; fallback: number; no_row: number; changed: number; override?: number }
   rows: PlanRow[]
 }
 
@@ -515,8 +706,21 @@ export function sameAuthors(a: readonly string[] | null | undefined, b: readonly
   return x.length === y.length && x.every((v, i) => v === y[i])
 }
 
-/** Order-, case- and accent-insensitive: the same guests. (The gold-set comparison.) */
+/**
+ * The same people: order, case, accents, honorifics and credentials ignored (the gold-set
+ * comparison of WHO). `Sally Greenwald, M.D., M.P.H.` is the same person as `Sally Greenwald`.
+ */
 export function sameGuestSet(a: readonly string[], b: readonly string[]): boolean {
+  const x = a.map(n => foldForMatch(bareName(n))).sort()
+  const y = b.map(n => foldForMatch(bareName(n))).sort()
+  return x.length === y.length && x.every((v, i) => v === y[i])
+}
+
+/**
+ * The same guests written the same way: order, case, accents and punctuation ignored, but
+ * every honorific and credential counts (`Sally Greenwald, M.D.` is not `Sally Greenwald, M.D., M.P.H.`).
+ */
+export function sameWrittenGuests(a: readonly string[], b: readonly string[]): boolean {
   const x = a.map(foldForMatch).sort()
   const y = b.map(foldForMatch).sort()
   return x.length === y.length && x.every((v, i) => v === y[i])
@@ -558,11 +762,62 @@ export function buildPlan(args: {
       episodes: rows.length,
       claude: rows.filter(r => r.decided_by === 'claude').length,
       fallback: rows.filter(r => r.decided_by === 'fallback').length,
+      override: rows.filter(r => r.decided_by === 'override').length,
       no_row: rows.filter(r => r.source_id === null).length,
       changed: rows.filter(r => r.changed).length,
     },
     rows,
   }
+}
+
+/**
+ * The plan with every hand-set guest list written over what it proposed. `--apply` runs
+ * this first, so a plan made before an override existed (or by a model that varied) still
+ * cannot undo a row a person set by hand. Rows with no override are untouched; a changed
+ * row's `changed` flag is recomputed against the row's recorded current authors, so the
+ * stale-plan guard in `checkPlan` still compares the live row with what the plan SAW.
+ */
+export function withOverrides(
+  plan: GuestPlan,
+  show: Show,
+  overrides: ReadonlyMap<string, GuestOverride> = overridesByKey()
+): { plan: GuestPlan; replaced: PlanRow[] } {
+  const replaced: PlanRow[] = []
+  const rows = plan.rows.map(r => {
+    const o = overrides.get(r.key)
+    if (!o) return r
+    const proposed = [show.host, ...o.guests]
+    const d = overrideDecision(o)
+    const next: PlanRow = {
+      ...r,
+      proposed_authors: proposed,
+      decided_by: d.decided_by,
+      reason: d.reason,
+      changed: r.source_id !== null && !sameAuthors(r.current_authors, proposed),
+    }
+    if (!sameAuthors(r.proposed_authors, proposed) || r.changed !== next.changed) replaced.push(next)
+    return next
+  })
+  const counts = {
+    ...plan.counts,
+    override: rows.filter(r => r.decided_by === 'override').length,
+    claude: rows.filter(r => r.decided_by === 'claude').length,
+    fallback: rows.filter(r => r.decided_by === 'fallback').length,
+    changed: rows.filter(r => r.changed).length,
+  }
+  return { plan: { ...plan, rows, counts }, replaced }
+}
+
+/**
+ * Has anyone read or corrected this row's guests yet? True for a library row that is not
+ * yet extracted and whose guests are still exactly what the ingest's title rule wrote, so
+ * `--new` asks Claude about the batch just ingested and nothing older. A row a person fixed,
+ * or Claude already changed, differs from the title rule and is left alone.
+ */
+export function isUnreadRow(show: Show, row: SourceRow & { processing_status?: string | null }, title: string): boolean {
+  if (row.processing_status === 'succeeded') return false
+  const guests = (row.authors ?? []).slice(1)
+  return sameGuestSet(guests, fallbackGuests(show, title)) && !!row.authors && row.authors.length >= 1 && isHostName(show, row.authors[0])
 }
 
 /** A plan file read back from disk: shape-checked, so `--apply` never trusts a malformed or hand-edited file blindly. */

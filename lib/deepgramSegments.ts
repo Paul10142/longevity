@@ -20,7 +20,7 @@
  * lib/transcriptSegments.ts needs no change.
  */
 
-import { foldForMatch } from './guestNames'
+import { bareName, bareNames, foldForMatch } from './personName'
 
 export type DgSegment = { text: string; speaker: number | null; start_ms: number; end_ms: number }
 export type LabelledSegment = { text: string; start_ms: number; end_ms: number }
@@ -48,8 +48,14 @@ export type GuestChoice = {
  *   - Row has no authors value (null or empty): the manifest guests, as before.
  *   - No row: the manifest guests too (callers skip such an episode anyway).
  *
- * `manifestGuests` is passed through unchanged, so the old behaviour is exactly
- * what a null `authors` gets.
+ * LABELS ARE BARE. `authors` carries each guest as the show writes them, credentials
+ * included (`Sally Greenwald, M.D., M.P.H.`); the label is `Sally Greenwald:`. A
+ * credential in a label would make one person two speakers, and corroboration counts
+ * distinct speakers. So every name returned here has its `Dr.`/credentials removed
+ * (`bareName`), and a credential left standing alone by the old comma split
+ * (`M.P.H.`) is dropped rather than counted as a second guest, which would stop the
+ * guest being named at all (`nameSpeakers` needs exactly one). The manifest's names
+ * get the same treatment.
  */
 export function guestsForLabels(args: {
   row: { authors: string[] | null } | null | undefined
@@ -60,17 +66,10 @@ export function guestsForLabels(args: {
   const { row, manifestGuests, host } = args
   const authors = row?.authors?.filter(a => typeof a === 'string' && a.trim() !== '')
   if (authors && authors.length > 0) {
-    const seen = new Set([foldForMatch(authors[0]), foldForMatch(host)])
-    const guests: string[] = []
-    for (const a of authors.slice(1)) {
-      const k = foldForMatch(a)
-      if (!k || seen.has(k)) continue
-      seen.add(k)
-      guests.push(a.trim())
-    }
-    return { guests, from: 'authors' }
+    const hostKeys = new Set([foldForMatch(bareName(authors[0])), foldForMatch(host)])
+    return { guests: bareNames(authors.slice(1), name => hostKeys.has(foldForMatch(name))), from: 'authors' }
   }
-  if (manifestGuests) return { guests: [...manifestGuests], from: 'manifest' }
+  if (manifestGuests) return { guests: bareNames(manifestGuests), from: 'manifest' }
   return { guests: [], from: 'none' }
 }
 

@@ -1,5 +1,5 @@
 {
- "about": "Hand-labelled gold set for Claude guest-name extraction (lib/guestNames.ts). Labelled by reading each title and its show notes. `expected` is the guest list a person would write (full names as the TITLE spells them, no honorifics, never the show host, [] for solo/AMA/Q&A/summary episodes); compared case-, accent- and order-insensitively. `unsure: true` marks labels a human should confirm. `notes` is the show-notes text the model is shown (HTML stripped, first 600 characters). `group` says why the episode was picked: rules-differ (legacy and strict title rules disagree), drive-credential-junk-or-multi, drive-ama-or-solo, fmf-title-forms, huberman-special, random-agree (seeded random sample where the rules agree).",
+ "about": "Hand-labelled gold set for Claude guest-name extraction (lib/guestNames.ts). Labelled by reading each title and its show notes. `expected` is WHO the guests are: the guest list a person would write (full names as the TITLE spells them, no honorifics or credentials, never the show host, [] for solo/AMA/Q&A/summary episodes); compared case-, accent- and order-insensitively. `expected_full` (only where it differs from `expected`) is how the show WRITES each guest, hand-checked against the title (or, when the title names nobody, the notes): `Dr.`/`Prof.` and every credential kept, in the show's own punctuation, one string per guest (Paul, 2026-11-08: keep their titles). `unsure: true` marks labels a human should confirm. `notes` is the show-notes text the model is shown (HTML stripped, first 600 characters). `group` says why the episode was picked: rules-differ (legacy and strict title rules disagree), drive-credential-junk-or-multi, drive-ama-or-solo, fmf-title-forms, huberman-special, random-agree (seeded random sample where the rules agree).",
  "episodes": [
   {
    "show": "attia",
@@ -9,6 +9,9 @@
    "notes": "In this five-part series, Thomas Dayspring, M.D., FACP, FNLA, a world-renowned expert in lipidology, and one of Peter’s most important clinical mentors, shares his wealth of knowledge on the subject of lipids. In Part III, Peter and Tom dig into why “reverse cholesterol transport” is a lot more nuanced than what most of us are taught, lipid transport, apolipoproteins, and more. In addition, this episode highlights the complexity of HDL and a discussion about the CETP inhibitor trials. We discuss: Reverse cholesterol transport [1:40]; Lipid transportation, apolipoproteins, VLDL, IDL, and LDL pa…",
    "expected": [
     "Tom Dayspring"
+   ],
+   "expected_full": [
+    "Tom Dayspring, M.D., FACP, FNLA"
    ],
    "note": "old-format title \"#22 – Name, M.D., FACP, FNLA – Part III of V\": both rules find no guest"
   },
@@ -20,6 +23,9 @@
    "notes": "To support Tom’s mission and work, please visit: https://africanmissionhealthcare.org/donation/catena/ . In this episode, Tom Catena, a missionary physician who runs Mother of Mercy Hospital in the Nuba Mountains in Sudan, describes some of his extraordinary work as the only doctor in a remote, war-torn region of Africa. In terms of individual lives saved, you could argue that there is no other person on the front lines doing more than Tom. Additionally, we explore the manner in which the Nuba people die, which is in striking contrast to the ubiquity of chronic disease and self-harm in the Wes…",
    "expected": [
     "Tom Catena"
+   ],
+   "expected_full": [
+    "Tom Catena, M.D."
    ]
   },
   {
@@ -39,6 +45,9 @@
    "notes": "In this episode, Robert Sapolsky, Ph.D., discusses the widespread impact of stress on our physical and emotional health as well as the mechanisms by which it can precipitate chronic illness, dementia, depression, and more. He also provides insight into the factors that contribute to the stress response (and our ability to handle it) such as social rank, personality, environment, and genetics. Lastly, we discuss how our behavior is altered in the face of stress and how that not only has a pervasive effect on a personal level, but also on society as a whole in how we interact with each other. Fu…",
    "expected": [
     "Robert Sapolsky"
+   ],
+   "expected_full": [
+    "Robert Sapolsky, Ph.D."
    ]
   },
   {
@@ -59,6 +68,9 @@
    "notes": "In this episode, radiologist/engineer, Raj Attariwala, explains how he was able to apply his engineering background to create a unique MRI scanner that is capable of constructing whole-body images with a resolution that is unmatched in the industry. Peter and Raj discuss the implications of such a robust, radiation-free imaging tool on the early detection of cancer. They dive deep into cancer screening and define terms such as sensitivity and specificity that are necessary to really understand this complex space. They then describe the biggest risks involved in this type of screening (false po…",
    "expected": [
     "Rajpaul Attariwala"
+   ],
+   "expected_full": [
+    "Rajpaul Attariwala, M.D., Ph.D."
    ],
    "note": "title says Rajpaul, the notes say Raj: the title spelling wins",
    "unsure": true
@@ -82,6 +94,9 @@
    "expected": [
     "Bill Harris"
    ],
+   "expected_full": [
+    "Bill Harris, Ph.D."
+   ],
    "note": "old-format title \"#83 - Name, Ph.D.: topic\": both rules find no guest"
   },
   {
@@ -102,6 +117,9 @@
    "notes": "Gerald Shulman is a Professor of Medicine, Cellular & Molecular Physiology, and the Director of the Diabetes Research Center at Yale. His pioneering work on the use of advanced technologies to analyze metabolic flux within cells has greatly contributed to the understanding of insulin resistance and type 2 diabetes. In this episode, Gerald clarifies what insulin resistance means as it relates to the muscle and the liver, and the evolutionary reason for its existence. He goes into depth on mechanisms that lead to and resolve insulin resistance, like the role of diet, exercise, and pharmacologica…",
    "expected": [
     "Gerald Shulman"
+   ],
+   "expected_full": [
+    "Gerald Shulman, M.D., Ph.D."
    ]
   },
   {
@@ -112,6 +130,9 @@
    "notes": "John Ioannidis is a physician, scientist, writer, and a Stanford University professor who studies scientific research itself, a process known as meta-research. In this episode, John discusses his staggering finding that the majority of published research is actually incorrect. Using nutritional epidemiology as the poster child for irreproducible findings, John describes at length the factors that play into these false positive results and offers numerous insights into how science can course correct. We discuss: John’s background, and the synergy of mathematics, science, and medicine (2:10); Wh…",
    "expected": [
     "John Ioannidis"
+   ],
+   "expected_full": [
+    "John Ioannidis, M.D., D.Sc."
    ],
    "note": "old-format title: both rules find no guest"
   },
@@ -156,6 +177,9 @@
    "notes": "Iñigo San-Millán is an internationally renowned applied physiologist and a previous guest on The Drive . His research and clinical work focuses on exercise-related metabolism, metabolic health, diabetes, cancer metabolism, nutrition, sports performance, and critical care. In this episode, Iñigo describes how his work with Tour de France winner Tadej Pogačar has provided insights into the amazing potential of elite athletes from a performance and metabolic perspective. He speaks specifically about lactate levels, fat oxidation, how carbohydrates in food can affect our lactate and how equal lact…",
    "expected": [
     "Iñigo San-Millán"
+   ],
+   "expected_full": [
+    "Iñigo San-Millán, Ph.D."
    ]
   },
   {
@@ -167,6 +191,9 @@
    "expected": [
     "Iñigo San-Millán"
    ],
+   "expected_full": [
+    "Iñigo San-Millán, Ph.D."
+   ],
    "note": "\"(Pt. 2)\" is not part of the name"
   },
   {
@@ -177,6 +204,9 @@
    "notes": "Layne Norton holds a Ph.D. in nutritional sciences and is a physique coach, natural bodybuilder, and previous guest on The Drive . In the first half of this episode, Layne dives deep into the topic of energy balance, including the role that macronutrients and calories play in weight loss. He describes how many people struggle with tracking food and calories on their own across a variety of diets and how all of this can impact nutritional habits and behaviors. In the second half of the episode, Layne discusses the importance of protein and weightlifting for improving one’s body composition and…",
    "expected": [
     "Layne Norton"
+   ],
+   "expected_full": [
+    "Layne Norton, Ph.D."
    ]
   },
   {
@@ -235,7 +265,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"Derek: More Plates, More Dates\": both rules read two junk guests"
+   "note": "\"Derek: More Plates, More Dates\": both rules read two junk guests Paul 2026-11-08: a pseudonymous guest keeps the channel name, written as one name; the speaker label stays the bare first name.",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "attia",
@@ -245,6 +278,9 @@
    "notes": "Stuart McGill is a distinguished professor emeritus at the University of Waterloo and the chief scientific officer at Backfitpro where he specializes in evaluating complex cases of lower back pain from across the globe. In this episode, Stuart engages in a deep exploration of lower back pain, starting with the anatomy of the lower back, the workings of the spine, the pathophysiology of back pain, and areas of vulnerability. He challenges the concept of nonspecific back pain, emphasizing the importance of finding a causal relationship between injury and pain. Stuart highlights compelling case s…",
    "expected": [
     "Stuart McGill"
+   ],
+   "expected_full": [
+    "Stuart McGill, Ph.D."
    ],
    "note": "legacy also lists \"Ph.D. (#287 rebroadcast)\""
   },
@@ -267,7 +303,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"More Plates More Dates Pt.2\" is his business and a part note: ONE guest"
+   "note": "\"More Plates More Dates Pt.2\" is his business and a part note: ONE guest Paul 2026-11-08: a pseudonymous guest keeps the channel name, written as one name; the speaker label stays the bare first name.",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "attia",
@@ -325,6 +364,9 @@
    "expected": [
     "Susan Desmond-Hellmann"
    ],
+   "expected_full": [
+    "Susan Desmond-Hellmann, M.D., M.P.H."
+   ],
    "note": "both rules list \"M.P.H.\" as a guest"
   },
   {
@@ -345,6 +387,9 @@
    "expected": [
     "Kyler Brown"
    ],
+   "expected_full": [
+    "Kyler Brown, D.C."
+   ],
    "note": "both rules list \"D.C.\" as a guest"
   },
   {
@@ -357,6 +402,10 @@
     "BJ Miller",
     "Bridget Sumser"
    ],
+   "expected_full": [
+    "BJ Miller, M.D.",
+    "Bridget Sumser, L.C.S.W."
+   ],
    "note": "both rules list \"L.C.S.W.\" as a guest"
   },
   {
@@ -368,6 +417,10 @@
    "expected": [
     "Tanuj Nakra",
     "Suzan Obagi"
+   ],
+   "expected_full": [
+    "Tanuj Nakra, M.D.",
+    "Suzan Obagi, M.D."
    ],
    "note": "two guests"
   },
@@ -388,6 +441,9 @@
    "notes": "Charles Duhigg is a Pulitzer Prize-winning journalist and best-selling author known for distilling complex neuroscience and psychology into practical strategies for behavior change, performance, and decision-making. In this episode, Charles explores the neuroscience behind habit formation, including how cue-routine-reward loops drive nearly half of our daily actions and why positive reinforcement is far more effective than punishment. He explains how institutions like the military and Alcoholics Anonymous engineer environments to change behavior at scale, as well as discussing the limits of wi…",
    "expected": [
     "Charles Duhigg"
+   ],
+   "expected_full": [
+    "Charles Duhigg, M.B.A"
    ],
    "note": "both rules list \"M.B.A\" as a guest"
   },
@@ -412,6 +468,9 @@
    "notes": "Sally Greenwald is an OB-GYN who specializes in women’s sexual health from a hormonal and physiologic perspective, with expertise spanning desire, arousal, pelvic floor function, contraception, and menopause care. In this episode, she explains why sexual health is a vital component of overall well-being, exploring topics such as the drivers of desire, the anatomy of sexual function, myths and realities around orgasm, and the role of hormones in perimenopause and menopause. She also covers vaginal and pelvic health, pain with sex, evidence-based therapies for low desire and arousal, how contrac…",
    "expected": [
     "Sally Greenwald"
+   ],
+   "expected_full": [
+    "Sally Greenwald, M.D., M.P.H."
    ],
    "note": "both rules list \"M.P.H.\" as a guest"
   },
@@ -442,6 +501,9 @@
    "expected": [
     "Jeff Cavaliere"
    ],
+   "expected_full": [
+    "Jeff Cavaliere, M.S.P.T., C.S.C.S."
+   ],
    "note": "both rules list \"M.S.P.T.\" and \"C.S.C.S.\" as guests"
   },
   {
@@ -462,6 +524,9 @@
    "notes": "Dr. Aubrey de Grey Dr. Aubrey de Grey is a biomedical gerontologist and the founder of the SENS research foundation which aims to find technologies that can repair the various types of damage that occur during the aging process. In this episode, we discuss... 00:00:00 - Introduction 00:02:27 - How to understand aging 00:08:14 - Epigenetic modifications accommodate cellular aging 00:18:24 - Inflammation is a double-edged sword 00:24:00 - Parabiosis has the potential to slow aging 00:31:35 - Lifestyle factors can only extend lifespan so far 00:36:49 - Future of Crispr/Cas9 in aging research 00:4…",
    "expected": [
     "Aubrey de Grey"
+   ],
+   "expected_full": [
+    "Dr. Aubrey de Grey"
    ]
   },
   {
@@ -472,6 +537,9 @@
    "notes": "Dr. Ronald Krauss Dr. Ronald Krauss, M.D. is the director of atherosclerosis research at Children's Hospital Oakland Research Institute, Adjunct Professor at UCSF and UC Berkeley. Dr. Krauss is really one of the pioneering scientists that changed the way we all think about cholesterol and saturated fat. He developed an assay that allows the quantification of low density lipoprotein particle size and concentration (known to the wider world as LDL cholesterol) based on a technique which determines the size of the particle based on physics...meaning the speed at which it flies through the air. In…",
    "expected": [
     "Ronald Krauss"
+   ],
+   "expected_full": [
+    "Dr. Ronald Krauss"
    ],
    "note": "title has no pipe: \"Dr. Ronald Krauss on …\""
   },
@@ -484,6 +552,10 @@
    "expected": [
     "Erica Sonnenburg",
     "Justin Sonnenburg"
+   ],
+   "expected_full": [
+    "Dr. Erica Sonnenburg",
+    "Dr. Justin Sonnenburg"
    ],
    "note": "two guests who share a surname"
   },
@@ -506,6 +578,10 @@
     "Darya Rose",
     "Kevin Rose"
    ],
+   "expected_full": [
+    "Dr. Darya Rose, PhD",
+    "Kevin Rose"
+   ],
    "note": "title says \"Dr. Darya and Kevin Rose\"; the notes give Darya Rose",
    "unsure": true
   },
@@ -517,6 +593,9 @@
    "notes": "David A. Sinclair David A. Sinclair, PhD, is a professor in the Department of Genetics at Harvard Medical School and co-director of the Paul F. Glenn Center for the Biological Mechanisms of Aging. He is the co-founder of the journal Aging , where he serves as co-chief editor. Dr. Sinclair's work focuses on understanding the mechanisms that drive human aging and identifying ways to slow or reverse aging's effects. In particular, he has examined the role of sirtuins in disease and aging, with special emphasis on how sirtuin activity is modulated by compounds produced by the body as well as those…",
    "expected": [
     "David Sinclair"
+   ],
+   "expected_full": [
+    "Dr. David Sinclair"
    ],
    "note": "title says David Sinclair, the notes say David A. Sinclair"
   },
@@ -559,6 +638,10 @@
    "notes": "Dr. Peter Diamandis is a serial entrepreneur and founder of XPRIZE, a non-profit organization that designs and conducts global competitions that incentivize the development of technological breakthroughs that propel humanity toward a better future. Tony Robbins is an entrepreneur, bestselling author, philanthropist, and business strategist. He provides business and life coaching to millions of people worldwide through his audio programs, educational videos, and live seminars. Diamandis and Robbins are a dynamic duo, having paired up with co-author Dr. Robert Hariri to write Life Force , a best…",
    "expected": [
     "Peter Diamandis",
+    "Tony Robbins"
+   ],
+   "expected_full": [
+    "Peter Diamandis, MD",
     "Tony Robbins"
    ],
    "note": "two guests"
@@ -630,6 +713,9 @@
    "expected": [
     "Andrew Huberman"
    ],
+   "expected_full": [
+    "Andrew Huberman, PhD"
+   ],
    "note": "another show's host is a guest here"
   },
   {
@@ -649,6 +735,9 @@
    "notes": "Insulin resistance silently shapes the trajectory of nearly every major chronic disease, yet it's often overlooked until blood sugar abnormalities become obvious. In this episode, Dr. Ben Bikman exposes the dietary culprits that drive metabolic dysfunction and highlights actionable, evidence-based tactics for improving metabolic health. Ben also addresses pressing questions about popular weight loss medications like Ozempic and other GLP-1 agonists: Are they groundbreaking solutions, or shortcuts with hidden metabolic consequences? Timestamps: (0:00) Introduction (4:51) Can you be insulin resi…",
    "expected": [
     "Ben Bikman"
+   ],
+   "expected_full": [
+    "Dr. Ben Bikman"
    ]
   },
   {
@@ -660,7 +749,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"Derek from MPMD\" is one guest, Derek"
+   "note": "\"Derek from MPMD\" is one guest, Derek. Paul 2026-11-08: the same Derek as Drive #274 and #291, so he is written with the channel, as one name; MPMD is the channel's initials (CHANNEL_ALIASES).",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "fmf",
@@ -670,6 +762,9 @@
    "notes": "The strongest anti-aging strategy may be less about dramatic reversal and more about removing what accelerates aging in the first place. In this episode, Dr. Steve Horvath maps out the science behind biological age and how aging clocks are changing the way researchers evaluate longevity interventions. He also explains why omega-3s, a daily multivitamin, and sufficient vegetable intake stand out as evidence-backed, compounding levers for shifting biological age over time. Timestamps: (00:00) Introduction (07:05) What exactly is biological aging? (12:39) Do all aging clocks measure the same thin…",
    "expected": [
     "Steve Horvath"
+   ],
+   "expected_full": [
+    "Dr. Steve Horvath"
    ]
   },
   {
@@ -680,6 +775,9 @@
    "notes": "In this episode 2 of a 6-part special series, Andy Galpin, PhD, professor of kinesiology at California State University, Fullerton and world expert on exercise science, explains optimal protocols for increasing strength and causing hypertrophy (muscle growth), as well as for increasing speed and power. He explains the training principles and underlying mechanisms for reaching these goals. Our conversation covers a breadth of training topics, including selecting the number of repetitions, sets, inter-set and inter-workout rest periods, warm-ups, exercise cadence, breathing, stretching, recovery…",
    "expected": [
     "Andy Galpin"
+   ],
+   "expected_full": [
+    "Dr. Andy Galpin"
    ],
    "note": "GUEST SERIES"
   },
@@ -692,6 +790,9 @@
    "expected": [
     "Peter Attia"
    ],
+   "expected_full": [
+    "Dr. Peter Attia"
+   ],
    "note": "Journal Club: the notes say \"my guest is ... Dr. Peter Attia\", and he is not this show's host",
    "unsure": true
   },
@@ -703,6 +804,9 @@
    "notes": "In this Huberman Lab Essentials episode, my guest is Dr. Kyle Gillett, MD, a dual board-certified physician in family medicine and obesity medicine and an expert in optimizing hormone levels to improve overall health. We explain how to improve hormone levels across the lifespan in both men and women using behavioral, nutritional and exercise-based tools. We also discuss common clinical topics, including hormone testing, PCOS, hair loss, testosterone replacement therapy (TRT) and peptides, focusing on potential benefits, tradeoffs and risks. Read the episode show notes at hubermanlab.com. Thank…",
    "expected": [
     "Kyle Gillett"
+   ],
+   "expected_full": [
+    "Dr. Kyle Gillett"
    ]
   },
   {
@@ -723,6 +827,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker, PhD"
+   ],
    "note": "the title has no guest; the notes say \"my guest is Dr. Matt Walker\""
   },
   {
@@ -734,6 +841,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker"
+   ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
   {
@@ -744,6 +854,9 @@
    "notes": "In this episode, my guest is Dr. Vivek Murthy, M.D., the acting U.S. Surgeon General who earned his undergraduate degree from Harvard and his M.D. from Yale School of Medicine. We discuss nutrition, food additives, social media and mental health, public health initiatives to combat the crisis of social isolation, the obesity crisis, addiction and other pressing issues in public health. Dr. Murthy explains the role of the U.S. government in promoting specific public health issues and the steps needed to rebuild public trust in scientific and medical information. We also discuss health care acce…",
    "expected": [
     "Vivek Murthy"
+   ],
+   "expected_full": [
+    "Dr. Vivek Murthy"
    ],
    "note": "role prefix \"U.S. Surgeon General\" is not part of the name"
   },
@@ -765,6 +878,9 @@
    "expected": [
     "Paul Conti"
    ],
+   "expected_full": [
+    "Dr. Paul Conti"
+   ],
    "note": "GUEST SERIES"
   },
   {
@@ -775,6 +891,9 @@
    "notes": "This is episode 2 of a 4-part special series on mental health with Dr. Paul Conti, M.D., a Stanford and Harvard-trained psychiatrist currently running a clinical practice, the Pacific Premiere Group. Dr. Conti explains specific tools for how to overcome life’s challenges using a framework of self-inquiry that explores all the key elements of self, including defense mechanisms, behaviors, self-awareness and attention. We also discuss our internal driving forces, how to align them and ultimately, how to cultivate a powerful “generative drive” of positive, aspirational pursuits. Dr. Conti also ex…",
    "expected": [
     "Paul Conti"
+   ],
+   "expected_full": [
+    "Dr. Paul Conti"
    ],
    "note": "GUEST SERIES"
   },
@@ -796,6 +915,9 @@
    "expected": [
     "Paul Conti"
    ],
+   "expected_full": [
+    "Dr. Paul Conti"
+   ],
    "note": "GUEST SERIES"
   },
   {
@@ -807,6 +929,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker"
+   ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
   {
@@ -817,6 +942,9 @@
    "notes": "In this journal club episode, my guest is Dr. Peter Attia, M.D., a Stanford and Johns Hopkins-trained physician focusing on healthspan and lifespan and the host of The Drive podcast. We each present a peer-reviewed scientific paper chosen because it contains novel, interesting, and actionable data. First, we discuss a paper on how bright light exposure at sunrise and throughout the day and dark exposure at night independently improve mental health and can offset some of the major symptoms of mental health disorders such as depression and anxiety. Then, we discuss an article that explores a nov…",
    "expected": [
     "Peter Attia"
+   ],
+   "expected_full": [
+    "Dr. Peter Attia"
    ],
    "note": "Journal Club: the notes say \"my guest is Dr. Peter Attia\", and he is not this show's host",
    "unsure": true
@@ -830,6 +958,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker"
+   ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
   {
@@ -840,6 +971,9 @@
    "notes": "This is episode 6 of a 6-part special series on sleep with Dr. Matthew Walker, Ph.D., a professor of neuroscience and psychology at the University of California, Berkeley and a leading public educator on sleep for mental and physical health, learning and human performance. In this episode, we discuss dreaming, including the biological mechanism of dreams, what dreams mean and their role in daytime life. We explore how dreams can enhance our creativity and emotional well-being and help us resolve various challenges and dilemmas. We discuss how to remember and interpret your dreams and the abstr…",
    "expected": [
     "Matt Walker"
+   ],
+   "expected_full": [
+    "Dr. Matt Walker"
    ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
@@ -852,6 +986,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker"
+   ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
   {
@@ -863,6 +1000,9 @@
    "expected": [
     "Andy Galpin"
    ],
+   "expected_full": [
+    "Dr. Andy Galpin"
+   ],
    "note": "GUEST SERIES"
   },
   {
@@ -873,6 +1013,9 @@
    "notes": "This is episode 3 of a 4-part special series on mental health with Dr. Paul Conti, M.D., a psychiatrist who did his medical training at Stanford School of Medicine and residency at Harvard Medical School. He is the author of the book, “Trauma: The Invisible Epidemic.” Dr. Conti explains how to find, develop and strengthen healthy relationships — including romantic relationships, work and colleague relationships, and friendships. He explains a roadmap of the conscious and unconscious mind that can allow anyone to navigate conflicts better and set healthy boundaries in relationships. We also dis…",
    "expected": [
     "Paul Conti"
+   ],
+   "expected_full": [
+    "Dr. Paul Conti"
    ],
    "note": "GUEST SERIES"
   },
@@ -893,6 +1036,9 @@
    "notes": "In this episode, my guest is Dr. Ellen Langer, Ph.D., professor of psychology at Harvard University and the world’s leading researcher on the mind-body connection and the power our thinking has on our physical health. She explains how specific ways of framing and asking questions about the world shape our physical health and rate of aging. Dr. Langer also explains how our perception of time and control significantly impact our rate of physical healing, hormones, immune system, and longevity. She describes mindfulness as a way of framing life, not simply a meditation or other practice, and disc…",
    "expected": [
     "Ellen Langer"
+   ],
+   "expected_full": [
+    "Dr. Ellen Langer"
    ]
   },
   {
@@ -904,6 +1050,9 @@
    "expected": [
     "Matt Walker"
    ],
+   "expected_full": [
+    "Dr. Matt Walker"
+   ],
    "note": "GUEST SERIES: the title says Matt, the notes say Matthew; the title spelling wins"
   },
   {
@@ -914,6 +1063,9 @@
    "notes": "My guest is Dr. Christopher Gardner, Ph.D., professor of medicine and director of nutrition studies at Stanford. He is known for his pioneering research on the impact of dietary interventions on weight loss and health. We compare ketogenic, vegetarian, vegan and omnivorous diets—and why there is no one-size-fits-all approach. All agree, however, that eliminating or dramatically reducing processed foods is best for health. We discuss the protein needs controversy; plant vs. animal proteins; the importance of fiber and low-sugar fermented foods for gut health and inflammation; and how diet affec…",
    "expected": [
     "Christopher Gardner"
+   ],
+   "expected_full": [
+    "Dr. Christopher Gardner"
    ]
   },
   {
@@ -924,6 +1076,9 @@
    "notes": "This is episode 3 of a 6-part special series on fitness, exercise and performance with Andy Galpin, PhD, professor of kinesiology at California State University, Fullerton. He explains protocols to improve the various kinds of physical endurance: muscular endurance, anerobic capacity, maximum aerobic output, and long duration endurance. He also explains how the body uses different energy sources (carbohydrates, proteins, fats) during rest and exercise. He also explains the mechanisms underlying fat loss and how and why exercise accelerates rates of fat loss. We cover the many concepts related…",
    "expected": [
     "Andy Galpin"
+   ],
+   "expected_full": [
+    "Dr. Andy Galpin"
    ],
    "note": "GUEST SERIES"
   },
@@ -937,6 +1092,10 @@
     "Mark Zuckerberg",
     "Priscilla Chan"
    ],
+   "expected_full": [
+    "Mark Zuckerberg",
+    "Dr. Priscilla Chan"
+   ],
    "note": "two guests"
   },
   {
@@ -948,6 +1107,9 @@
    "expected": [
     "Andy Galpin"
    ],
+   "expected_full": [
+    "Dr. Andy Galpin"
+   ],
    "note": "GUEST SERIES"
   },
   {
@@ -958,6 +1120,9 @@
    "notes": "In this episode, my guest is Dr. Cal Newport, Ph.D., a professor of computer science at Georgetown University and bestselling author of numerous books on focus and productivity and how to access the deepest possible layers of your cognitive abilities in order to do quality work and lead a more balanced life. We discuss how to avoid digital distraction, specific systems to best arrange and update your schedule, and how to curate your work and home environment. We discuss how to engage with smartphones and technology, the significant productivity cost of task-switching, and how to avoid and over…",
    "expected": [
     "Cal Newport"
+   ],
+   "expected_full": [
+    "Dr. Cal Newport"
    ]
   },
   {
@@ -977,6 +1142,9 @@
    "notes": "In this Huberman Lab Essentials episode my guest is Dr. Robert Sapolsky, PhD, a professor of biology, neurology and neurological sciences at Stanford University. We discuss different types of stress and how our perception of stress as harmful or beneficial largely depends on context. He also explains how testosterone amplifies pre-existing behaviors and tendencies, and he highlights the crucial role of estrogen in supporting brain and body health. We also discuss daily cognitive practices for stress mitigation and how modern life, influenced by social media and complex social hierarchies, shap…",
    "expected": [
     "Robert Sapolsky"
+   ],
+   "expected_full": [
+    "Dr. Robert Sapolsky"
    ]
   },
   {
@@ -988,6 +1156,9 @@
    "expected": [
     "Andy Galpin"
    ],
+   "expected_full": [
+    "Dr. Andy Galpin"
+   ],
    "note": "GUEST SERIES"
   },
   {
@@ -998,6 +1169,9 @@
    "notes": "In this episode 6 of a 6-part series on fitness, exercise and performance with Andy Galpin, PhD, professor of kinesiology at California State University, Fullerton, he explains optimal nutrition, hydration and supplementation to achieve your fitness goals. We cover macronutrient guidelines, when to eat relative to training and training fasted versus fed. Dr. Galpin describes proper hydration for before and during exercise, how dehydration and/or low electrolyte concentrations impede physical and mental performance. He discusses what supplements work best for fitness and performance, how to dec…",
    "expected": [
     "Andy Galpin"
+   ],
+   "expected_full": [
+    "Dr. Andy Galpin"
    ],
    "note": "GUEST SERIES"
   },
@@ -1036,6 +1210,9 @@
    "notes": "In this Huberman Lab Essentials episode, my guest is Dr. Andy Galpin, PhD, an exercise physiologist. We revisit the first episode of his Huberman Lab Guest Series to discuss the nine major components of physical fitness and how to assess your abilities. We explain practical tests for movement quality, power, strength, muscle mass and endurance, including grip strength, push-ups and VO2 max. We also discuss how to organize fitness testing, track progress and identify which areas to prioritize in your training to support long-term health and performance. Read the episode show notes at hubermanla…",
    "expected": [
     "Andy Galpin"
+   ],
+   "expected_full": [
+    "Dr. Andy Galpin"
    ]
   }
  ]
