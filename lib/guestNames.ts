@@ -400,10 +400,11 @@ export function pseudonymForm(name: string): string | null {
 
 /**
  * A guest the text names by first name and the INITIALS of a channel listed in
- * `CHANNEL_ALIASES` (`Derek from MPMD`, `Derek (MPMD)`, `Derek, MPMD`), or the channel
- * written out after `from`/`of`/`at` (`Derek from More Plates More Dates`). `raw` is what
- * the model proposed: the bare first name (`Derek`), or `Derek from MPMD` copied from the
- * title. Returns the one written form `Derek, More Plates More Dates`, or null when `raw`
+ * `CHANNEL_ALIASES` (`Derek from MPMD`, `Derek (MPMD)`, `Derek, MPMD`), or that channel
+ * written out beside the first name (`Derek from More Plates More Dates`, `Derek: More
+ * Plates, More Dates`), so the result does not depend on whether the model chose to carry
+ * the channel. `raw` is what the model proposed: the bare first name (`Derek`), or
+ * `Derek from MPMD` copied from the title. Returns the one written form `Derek, More Plates More Dates`, or null when `raw`
  * is not such a first name or the text does not write that first name next to the channel,
  * so a first name alone, or beside a channel nobody confirmed, is left to the normal path.
  */
@@ -413,7 +414,8 @@ export function channelAliasForm(raw: string, text: string): string | null {
   const first = foldForMatch(m[1])
   for (const [initials, channel] of Object.entries(CHANNEL_ALIASES)) {
     if (m[2] && m[2] !== initials) continue
-    const marker = `${initials}|${channel.trim().split(/\s+/).join('\\s+')}`
+    // The channel written out may carry the text's own commas (`More Plates, More Dates`).
+    const marker = `${initials}|${channel.trim().split(/\s+/).join('[\\s,]+')}`
     const re = new RegExp(`(?<![\\p{L}\\p{N}'’-])(\\p{L}[\\p{L}'’-]*)\\s*(?:from|of|at|\\(|[:,–—|-])\\s*(?:${marker})(?![\\p{L}\\p{N}'’-])`, 'gu')
     for (const hit of text.matchAll(re)) {
       if (foldForMatch(hit[1]) === first) return `${m[1]}, ${channel}`

@@ -131,6 +131,9 @@ test('FoundMyFitness #106: Derek from MPMD is the same Derek, written with the c
   assert.deepEqual(guestsOf(fmf, ep('fmf-0106', T106), ['Derek']), ['Derek, More Plates More Dates'])
   // The channel written out after "from" in the notes is enough on its own.
   assert.deepEqual(guestsOf(fmf, ep('fmf-0106', 'Testosterone Naturally', N106), ['Derek']), ['Derek, More Plates More Dates'])
+  // The Drive's titles write the channel out with the text's own punctuation: a bare "Derek" from the model is enough.
+  assert.deepEqual(guestsOf(attia, ep('attia-0274', T274), ['Derek']), ['Derek, More Plates More Dates'])
+  assert.deepEqual(guestsOf(attia, ep('attia-0291', T291), ['Derek']), ['Derek, More Plates More Dates'])
   // Two ways of saying one guest are one guest.
   assert.deepEqual(guestsOf(fmf, e106, ['Derek', 'Derek from MPMD']), ['Derek, More Plates More Dates'])
 })
