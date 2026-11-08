@@ -111,6 +111,8 @@ type MemberRow = {
       article_url: string | null
       episode_number: number | null
       date: string | null
+      series: string | null
+      external_id: string | null
     } | null
   } | null
 }
@@ -179,7 +181,7 @@ export async function loadClaimEvidence(claimIds: string[]): Promise<Map<string,
           .select(
             `claim_id, raw_insight_id,
              raw_insights ( direct_quote, speaker, start_ms, confidence,
-               sources ( id, title, type, url, youtube_url, article_url, episode_number, date ) )`
+               sources ( id, title, type, url, youtube_url, article_url, episode_number, date, series, external_id ) )`
           )
           .in('claim_id', part)
           .order('claim_id', { ascending: true })

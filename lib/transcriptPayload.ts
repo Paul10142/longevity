@@ -12,7 +12,7 @@ import { buildTranscriptView, type TranscriptView } from './transcriptView'
 
 /** The columns the transcript views read — no `select('*')`, the row is big enough. */
 export const TRANSCRIPT_SOURCE_COLUMNS =
-  'id, title, episode_number, url, youtube_url, article_url, transcript, timed_transcript, transcript_origin'
+  'id, title, episode_number, url, youtube_url, article_url, series, external_id, transcript, timed_transcript, transcript_origin'
 
 export type TranscriptSourceRow = {
   id: string
@@ -21,6 +21,9 @@ export type TranscriptSourceRow = {
   url: string | null
   youtube_url: string | null
   article_url: string | null
+  /** Which show: picks the search link's site (lib/sourceLinks.ts). */
+  series: string | null
+  external_id: string | null
   transcript: string | null
   timed_transcript: unknown
   transcript_origin: string | null

@@ -11,6 +11,14 @@
  *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --skip 100 --limit 100   # one slice
  *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --fit-budget             # only what the credit covers
  *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --keys twins.txt --fit-budget --dry-run
+ *   npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --show huberman --keys batch.txt --out ~/Desktop/Audio
+ *
+ * --show <prefix>: pick the show from the registry (lib/shows.ts) — its feed URL
+ * variable and its key prefix — instead of the Drive defaults. It stands in for
+ * --feed-env and --prefix, which still work alone and cannot be mixed with it.
+ * The show's name goes into the manifest as `series`, and a run replaces only ITS
+ * show's entries there, so several shows can share one audio folder without
+ * wiping each other's guest lists.
  *
  * --fit-budget [USD]: size the download to the Deepgram credit instead of to a
  * fixed slice. Each selected episode is priced at the transcriber's rate
@@ -29,8 +37,8 @@
  * that is not in the feed is an error, not a silent omission.
  *
  * SECRET HANDLING: the feed URL is a paid-membership credential — the same key
- * is embedded in every episode guid — so it is read from ATTIA_FEED_URL (or
- * --feed-env NAME) and is NEVER printed, never written into the manifest, and
+ * is embedded in every episode guid — so it is read from ATTIA_FEED_URL (or the
+ * --show / --feed-env variable) and is NEVER printed, never written into the manifest, and
  * never committed. Enclosure URLs carry the key too, so they are stripped from
  * the manifest as well. Anything this script writes to disk is safe to share.
  * The plan printed by --fit-budget shows keys, hours, dollars and titles only.
@@ -64,7 +72,16 @@ import {
   fitEpisodesToBudget,
 } from '../lib/deepgramBudget'
 import { describeCredit, hasTranscript, remainingCredit } from '../lib/deepgramSpend'
-import { parseFeed, parseKeyList, redact, selectByKeys, totalHours, type Episode } from '../lib/podcastFeed'
+import {
+  mergeManifestEpisodes,
+  parseFeed,
+  parseKeyList,
+  redact,
+  selectByKeys,
+  totalHours,
+  type Episode,
+} from '../lib/podcastFeed'
+import { DEFAULT_SHOW, SHOWS, showByPrefix } from '../lib/shows'
 
 const args = process.argv.slice(2)
 const has = (f: string) => args.includes(f)
@@ -108,11 +125,18 @@ async function download(url: string, dest: string): Promise<number> {
 }
 
 async function main() {
-  const feedEnv = val('--feed-env') ?? 'ATTIA_FEED_URL'
+  const showArg = val('--show')
+  if (showArg && (has('--feed-env') || has('--prefix'))) {
+    throw new Error('--show already sets the feed variable and the prefix; do not combine it with --feed-env or --prefix')
+  }
+  const show = showArg ? showByPrefix(showArg) : null
+  if (showArg && !show) throw new Error(`unknown show "${showArg}" — registered: ${SHOWS.map(s => s.prefix).join(', ')}`)
+  const feedEnv = show?.env ?? val('--feed-env') ?? DEFAULT_SHOW.env
   const feedUrl = process.env[feedEnv]
-  if (!feedUrl) throw new Error(`${feedEnv} is not set (put it in .env.local — it is a credential)`)
+  if (!feedUrl) throw new Error(`${feedEnv} is not set (put it in .env.local)`)
 
-  const prefix = val('--prefix') ?? 'attia'
+  const prefix = show?.prefix ?? val('--prefix') ?? DEFAULT_SHOW.prefix
+  const series = (show ?? showByPrefix(prefix))?.series ?? null
   const outDir = expandHome(val('--out') ?? '~/Desktop/LifestyleAcademyAudio')
   const limit = Number(val('--limit')) || Infinity
   // Batching exists for DISK, not politeness: the full catalogue is ~37 GB, so
@@ -159,7 +183,20 @@ async function main() {
   // rewritten after so byte counts reflect what actually landed.
   const manifestPath = path.join(outDir, 'manifest.json')
   const manifest = episodes.map(({ audio_url: _drop, ...rest }) => rest)
-  await writeFile(manifestPath, JSON.stringify({ prefix, generated_at: new Date().toISOString(), episodes: manifest }, null, 2))
+  // Keep the other shows' entries (see mergeManifestEpisodes): a missing or
+  // unreadable manifest just means there is nothing to keep.
+  let kept: { key: string }[] = []
+  try {
+    const prior = JSON.parse(await readFile(manifestPath, 'utf8')) as { episodes?: { key: string }[] }
+    if (Array.isArray(prior.episodes)) kept = prior.episodes
+  } catch {
+    /* first run in this folder */
+  }
+  const merged = mergeManifestEpisodes(kept as typeof manifest, prefix, manifest)
+  await writeFile(
+    manifestPath,
+    JSON.stringify({ prefix, series, generated_at: new Date().toISOString(), episodes: merged }, null, 2)
+  )
   process.stdout.write(`  manifest → ${manifestPath} (audio URLs stripped — safe to share)\n`)
 
   // SELECT: a key list (file order), or the --skip/--limit window (feed order).

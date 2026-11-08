@@ -25,6 +25,8 @@ type SourceRow = {
   article_url: string | null
   episode_number: number | null
   date: string | null
+  series: string | null
+  external_id: string | null
 }
 
 export type MemberSource = {
@@ -66,7 +68,7 @@ export async function GET(
         `raw_insight_id, matched_by,
          raw_insights (
            statement, direct_quote, locator, start_ms, end_ms, evidence_type, confidence, speaker,
-           sources ( id, title, type, url, youtube_url, article_url, episode_number, date )
+           sources ( id, title, type, url, youtube_url, article_url, episode_number, date, series, external_id )
          )`
       )
       .eq("claim_id", id),

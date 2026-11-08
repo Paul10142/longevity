@@ -18,28 +18,15 @@
  * (removed in 6a1bdc7). Run this locally — by hand, or from a local scheduler —
  * and do not re-add a cloud cron for it.
  *
- * Adding a show: give it an entry below and set its URL in .env.local. A feed
- * whose env var is unset is skipped with a note rather than failing the run, so
- * one missing key never hides the others.
+ * Adding a show: give it an entry in lib/shows.ts (the show registry) and set its
+ * URL in .env.local. A feed whose env var is unset is skipped with a note rather
+ * than failing the run, so one missing key never hides the others.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
-import { parseFeed, totalHours } from '../lib/podcastFeed'
-
-type FeedConfig = {
-  /** Display name, and the value written to `sources.series`. */
-  series: string
-  /** env var holding the feed URL; feed URLs for paid shows are credentials. */
-  env: string
-  /** external_id prefix — also the audio filename prefix. */
-  prefix: string
-}
-
-const FEEDS: FeedConfig[] = [
-  { series: 'The Drive', env: 'ATTIA_FEED_URL', prefix: 'attia' },
-  { series: 'FoundMyFitness', env: 'FMF_FEED_URL', prefix: 'fmf' },
-  { series: 'Huberman Lab', env: 'HUBERMAN_FEED_URL', prefix: 'huberman' },
-]
+import { isFeedKey, matchOlderRows, parseFeed, totalHours, type OlderRow } from '../lib/podcastFeed'
+import { SHOWS, showForSource } from '../lib/shows'
+import { selectAllPaged } from '../lib/pagination'
 
 async function main() {
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
@@ -48,7 +35,7 @@ async function main() {
   let totalNew = 0
   const lines: string[] = []
 
-  for (const feed of FEEDS) {
+  for (const feed of SHOWS) {
     const url = process.env[feed.env]
     if (!url) {
       process.stdout.write(`${feed.series}: no ${feed.env} set — skipped\n`)
@@ -75,13 +62,32 @@ async function main() {
       for (const r of data ?? []) if (r.external_id) known.add(r.external_id)
     }
 
-    const missing = episodes.filter(e => !known.has(e.key))
+    let missing = episodes.filter(e => !known.has(e.key))
+
+    // An episode the library already holds under an OLDER id is not new: the 17
+    // FoundMyFitness rows an earlier published-transcript path keyed `fmf-<slug>`
+    // are the feed's own episodes. Counting them as NEW would queue a second row
+    // and a second transcription for each. Same rule the ingest uses.
+    let heldUnderOlderId = 0
+    if (missing.length > 0) {
+      type Row = { id: string; external_id: string; title: string | null; series: string | null }
+      const rows = await selectAllPaged<Row>((from, to) =>
+        db.from('sources').select('id, external_id, title, series').like('external_id', `${feed.prefix}-%`).order('id').range(from, to)
+      )
+      const older = rows.filter(r => showForSource(r).prefix === feed.prefix && !isFeedKey(feed.prefix, r.external_id)) as OlderRow[]
+      if (older.length > 0) {
+        const matched = matchOlderRows(missing, older, feed.prefix)
+        heldUnderOlderId = matched.size
+        missing = missing.filter(e => !matched.has(e.key))
+      }
+    }
     const { hours } = totalHours(missing)
     totalNew += missing.length
 
     process.stdout.write(
-      `${feed.series}: ${episodes.length} in the feed, ${known.size} already known, ` +
-        `${missing.length} NEW${missing.length ? ` (~${hours.toFixed(1)} h audio)` : ''}\n`
+      `${feed.series}: ${episodes.length} in the feed, ${known.size} already known` +
+        (heldUnderOlderId ? `, ${heldUnderOlderId} held under an older id` : '') +
+        `, ${missing.length} NEW${missing.length ? ` (~${hours.toFixed(1)} h audio)` : ''}\n`
     )
     // Newest first, and only a handful listed — the count is the signal, the
     // titles are just so it is obvious what turned up.
@@ -90,9 +96,9 @@ async function main() {
     }
     if (missing.length > 5) process.stdout.write(`    …and ${missing.length - 5} more\n`)
 
-    if (missing.length > 0 && feed.env === 'ATTIA_FEED_URL') {
-      lines.push(`  npx tsx --env-file=.env.local scripts/ingestFeedSources.ts   # ${feed.series}: add the rows`)
-      lines.push(`  npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --limit ${missing.length} --out ~/Desktop/'Lifestyle Academy'/Audio`)
+    if (missing.length > 0) {
+      lines.push(`  npx tsx --env-file=.env.local scripts/ingestFeedSources.ts --show ${feed.prefix}   # ${feed.series}: add the rows`)
+      lines.push(`  npx tsx --env-file=.env.local scripts/fetchPodcastFeed.ts --show ${feed.prefix} --limit ${missing.length} --out ~/Desktop/'Lifestyle Academy'/Audio`)
     }
   }
 

@@ -60,6 +60,7 @@ import {
   type BudgetItem,
 } from '../lib/deepgramBudget'
 import { defaultLedgerPath, describeCredit, remainingCredit, writeLedger } from '../lib/deepgramSpend'
+import { showByExternalId } from '../lib/shows'
 
 const API = 'https://api.deepgram.com/v1/listen'
 
@@ -72,15 +73,25 @@ const RATE_PER_HOUR = DEEPGRAM_RATE_PER_HOUR
  * non-word, which in a medical corpus is worse than a dropped sentence because
  * it reads as fact. Keep this list to genuinely recurring vocabulary; per-episode
  * guest names are passed with --keyterm instead.
+ *
+ * The HOST's name is not in this list: it belongs to the show, so each file gets
+ * its own show's host terms (lib/shows.ts `keyterms`, found by the key's prefix)
+ * ahead of the shared vocabulary. A Huberman episode must not be primed with
+ * "Attia", and must be primed with "Huberman". The Drive's list is unchanged.
  */
-const BASE_KEYTERMS = [
-  'Peter Attia', 'Attia', 'apoB', 'ApoE', 'lipoprotein', 'Lp(a)', 'LDL', 'HDL',
+const SHARED_KEYTERMS = [
+  'apoB', 'ApoE', 'lipoprotein', 'Lp(a)', 'LDL', 'HDL',
   'triglycerides', 'atherosclerosis', 'VO2 max', 'zone 2', 'rapamycin',
   'metformin', 'GLP-1', 'semaglutide', 'tirzepatide', 'sarcopenia',
   'hyperinsulinemia', 'insulin resistance', 'HbA1c', 'creatine',
   'testosterone', 'estradiol', 'progesterone', 'cortisol', 'DHEA',
   'hypertrophy', 'mTOR', 'autophagy', 'nutrigenomics', 'centenarian',
 ]
+
+/** Host terms for this file's show, then the shared vocabulary, then any --keyterm. */
+function keytermsFor(key: string, extra: string[]): string[] {
+  return [...(showByExternalId(key)?.keyterms ?? []), ...SHARED_KEYTERMS, ...extra]
+}
 
 const args = process.argv.slice(2)
 const flag = (f: string): string | undefined => {
@@ -222,7 +233,7 @@ async function main() {
   // nova-3 (general) on this corpus rather than assuming the medical one wins.
   const model = flag('--model') ?? 'nova-3'
   const suffix = model === 'nova-3' ? '' : `.${model}`
-  const keyterms = [...BASE_KEYTERMS, ...multi('--keyterm')]
+  const extraKeyterms = multi('--keyterm')
   const budget = Number(flag('--budget')) || 200
   const margin = parseMargin(flag('--margin'))
   const dryRun = args.includes('--dry-run')
@@ -255,7 +266,9 @@ async function main() {
   })
   const { ledger, ledgerPath } = credit
 
-  process.stdout.write(`${files.length} file(s), model ${model}, ${keyterms.length} keyterms\n`)
+  process.stdout.write(
+    `${files.length} file(s), model ${model}, ${SHARED_KEYTERMS.length + extraKeyterms.length} shared keyterms + each show's host names\n`
+  )
   for (const line of describeCredit(credit)) process.stdout.write(line + '\n')
   if (credit.spentUsd >= budget) {
     process.stdout.write('budget already reached — nothing to do. Raise it with --budget once funded.\n')
@@ -309,7 +322,7 @@ async function main() {
     }
 
     try {
-      const hours = await transcribeOne(p.file, outDir, keyterms, model, suffix)
+      const hours = await transcribeOne(p.file, outDir, keytermsFor(p.key, extraKeyterms), model, suffix)
       const est = hours * RATE_PER_HOUR
       running += est
       done++

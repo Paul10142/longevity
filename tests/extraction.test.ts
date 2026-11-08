@@ -109,6 +109,15 @@ test('sanitizeSpeaker: keeps a real name', () => {
   assert.equal(sanitizeSpeaker('  Peter Attia  '), 'Peter Attia')
 })
 
+test('sanitizeSpeaker: every registered host collapses to one canonical label', () => {
+  for (const s of ['Dr. Peter Attia', 'peter attia', 'Peter Attia, M.D.', 'Dr Peter Attia MD']) assert.equal(sanitizeSpeaker(s), 'Peter Attia', s)
+  for (const s of ['Dr. Andrew Huberman', 'andrew huberman', 'Andrew D. Huberman, PhD']) assert.equal(sanitizeSpeaker(s), 'Andrew Huberman', s)
+  for (const s of ['Dr. Rhonda Patrick', 'rhonda patrick', 'Rhonda Patrick, PhD']) assert.equal(sanitizeSpeaker(s), 'Rhonda Patrick', s)
+  // A name that only contains a host's is a different person.
+  assert.equal(sanitizeSpeaker('Peter Attia Jr.'), 'Peter Attia Jr.')
+  assert.equal(sanitizeSpeaker('Dr. Matt Walker'), 'Dr. Matt Walker')
+})
+
 test('sanitizeSpeaker: role words and refusals become null', () => {
   for (const s of ['host', 'Guest', 'SPEAKER', 'interviewer', 'unknown', 'Unclear', 'n/a', 'none', 'null', 'guests']) {
     assert.equal(sanitizeSpeaker(s), null, s)

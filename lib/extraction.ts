@@ -18,6 +18,7 @@ import { stripNonContent } from './transcriptHygiene'
 import { selectAllPaged } from './pagination'
 import { createLimiter, envLimit } from './concurrency'
 import { withNetworkRetry } from './networkRetry'
+import { canonicalHostLabel, showForSource, isHostName, DEFAULT_SHOW, type Show } from './shows'
 import {
   normalizeYouTubeSegments,
   buildTranscriptFromSegments,
@@ -147,10 +148,11 @@ export function sanitizeSpeaker(raw: unknown): string | null {
   const s = raw.trim()
   if (!s || s.length > 80) return null
   if (/^(host|guest|speaker|interviewer|interviewee|narrator|unknown|unclear|n\/?a|none|null)s?$/i.test(s)) return null
-  // One canonical spelling for the host — "Dr. Peter Attia" / "peter attia"
-  // variants would otherwise fragment the attribution rollups.
-  if (/^(dr\.?\s+)?peter\s+attia(,?\s+m\.?d\.?)?$/i.test(s)) return 'Peter Attia'
-  return s
+  // One canonical spelling for a HOST — "Dr. Peter Attia" / "peter attia"
+  // variants would otherwise fragment the attribution rollups. Every registered
+  // show's host collapses (lib/shows.ts), not just the episode's own: Attia
+  // guesting on Huberman Lab must roll up with Attia on The Drive.
+  return canonicalHostLabel(s)
 }
 
 /**
@@ -159,11 +161,11 @@ export function sanitizeSpeaker(raw: unknown): string | null {
  * (213 of 249 sources have no guest in metadata). Empty array = could not tell,
  * which downstream renders as a hedged participant line — never "solo".
  */
-export async function inferGuestsFromIntro(transcript: string): Promise<string[]> {
+export async function inferGuestsFromIntro(transcript: string, show: Show = DEFAULT_SHOW): Promise<string[]> {
   try {
     const intro = transcript.slice(0, 4000)
     const parsed = await claudeJson<{ guests?: unknown }>(
-      `You read the opening of a health-podcast transcript and identify the guest(s) being interviewed. The host is Peter Attia. Return JSON only: {"guests": ["Full Name", ...]} — full names of guests actually introduced or addressed in this opening. Empty array if no guest is identifiable. Never include the host. Never guess.`,
+      `You read the opening of a health-podcast transcript and identify the guest(s) being interviewed. The host is ${show.hostLabel}. Return JSON only: {"guests": ["Full Name", ...]} — full names of guests actually introduced or addressed in this opening. Empty array if no guest is identifiable. Never include the host. Never guess.`,
       `Transcript opening:\n${intro}`,
       400,
       CLAUDE_JUDGMENT_MODEL
@@ -172,7 +174,7 @@ export async function inferGuestsFromIntro(transcript: string): Promise<string[]
     return parsed.guests
       .filter((g): g is string => typeof g === 'string')
       .map(g => g.trim())
-      .filter(g => g.length > 1 && g.length <= 80 && !/peter\s+attia/i.test(g))
+      .filter(g => g.length > 1 && g.length <= 80 && !isHostName(show, g))
       .slice(0, 6)
   } catch (err) {
     // A full usage window is not "could not tell" — defer, don't hedge forever.
@@ -381,7 +383,7 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 export async function extractFromChunk(
   content: string,
   label: string,
-  // "Host: Peter Attia. Guest(s): Micky Collins." — gives the speaker-attribution
+  // "Host: <the show's host>. Guest(s): Micky Collins." — gives the speaker-attribution
   // rule names to attribute to. Optional: eval harnesses call without it, and the
   // model then attributes only when the dialogue itself names the speaker.
   participants?: string
@@ -533,18 +535,25 @@ export async function extractSource(
   // Load transcript + timed segments. Select timed_transcript defensively so
   // extraction still runs if migration 010 has not been applied yet (the column
   // is then absent → we fall back to a select without it and no timing).
-  type SourceRow = { id: string; transcript: string | null; timed_transcript?: unknown; authors?: string[] | null }
+  type SourceRow = {
+    id: string
+    transcript: string | null
+    timed_transcript?: unknown
+    authors?: string[] | null
+    series?: string | null
+    external_id?: string | null
+  }
   let source: SourceRow
   {
     const withTiming = await db()
       .from('sources')
-      .select('id, transcript, timed_transcript, authors')
+      .select('id, transcript, timed_transcript, authors, series, external_id')
       .eq('id', sourceId)
       .single()
     if (withTiming.error && /timed_transcript/.test(withTiming.error.message || '')) {
       const fallback = await db()
         .from('sources')
-        .select('id, transcript, authors')
+        .select('id, transcript, authors, series, external_id')
         .eq('id', sourceId)
         .single()
       if (fallback.error || !fallback.data) throw new Error(`Source ${sourceId} not found: ${fallback.error?.message}`)
@@ -673,16 +682,19 @@ export async function extractSource(
   // otherwise ONE inference call over the transcript intro (episodes open by
   // introducing the guest), cached in the checkpoint across resume ticks. When
   // even that fails, the line hedges — it never claims a solo episode.
-  const isAttia = (a: string) => /peter\s+attia/i.test(a)
-  const metaGuests = (source.authors ?? []).filter(a => a && !isAttia(a))
+  // The host is the show's, not always Peter Attia: `series`, then the join key's
+  // prefix, then authors[0], then The Drive (lib/shows.ts showForSource), so the
+  // 409 Drive rows and the pre-feed rows with no external_id still resolve to him.
+  const show = showForSource(source)
+  const metaGuests = (source.authors ?? []).filter(a => a && !isHostName(show, a))
   let participants = checkpoint?.participants
   if (!participants) {
     let guests = metaGuests
     if (guests.length === 0 && source.transcript) {
-      guests = await inferGuestsFromIntro(source.transcript)
+      guests = await inferGuestsFromIntro(source.transcript, show)
     }
     participants =
-      `Host: Peter Attia (the interviewer).` +
+      `Host: ${show.hostLabel} (the interviewer).` +
       (guests.length > 0
         ? ` Guest(s): ${guests.join(', ')}.`
         : ` Guest names are unavailable — attribute a statement ONLY when the dialogue itself makes the speaker unambiguous; otherwise return null. Do not assume the host is speaking.`)
