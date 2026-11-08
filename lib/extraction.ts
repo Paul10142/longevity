@@ -40,10 +40,12 @@ import type { EvidenceType, Confidence, Actionability, Audience, InsightType, In
  */
 export const insertLimiter = createLimiter(envLimit('EXTRACT_DB_WRITE_CONCURRENCY', 3))
 
-// Bulk tier: one call per transcript chunk, so this is the pipeline's
-// highest-volume model by a wide margin. `EXTRACTION_MODEL` in the environment
-// overrides it (see extractionConfig below).
-const DEFAULT_EXTRACTION_MODEL = CLAUDE_BULK_MODEL
+// Default extraction model (Paul, 2026-11-08, after the 8-episode comparison): Opus 5.5 with the
+// v2 prompt flagged 8.9% of insights against 33.5% for stored Haiku/v1 extraction, with no loss of
+// content. The v1 prompt keeps its original bulk-tier model so `EXTRACTION_PROMPT_VERSION=v1` alone
+// restores the old behaviour. `EXTRACTION_MODEL` in the environment overrides either (see extractionConfig).
+const DEFAULT_EXTRACTION_MODEL = 'claude-opus-5-5'
+const V1_EXTRACTION_MODEL = CLAUDE_BULK_MODEL
 const CHUNK_SIZE = 2400
 const CHUNK_OVERLAP = 200
 
@@ -158,9 +160,9 @@ export type ExtractionConfig = {
  *   EXTRACTION_PROMPT_VERSION  v2 (default) | v1 — v1 is the original prompt, unchanged
  *   EXTRACTION_GATE            on | off — default on with v2, off with v1
  *   EXTRACTION_REPAIR          on (default) | off — one repair call for gate-rejected insights
- *   EXTRACTION_MODEL           model id; default is the bulk-tier model
+ *   EXTRACTION_MODEL           model id; default claude-opus-5-5 (v1: claude-haiku-4-5, its original model)
  *
- * Old behaviour, exactly: EXTRACTION_PROMPT_VERSION=v1 (gate off by default).
+ * Old behaviour, exactly: EXTRACTION_PROMPT_VERSION=v1 (gate off by default, Haiku 4.5).
  */
 export function extractionConfig(overrides: Partial<ExtractionConfig> = {}): ExtractionConfig {
   const promptVersion: PromptVersion =
@@ -168,7 +170,8 @@ export function extractionConfig(overrides: Partial<ExtractionConfig> = {}): Ext
   const gateEnv = process.env.EXTRACTION_GATE?.toLowerCase()
   const gate = overrides.gate ?? (gateEnv === 'on' ? true : gateEnv === 'off' ? false : promptVersion === 'v2')
   const repair = overrides.repair ?? process.env.EXTRACTION_REPAIR?.toLowerCase() !== 'off'
-  const model = overrides.model ?? (process.env.EXTRACTION_MODEL?.trim() || DEFAULT_EXTRACTION_MODEL)
+  const model = overrides.model ??
+    (process.env.EXTRACTION_MODEL?.trim() || (promptVersion === 'v1' ? V1_EXTRACTION_MODEL : DEFAULT_EXTRACTION_MODEL))
   return { model, promptVersion, gate, repair: gate && repair }
 }
 

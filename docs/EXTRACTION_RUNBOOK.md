@@ -487,14 +487,14 @@ section is what that window (and the runner, afterwards) follows.
 
 ## 15. Extraction prompt v2 and the gate (2026-11-08)
 
-A sample of 8 Attia episodes had 35% of claims flagged by the fidelity judge (mostly invented detail and dropped hedges), so extraction now has a rewritten prompt and a deterministic gate. Both are on by default; the old behaviour is one variable away.
+A sample of 8 Attia episodes had 35% of claims flagged by the fidelity judge (mostly invented detail and dropped hedges), so extraction now has a rewritten prompt and a deterministic gate. Both are on by default, with Opus 5.5 as the extraction model; the old behaviour (v1 prompt, Haiku 4.5, no gate) is one variable away.
 
 | Variable | Values | Effect |
 | --- | --- | --- |
-| `EXTRACTION_PROMPT_VERSION` | `v2` (default), `v1` | `v1` is the original prompt, unchanged, with the gate off. |
+| `EXTRACTION_PROMPT_VERSION` | `v2` (default), `v1` | `v1` is the original prompt, unchanged, with the gate off and its original model (Haiku 4.5). |
 | `EXTRACTION_GATE` | `on`, `off` | Default `on` with v2, `off` with v1. |
 | `EXTRACTION_REPAIR` | `on` (default), `off` | One repair call per chunk for insights the gate rejected. |
-| `EXTRACTION_MODEL` | model id | Default is the bulk model (`claude-haiku-4-5`). Stored on each insight as `extraction_model`. |
+| `EXTRACTION_MODEL` | model id | Default `claude-opus-5-5` (Paul's choice, 2026-11-08: 8.9% of insights flagged vs 33.5% for the old Haiku extraction); `claude-haiku-4-5` under `v1`. Stored on each insight as `extraction_model`. |
 
 The gate (`lib/extractionGate.ts`, no model call) rejects an insight when a number in it is not in its chunk, a hedge or degree word in its quoted span ("probably", "might", "seems", "very", "if", "I think", "about 40") has no equivalent in it, or its `direct_quote` is not word-for-word in the chunk (a quote with an invented tail is cut back to its verbatim start). Rejected insights get one repair round; whatever still fails is dropped. A statement that depends on something shown on screen is kept with a "Video check" line in `context_note`.
 

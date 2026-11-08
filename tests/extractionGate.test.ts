@@ -97,15 +97,17 @@ test('applyGate splits kept from rejected and carries the repaired quote', () =>
   assert.equal(out.rejected[0].violations[0].rule, 'hedge_dropped')
 })
 
-test('extractionConfig: v2 + gate by default, v1 restores the old behaviour, overrides win', () => {
+test('extractionConfig: v2 + gate + Opus 5.5 by default, v1 restores the old behaviour, overrides win', () => {
   const saved = { ...process.env }
   try {
     for (const k of ['EXTRACTION_PROMPT_VERSION', 'EXTRACTION_GATE', 'EXTRACTION_REPAIR', 'EXTRACTION_MODEL']) delete process.env[k]
     const d = extractionConfig()
     assert.equal(d.promptVersion, 'v2'); assert.equal(d.gate, true); assert.equal(d.repair, true)
+    assert.equal(d.model, 'claude-opus-5-5')
     process.env.EXTRACTION_PROMPT_VERSION = 'v1'
     const old = extractionConfig()
     assert.equal(old.promptVersion, 'v1'); assert.equal(old.gate, false); assert.equal(old.repair, false)
+    assert.equal(old.model, 'claude-haiku-4-5', 'v1 alone restores the old model too')
     process.env.EXTRACTION_MODEL = 'claude-sonnet-5-5'
     assert.equal(extractionConfig().model, 'claude-sonnet-5-5')
     assert.equal(extractionConfig({ model: 'claude-opus-5-5' }).model, 'claude-opus-5-5')
