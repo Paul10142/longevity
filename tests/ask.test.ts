@@ -374,7 +374,7 @@ const member = (quote: string | null, startMs: number | null, confidence: string
   claim_id: 'c',
   raw_insights: {
     direct_quote: quote, speaker: null, start_ms: startMs, confidence,
-    sources: { id: `s-${date}`, title: 't', type: 'podcast', url: null, youtube_url: null, article_url: null, episode_number: null, date },
+    sources: { id: `s-${date}`, title: 't', type: 'podcast', url: null, youtube_url: null, article_url: null, episode_number: null, date, series: 'The Drive', external_id: null },
   },
 })
 

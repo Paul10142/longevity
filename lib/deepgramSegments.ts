@@ -20,8 +20,6 @@
  * lib/transcriptSegments.ts needs no change.
  */
 
-export const HOST = 'Peter Attia'
-
 export type DgSegment = { text: string; speaker: number | null; start_ms: number; end_ms: number }
 export type LabelledSegment = { text: string; start_ms: number; end_ms: number }
 
@@ -34,12 +32,18 @@ export type LabelledSegment = { text: string; start_ms: number; end_ms: number }
  * speaker is that guest; otherwise speakers stay `Speaker 2`, `Speaker 3`, …
  * A wrong name is worse than no name: corroboration counts DISTINCT speakers,
  * so a misattribution invents agreement between people who never spoke.
+ *
+ * `host` is a REQUIRED argument, never a default: it is the show's host label
+ * (`hostLabelForKey(key)` in lib/shows.ts, resolved from the join key's prefix).
+ * It used to be a constant "Peter Attia", which would have labelled Andrew
+ * Huberman's opening monologue as Peter Attia the first time a Huberman Lab
+ * episode was attached.
  */
-export function nameSpeakers(segments: DgSegment[], guests: string[]): Map<number, string> {
+export function nameSpeakers(segments: DgSegment[], guests: string[], host: string): Map<number, string> {
   const names = new Map<number, string>()
   const first = segments.find(s => s.speaker !== null)?.speaker
   if (first == null) return names
-  names.set(first, HOST)
+  names.set(first, host)
 
   const others = [...new Set(segments.map(s => s.speaker).filter(s => s !== null && s !== first))] as number[]
   if (guests.length === 1 && others.length === 1) {

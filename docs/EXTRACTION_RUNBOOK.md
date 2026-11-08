@@ -367,3 +367,49 @@ A drop longer than the budget still fails the job as before; it is requeued with
 - **Usage cap.** `USAGE_PAUSE_AT=1` lifts the in-process 90% pause; the launchd guard has its own `threshold` in
   `~/.claude/usage-guard/config.json`. Lift both only on Paul's explicit word, and restore 0.9 afterwards.
 
+
+## 14. Adding a show (2026-11-08)
+
+Until 2026-11 the pipeline assumed Peter Attia in a dozen places. It is now **show-aware**: everything that depends on the
+show lives in one entry of `lib/shows.ts`, and a show runs exactly like The Drive. Three are registered: The Drive (`attia`),
+FoundMyFitness (`fmf`) and Huberman Lab (`huberman`). The runner does not edit code, so a new show is a separate window; this
+section is what that window (and the runner, afterwards) follows.
+
+**What the registry decides, per show** (never hard-code any of these elsewhere):
+
+| Where | What it uses from the show |
+| --- | --- |
+| `ingestFeedSources.ts --show <prefix>` | feed URL variable, key prefix, `series` and `article_url` written on create, host as `authors[0]`, whether titles carry a number |
+| `fetchPodcastFeed.ts --show <prefix>` | the same feed and prefix; `series` goes into `manifest.json`, which is merged, not rewritten, so shows can share one audio folder |
+| `transcribeDeepgram.ts` | host-name keyterms (the show's own, then the shared medical list) |
+| `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman). An unregistered prefix is skipped with a message, never guessed |
+| `lib/extraction.ts` | the "Host:" line, the intro-guest prompt, the host filter and the speaker clean-up, from `sources.series` (else the key prefix, else `authors[0]`, else The Drive) |
+| `lib/sourceLinks.ts` | the "Find on <site>" search link and its label, by series |
+| `checkFeeds.ts` | the list of feeds to check |
+
+**Steps**
+
+1. Add an entry to `SHOWS` in `lib/shows.ts` (copy the closest one). Decide: does the show number its episodes (`numbered`; Huberman does
+   not, and `AMA #19` must not read as episode 19), does its title format need strict guest parsing (`strictGuests`; The Drive stays off so its
+   guest lists do not change), and does its site search work on `#<number>` (`searchByNumber`; FoundMyFitness's does not).
+2. Put the **public** feed URL in `.env.local` as the registry's `env` variable. A paid or keyed feed is a credential: keep it in 1Password
+   (`.env.1password.local`) and never print it.
+3. `npx tsx --env-file=.env.local scripts/checkFeeds.ts` (read-only) lists every registered show: episodes in the feed, already known, held
+   under an older id, new.
+4. `npx tsx --env-file=.env.local scripts/ingestFeedSources.ts --show <prefix> --dry-run` and read it before any write: the show header,
+   the guest list per episode (the host must never be one), the `older` list, and the first new row (`series`, `article_url`, `authors`).
+5. Only then `ingestFeedSources.ts --show <prefix>` (writes rows), `fetchPodcastFeed.ts --show <prefix> --keys … --fit-budget`, and the rest of
+   the usual flow: `transcribeDeepgram.ts`, `attachTranscripts.ts`, `extractDeepgram.ts`. Each step needs the same go-ahead it always did: the
+   Deepgram spend is Paul's decision per batch.
+
+**Gotchas the first two extra shows turned up**
+
+- Megaphone (Huberman) writes `length="0"` on every item; it is read as "size unknown", not "empty file", or the downloader would refetch every
+  finished file.
+- Libsyn (FoundMyFitness) wraps `<link>` in CDATA; both forms are read.
+- A show's host must not appear as a guest (`#092 … | Dr. Rhonda Patrick` is a solo episode). Another show's host can be a guest (Rhonda Patrick on
+  Huberman Lab), and speaker clean-up collapses every registered host's spellings to one label, so Attia guesting on Huberman rolls up with Attia
+  on The Drive.
+- FoundMyFitness already had 17 rows from an earlier published-transcript path (`fmf-<slug>`). The ingest and `checkFeeds` match them to their
+  feed episode by title and leave them alone, instead of creating a second row and a second transcription. Doubt means no match.
+- Episode numbers are only unique within a show: the ingest matches existing rows by number inside the same show only.

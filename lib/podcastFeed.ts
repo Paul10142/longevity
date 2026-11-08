@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto'
 
 import { ASSUMED_BITRATE_BPS, estimateHours } from './deepgramBudget'
+import { showByPrefix } from './shows'
 
 /**
  * Podcast RSS reading, shared by the audio downloader and the source ingest.
@@ -25,16 +26,16 @@ export type Episode = {
   /** Stable base filename, no extension: the join key across audio, transcript, and DB row. */
   key: string
   title: string
-  /** Show episode number when the title carries one. */
+  /** Show episode number when the title carries one AND the show numbers its episodes (lib/shows.ts). */
   episode_number: number | null
-  /** Guests parsed from the title; empty for AMAs and solo episodes. */
+  /** Guests parsed from the title, never the host; empty for AMAs and solo episodes. */
   guests: string[]
   /** ISO date, or null when the feed omits/garbles pubDate. */
   published_at: string | null
   duration_seconds: number | null
   /** Verbatim <description> — usually the timestamped topic outline. */
   description: string | null
-  /** Episode page URL, key stripped. Safe to store. */
+  /** Episode page URL (the item's <link>, else a URL-shaped guid), key stripped. Safe to store. */
   page_url: string | null
   /** Feed guid, key stripped. Stable across re-runs. Safe to store. */
   guid: string
@@ -74,21 +75,55 @@ export function parseDuration(raw: string | null): number | null {
 }
 
 /**
- * Guests from the title. This show titles interviews as
+ * Lowercase connective words. A guest's name never contains one, a topic phrase
+ * almost always does — which is how `Metformin for Longevity & the Power of
+ * Belief Effects` (the topic half of a `Journal Club With … | topic` title) is
+ * told apart from `Linus Abrams`. Lowercase only, so a capitalised name part is
+ * never mistaken for one, and `from` is not listed because `Derek from MPMD` is
+ * a real guest credit on FoundMyFitness.
+ */
+const NOT_A_NAME_WORD = /(?:^|\s)(?:for|the|of|to|in|on|with|how|why|what|your|you|is|are|a|an|about|or)(?=\s|$)/
+
+/** `U.S. Surgeon General Dr. Vivek Murthy` → `Dr. Vivek Murthy`. */
+function dropLeadingRole(g: string): string {
+  return g.replace(/^.*?\s(?=(?:Dr|Prof|Professor)\.?\s+[A-Z])/, '')
+}
+
+function looksLikeName(g: string): boolean {
+  return g.length <= 60 && g.split(/\s+/).length <= 6 && !/\d/.test(g) && !NOT_A_NAME_WORD.test(g)
+}
+
+/**
+ * Guests from the title. The Drive titles interviews as
  * `#404 ‒ Topic… | Linus Abrams, M.D.`, so the segment after the final pipe is
  * the guest list — 137 of 425 episodes. AMAs (100 of them) have no guest and
  * must return empty rather than a guessed name: a wrong attribution is worse
  * than none, because corroboration counts DISTINCT SPEAKERS and a phantom guest
  * would invent agreement that never happened.
+ *
+ * `strict` (FoundMyFitness, Huberman Lab — `Show.strictGuests`) adds two forms
+ * the Drive never used, and both produced phantom guests before they were
+ * handled. It is OFF for the Drive on purpose: its 435 feed items must parse
+ * exactly as they always have, and the 25 whose titles carry `(#183
+ * rebroadcast)` or `Pt. 2` keep the junk guest they have always had.
+ *   `GUEST SERIES | Dr. Matt Walker: The Science of Dreams, Nightmares & …`
+ *     the NAME leads the tail and a colon ends it, so the topic's commas were
+ *     being read as three more guests. Only a leading honorific (`Dr.`,
+ *     `Prof.`) is trusted to start a name before a colon.
+ *   `Journal Club With Dr. Peter Attia | Metformin for Longevity & …`
+ *     the tail is a TOPIC; a segment that reads as a phrase, not a name, is
+ *     dropped, so the episode lists no guest rather than a made-up one.
  */
-export function parseGuests(title: string): string[] {
+export function parseGuests(title: string, strict = false): string[] {
   if (!title.includes('|')) return []
   const tail = title.split('|').pop()?.trim() ?? ''
   if (!tail || /^AMA\b/i.test(tail)) return []
-  return tail
+  const led = strict ? tail.match(/^((?:Dr|Prof|Professor)\.?\s+[^:]{2,60}):\s+\S/) : null
+  const names = (led ? led[1] : tail)
     .split(/\s*(?:,|&|\band\b)\s*(?=[A-Z])/)
-    .map(g => g.trim())
+    .map(g => (strict ? dropLeadingRole(g.trim()) : g.trim()))
     .filter(g => g.length > 1 && /[A-Za-z]/.test(g) && !/^(m\.?d\.?|ph\.?d\.?|r\.?d\.?)$/i.test(g))
+  return strict ? names.filter(looksLikeName) : names
 }
 
 export function parseEpisodeNumber(title: string): number | null {
@@ -113,8 +148,7 @@ function guidFingerprint(guid: string): string {
   return createHash('sha1').update(guid).digest('hex').slice(0, 6)
 }
 
-function buildKey(prefix: string, title: string, guid: string, seen: Set<string>): string {
-  const num = parseEpisodeNumber(title)
+function buildKey(prefix: string, num: number | null, guid: string, seen: Set<string>): string {
   const fp = guidFingerprint(guid)
   let key = num ? `${prefix}-${String(num).padStart(4, '0')}` : `${prefix}-g${fp}`
   // Rebroadcasts legitimately repeat an episode number, so a collision is
@@ -132,6 +166,12 @@ function buildKey(prefix: string, title: string, guid: string, seen: Set<string>
 export function parseFeed(xml: string, prefix: string): Episode[] {
   const out: Episode[] = []
   const seen = new Set<string>()
+  // Show-specific rules come from the registry (lib/shows.ts), keyed on the
+  // prefix. An unregistered prefix behaves as the Drive always did: numbered
+  // titles, no host to strip.
+  const show = showByPrefix(prefix)
+  const numbered = show?.numbered ?? true
+  const strict = show?.strictGuests ?? false
   for (const m of xml.matchAll(/<item>([\s\S]*?)<\/item>/gi)) {
     const block = m[1]
     const enclosure = block.match(/<enclosure\b[^>]*>/i)?.[0] ?? ''
@@ -143,21 +183,35 @@ export function parseFeed(xml: string, prefix: string): Episode[] {
     const guid = tag(block, 'guid') ?? audio_url
     const pub = tag(block, 'pubDate')
     const parsedDate = pub ? new Date(pub) : null
-    const key = buildKey(prefix, title, guid, seen)
+    // A show that does not number its episodes gets NO number: `AMA #19: …` is
+    // the 19th AMA, not episode 19, and the join key then comes from the guid.
+    const episodeNumber = numbered ? parseEpisodeNumber(title) : null
+    const key = buildKey(prefix, episodeNumber, guid, seen)
     const redactedGuid = redact(guid)
+    // The item's own <link> is the public episode page for the public shows
+    // (libsyn, megaphone). Supercast's feed has none, so its guid — which IS the
+    // episode URL — stays the fallback. Same key stripping either way.
+    const link = tag(block, 'link')
+    const pageSource = link && /^https?:/i.test(link) ? redact(link) : redactedGuid
 
     out.push({
       key,
       title,
-      episode_number: parseEpisodeNumber(title),
-      guests: parseGuests(title),
+      episode_number: episodeNumber,
+      // Strict shows never list the host as a guest: `#092 … | Dr. Rhonda
+      // Patrick` is a solo episode, and naming the host as the guest would label
+      // the second diarized speaker (usually noise) as her.
+      guests: parseGuests(title, strict).filter(g => !strict || !show || !show.hostMention.test(g)),
       published_at: parsedDate && !Number.isNaN(parsedDate.getTime()) ? parsedDate.toISOString() : null,
       duration_seconds: parseDuration(tag(block, 'itunes:duration')),
       description: tag(block, 'description'),
-      page_url: /^https?:/i.test(redactedGuid) ? redactedGuid.split('?')[0] : null,
+      page_url: /^https?:/i.test(pageSource) ? pageSource.split('?')[0] : null,
       guid: redactedGuid,
       audio_url,
-      audio_bytes: Number.isFinite(lengthAttr) ? lengthAttr : null,
+      // `length="0"` is "unknown", not an empty file: Megaphone (Huberman Lab)
+      // writes it on all 456 items, and keeping the 0 made the downloader treat
+      // every finished file as the wrong size and fetch it again.
+      audio_bytes: Number.isFinite(lengthAttr) && lengthAttr > 0 ? lengthAttr : null,
       file: `${key}.mp3`,
     })
   }
@@ -203,6 +257,94 @@ export function parseKeyList(text: string): string[] {
     out.push(key)
   }
   return out
+}
+
+/**
+ * True for a key this feed reader could have produced (`fmf-0114`,
+ * `huberman-g1a2b3`, and the collision forms), false for anything else that
+ * merely shares the prefix — notably the 17 FoundMyFitness rows an older
+ * published-transcript path keyed `fmf-<slug>`. Those are the same episodes the
+ * feed carries, under a different id, and are matched by title instead.
+ */
+export function isFeedKey(prefix: string, externalId: string | null | undefined): boolean {
+  if (!externalId) return false
+  const escaped = prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+  return new RegExp(`^${escaped}-(?:\\d{4,}|g[0-9a-f]{6})(?:-[0-9a-f]{6}(?:-\\d+)?)?$`).test(externalId)
+}
+
+/**
+ * A title reduced to what identifies the episode: no episode number, case,
+ * punctuation or spacing. Two titles with the same key are the same episode
+ * published by the same show; used ONLY to avoid creating a second row for an
+ * episode the library already holds under an older id.
+ */
+export function titleKey(title: string): string {
+  return title
+    .toLowerCase()
+    .replace(/^\s*#\s*\d+\s*[‒–—:.-]*\s*/, '')
+    .replace(/[^\p{L}\p{N}]+/gu, ' ')
+    .trim()
+}
+
+export type OlderRow = { id: string; external_id: string; title: string | null }
+
+/**
+ * Pair feed episodes with rows the library already holds for the SAME episode
+ * under an older id (FoundMyFitness: `fmf-george-church` vs the feed's
+ * `fmf-0077`). Two rules, tried in order, both strict:
+ *   1. the titles are the same once numbers, case and punctuation are ignored;
+ *   2. every word of the old id's slug (`george`, `church`; a trailing `-2` is
+ *      ignored; at least two words) appears in the episode's title. Needed
+ *      because the show reworded 6 of the 17 titles after the older path
+ *      stored them.
+ * A pair counts only when it is one-to-one: a row that fits two episodes, or an
+ * episode that fits two rows, is left unmatched. Linking the wrong episode to a
+ * transcript is worse than a duplicate row, so doubt means no match.
+ * Returns episode key -> the older row.
+ */
+export function matchOlderRows<E extends { key: string; title: string }>(
+  episodes: E[],
+  older: OlderRow[],
+  prefix: string
+): Map<string, OlderRow> {
+  const words = (t: string) => new Set(titleKey(t).split(' ').filter(Boolean))
+  const slugWords = (id: string) =>
+    id.slice(prefix.length + 1).replace(/-\d+$/, '').toLowerCase().split('-').filter(Boolean)
+  const epWords = new Map(episodes.map(e => [e.key, words(e.title)]))
+
+  const candidates = (row: OlderRow): E[] => {
+    const exact = episodes.filter(e => row.title && titleKey(e.title) === titleKey(row.title))
+    if (exact.length > 0) return exact
+    const slug = slugWords(row.external_id)
+    if (slug.length < 2) return []
+    return episodes.filter(e => slug.every(w => epWords.get(e.key)!.has(w)))
+  }
+
+  const byRow = new Map<string, E[]>()
+  const rowsPerEpisode = new Map<string, number>()
+  for (const row of older) {
+    const c = candidates(row)
+    byRow.set(row.id, c)
+    for (const e of c) rowsPerEpisode.set(e.key, (rowsPerEpisode.get(e.key) ?? 0) + 1)
+  }
+  const out = new Map<string, OlderRow>()
+  for (const row of older) {
+    const c = byRow.get(row.id) ?? []
+    if (c.length === 1 && rowsPerEpisode.get(c[0].key) === 1) out.set(c[0].key, row)
+  }
+  return out
+}
+
+/**
+ * The manifest a download writes next to the audio is the transcript side's map
+ * from key back to guests. It used to be rewritten from scratch on every run,
+ * which was fine for one show; with several shows sharing an audio folder, the
+ * second show's run would wipe the first show's guests and its transcripts would
+ * come back with numbered speakers instead of names. So a run replaces only ITS
+ * show's entries (keys starting `<prefix>-`) and keeps everyone else's.
+ */
+export function mergeManifestEpisodes<T extends { key: string }>(existing: T[], prefix: string, fresh: T[]): T[] {
+  return [...existing.filter(e => !e.key.startsWith(`${prefix}-`)), ...fresh]
 }
 
 /**

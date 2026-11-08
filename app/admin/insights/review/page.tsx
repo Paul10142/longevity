@@ -104,7 +104,7 @@ export default async function InsightsReviewPage({
     // links can be resolved HERE; it never reaches the client component.
     db
       .from('sources')
-      .select('id, title, type, url, youtube_url, article_url, episode_number')
+      .select('id, title, type, url, youtube_url, article_url, episode_number, series, external_id')
       .order('title', { ascending: true }),
     db
       .from('topics')
@@ -120,6 +120,8 @@ export default async function InsightsReviewPage({
     youtube_url: string | null
     article_url: string | null
     episode_number: number | null
+    series: string | null
+    external_id: string | null
   }[]
   const allSources = allSourceRows.map((s) => s.title).filter(Boolean)
   const allTopics = (topicsData || []) as { id: string; name: string; slug: string }[]

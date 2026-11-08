@@ -15,6 +15,13 @@ there.
 
 ## ▶ START HERE — execution entry point
 
+> **🎙️ 2026-11-08 — MULTI-SHOW CODE LANDED (branch `claude/multi-show-pipeline-a711f6`).** The Deepgram path is show-aware: one registry
+> (`lib/shows.ts`) for The Drive, FoundMyFitness and Huberman Lab drives the feed ingest (`--show`), the downloader, the transcriber's keyterms,
+> speaker naming, the extraction prompt's host, and the episode search links; The Drive's output is byte-identical. Public feed URLs are in
+> `.env.local` (`FMF_FEED_URL`, `HUBERMAN_FEED_URL`). **Next runner step: the FoundMyFitness + Huberman Lab batch plan** (which episodes, in what order,
+> within the Deepgram credit), starting from `scripts/checkFeeds.ts` and the `--dry-run` of `ingestFeedSources.ts --show fmf|huberman`. Nothing has been
+> ingested, downloaded or transcribed for either show yet. How to add a show: `docs/EXTRACTION_RUNBOOK.md` §14. Re-query counts before quoting any.
+
 > **✅ 2026-10-30 — PETER ATTIA DRIVE BATCH DONE.** All 409 Drive episodes have Deepgram transcripts, extracted and consolidated
 > (543 extract and 543 consolidate jobs done, none queued or failed); 49,286 active claims, 505 quarantined for review at `/admin/flags`.
 > Left open: the end-of-run fidelity judge stopped at its 180-minute cap after 42 sources (resume with

@@ -36,8 +36,12 @@ import path from 'node:path'
 // with scripts/repairDeepgramTiming.ts. One segment PER UTTERANCE: the first
 // attach merged a speaker's consecutive utterances into one segment, which
 // collapsed a whole monologue onto its first timestamp (2026-10-12).
-import { nameSpeakers, buildLabelledSegments, HOST } from '../lib/deepgramSegments'
+import { nameSpeakers, buildLabelledSegments } from '../lib/deepgramSegments'
 import type { DgSegment } from '../lib/deepgramSegments'
+// The host's name comes from the registry, by the key's prefix (`huberman-…` →
+// Andrew Huberman). It used to be a constant, which would have labelled every
+// show's opening speaker "Peter Attia".
+import { hostLabelForKey } from '../lib/shows'
 
 type DgFile = { key: string; model: string; speakers: number[]; segments: DgSegment[]; duration_seconds: number | null }
 
@@ -83,6 +87,7 @@ async function main() {
   let attached = 0
   let skippedDone = 0
   let unmatched = 0
+  let unknownShow = 0
   let named = 0
 
   for (const [i, file] of files.entries()) {
@@ -94,12 +99,20 @@ async function main() {
     // orphan the claims already built from the old one — that is the separate
     // "redo the 107" job, with its own reconciliation.
     if (row.processing_status === 'succeeded') { skippedDone++; continue }
+    // No registered host means no safe name for the opening speaker. Skip loudly
+    // rather than guess: a wrong name is worse than a skipped file.
+    const host = hostLabelForKey(key)
+    if (!host) {
+      unknownShow++
+      process.stdout.write(`  ${key}: no show is registered for this key's prefix — skipped (add it to lib/shows.ts)\n`)
+      continue
+    }
 
     const dg = JSON.parse(await readFile(path.join(dir, file), 'utf8')) as DgFile
     if (!dg.segments?.length) { process.stdout.write(`  ${key}: no segments, skipped\n`); continue }
 
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [])
-    const hasRealName = [...names.values()].some(n => n !== HOST && !n.startsWith('Speaker '))
+    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
+    const hasRealName = [...names.values()].some(n => n !== host && !n.startsWith('Speaker '))
 
     const timed = buildLabelledSegments(dg.segments, names)
     const transcript = timed.map(s => s.text).join(' ')
@@ -136,7 +149,7 @@ async function main() {
 
   process.stdout.write(
     `\n${dryRun ? 'would attach' : 'attached'} ${attached} | already extracted, left alone ${skippedDone} | ` +
-      `no matching source ${unmatched}\n` +
+      `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
       `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
   )
   if (!dryRun && attached > 0) process.stdout.write('these sources are now pending — the extraction worker will pick them up\n')

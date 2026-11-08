@@ -41,6 +41,7 @@ async function main() {
   const { selectAllPaged } = await import('../lib/pagination')
   const { nameSpeakers, buildLabelledSegments, transcriptText } = await import('../lib/deepgramSegments')
   const { computeChunkTimings } = await import('../lib/transcriptSegments')
+  const { hostLabelForKey } = await import('../lib/shows')
   if (APPLY) {
     const { acquireWriterLock } = await import('../lib/writerLock')
     acquireWriterLock('repairDeepgramTiming')
@@ -73,7 +74,14 @@ async function main() {
     totals.sources++
     n++
     const dg = JSON.parse(await readFile(path.join(dir, file), 'utf8')) as { segments: { text: string; speaker: number | null; start_ms: number; end_ms: number }[] }
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [])
+    // Same host the attach used (lib/shows.ts, by the key's prefix); without it
+    // the rebuilt text could not match the stored transcript.
+    const host = hostLabelForKey(key)
+    if (!host) {
+      process.stdout.write(`  ${key}: no show is registered for this key's prefix — left alone\n`)
+      continue
+    }
+    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
     const fine = buildLabelledSegments(dg.segments, names)
     const oldCount = Array.isArray(row.timed_transcript) ? row.timed_transcript.length : 0
 

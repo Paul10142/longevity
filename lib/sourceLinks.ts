@@ -13,11 +13,17 @@
  *                                        `url` counts too — the 240-odd rows
  *                                        ingested from YouTube before the feed
  *                                        existed carry the video there)
- *   3. otherwise a search on peterattiamd.com for the episode number
- *      (`#405`) or, failing that, the title → "Find on peterattiamd.com"
+ *   3. otherwise a search on the EPISODE'S OWN SHOW's site (lib/shows.ts picks
+ *      it from `series`, else the `external_id` prefix, else The Drive) for the
+ *      episode number (`#405`, shows where that is a good query) or, failing
+ *      that, the title → "Find on peterattiamd.com" / "Find on foundmyfitness.com"
+ *      / "Find on hubermanlab.com"
  *
- * Pure: no imports, no I/O. Tested in tests/sourceLinks.test.ts.
+ * Pure: its only import is the pure show registry; no I/O. Tested in
+ * tests/sourceLinks.test.ts.
  */
+
+import { DEFAULT_SHOW, showForSource } from './shows'
 
 export type SourceLinkInput = {
   url?: string | null
@@ -25,6 +31,13 @@ export type SourceLinkInput = {
   article_url?: string | null
   episode_number?: number | string | null
   title?: string | null
+  /**
+   * Which show the episode belongs to, so the search fallback goes to the right
+   * site. Every caller that selects a source row for display must pass it; a row
+   * with neither `series` nor `external_id` is treated as The Drive.
+   */
+  series?: string | null
+  external_id?: string | null
 }
 
 export type EpisodeLinkKind = 'article' | 'video' | 'search'
@@ -35,7 +48,8 @@ export type EpisodeLink = {
   href: string
 }
 
-export const EPISODE_SEARCH_BASE = 'https://peterattiamd.com/?s='
+/** The Drive's search base, kept as the default for a row that names no show. */
+export const EPISODE_SEARCH_BASE = DEFAULT_SHOW.searchBase
 
 /** A Supercast feed URL: the private member feed, never to be shown. */
 export function isPrivateFeedUrl(url: string | null | undefined): boolean {
@@ -71,15 +85,17 @@ export function publicArticleUrl(input: SourceLinkInput): string | null {
 }
 
 /**
- * Search on peterattiamd.com: by episode number (`#405`) when there is one,
- * otherwise by title. Null when there is nothing to search for.
+ * Search the episode's own show's site: by episode number (`#405`) when there
+ * is one AND the show's search handles numbers well, otherwise by title. Null
+ * when there is nothing to search for.
  */
 export function episodeSearchUrl(input: SourceLinkInput): string | null {
+  const show = showForSource(input)
   const n = input.episode_number
   const hasNumber = n !== null && n !== undefined && String(n).trim() !== '' && Number.isFinite(Number(n))
-  const query = hasNumber ? `#${Number(n)}` : (input.title ?? '').trim()
+  const query = hasNumber && show.searchByNumber ? `#${Number(n)}` : (input.title ?? '').trim()
   if (!query) return null
-  return `${EPISODE_SEARCH_BASE}${encodeURIComponent(query)}`
+  return `${show.searchBase}${encodeURIComponent(query)}`
 }
 
 /**
@@ -95,7 +111,7 @@ export function episodeLinks(input: SourceLinkInput): EpisodeLink[] {
   if (video) links.push({ kind: 'video', label: 'YouTube', href: video })
   if (links.length > 0) return links
   const search = episodeSearchUrl(input)
-  return search ? [{ kind: 'search', label: 'Find on peterattiamd.com', href: search }] : []
+  return search ? [{ kind: 'search', label: `Find on ${showForSource(input).siteHost}`, href: search }] : []
 }
 
 /** The first (best) public link, for places that can only show one. */

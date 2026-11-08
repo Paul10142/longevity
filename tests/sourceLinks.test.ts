@@ -128,3 +128,40 @@ test('surrounding whitespace in stored URLs is trimmed', () => {
   assert.equal(publicArticleUrl({ article_url: `  ${ARTICLE}  ` }), ARTICLE)
   assert.equal(publicVideoUrl({ youtube_url: `${VIDEO} ` }), VIDEO)
 })
+
+// ── Per-series search fallback ───────────────────────────────────────────────
+
+test('search fallback goes to the episode\'s own show: FoundMyFitness searches by title, never by "#114"', () => {
+  const input = { series: 'FoundMyFitness', url: null, episode_number: 114, title: '#114 How Meditation Rewires Your Brain' }
+  assert.equal(
+    episodeSearchUrl(input),
+    `https://www.foundmyfitness.com/search?q=${encodeURIComponent('#114 How Meditation Rewires Your Brain')}`
+  )
+  assert.deepEqual(episodeLinks(input), [
+    { kind: 'search', label: 'Find on foundmyfitness.com', href: episodeSearchUrl(input)! },
+  ])
+})
+
+test('search fallback for Huberman Lab uses its own site and label', () => {
+  const links = episodeLinks({ series: 'Huberman Lab', title: 'Master Your Sleep & Be More Alert When Awake' })
+  assert.deepEqual(links, [
+    {
+      kind: 'search',
+      label: 'Find on hubermanlab.com',
+      href: 'https://www.hubermanlab.com/search-results?q=Master%20Your%20Sleep%20%26%20Be%20More%20Alert%20When%20Awake',
+    },
+  ])
+})
+
+test('a row with no series falls back to its external_id prefix, then to The Drive', () => {
+  assert.equal(episodeLinks({ external_id: 'huberman-g3fb2c5', title: 'T' })[0].label, 'Find on hubermanlab.com')
+  assert.equal(episodeLinks({ external_id: 'fmf-0114', title: 'T' })[0].label, 'Find on foundmyfitness.com')
+  assert.equal(episodeLinks({ title: 'T' })[0].label, 'Find on peterattiamd.com')
+  assert.equal(episodeLinks({ series: 'The Drive', episode_number: 405, title: 'x' })[0].href, 'https://peterattiamd.com/?s=%23405')
+})
+
+test('a public article or video still wins over the search, for every show', () => {
+  assert.deepEqual(episodeLinks({ series: 'Huberman Lab', article_url: 'https://www.hubermanlab.com/episode/x', title: 'T' }), [
+    { kind: 'article', label: 'Episode page', href: 'https://www.hubermanlab.com/episode/x' },
+  ])
+})
