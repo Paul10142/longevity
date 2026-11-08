@@ -1,0 +1,105 @@
+{
+ "generatedAt": "2026-11-08T21:55:09.988Z",
+ "baseline": {
+  "passSpecificAfterConsolidation": {
+   "A": 0.23,
+   "B": 0.16
+  },
+  "identicalQuoteSplits": 21,
+  "boundaryShare": {
+   "onlyOne": 0.366,
+   "both": 0.29
+  },
+  "bar": {
+   "passSpecific": 0.05,
+   "coverageDisagreement": 0.05,
+   "fidelityFlagPoints": 2
+  }
+ },
+ "matches": [
+  {
+   "exp": "baseline-lexical",
+   "a": "stored:291281d6",
+   "b": "stored:3d6c7c5f",
+   "createdAt": "2026-11-08T21:55:09.642Z",
+   "sameCopy": false,
+   "similarity": "lexical",
+   "passSpecific": {
+    "aToB": 0.2350230414746544,
+    "bToA": 0.17050691244239632,
+    "mean": 0.20276497695852536
+   },
+   "coverage": {
+    "turns": {
+     "rate": 0.025,
+     "bins": 40
+    },
+    "window500": {
+     "rate": 0.2857142857142857,
+     "bins": 238
+    }
+   },
+   "boundary": {
+    "unmatched": 0.3050847457627119,
+    "matched": 0.28488372093023256,
+    "nUnmatched": 59,
+    "nMatched": 344
+   },
+   "dirA": {
+    "n": 217,
+    "matched": 166,
+    "tier1": 166,
+    "tier2": 0,
+    "passSpecific": 51,
+    "passSpecificRate": 0.2350230414746544,
+    "samePassageMiss": 28,
+    "samePassageMissRate": 0.12903225806451613,
+    "unmatchedNoSpan": 20,
+    "boundary": {
+     "matched": 0.2804878048780488,
+     "unmatched": 0.3548387096774194,
+     "nMatched": 164,
+     "nUnmatched": 31
+    },
+    "perChunk": 3.1911764705882355
+   },
+   "dirB": {
+    "n": 217,
+    "matched": 180,
+    "tier1": 180,
+    "tier2": 0,
+    "passSpecific": 37,
+    "passSpecificRate": 0.17050691244239632,
+    "samePassageMiss": 26,
+    "samePassageMissRate": 0.11981566820276497,
+    "unmatchedNoSpan": 9,
+    "boundary": {
+     "matched": 0.28888888888888886,
+     "unmatched": 0.25,
+     "nMatched": 180,
+     "nUnmatched": 28
+    },
+    "perChunk": 3.1911764705882355
+   },
+   "duplicates": {
+    "a": {
+     "total": 68,
+     "sameChunk": 2,
+     "crossChunk": 66,
+     "identical": 1
+    },
+    "b": {
+     "total": 45,
+     "sameChunk": 1,
+     "crossChunk": 44,
+     "identical": 0
+    }
+   },
+   "passes": {
+    "a": null,
+    "b": null
+   }
+  }
+ ],
+ "passes": []
+}
