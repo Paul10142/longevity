@@ -118,3 +118,44 @@ test('the plan is the same whatever order the rows arrive in', () => {
   const b = planCleanup([...rows].reverse()).changes.map(c => `${c.id}>${c.duplicate_of}`).sort()
   assert.deepEqual(a, b)
 })
+
+test('both copies extracted: the copy with more facts is kept, the other is skipped and keeps its facts', () => {
+  const numbered = row('#349 - AMA #71: Building strength, muscle and more', { processing_status: 'succeeded', facts: 169, created_at: '2026-01-01T00:00:00Z' })
+  const rebroadcast = row('Building strength, muscle and more (AMA #71 rebroadcast)', { processing_status: 'succeeded', facts: 176, created_at: '2026-06-01T00:00:00Z' })
+  const plan = planCleanup([numbered, rebroadcast])
+  assert.equal(plan.groups[0].keeper.id, rebroadcast.id)
+  assert.equal(plan.changes.length, 1)
+  assert.equal(plan.changes[0].id, numbered.id)
+  assert.equal(plan.changes[0].facts, 169)
+  assert.equal(plan.changes[0].duplicate_of, rebroadcast.id)
+})
+
+test('an extracted rebroadcast is kept over an unextracted original', () => {
+  const original = row('#288 - Some topic | Guest')
+  const rebroadcast = row('Some topic | Guest (#288 rebroadcast)', { processing_status: 'succeeded', facts: 66 })
+  const plan = planCleanup([original, rebroadcast])
+  assert.equal(plan.groups[0].keeper.id, rebroadcast.id)
+  assert.deepEqual(plan.changes.map(c => c.id), [original.id])
+})
+
+test('Huberman AMA and live Q&A items are skipped on their own title and never grouped', () => {
+  const a = row('AMA #3: Adaptogens, Fasting & Fertility', { series: HUBERMAN })
+  const b = row('AMA #3: Adaptogens, Fasting & Fertility', { series: HUBERMAN }) // a repeat of the same title
+  const live = row('LIVE EVENT Q&A: Dr. Andrew Huberman at the Chicago Theatre', { series: HUBERMAN })
+  const full = row('How to Build Muscle | Dr. Someone', { series: HUBERMAN })
+  const plan = planCleanup([a, b, live, full])
+  assert.equal(plan.groups.length, 0)
+  assert.deepEqual(new Set(plan.changes.map(c => c.id)), new Set([a.id, b.id, live.id]))
+  for (const c of plan.changes) {
+    assert.equal(c.duplicate_of, null)
+    assert.equal(c.group, null)
+    assert.match(c.skip_reason, /full episodes only/)
+  }
+})
+
+test('a Huberman Q&A item that is already extracted is left alone; the Drive AMA is not Q&A', () => {
+  const done = row('AMA #1: Something', { series: HUBERMAN, processing_status: 'succeeded', facts: 90 })
+  const driveAma = row('#127 - AMA #3 with a guest: Fasting, gut health', { series: DRIVE })
+  const plan = planCleanup([done, driveAma])
+  assert.equal(plan.changes.length, 0)
+})

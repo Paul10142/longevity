@@ -6,8 +6,9 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 import { selectAllPaged } from "@/lib/pagination"
 
 /**
- * Skipped episodes (migration 038): re-posts, rebroadcasts, "Essentials" cuts and
- * copies of an episode the library already holds. They stay in the table so the
+ * Skipped episodes (migration 038): re-posts, rebroadcasts, "Essentials" cuts,
+ * Huberman AMA / live Q&A items and copies of an episode the library already
+ * holds. They stay in the table so the
  * feed never re-creates them, but no picker transcribes or extracts them.
  *
  * Read-only. Each row says why it was skipped and links to the copy that is kept.
@@ -112,8 +113,8 @@ export default async function AdminDuplicatesPage() {
               </Link>
             </div>
             <p className="text-muted-foreground mb-8 max-w-3xl">
-              Re-posts, rebroadcasts, short &quot;Essentials&quot; cuts and second copies of an episode the library already holds. They are
-              never transcribed or extracted. The reason says what each one repeats; the link goes to the copy that is kept.
+              Re-posts, rebroadcasts, short &quot;Essentials&quot; cuts, Huberman AMA and live Q&amp;A items, and second copies of an episode the
+              library already holds. They are never transcribed or extracted. The reason says what each one repeats; the link goes to the copy that is kept.
             </p>
 
             <div className="grid gap-4 sm:grid-cols-3 mb-8">

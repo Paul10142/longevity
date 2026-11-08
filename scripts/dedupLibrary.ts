@@ -101,10 +101,10 @@ async function main() {
   })
 
   const alone = plan.changes.filter(c => c.group == null)
-  console.log(`\n══ RE-POSTS WITH NO COPY IN THE LIBRARY (${alone.length}) — skipped on their own title (full episodes only) ══`)
+  console.log(`\n══ SKIPPED ON THEIR OWN TITLE, NO COPY IN THE LIBRARY (${alone.length}) — re-posts, cuts and Q&A items (full episodes only) ══`)
   const byKind = new Map<string, Change[]>()
   for (const c of alone) {
-    const k = /^re-cut \(Essentials\)/.test(c.skip_reason) ? 'Essentials cut' : c.skip_reason.split(':')[0]
+    const k = /^re-cut \(Essentials\)/.test(c.skip_reason) ? 'Essentials cut' : /^AMA:/.test(c.skip_reason) ? 'Huberman AMA' : /^live Q&A:/.test(c.skip_reason) ? 'Huberman live Q&A' : c.skip_reason.split(':')[0]
     byKind.set(k, [...(byKind.get(k) ?? []), c])
   }
   for (const [k, list] of byKind) {
@@ -129,7 +129,7 @@ async function main() {
   console.log(`  duplicate groups:                    ${plan.groups.length} (${inGroups} rows in them)`)
   console.log(`  rows to mark skipped:                ${applicable.length} (${plan.changes.length - todo.length} already marked)`)
   console.log(`    of which copies of a held episode: ${applicable.filter(c => c.duplicate_of).length}`)
-  console.log(`    of which re-posts with no copy:    ${applicable.filter(c => !c.duplicate_of).length}`)
+  console.log(`    of which skipped on their own title: ${applicable.filter(c => !c.duplicate_of).length}`)
   console.log(`  rows that are being processed now:   ${applicable.filter(c => c.processing_status === 'processing').length} (left alone)`)
   console.log(`  groups held back for a person:       ${plan.groups.filter(g => g.suspicious).length}`)
 

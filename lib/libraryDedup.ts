@@ -9,9 +9,14 @@
  * WHICH COPY IS KEPT. Never an unextracted copy when an extracted one exists:
  * keeping the "tidier" row and skipping the one that already has facts would
  * queue the whole episode for a second extraction, which is the cost this work
- * exists to stop. The order, best first (comparePreference): still live → not
- * an `Essentials:` cut → already extracted → the episode number leads the title
- * → not marked rebroadcast → oldest → id.
+ * exists to stop. Where both are extracted, the copy with MORE facts is kept
+ * (Paul, 2026-11-08). The order, best first (comparePreference): still live →
+ * not an `Essentials:` cut → already extracted → more facts → the episode
+ * number leads the title → not marked rebroadcast → oldest → id.
+ *
+ * Q&A ITEMS. A Huberman `AMA #N:` or live Q&A item is not a full episode (Paul,
+ * 2026-11-08): it is skipped on its own title, never grouped, with no original.
+ * One that already has facts is left alone, like an extracted rebroadcast.
  *
  * WHAT IS SKIPPED. Every other copy in a group, plus any re-post or cut with no
  * copy at all (an `Essentials:` row whose full episode is not in the library). A
@@ -30,6 +35,8 @@ import {
   comparePreference,
   describeEpisode,
   looksSimilar,
+  nonEpisodeFormat,
+  nonEpisodeReason,
   parseEpisodeTitle,
   sameEpisode,
   type LibraryRow,
@@ -132,7 +139,10 @@ export function groupDuplicates(rows: readonly CleanupRow[]): DuplicateGroup[] {
  * The proposed writes. Every change is "mark this row skipped, and say why";
  * nothing else about a row is touched.
  */
-export function planCleanup(rows: readonly CleanupRow[]): CleanupPlan {
+export function planCleanup(allRows: readonly CleanupRow[]): CleanupPlan {
+  // Q&A items stand apart: they are not episodes, so they are never grouped.
+  const qaRows = allRows.filter(r => nonEpisodeFormat(r) != null)
+  const rows = allRows.filter(r => nonEpisodeFormat(r) == null)
   const groups = groupDuplicates(rows)
   const changes: Change[] = []
   const inGroup = new Set<string>()
@@ -194,6 +204,23 @@ export function planCleanup(rows: readonly CleanupRow[]): CleanupPlan {
       skip_reason: p.essentials
         ? 're-cut (Essentials): full episodes only; the full episode is not in the library'
         : `${p.repost}: full episodes only; the original is not in the library`,
+      facts: r.facts ?? 0,
+      processing_status: r.processing_status ?? null,
+      alreadyApplied: r.processing_status === 'skipped' && !r.duplicate_of,
+      group: null,
+    })
+  }
+
+  // Huberman AMA and live Q&A items: skipped on their own title, no original.
+  for (const r of qaRows) {
+    // Already extracted: its facts are in the claims either way, so leave it alone.
+    if ((r.facts ?? 0) > 0 || r.processing_status === 'succeeded') continue
+    changes.push({
+      id: r.id,
+      title: r.title,
+      series: seriesOf(r),
+      duplicate_of: null,
+      skip_reason: nonEpisodeReason(nonEpisodeFormat(r)!),
       facts: r.facts ?? 0,
       processing_status: r.processing_status ?? null,
       alreadyApplied: r.processing_status === 'skipped' && !r.duplicate_of,

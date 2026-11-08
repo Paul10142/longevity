@@ -15,6 +15,7 @@ import {
   findOriginal,
   isRepostTitle,
   looksSimilar,
+  nonEpisodeFormat,
   parseEpisodeTitle,
   planNewEpisodes,
   sameEpisode,
@@ -295,4 +296,70 @@ test('planNewEpisodes: different numbers in one batch stay apart', () => {
     [],
   )
   assert.equal(plans.every(p => !p.decision.skip), true)
+})
+
+// ── Q&A items are not full episodes (Paul, 2026-11-08) ────────────────────────
+
+test('nonEpisodeFormat: Huberman AMA and live Q&A titles are recognised', () => {
+  const h = (title: string) => nonEpisodeFormat({ title, series: HUBERMAN })
+  assert.equal(h('AMA #10: Benefits of Nature & “Grounding,” Hearing Loss Research'), 'AMA')
+  assert.equal(h('AMA #1: Leveraging Ultradian Cycles, How to Protect Your Brain'), 'AMA')
+  assert.equal(h('Ask Me Anything: Sleep, Light and Focus'), 'AMA')
+  assert.equal(h('LIVE EVENT Q&A: Dr. Andrew Huberman at the Chicago Theatre'), 'live Q&A')
+  assert.equal(h('Dr. Andrew Huberman at the Sydney Opera House | Q&A'), 'live Q&A')
+})
+
+test('nonEpisodeFormat: a normal Huberman episode, and every other show, is untouched', () => {
+  assert.equal(nonEpisodeFormat({ title: 'How to Improve Your Sleep | Dr. Matt Walker', series: HUBERMAN }), null)
+  assert.equal(nonEpisodeFormat({ title: 'Essentials: How to Sleep Better', series: HUBERMAN }), null)
+  // The Drive's AMAs are numbered full episodes.
+  assert.equal(nonEpisodeFormat({ title: '#127 - AMA #3 with sleep expert, Matthew Walker, Ph.D.: Fasting, gut health', series: DRIVE }), null)
+  assert.equal(nonEpisodeFormat({ title: '#04 - AMA #1: alcohol, best lab tests', series: DRIVE }), null)
+  // FoundMyFitness Q&A episodes were not part of Paul's answer.
+  assert.equal(nonEpisodeFormat({ title: '#053 COVID-19 Q&A #1 with Rhonda Patrick, Ph.D.', series: 'FoundMyFitness' }), null)
+})
+
+test('decide: a Huberman AMA is skipped on its own title with no original', () => {
+  const d = decide({ title: 'AMA #14: 2023 Philanthropy, Evening Routine, Light Therapy', series: HUBERMAN }, [])
+  assert.equal(d.skip, true)
+  if (!d.skip) return
+  assert.equal(d.category, 'not-a-full-episode')
+  assert.equal(d.original, null)
+  assert.match(d.reason, /^AMA: full episodes only/)
+})
+
+test('decide: a Huberman live Q&A is skipped, a Drive AMA of a held episode is not treated as Q&A', () => {
+  const live = decide({ title: 'LIVE EVENT Q&A: Dr. Andrew Huberman at The Wiltern in Los Angeles', series: HUBERMAN }, [])
+  assert.equal(live.skip, true)
+  if (live.skip) assert.match(live.reason, /^live Q&A: full episodes only/)
+  const drive = decide({ title: '#401 - AMA #66: A brand new topic', series: DRIVE }, [row('#400 - AMA #65: Another topic')])
+  assert.deepEqual(drive, { skip: false })
+})
+
+test('planNewEpisodes: Huberman AMA and Q&A items in a batch are skipped, the full episode beside them is kept', () => {
+  const plan = planNewEpisodes(
+    [
+      { key: 'huberman-gq1', title: 'AMA #20: Something New', series: HUBERMAN },
+      { key: 'huberman-gq2', title: 'LIVE EVENT Q&A: Dr. Andrew Huberman in Denver', series: HUBERMAN },
+      { key: 'huberman-gfull', title: 'How to Build Muscle | Dr. Someone', series: HUBERMAN },
+    ],
+    []
+  )
+  const byKey = new Map(plan.map(p => [p.episode.key, p.decision.skip]))
+  assert.equal(byKey.get('huberman-gq1'), true)
+  assert.equal(byKey.get('huberman-gq2'), true)
+  assert.equal(byKey.get('huberman-gfull'), false)
+})
+
+test('preference: when both copies are extracted the one with more facts wins, whatever its title', () => {
+  const numbered = row('#349 - AMA #71: Building strength', { processing_status: 'succeeded', facts: 169 })
+  const rebroadcast = row('Building strength (AMA #71 rebroadcast)', { processing_status: 'succeeded', facts: 176 })
+  assert.ok(comparePreference(rebroadcast, numbered) < 0)
+  assert.ok(comparePreference(numbered, rebroadcast) > 0)
+})
+
+test('preference: an extracted rebroadcast beats an unextracted original', () => {
+  const original = row('#288 - Some topic | Guest')
+  const rebroadcast = row('Some topic | Guest (#288 rebroadcast)', { processing_status: 'succeeded', facts: 66 })
+  assert.ok(comparePreference(rebroadcast, original) < 0)
 })

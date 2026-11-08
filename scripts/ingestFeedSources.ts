@@ -34,8 +34,9 @@
  * 'skipped'` with `duplicate_of` and `skip_reason`; every picker ignores skipped rows,
  * so it is never transcribed (Deepgram bills per minute) or extracted. A title that is
  * an `Essentials:` cut or says rebroadcast / re-release is skipped even when its
- * original is not in the library (full episodes only). Different episode numbers are
- * never duplicates. Only rows this run CREATES are checked; linked and refreshed rows
+ * original is not in the library (full episodes only), and so is a Huberman Lab
+ * `AMA #N:` or live Q&A item (Paul, 2026-11-08: not full episodes). Different episode
+ * numbers are never duplicates. Only rows this run CREATES are checked; linked and refreshed rows
  * are never changed. `--no-duplicate-check` switches the check off.
  *
  * WHAT IS DELIBERATELY NOT STORED: the enclosure URL. It carries the membership

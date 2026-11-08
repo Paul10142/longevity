@@ -38,6 +38,12 @@
  * full episodes only, so it is skipped even when the original is not in the
  * library.
  *
+ * Likewise on Huberman Lab (Paul, 2026-11-08, "AMA / live Q&A rows that break the
+ * same full-episodes-only rule"): a title starting `AMA #N:`, or containing `Q&A`
+ * or `Ask Me Anything`, is a question-and-answer item, not a full episode, and is
+ * skipped with no original (see nonEpisodeFormat). The Drive's own `AMA #N`
+ * episodes are full numbered episodes and are NOT touched.
+ *
  * A re-cut never stands in for the full episode: a row that is itself skipped
  * with no original (an `Essentials:` cut) is never the "original" of a full
  * episode arriving later, so a full episode is never skipped because its own
@@ -173,6 +179,31 @@ function parseEpisodeTitleUncached(rawTitle: string): ParsedTitle {
 export function isRepostTitle(title: string): boolean {
   const p = parseEpisodeTitle(title)
   return p.essentials || p.repost != null
+}
+
+/** Shows whose Q&A / AMA items are not full episodes (Paul, 2026-11-08). The Drive's AMAs are numbered full episodes: not listed. */
+const QA_NOT_AN_EPISODE = new Set(['Huberman Lab'])
+
+export type NonEpisodeFormat = 'AMA' | 'live Q&A'
+
+const LEADING_AMA = /^\s*(?:ama\s*#?\s*\d|ask me anything\b)/i
+const QA_WORD = /\bq\s*(?:&|and)\s*a\b/i
+
+/**
+ * `'AMA'` / `'live Q&A'` for a question-and-answer item on a show whose Q&A items
+ * are not full episodes (Huberman Lab today), else null. Skipped on its own title,
+ * with no original: there is no "full episode" it copies.
+ */
+export function nonEpisodeFormat(r: EpisodeRef): NonEpisodeFormat | null {
+  if (!QA_NOT_AN_EPISODE.has(showOf(r).series)) return null
+  if (LEADING_AMA.test(r.title)) return 'AMA'
+  if (QA_WORD.test(r.title) || /\blive event\b/i.test(r.title)) return 'live Q&A'
+  return null
+}
+
+/** The skip reason for a Q&A item, as the admin page shows it. */
+export function nonEpisodeReason(format: NonEpisodeFormat): string {
+  return `${format}: full episodes only; Q&A items are not transcribed or extracted`
 }
 
 // ── Pairwise match ────────────────────────────────────────────────────────────
@@ -322,16 +353,21 @@ const RANK: Record<MatchKind, number> = { 'episode-number': 0, 'ama-number': 1, 
 /**
  * Which of two copies of an episode to prefer, best first: still live (not
  * skipped) → not an `Essentials:` cut → already extracted (so nothing is
- * extracted twice) → the episode number leads the title → not marked
- * rebroadcast → oldest → id (so the answer never depends on row order).
+ * extracted twice) → MORE facts (Paul, 2026-11-08: where both copies are
+ * extracted, the copy with more facts is kept) → the episode number leads the
+ * title → not marked rebroadcast → oldest → id (so the answer never depends on
+ * row order). A rebroadcast that is extracted beats an original that is not:
+ * "we should use a rebroadcast" (Paul, on #288).
  */
 function preference(r: LibraryRow): (number | string)[] {
   const p = parseEpisodeTitle(r.title)
-  const extracted = (r.facts ?? 0) > 0 || r.processing_status === 'succeeded'
+  const facts = r.facts ?? 0
+  const extracted = facts > 0 || r.processing_status === 'succeeded'
   return [
     r.processing_status === 'skipped' ? 1 : 0,
     p.essentials ? 1 : 0,
     extracted ? 0 : 1,
+    -facts,
     p.numberLeads ? 0 : 1,
     p.repost ? 1 : 0,
     r.created_at ?? '',
@@ -398,8 +434,11 @@ export type SkipDecision = {
   skip: true
   /** Why, in words an admin page can show. */
   reason: string
-  /** `duplicate` = a copy of an episode we hold; `re-post` = a rebroadcast/re-release/cut, with or without an original. */
-  category: 'duplicate' | 're-post'
+  /**
+   * `duplicate` = a copy of an episode we hold; `re-post` = a rebroadcast/re-release/cut, with or
+   * without an original; `not-a-full-episode` = a Huberman AMA or live Q&A item.
+   */
+  category: 'duplicate' | 're-post' | 'not-a-full-episode'
   original: Original | null
 }
 export type KeepDecision = { skip: false }
@@ -410,6 +449,9 @@ export type Decision = SkipDecision | KeepDecision
  * skip it as a duplicate, skip it as a re-post/cut, or keep it.
  */
 export function decide(candidate: EpisodeRef & { id?: string }, library: readonly LibraryRow[]): Decision {
+  // A question-and-answer item is not a full episode: no library lookup, no original.
+  const format = nonEpisodeFormat(candidate)
+  if (format) return { skip: true, category: 'not-a-full-episode', original: null, reason: nonEpisodeReason(format) }
   const p = parseEpisodeTitle(candidate.title)
   const original = findOriginal(candidate, library)
   if (p.essentials) {
