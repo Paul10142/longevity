@@ -1,6 +1,8 @@
--- 038_speaker_names.sql
+-- 039_speaker_names.sql
 --
 -- STATUS: NOT APPLIED. Apply via the Supabase SQL Editor (LifestyleAcademy project).
+-- DO NOT RUN IT until Paul says when (the extraction runner applies it at a run gap).
+-- Numbered 039 because PR 56 holds 038_skipped_duplicate_sources.sql.
 --
 -- Who each unnamed voice of an episode is, as decided by a person on /admin/speakers.
 --
@@ -26,7 +28,7 @@
 --
 -- STRICTLY ADDITIVE: one nullable column, nothing existing is altered, no default, no backfill.
 -- Null means nobody has reviewed the episode. The code tolerates the column being absent
--- (the page then says migration 038 is not applied and saving is off).
+-- (the page then says migration 039 is not applied and saving is off).
 
 alter table sources
   add column if not exists speaker_names jsonb;

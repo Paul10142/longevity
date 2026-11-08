@@ -445,8 +445,8 @@ section is what that window (and the runner, afterwards) follows.
         voice says (with a play-at-timestamp link on YouTube rows; FoundMyFitness audio is only on this Mac, so those link to the episode page and
         give the timestamp), the full transcript, and one button per name on the row (the host included) plus "Not A Guest (Ad / Clip / Producer)".
         "Suggest A Guest" makes one small Claude read and only highlights a voice; it never saves.
-      - **What is saved:** `sources.speaker_names` (**migration 038, applied only by the parent session at a run gap**), nothing else; the transcript is
-        not touched. Until 038 is applied the page loads but cannot save, and the attach says so and attaches as before.
+      - **What is saved:** `sources.speaker_names` (**migration 039, applied only by the parent session at a run gap**), nothing else; the transcript is
+        not touched. Until 039 is applied the page loads but cannot save, and the attach says so and attaches as before.
       - **It reaches the transcript at the next re-attach.** `attachTranscripts.ts` applies the saved names after checking that each answer's fingerprint
         (the first words that voice says) still matches the voice now carrying that label. If ANY answer no longer matches the file, the whole
         mapping is ignored and the log says why: a name can never land on the wrong voice. A voice answered "Not A Guest" stays `Speaker N`.

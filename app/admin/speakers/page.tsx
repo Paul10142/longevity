@@ -51,7 +51,7 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
 
             {columnMissing && (
               <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                Migration 038 (the column that stores your answers) is not applied yet, so you can look at episodes here
+                Migration 039 (the column that stores your answers) is not applied yet, so you can look at episodes here
                 but not save.
               </p>
             )}

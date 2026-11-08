@@ -11,7 +11,7 @@
  * so a misattribution invents agreement between people who never spoke). Paul listens, then
  * clicks a name per voice on /admin/speakers.
  *
- * THE MAPPING. What he decides is stored in `sources.speaker_names` (migration 038), and
+ * THE MAPPING. What he decides is stored in `sources.speaker_names` (migration 039), and
  * ONLY there, never in the transcript:
  *
  *     { "Speaker 2": { "name": "Rhonda Patrick", "check": "welcome to another episode of the" },

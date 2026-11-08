@@ -26,7 +26,7 @@
  *     `authors[0]`, guests = the rest), the other speaker is that guest,
  *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed (a third voice is
  *     NEVER guessed: on the FoundMyFitness episodes it is the host herself),
- *   - unless Paul has assigned them: `sources.speaker_names` (migration 038, written
+ *   - unless Paul has assigned them: `sources.speaker_names` (migration 039, written
  *     only by /admin/speakers) maps `Speaker N` → a name from the row's own authors,
  *     and this script applies it, after checking that each answer's fingerprint still
  *     matches the voice now carrying that number (lib/speakerReview.ts
@@ -101,14 +101,14 @@ async function main() {
     processing_status: string | null
     title: string | null
     authors: string[] | null
-    /** Paul's reviewed speaker names (migration 038); absent until that migration is applied. */
+    /** Paul's reviewed speaker names (migration 039); absent until that migration is applied. */
     speaker_names?: unknown
   }
   const baseColumns = 'id, external_id, processing_status, title, authors'
   let { data: rows, error } = await db.from('sources').select(`${baseColumns}, speaker_names`).in('external_id', keys)
   if (error && /speaker_names/.test(error.message)) {
-    // Migration 038 is not applied yet: no episode has a review, so there is nothing to apply.
-    process.stdout.write('note: sources.speaker_names does not exist yet (migration 038), so no saved speaker assignments are applied\n')
+    // Migration 039 is not applied yet: no episode has a review, so there is nothing to apply.
+    process.stdout.write('note: sources.speaker_names does not exist yet (migration 039), so no saved speaker assignments are applied\n')
     ;({ data: rows, error } = await db.from('sources').select(baseColumns).in('external_id', keys))
   }
   if (error) throw new Error(`source lookup failed: ${error.message}`)

@@ -3,7 +3,7 @@
  * page can make (saving an answer) is in app/api/admin/speakers/[id]/route.ts and touches only
  * `sources.speaker_names`.
  *
- * Migration 038 adds that column. Until it is applied every query here falls back to the same
+ * Migration 039 adds that column. Until it is applied every query here falls back to the same
  * columns without it, so the pages still load (and say saving is off) instead of failing.
  * Never imported by a client component: it uses the service-role client.
  */
@@ -99,7 +99,7 @@ export type SpeakerContext = {
   /** The voices that still have no name, with their first words. */
   speakers: SpeakerSummary[]
   saved: SpeakerNames
-  /** True when migration 038 is not applied (saving is off). */
+  /** True when migration 039 is not applied (saving is off). */
   columnMissing: boolean
 }
 

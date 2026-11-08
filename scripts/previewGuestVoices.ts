@@ -13,7 +13,7 @@
  * For each episode it prints a table: the id, the title, each voice's number and share of the non-host
  * words, the label the attach gives that voice TODAY (the unchanged two-voice rule: a third voice is
  * `Speaker N`, never guessed), and, with `--suggest`, the name Claude would pre-select on the review page
- * (/admin/speakers). A saved review (`sources.speaker_names`, migration 038) is shown with what a re-attach
+ * (/admin/speakers). A saved review (`sources.speaker_names`, migration 039) is shown with what a re-attach
  * would do with it.
  *
  * WHAT IT DOES AND DOES NOT TOUCH. It SELECTs the episode rows (title, authors, status, and the saved review
@@ -80,7 +80,7 @@ async function main() {
   const base = 'id, external_id, title, authors, processing_status'
   let { data, error } = await db.from('sources').select(`${base}, speaker_names`).in('external_id', keys)
   if (error && /speaker_names/.test(error.message)) {
-    process.stdout.write('note: sources.speaker_names does not exist yet (migration 038 is not applied): no saved reviews to show\n')
+    process.stdout.write('note: sources.speaker_names does not exist yet (migration 039 is not applied): no saved reviews to show\n')
     ;({ data, error } = await db.from('sources').select(base).in('external_id', keys))
   }
   if (error) throw new Error(`source lookup failed: ${error.message}`)

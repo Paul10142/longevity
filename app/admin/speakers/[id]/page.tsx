@@ -88,7 +88,7 @@ export default async function SpeakerReviewPage({ params }: { params: Promise<{ 
 
             {columnMissing && (
               <p className="rounded-md border border-amber-500/50 bg-amber-500/10 p-3 text-sm">
-                Migration 038 (the column that stores your answers) is not applied yet, so saving is off.
+                Migration 039 (the column that stores your answers) is not applied yet, so saving is off.
               </p>
             )}
             {extracted && (
@@ -118,7 +118,7 @@ export default async function SpeakerReviewPage({ params }: { params: Promise<{ 
                 names={allowed}
                 speakers={cards}
                 initial={initial}
-                saveDisabledReason={columnMissing ? "Migration 038 is not applied" : null}
+                saveDisabledReason={columnMissing ? "Migration 039 is not applied" : null}
                 canSuggest={guests.length === 1}
               />
             )}
