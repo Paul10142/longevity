@@ -6,16 +6,22 @@
  *   npx tsx --env-file=.env.local scripts/repairFlaggedClaims.ts --apply
  *
  * Every claim with an open `extraction_fidelity` flag and status 'flagged' (lib/claimGate.ts) is
- * run through lib/claimRepair.ts: keep the current wording if it already passes, else adopt a
- * faithful member insight's own wording, else have Opus 5.5 rewrite it under lib/repairRules.ts
- * and let the SAME judge (lib/extractionFidelity.ts) re-read the result. A claim that passes
- * goes back to active and its flag resolves; one that fails twice, needs the video, or has no
- * supportable version stays hidden with a note on its flag, for Paul at /admin/flags.
+ * run through lib/claimRepair.ts, which must not lose information (Paul, 2026-11-08): the claim is
+ * cut into separate facts (audited for coverage), each judged against the passages of ALL its member
+ * insights; supported facts are kept, the facts are regrouped into one or several claims (a merged claim
+ * with distinct facts is SPLIT; each member insight goes to the claim it fits best), and only a fact no
+ * passage supports is edited by Opus 5.5
+ * under lib/repairRules.ts (restore a hedge, attribute a guess, remove an unsupported fact, and
+ * every removed fact is searched for in every passage first). The SAME judge
+ * (lib/extractionFidelity.ts) re-reads each edit. A claim that passes goes back to active and its
+ * flag resolves; one that cannot be repaired, needs the video, or has nothing supported stays
+ * hidden with a note on its flag, for Paul at /admin/flags.
  *
  *   --stats        counts only (verdicts, stakes, member counts, what a re-run would skip). No model calls.
  *   --dry-run      the default. Reads the database, calls the models, prints before/after wording and
  *                  the judge's re-verdict, writes a report under scratchpad/runs/. WRITES NOTHING.
- *   --apply        writes: audit row in claim_repairs (migration 037), the claim's canonical_statement
+ *   --apply        writes (single-claim repairs only: a claim that would SPLIT is reported and left for the
+ *                  design go-ahead): audit row in claim_repairs (migration 037), the claim's canonical_statement
  *                  and embedding, the flag, the claim's status. Takes the exclusive writer lock.
  *   --limit N      stop after N claims. In a dry run the N are spread across verdict types and across
  *                  one-member / several-member claims, so a small sample shows every path.
@@ -42,7 +48,10 @@ import path from 'node:path'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from '../lib/llm'
 import { judgeFidelity } from '../lib/extractionFidelity'
 import { statusAfterResolution } from '../lib/claimGate'
-import { REPAIR_SYSTEM, buildRepairUser, parseRewrite } from '../lib/repairRules'
+import {
+  UNIT_REPAIR_SYSTEM, buildUnitUser, parseUnitRewrite,
+  DECOMPOSE_SYSTEM, buildDecomposeUser, parseDecompose, GROUP_SYSTEM, buildGroupUser, parseGroups,
+} from '../lib/repairRules'
 import {
   repairClaim, orderCandidates, stratifiedSample, stakesTier, sameText,
   type Candidate, type MemberPassage, type RepairResult, type RepairOutcome, type RepairDeps,
@@ -176,7 +185,8 @@ async function insertAudit(db: Db, w: Work, r: RepairResult, runId: string): Pro
     claim_id: w.claimId, flag_id: w.flag.id, run_id: runId, outcome: r.outcome, source: r.source,
     original_statement: w.claim, verdict_before: facts.verdict, offending_before: facts.offending, reasoning_before: facts.reasoning,
     new_statement: r.newStatement, member_raw_insight_id: r.memberRawInsightId,
-    attempts: r.attempts, note: r.note, model: MODEL,
+    // The audit jsonb: every judged step, then the per-sentence ledger (kept / edited / removed, with reasons).
+    attempts: [...r.attempts, { kind: 'ledger', passages: r.passageCount, units: r.ledger }], note: r.note, model: MODEL,
   })
   if (error) throw new Error(`audit row for ${w.claimId}: ${error.message}`)
 }
@@ -256,19 +266,42 @@ const clip = (s: string, n = 400) => (s.length > n ? `${s.slice(0, n - 1)}…` :
 
 function block(i: number, total: number, w: Work, r: RepairResult, secs: number): string {
   const tier = ['numbers/doses', 'cause-and-effect', 'other'][stakesTier(w.claim, w.offending)]
+  const before = w.claim.trim().length
   const lines = [
-    `── [${i}/${total}] claim ${w.claimId}  ${w.verdict}  ${w.memberCount > 1 ? `${w.memberCount} insights` : '1 insight'}  stakes: ${tier}  ${secs.toFixed(0)}s`,
+    `── [${i}/${total}] claim ${w.claimId}  ${w.verdict}  ${w.memberCount > 1 ? `${w.memberCount} insights` : '1 insight'}  ${r.passageCount} passages  stakes: ${tier}  ${secs.toFixed(0)}s`,
     `   flagged phrase: ${w.offending ? `"${clip(w.offending, 160)}"` : '(none given)'}`,
-    `   BEFORE: ${clip(w.claim)}`,
+    `   BEFORE (${before} characters): ${clip(w.claim, 700)}`,
   ]
-  if (r.newStatement && r.source !== 'unchanged') lines.push(`   AFTER (${r.source === 'member' ? "another insight's own wording" : 'rewritten by Opus 5.5'}): ${clip(r.newStatement)}`)
-  const judged = [...r.attempts].reverse().find(a => a.judge)
-  if (judged?.judge) lines.push(`   RE-VERDICT: ${judged.judge.verdict}${judged.judge.reasoning ? ` — ${clip(judged.judge.reasoning, 200)}` : ''}`)
-  const skipped = r.attempts.filter(a => a.kind === 'member_skipped').length
-  if (skipped) lines.push(`   not adopted (under half the claim's length, so it would narrow it): ${skipped} other insight${skipped === 1 ? '' : 's'}`)
-  for (const g of r.attempts.filter(a => a.kind !== 'member_skipped' && a.guard)) lines.push(`   guard rejected a rewrite: ${g.guard}`)
-  if (r.droppedNumbers.length) lines.push(`   NOTE numbers in the old wording and the passage that the new wording leaves out: ${r.droppedNumbers.join(', ')}`)
-  lines.push(`   OUTCOME: ${r.outcome}${r.note ? ` — ${clip(r.note, 220)}` : ''}`)
+  const noun = r.cutAt === 'facts' ? 'facts' : 'sentences'
+  if (r.ledger.length) lines.push(`   CUT INTO: ${r.ledger.length} ${noun}${r.cutAt === 'sentences' ? ' (fallback: the model split did not pass the coverage audit, or none was asked for)' : ''}`)
+  if (r.claims.length) {
+    const delta = r.charsAfter - r.charsBefore
+    lines.push(`   RESULT: ${r.claims.length === 1 ? 'stays ONE claim' : `becomes ${r.claims.length} CLAIMS`}; characters ${r.charsBefore} → ${r.charsAfter} (${delta >= 0 ? '+' : ''}${delta}); unsupported content removed: ${r.charsRemoved} characters`)
+    r.claims.forEach((c, ci) => {
+      lines.push(`   CLAIM ${ci + 1} of ${r.claims.length} (${ci === 0 ? 'keeps the original id' : 'new'}; ${c.memberRawInsightIds.length} insight${c.memberRawInsightIds.length === 1 ? '' : 's'}; ${c.statement.length} characters): ${clip(c.statement, 900)}`)
+    })
+    if (r.alsoBacks.length) lines.push(`   ALSO FITS: ${r.alsoBacks.length} insight${r.alsoBacks.length === 1 ? '' : 's'} match more than one resulting claim (each is placed in its best one: an insight can belong to one claim only)`)
+  } else if (r.outcome === 'canonical_ok') {
+    lines.push(`   RESULT: unchanged, ONE claim (${r.charsBefore} characters; every ${noun.slice(0, -1)} is supported)`)
+  }
+  const kept = r.ledger.filter(l => l.status === 'kept').length
+  if (r.ledger.length) lines.push(`   ${noun.toUpperCase()}: ${r.ledger.length} total, ${kept} kept as judged, ${r.ledger.filter(l => l.status === 'edited').length} edited, ${r.ledger.filter(l => l.status === 'removed').length} removed, ${r.ledger.filter(l => l.status === 'unresolved').length} unresolved`)
+  if (r.claims.length > 1) {
+    for (const l of r.ledger) {
+      if (l.group === null) continue
+      lines.push(`   → ${noun.slice(0, -1)} ${l.index + 1} → claim ${l.group + 1} [${l.status}]: ${clip(l.after, 160)}`)
+    }
+  }
+  for (const l of r.ledger) {
+    if (l.status === 'kept') continue
+    lines.push(`   • ${noun.slice(0, -1)} ${l.index + 1} ${l.status.toUpperCase()} (${l.verdict}${l.offending ? `: "${clip(l.offending, 120)}"` : ''}; ${l.passagesSearched} passages searched)`)
+    lines.push(`       was: ${clip(l.before, 400)}`)
+    if (l.after && l.status === 'edited') lines.push(`       now: ${clip(l.after, 400)}`)
+    if (l.changes) lines.push(`       change: ${clip(l.changes, 300)}`)
+    for (const f of l.removed) lines.push(`       removed fact: ${clip(f.fact, 300)} — ${clip(f.reason, 200)} (no support in ${f.searchedPassages} passages)`)
+  }
+  if (r.droppedNumbers.length) lines.push(`   NOTE numbers the old wording and a passage both state that the new wording would lose: ${r.droppedNumbers.join(', ')}`)
+  lines.push(`   OUTCOME: ${r.outcome}${r.note ? ` — ${clip(r.note, 400)}` : ''}`)
   return lines.join('\n')
 }
 
@@ -324,7 +357,9 @@ async function main() {
 
   const deps: RepairDeps = {
     judge: (statement, chunk, opts) => judgeFidelity(statement, chunk, opts),
-    rewrite: async req => parseRewrite(await claudeJson(REPAIR_SYSTEM, buildRepairUser(req), 2000, MODEL, 'high')),
+    rewrite: async req => parseUnitRewrite(await claudeJson(UNIT_REPAIR_SYSTEM, buildUnitUser(req), 3000, MODEL, 'high')),
+    decompose: async (claim, contextNote, priorGap) => parseDecompose(await claudeJson(DECOMPOSE_SYSTEM, buildDecomposeUser(claim, contextNote, priorGap), 6000, MODEL, 'high')),
+    group: async facts => parseGroups(await claudeJson(GROUP_SYSTEM, buildGroupUser(facts), 1500, MODEL, 'medium'), facts.length),
   }
 
   const tally: Record<string, number> = {}
@@ -332,6 +367,7 @@ async function main() {
   const started = Date.now()
   let consecutiveErrors = 0
   let exitCode = 0
+  let splitSkipped = 0
 
   for (let i = 0; i < todo.length; i++) {
     if (i % args.batch === 0) {
@@ -345,19 +381,23 @@ async function main() {
       let result: RepairResult
       if (w.pending) {
         // The audit row is already written; only the apply steps are outstanding.
-        result = { outcome: w.pending.outcome, source: w.pending.source as RepairResult['source'], newStatement: w.pending.new_statement, memberRawInsightId: w.pending.member_raw_insight_id, droppedNumbers: [], note: 'finishing a repair that was already judged', attempts: [] }
+        result = { outcome: w.pending.outcome, source: w.pending.source as RepairResult['source'], newStatement: w.pending.new_statement, memberRawInsightId: w.pending.member_raw_insight_id, droppedNumbers: [], note: 'finishing a repair that was already judged', attempts: [], ledger: [], passageCount: 0, claims: [], alsoBacks: [], cutAt: 'sentences', charsBefore: 0, charsAfter: 0, charsRemoved: 0 }
         if (args.apply) await applyRepaired(db, w, w.pending.outcome as 'repaired' | 'canonical_ok', w.pending.new_statement)
       } else {
         const members = await loadMembers(db, w.claimId)
         result = await repairClaim({ claimId: w.claimId, claim: w.claim, claimContextNote: w.contextNote, flag: flagFacts(w.flag), members }, deps)
-        if (result.outcome !== 'error' && args.apply) await applyResult(db, w, result, runId)
+        if (result.outcome === 'repaired' && result.claims.length > 1) {
+          // Writing a split (new claim rows, moved members, re-tag, re-embed) waits for Paul's go on the design.
+          console.log(`   (split into ${result.claims.length} claims NOT written: applying splits is not enabled yet; this claim stays hidden and is picked up again later)`)
+          splitSkipped++
+        } else if (result.outcome !== 'error' && args.apply) await applyResult(db, w, result, runId)
       }
       const secs = (Date.now() - t0) / 1000
       tally[result.outcome] = (tally[result.outcome] ?? 0) + 1
       const text = block(i + 1, todo.length, w, result, secs)
       console.log(text)
       report.push(text)
-      appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: args.apply && result.outcome !== 'error', before: w.claim, ...result })}\n`)
+      appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: args.apply && result.outcome !== 'error' && !(result.outcome === 'repaired' && result.claims.length > 1), before: w.claim, ...result })}\n`)
       consecutiveErrors = result.outcome === 'error' ? consecutiveErrors + 1 : 0
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) { console.error(`Stopping: ${consecutiveErrors} judge errors in a row (the CLI is probably unwell). Nothing was recorded for them; re-run to retry.`); exitCode = 2; break }
     } catch (err) {
@@ -371,7 +411,7 @@ async function main() {
     if ((i + 1) % args.batch === 0) console.log(`…${i + 1}/${todo.length} done, ${((Date.now() - started) / 60000).toFixed(1)} min, ${JSON.stringify(tally)}`)
   }
 
-  const summary = `${mode}: ${JSON.stringify(tally)} in ${((Date.now() - started) / 60000).toFixed(1)} min. Progress: ${progressFile}`
+  const summary = `${mode}: ${JSON.stringify(tally)}${splitSkipped ? ` (${splitSkipped} splits not written)` : ''} in ${((Date.now() - started) / 60000).toFixed(1)} min. Progress: ${progressFile}`
   console.log(`\n${summary}`)
   if (!args.apply) {
     const md = path.join(outDir, `${runId}-dryrun.md`)
