@@ -383,7 +383,7 @@ section is what that window (and the runner, afterwards) follows.
 | `refreshGuests.ts --show <prefix>` | the same feed and prefix, the host (never a guest, always `authors[0]`), `strictGuests` for the fallback title rule |
 | `fetchPodcastFeed.ts --show <prefix>` | the same feed and prefix; `series` goes into `manifest.json`, which is merged, not rewritten, so shows can share one audio folder |
 | `transcribeDeepgram.ts` | host-name keyterms (the show's own, then the shared medical list) |
-| `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman). An unregistered prefix is skipped with a message, never guessed |
+| `attachTranscripts.ts`, `repairDeepgramTiming.ts` | the label for the opening speaker, by the key's prefix (`huberman-…` = Andrew Huberman; an unregistered prefix is skipped with a message, never guessed), and the guest's name from the source row's `authors` in the database (host first, guests after; `manifest.json` only as a fallback, see step 6.5) |
 | `lib/extraction.ts` | the "Host:" line, the intro-guest prompt, the host filter and the speaker clean-up, from `sources.series` (else the key prefix, else `authors[0]`, else The Drive) |
 | `lib/sourceLinks.ts` | the "Find on <site>" search link and its label, by series |
 | `checkFeeds.ts` | the list of feeds to check |
@@ -400,7 +400,7 @@ section is what that window (and the runner, afterwards) follows.
 4. `npx tsx --env-file=.env.local scripts/ingestFeedSources.ts --show <prefix> --dry-run` and read it before any write: the show header,
    the guest list per episode (the host must never be one), the `older` list, and the first new row (`series`, `article_url`, `authors`).
 5. Only then `ingestFeedSources.ts --show <prefix>` (writes rows). It writes the guest names its title rule finds; step 6 replaces them with
-   Claude's reading, so do step 6 before anything downstream uses `authors`.
+   Claude's reading, so do step 6 before anything downstream uses `authors`, and above all before `attachTranscripts.ts` (steps 6.5 and 7).
 6. **Guest names** (`scripts/refreshGuests.ts`; added 2026-11-08). Claude reads each title and its show notes and says who the guest is, the way
    a person would; the old title rule lost real guests (`James Clear (#183 rebroadcast)`) and invented others (`M.P.H.`, `Quarterly Podcast
    Summary #6`). It costs subscription calls on the bulk tier (about 20 episodes per call), no Deepgram, no audio. Run
@@ -414,15 +414,27 @@ section is what that window (and the runner, afterwards) follows.
       updates only `sources.authors`, only the rows the plan marks changed, and the host stays `authors[0]`. If any of those rows no longer
       holds what the plan saw (a hand correction, a re-ingest), **nothing is written** (exit 1, with the rows listed): make a new plan and read
       it again. Re-running after a network failure skips finished rows.
-   3. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
-      rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
+   3. Only rows that exist can change, so the order is **ingest, plan guests, dry-run, apply, THEN attach transcripts**. A plan made before the
+      ingest shows 0 changed rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
    4. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, credentials and
       `(#183 rebroadcast)` notes removed, the host dropped from guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
       were just created, applying the plan is part of the ingest.
+   5. **Why attach comes after apply (2026-11-08).** `attachTranscripts.ts` writes the guest's name into the transcript text (`Name: …` at the
+      start of each turn) and reads it from the source row's `authors`: the host is the first name, the guests are the rest, and the host is
+      never labelled as a guest. It no longer reads the audio folder's `manifest.json`, which holds the old title-rule guests and is not touched
+      by `refreshGuests --apply`. The manifest is only a **fallback** for a row whose `authors` names nobody but the host (or has none), so an
+      episode with no row-level guest still gets a named speaker. That fallback can put a stale title-rule name on an episode Claude left
+      host-only (a solo episode), which is the reason for the order above. Read the attach's `--dry-run` first: every line ends with
+      `[guests: database = …]`, `[guests: manifest = …]` or `[guests: none]`, and the summary counts each. A `manifest` line you do not expect
+      means the guest plan was not applied (or Claude found no guest and the manifest still has one). A transcript attached BEFORE the apply keeps
+      its old labels, and `repairDeepgramTiming.ts` keeps them too (it rebuilds the stored text exactly, trying the database guests, then the
+      manifest's, then none). Relabelling an already-attached episode is the separate "redo" job, never part of the attach.
    `scripts/evalGuestNames.ts` re-measures accuracy against the hand-labelled `tests/fixtures/guest-gold.json` (100 titles); run it after any
    change to the prompt or to `lib/guestNames.ts`, and label a few episodes of a new show into the fixture first.
-7. `fetchPodcastFeed.ts --show <prefix> --keys … --fit-budget`, and the rest of the usual flow: `transcribeDeepgram.ts`, `attachTranscripts.ts`,
-   `extractDeepgram.ts`. Each step needs the same go-ahead it always did: the Deepgram spend is Paul's decision per batch.
+7. `fetchPodcastFeed.ts --show <prefix> --keys … --fit-budget`, and the rest of the usual flow: `transcribeDeepgram.ts`, then
+   `attachTranscripts.ts` (**only after step 6.2 has been applied**; `--dry-run` first, see step 6.5), then `extractDeepgram.ts`. Transcribing
+   needs no guest names, so it may run while the plan is being read; attaching may not. Each step needs the same go-ahead it always did: the
+   Deepgram spend is Paul's decision per batch.
 
 **Gotchas the first two extra shows turned up**
 

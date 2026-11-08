@@ -22,10 +22,20 @@
  * never says who they are. So:
  *   - the speaker who opens the episode is the host (these episodes begin with a
  *     scripted host intro — verified on 404, where speaker 0 delivers it),
- *   - when the feed names EXACTLY ONE guest, the other speaker is that guest,
+ *   - when the episode has EXACTLY ONE guest, the other speaker is that guest,
  *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed.
  * A wrong name is worse than no name: corroboration counts DISTINCT SPEAKERS, so
  * a misattribution invents agreement between people who never spoke.
+ *
+ * WHERE THE GUEST COMES FROM (2026-11-08). The source row's `authors` in the
+ * database (`[host, ...guests]`, host first; lib/shows.ts), NOT the audio folder's
+ * `manifest.json`. `refreshGuests.ts --apply` writes the guests Claude read from
+ * each title and its show notes into `sources.authors`; the manifest keeps the
+ * old title-rule guests and is never updated, so reading it would label speakers
+ * with names the database no longer holds. The manifest is only the fallback for
+ * a row that names nobody but the host (see `speakerGuestCandidates` for the
+ * cost of that). Order of work: ingest, plan guests, dry-run, apply, THEN attach
+ * (docs/EXTRACTION_RUNBOOK.md §14).
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -36,12 +46,12 @@ import path from 'node:path'
 // with scripts/repairDeepgramTiming.ts. One segment PER UTTERANCE: the first
 // attach merged a speaker's consecutive utterances into one segment, which
 // collapsed a whole monologue onto its first timestamp (2026-10-12).
-import { nameSpeakers, buildLabelledSegments } from '../lib/deepgramSegments'
-import type { DgSegment } from '../lib/deepgramSegments'
+import { nameSpeakers, buildLabelledSegments, chooseSpeakerGuests, manifestGuestsByKey } from '../lib/deepgramSegments'
+import type { DgSegment, GuestSource } from '../lib/deepgramSegments'
 // The host's name comes from the registry, by the key's prefix (`huberman-…` →
 // Andrew Huberman). It used to be a constant, which would have labelled every
 // show's opening speaker "Peter Attia".
-import { hostLabelForKey } from '../lib/shows'
+import { showByExternalId } from '../lib/shows'
 
 type DgFile = { key: string; model: string; speakers: number[]; segments: DgSegment[]; duration_seconds: number | null }
 
@@ -64,22 +74,21 @@ async function main() {
   const files = (await readdir(dir)).filter(f => f.endsWith('.deepgram.json')).sort().reverse()
   if (files.length === 0) throw new Error(`no .deepgram.json files in ${dir}`)
 
-  // Guests come from the feed manifest written by fetchPodcastFeed.
-  let guestsByKey = new Map<string, string[]>()
+  // The feed manifest written by fetchPodcastFeed holds the OLD title-rule guests.
+  // It is only the fallback for a row whose `authors` names nobody but the host;
+  // the guests come from the database row (see the header, and lib/deepgramSegments.ts).
+  let manifestGuests = new Map<string, string[]>()
   try {
-    const man = JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')) as {
-      episodes: { key: string; guests?: string[] }[]
-    }
-    guestsByKey = new Map(man.episodes.map(e => [e.key, e.guests ?? []]))
+    manifestGuests = manifestGuestsByKey(JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')))
   } catch {
-    process.stdout.write('warning: no manifest.json — speakers will be numbered, not named\n')
+    process.stdout.write('warning: no readable manifest.json — guest names come from the database only\n')
   }
 
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
-  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null }
+  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null; authors: string[] | null }
   const { data: rows, error } = await db
     .from('sources')
-    .select('id, external_id, processing_status, title')
+    .select('id, external_id, processing_status, title, authors')
     .in('external_id', keys)
   if (error) throw new Error(`source lookup failed: ${error.message}`)
   const byKey = new Map(((rows ?? []) as unknown as SourceRow[]).map(r => [r.external_id as string, r]))
@@ -89,6 +98,7 @@ async function main() {
   let unmatched = 0
   let unknownShow = 0
   let named = 0
+  const guestSources: Record<GuestSource, number> = { database: 0, manifest: 0, none: 0 }
 
   for (const [i, file] of files.entries()) {
     if (attached >= limit) break
@@ -101,17 +111,20 @@ async function main() {
     if (row.processing_status === 'succeeded') { skippedDone++; continue }
     // No registered host means no safe name for the opening speaker. Skip loudly
     // rather than guess: a wrong name is worse than a skipped file.
-    const host = hostLabelForKey(key)
-    if (!host) {
+    const show = showByExternalId(key)
+    if (!show) {
       unknownShow++
       process.stdout.write(`  ${key}: no show is registered for this key's prefix — skipped (add it to lib/shows.ts)\n`)
       continue
     }
+    const host = show.hostLabel
 
     const dg = JSON.parse(await readFile(path.join(dir, file), 'utf8')) as DgFile
     if (!dg.segments?.length) { process.stdout.write(`  ${key}: no segments, skipped\n`); continue }
 
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
+    // Guests: the row's `authors` first, the manifest only when the row has none.
+    const { guests, source: guestSource } = chooseSpeakerGuests(show, row.authors, manifestGuests.get(key))
+    const names = nameSpeakers(dg.segments, guests, host)
     const hasRealName = [...names.values()].some(n => n !== host && !n.startsWith('Speaker '))
 
     const timed = buildLabelledSegments(dg.segments, names)
@@ -119,9 +132,11 @@ async function main() {
 
     if (dryRun) {
       process.stdout.write(
-        `  ${key}: ${timed.length} turns, ${transcript.length} chars, speakers: ${[...names.values()].join(', ')}\n`
+        `  ${key}: ${timed.length} turns, ${transcript.length} chars, speakers: ${[...names.values()].join(', ')} ` +
+          `[guests: ${guestSource}${guests.length ? ` = ${guests.join(' | ')}` : ''}]\n`
       )
       attached++
+      guestSources[guestSource]++
       if (hasRealName) named++
       continue
     }
@@ -144,13 +159,17 @@ async function main() {
       .eq('id', row.id)
     if (upErr) { process.stdout.write(`  ${key} FAILED: ${upErr.message}\n`); continue }
     attached++
+    guestSources[guestSource]++
     if (hasRealName) named++
   }
 
   process.stdout.write(
     `\n${dryRun ? 'would attach' : 'attached'} ${attached} | already extracted, left alone ${skippedDone} | ` +
       `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
-      `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
+      `${named} of ${attached} have a named guest; the rest are solo or numbered\n` +
+      `guest list from: database ${guestSources.database} | manifest fallback ${guestSources.manifest} | none ${guestSources.none}` +
+      (guestSources.manifest > 0 ? ' — the manifest holds the OLD title-rule guests: did you apply the guest plan (refreshGuests --apply) first?' : '') +
+      `\n`
   )
   if (!dryRun && attached > 0) process.stdout.write('these sources are now pending — the extraction worker will pick them up\n')
 }

@@ -18,6 +18,15 @@
  * A source whose text does not match (transcript edited since, different
  * speaker naming) is reported and left alone. Dry run by default; `--apply`
  * writes under the one-writer lock. Idempotent: re-running changes nothing.
+ *
+ * SPEAKER LABELS ARE REBUILT, NEVER CHANGED. The attach takes guest names from the
+ * source row's `authors` (else the manifest), and `refreshGuests --apply` can change
+ * `authors` AFTER an episode was attached, so today's guests need not be the ones
+ * the stored transcript was labelled with. This repair must reproduce the stored
+ * text, not relabel it, so it tries each candidate guest list in the attach's order
+ * (database `authors`, then the manifest, then no guest at all) and keeps the first
+ * whose rebuilt text is byte-identical to the stored transcript. If none matches the
+ * source is reported as TEXT MISMATCH and left alone, exactly as before.
  */
 export {} // module marker: keep `main` file-scoped (collides with pipeline.ts otherwise)
 
@@ -39,27 +48,26 @@ async function main() {
   const { supabaseAdmin: db } = await import('../lib/supabaseServer')
   if (!db) throw new Error('Supabase not configured')
   const { selectAllPaged } = await import('../lib/pagination')
-  const { nameSpeakers, buildLabelledSegments, transcriptText } = await import('../lib/deepgramSegments')
+  const { nameSpeakers, buildLabelledSegments, transcriptText, speakerGuestCandidates, manifestGuestsByKey, rebuildToStored } = await import('../lib/deepgramSegments')
   const { computeChunkTimings } = await import('../lib/transcriptSegments')
-  const { hostLabelForKey } = await import('../lib/shows')
+  const { showByExternalId } = await import('../lib/shows')
   if (APPLY) {
     const { acquireWriterLock } = await import('../lib/writerLock')
     acquireWriterLock('repairDeepgramTiming')
   }
 
   const files = (await readdir(dir)).filter(f => f.endsWith('.deepgram.json')).sort()
-  let guestsByKey = new Map<string, string[]>()
+  let manifestGuests = new Map<string, string[]>()
   try {
-    const man = JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')) as { episodes: { key: string; guests?: string[] }[] }
-    guestsByKey = new Map(man.episodes.map(e => [e.key, e.guests ?? []]))
+    manifestGuests = manifestGuestsByKey(JSON.parse(await readFile(path.join(dir, 'manifest.json'), 'utf8')))
   } catch {
-    process.stdout.write('warning: no manifest.json — speaker naming may differ from the original attach\n')
+    process.stdout.write('warning: no readable manifest.json — guest names come from the database only\n')
   }
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
 
-  type Row = { id: string; external_id: string; title: string; transcript: string | null; processing_status: string; timed_transcript: unknown }
+  type Row = { id: string; external_id: string; title: string; transcript: string | null; processing_status: string; timed_transcript: unknown; authors: string[] | null }
   const rows = await selectAllPaged<Row>((from, to) =>
-    db.from('sources').select('id, external_id, title, transcript, processing_status, timed_transcript')
+    db.from('sources').select('id, external_id, title, transcript, processing_status, timed_transcript, authors')
       .eq('transcript_origin', 'deepgram').in('external_id', keys).order('id').range(from, to)
   )
   const byKey = new Map(rows.map(r => [r.external_id, r]))
@@ -76,19 +84,29 @@ async function main() {
     const dg = JSON.parse(await readFile(path.join(dir, file), 'utf8')) as { segments: { text: string; speaker: number | null; start_ms: number; end_ms: number }[] }
     // Same host the attach used (lib/shows.ts, by the key's prefix); without it
     // the rebuilt text could not match the stored transcript.
-    const host = hostLabelForKey(key)
-    if (!host) {
+    const show = showByExternalId(key)
+    if (!show) {
       process.stdout.write(`  ${key}: no show is registered for this key's prefix — left alone\n`)
       continue
     }
-    const names = nameSpeakers(dg.segments, guestsByKey.get(key) ?? [], host)
-    const fine = buildLabelledSegments(dg.segments, names)
+    const host = show.hostLabel
+    // The attach's candidate guest lists, then "no guest": keep the first that
+    // rebuilds the stored text exactly (see the header and rebuildToStored).
+    const candidates = speakerGuestCandidates(show, row.authors, manifestGuests.get(key))
+    const rebuilt = rebuildToStored(dg.segments, host, candidates, row.transcript)
     const oldCount = Array.isArray(row.timed_transcript) ? row.timed_transcript.length : 0
 
-    if (transcriptText(fine) !== row.transcript) {
+    if (!rebuilt) {
       totals.textMismatch++
-      process.stdout.write(`  ${key}: TEXT MISMATCH (stored ${row.transcript.length} chars vs rebuilt ${transcriptText(fine).length}) — left alone\n`)
+      const first = buildLabelledSegments(dg.segments, nameSpeakers(dg.segments, candidates[0]?.guests ?? [], host))
+      process.stdout.write(`  ${key}: TEXT MISMATCH (stored ${row.transcript.length} chars vs rebuilt ${transcriptText(first).length}) — left alone\n`)
       continue
+    }
+    const fine = rebuilt.segments
+    if (candidates.length > 0 && rebuilt.source !== candidates[0].source) {
+      // Not an error: the stored labels were made from an older guest list than the
+      // one `authors` holds now. The repair keeps the stored labels.
+      process.stdout.write(`  ${key}: stored labels match the ${rebuilt.source === 'none' ? 'no-guest' : rebuilt.source} guest list, not the current ${candidates[0].source} one — kept as stored\n`)
     }
     if (oldCount === fine.length) {
       totals.alreadyFine++
