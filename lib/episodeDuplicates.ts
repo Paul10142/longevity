@@ -41,7 +41,8 @@
  * Likewise on Huberman Lab (Paul, 2026-11-08, "AMA / live Q&A rows that break the
  * same full-episodes-only rule"): a title starting `AMA #N:`, or containing `Q&A`
  * or `Ask Me Anything`, is a question-and-answer item, not a full episode, and is
- * skipped with no original (see nonEpisodeFormat). The Drive's own `AMA #N`
+ * skipped with no original (see nonEpisodeFormat). So is the 4-minute welcome
+ * trailer (Paul, 2026-11-08 3:05 PM). The Drive's own `AMA #N`
  * episodes are full numbered episodes and are NOT touched.
  *
  * A re-cut never stands in for the full episode: a row that is itself skipped
@@ -184,26 +185,30 @@ export function isRepostTitle(title: string): boolean {
 /** Shows whose Q&A / AMA items are not full episodes (Paul, 2026-11-08). The Drive's AMAs are numbered full episodes: not listed. */
 const QA_NOT_AN_EPISODE = new Set(['Huberman Lab'])
 
-export type NonEpisodeFormat = 'AMA' | 'live Q&A'
+export type NonEpisodeFormat = 'AMA' | 'live Q&A' | 'trailer'
 
 const LEADING_AMA = /^\s*(?:ama\s*#?\s*\d|ask me anything\b)/i
 const QA_WORD = /\bq\s*(?:&|and)\s*a\b/i
+/** The show's welcome trailer (262 s, Paul 2026-11-08 3:05 PM) and anything titled a trailer. */
+const TRAILER = /^\s*welcome to the huberman lab podcast\s*$|\btrailer\b/i
 
 /**
- * `'AMA'` / `'live Q&A'` for a question-and-answer item on a show whose Q&A items
- * are not full episodes (Huberman Lab today), else null. Skipped on its own title,
+ * `'AMA'` / `'live Q&A'` for a question-and-answer item, or `'trailer'` for the
+ * welcome trailer, on a show whose such items are not full episodes (Huberman Lab
+ * today), else null. Skipped on its own title,
  * with no original: there is no "full episode" it copies.
  */
 export function nonEpisodeFormat(r: EpisodeRef): NonEpisodeFormat | null {
   if (!QA_NOT_AN_EPISODE.has(showOf(r).series)) return null
   if (LEADING_AMA.test(r.title)) return 'AMA'
   if (QA_WORD.test(r.title) || /\blive event\b/i.test(r.title)) return 'live Q&A'
+  if (TRAILER.test(r.title)) return 'trailer'
   return null
 }
 
 /** The skip reason for a Q&A item, as the admin page shows it. */
 export function nonEpisodeReason(format: NonEpisodeFormat): string {
-  return `${format}: full episodes only; Q&A items are not transcribed or extracted`
+  return `${format}: full episodes only; not transcribed or extracted`
 }
 
 // ── Pairwise match ────────────────────────────────────────────────────────────

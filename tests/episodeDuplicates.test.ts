@@ -363,3 +363,14 @@ test('preference: an extracted rebroadcast beats an unextracted original', () =>
   const rebroadcast = row('Some topic | Guest (#288 rebroadcast)', { processing_status: 'succeeded', facts: 66 })
   assert.ok(comparePreference(rebroadcast, original) < 0)
 })
+
+test('nonEpisodeFormat: the Huberman welcome trailer is skipped, a trailer-like title on another show is not', () => {
+  assert.equal(nonEpisodeFormat({ title: 'Welcome to the Huberman Lab Podcast', series: HUBERMAN }), 'trailer')
+  assert.equal(nonEpisodeFormat({ title: 'Huberman Lab Premium Trailer', series: HUBERMAN }), 'trailer')
+  assert.equal(nonEpisodeFormat({ title: 'Welcome to the Huberman Lab Podcast', series: DRIVE }), null)
+  // A full episode that merely starts with "Welcome" is not the trailer.
+  assert.equal(nonEpisodeFormat({ title: 'Welcome to the Huberman Lab Podcast: How Sleep Works | Dr. Someone', series: HUBERMAN }), null)
+  const d = decide({ title: 'Welcome to the Huberman Lab Podcast', series: HUBERMAN }, [])
+  assert.equal(d.skip, true)
+  if (d.skip) assert.match(d.reason, /^trailer: full episodes only/)
+})

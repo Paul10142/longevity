@@ -104,7 +104,7 @@ async function main() {
   console.log(`\n══ SKIPPED ON THEIR OWN TITLE, NO COPY IN THE LIBRARY (${alone.length}) — re-posts, cuts and Q&A items (full episodes only) ══`)
   const byKind = new Map<string, Change[]>()
   for (const c of alone) {
-    const k = /^re-cut \(Essentials\)/.test(c.skip_reason) ? 'Essentials cut' : /^AMA:/.test(c.skip_reason) ? 'Huberman AMA' : /^live Q&A:/.test(c.skip_reason) ? 'Huberman live Q&A' : c.skip_reason.split(':')[0]
+    const k = /^re-cut \(Essentials\)/.test(c.skip_reason) ? 'Essentials cut' : /^AMA:/.test(c.skip_reason) ? 'Huberman AMA' : /^live Q&A:/.test(c.skip_reason) ? 'Huberman live Q&A' : /^trailer:/.test(c.skip_reason) ? 'Huberman trailer' : c.skip_reason.split(':')[0]
     byKind.set(k, [...(byKind.get(k) ?? []), c])
   }
   for (const [k, list] of byKind) {
@@ -118,6 +118,7 @@ async function main() {
     if (/^re-cut \(Essentials\)/.test(reason)) return 'Title starts "Essentials:" (Huberman 30-minute re-cut)'
     if (/^AMA:/.test(reason)) return 'Huberman title starts "AMA #N:" (not a full episode)'
     if (/^live Q&A:/.test(reason)) return 'Huberman title has "Q&A" / "LIVE EVENT" (not a full episode)'
+    if (/^trailer:/.test(reason)) return 'Huberman welcome trailer (not a full episode)'
     if (/^(rebroadcast|re-release)/.test(reason)) return 'Title says rebroadcast / re-release'
     if (/same episode number/.test(reason)) return 'Same episode number as a held episode'
     if (/same AMA/.test(reason)) return 'Same AMA number as a held episode'
