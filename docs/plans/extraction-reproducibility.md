@@ -92,7 +92,13 @@ against. Approved by Paul on 2026-11-08 through the parent window; the lanes sta
 than 5% of facts are pass-specific (same copy twice and across the twin copies), fewer than
 5% of speaker turns are covered by one pass but not the other, and the fidelity flag rate
 has not risen more than 2 points. The consolidation lane restarts when the quote gate has
-merged the 21 identical-quote splits in a dry run Paul has looked at.
+merged the 21 identical-quote splits in a dry run Paul has looked at. Paul confirmed the 5%
+bar on 2026-11-08.
+
+**Anecdotes (section 4b):** Paul decided on 2026-11-08 that anecdotes are captured but kept
+out of the corpus. The plan stores them as ordinary insights carrying a new exclusion flag
+(one migration), which consolidation skips, so articles and Ask the Library never see them;
+the 178 anecdotes already inside claims await a backfill decision.
 
 **Already-extracted episodes (section 8):** yes, they need a second pass, because every one
 of the 440 was extracted under the "prefer fewer" instruction. The plan proposes a
@@ -365,7 +371,7 @@ for the same episode.
 
 | Fix | What changes | Expected effect | Cost | Risk |
 |---|---|---|---|---|
-| **A. Exhaustive extraction prompt** | Replace the selectivity paragraphs with: list every distinct substantive claim in the text, one insight per claim, in the order spoken; completeness over brevity; never skip a claim because it seems minor, conversational or repeated (the library ranks, extraction does not); still one direct quote each; skip only greetings, logistics and ads. Keep PR #59's gate and repair; the fidelity judge remains the safety net. | Largest. Removes the "which few?" choice that produces the 40% recall gap and most scoping differences. Insights per chunk likely rise from ~3 to 6–9. | No extra extraction calls, ~2.5× output tokens. Consolidation (the expensive half, ≈ $3/episode of judge time today) scales with insight count: 2–3× judge calls per episode unless fix I trims them. | More low-value facts reach claims (mitigate: keep kind/importance fields and let synthesis rank); fidelity drift (mitigate: gate + judge; flag rate is a release criterion). |
+| **A. Exhaustive extraction prompt** | Replace the selectivity paragraphs with: list every distinct substantive claim in the text, one insight per claim, in the order spoken; completeness over brevity; never skip a claim because it seems minor, conversational or repeated (the library ranks, extraction does not); still one direct quote each; skip only greetings, logistics and ads. Anecdotes are extracted too (Paul, 2026-11-08): kind `Anecdote`, phrased as a report of what the speaker did or saw, never as advice, and held outside the corpus (section 4b). Keep PR #59's gate and repair; the fidelity judge remains the safety net. | Largest. Removes the "which few?" choice that produces the 40% recall gap and most scoping differences. Insights per chunk likely rise from ~3 to 6–9. | No extra extraction calls, ~2.5× output tokens. Consolidation (the expensive half, ≈ $3/episode of judge time today) scales with insight count: 2–3× judge calls per episode unless fix I trims them. | More low-value facts reach claims (mitigate: keep kind/importance fields and let synthesis rank); fidelity drift (mitigate: gate + judge; flag rate is a release criterion). |
 | **B1. Context before and after (Paul's question)** | Each call receives three marked blocks: `CONTEXT BEFORE` (previous ~400 characters or the previous speaker turn), `TEXT TO ANALYZE` (the chunk), `CONTEXT AFTER` (next ~400 characters). Rule: extract every fact whose supporting words lie at least partly in `TEXT TO ANALYZE`; use the context to understand it and to complete a sentence that runs across the boundary; never extract a fact that lies entirely in a context block (the neighbouring chunk owns it). Quotes may extend into context; `resolveQuote` searches chunk plus context. | Removes the boundary drop directly: a fact spanning a cut is now fully visible to exactly one call. Expected to close the edge excess in 1.5 (37% → 29%). | ~800 extra input characters per call (≈ +10% input tokens), no extra calls. Prompt and `extractFromChunk` change; quote resolution gains a context span. | Double extraction of boundary facts by both neighbours if the ownership rule is ignored (mitigate: fix I catches it; measured as within-pass duplicates). |
 | **B2. Speaker-turn chunking, deterministic, no overlap** | Build chunks from whole utterances in `timed_transcript`: group into turns, pack whole turns up to ~2,400 characters, split an over-long turn at sentence ends, no overlap (B1's context replaces it). Chunk timing = first/last segment, exact. Fallback to today's splitter when a source has no segments. | Boundaries land on conversational joints and depend only on who spoke when, so near-identical transcripts chunk alike; no sentence is cut; the double-extraction artefact disappears. | Code only; zero LLM cost. Chunk counts change, so runbook timings change. | Chunk size variance (long monologue → several chunks; many short turns → one chunk, fine). |
 | **C. Hygiene made stable** | Cache `stripNonContent`'s removals per transcript hash (a `sources.hygiene_spans` column), or skip it for feeds whose ads are already cut. | Removes a hidden source of boundary drift and content loss between runs. | Cache: one column + one write per source. Skip: zero. | Skipping lets ads through on feeds that still carry them: decide per show. |
@@ -380,6 +386,36 @@ for the same episode.
 the extractor is told to err toward inclusion; the PR #59 gate (quote must resolve, no
 invented numbers) runs inline, and `extraction_fidelity` quarantines anything unfaithful
 for review at `/admin/flags`. Omission is invisible; a quarantined fact is reviewable.
+
+### 4b. Where Anecdotes Live (Decided 2026-11-08)
+
+Paul's words: "we can still capture them, but we can just make them less personal and not
+include them under our corpus of information that we're building."
+
+Reading (parent window, for Paul to confirm): the exhaustive prompt extracts anecdotes like
+any other fact and labels them kind `Anecdote`; each is phrased as a report of what the
+speaker did or saw ("The guest reports taking magnesium at night"), never as general advice;
+they are stored with quote, speaker and timestamp like every insight, but never enter the
+claims corpus that feeds articles and Ask the Library.
+
+Today the library holds 179 insights typed `Anecdote` out of 69,417 (0.26%), because the v1
+prompt allowed one "ONLY if it illustrates a generalizable principle"; 178 of them are already
+members of claims (172 claims). The exhaustive prompt will produce many more.
+
+| Option | What changes | Good | Bad | Verdict |
+|---|---|---|---|---|
+| **A. Exclusion flag on `raw_insights`** | Migration 039 adds `raw_insights.corpus_excluded boolean not null default false` with a partial index; the extraction insert sets it true when kind = `Anecdote`. `consolidateSource` drops excluded rows from `pending` (today pending = "no `claim_members` row", `lib/consolidation.ts:791-827`, so without the column every drain would pick them up again). Articles and Ask the Library read `claims` only (`match_claims` keeps `c.status = 'active'`), so an insight that never becomes a claim never reaches them. The admin review and export pages and the episode page already read `insight_type` and can show anecdotes behind a filter. | One column, one line in the extraction insert, about ten lines in consolidation. Anecdotes keep quote, offsets, speaker and timestamp; the fidelity judge still checks them. Reversible: flip the flag and the next drain consolidates them. The rule is visible in the data, not only in code. | Needs a migration (Supabase SQL Editor, like every schema change here). | **Recommended.** |
+| **B. Separate `anecdotes` table** | A migration creates a second table with the same columns; extraction routes anecdotes there. | Hard separation. | Needs a migration too, and duplicates the insight schema and every reader (review page, export, episode page, fidelity flags, timing repair). | No. |
+| **C. No migration** | Filter `insight_type = 'Anecdote'` out of the pending query in code. | Nothing to apply. | The type alone cannot tell "excluded" from "kept": the 178 Haiku-era anecdotes already inside claims look identical to new ones, and a later decision to keep some anecdotes (a clinician's case series, say) has nowhere to live. | No. |
+
+Harness and bar: anecdotes count toward the pass-specific rate like every other insight (they
+must be reproducible too); the harness also reports the rate without them.
+
+Backfill (Paul's call, no hurry): the 178 anecdotes already inside 172 claims can stay (they
+passed the old prompt's "illustrates a principle" test and the fidelity judge), or be swept out
+after the fix lands: mark them excluded and archive claims whose every member is an anecdote,
+dry run first with the counts shown. Recommendation: sweep, so the new rule holds for the whole
+library; the number is small.
 
 ---
 
@@ -469,7 +505,7 @@ plan's author reviews the numbers. Concurrency 8; usage guard checked before eve
 |---|---|---|---|---|---|---|---|
 | **E1a** | Copy A twice, the configuration that built the library (Haiku 4.5, v1 prompt, char chunks, live hygiene, CLI) | Noise floor of the old pipeline; proves the harness | 2 | Always first. Expect 15–25% pass-specific. Report to the parent window. | 0.5M | 20 min | ≈ $1.8 / — |
 | **E1b** | Copy A twice, `main` today (Opus 5.5, v2 prompt, gate + repair, char chunks, live hygiene, CLI) | How much PR #59 already closed | 2 | Report to the parent window. If same-copy < 5%, run copy B once against E1b as the cross-copy check and skip E2. | 0.5M | 40 min | ≈ $6.7 / $4.6 |
-| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | **Waits for Paul's anecdotes answer** (hub row `la-2026-11-08-reproducibility-bar-call`): the prompt wording depends on it. Then: if same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
+| **E2** | Exhaustive prompt (fix A) on Opus 5.5, char chunks: A×2 + B×1 | The prompt alone | 3 | Anecdote rule decided 2026-11-08 (section 4b); runs after E1b. If same-copy and cross-copy < 5%, E3 runs as 2 passes to confirm B1/B2 do no harm. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E3** | E2 + context before/after + speaker-turn chunks + cached hygiene (fixes B1, B2, C): A×2 + B×1 | Boundaries and context | 3 | Boundary share should fall to the matched facts' share; coverage disagreement < 5%. | 1.2M | 60 min | ≈ $18 / $18 |
 | **E4** | E3 configuration on cheaper models, CLI: Haiku 5.5 A×2, Sonnet 5.5 A×2 | Whether a cheaper model matches Opus (for the top-up only) | 4 | Informational: Opus 5.5 is decided. A model within 1 point of Opus on every metric becomes a top-up option for Paul. | 1.6M | 30 min | ≈ $7 / $6 |
 | **E4c** (optional, API credits) | E3 configuration on Haiku 4.5, API route, temperature 0: A×2 | Dice versus instructions | 2 | Diagnostic only; needs the parent window's ok to spend API credits. | 0.8M | 10 min | — / $2.4 |
@@ -587,12 +623,12 @@ To be written when the fixes ship, not now:
    experiment spend", relayed by the parent window). The likely path E1a → E1b → E2 → E3 →
    E4 → E6 runs in a Sonnet session; E5 and E7 only if the decision rules call for them,
    and the parent window hears before either starts.
-2. Confirm the resume bar in section 7 (5% / 5% / +2 points), or set a different one. Put to
-   Paul by the parent window on 2026-11-08 (hub row `la-2026-11-08-reproducibility-bar-call`);
-   E1a and E1b do not wait for it.
-3. Keep anecdotes and conversational facts under "capture everything" (kept as kind
-   `Anecdote` for synthesis to rank) or still drop them at extraction. Put to Paul on the same
-   hub row; **E2 waits for the answer** because the exhaustive prompt's wording depends on it.
+2. ~~Confirm the resume bar.~~ **Decided 2026-11-08: 5%** ("Let's go with a 5% bar for
+   differing facts"); section 7's 5% / 5% / +2 points stand.
+3. ~~Anecdotes.~~ **Decided 2026-11-08:** captured, labelled `Anecdote`, phrased without the
+   personal framing, kept out of the corpus (Paul's words in section 4b). Still for Paul to
+   confirm in one go: that reading, storage option A (migration 039 exclusion flag) and the
+   backfill of the 178 existing anecdotes. E2 proceeds.
 4. ~~Model tier.~~ **Decided: Opus 5.5** (PR #59, confirmed 2026-11-08). Open: whether a
    cheaper model may run the library top-up if E4 shows it matches Opus on the bar.
 5. Approve the library top-up (section 8) once E5b shows the size of the gap, and choose
