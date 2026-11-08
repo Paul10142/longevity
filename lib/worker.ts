@@ -110,6 +110,17 @@ async function handleConsolidateSource(job: Job): Promise<void> {
 
   const progress = job.progress as Partial<ConsolidateCheckpoint>
 
+  // A skipped source (migration 038) is a re-post or copy of an episode we already hold.
+  // Consolidation attaches every raw_insight that has no claim yet, so running it on a skipped
+  // copy would put back the duplicate citations that scripts/retireDuplicateMemberships.ts
+  // removed (and would file its unattached facts as new claims). Checked on every pass: a
+  // source can be marked skipped between two ticks of a long job.
+  const { data: src } = await supabaseAdmin.from('sources').select('processing_status').eq('id', sourceId).maybeSingle()
+  if ((src as { processing_status?: string } | null)?.processing_status === 'skipped') {
+    await completeJob(job.id, { skipped: true, reason: 'source is marked skipped (re-post or copy)' })
+    return
+  }
+
   const result = await consolidateSource(
     sourceId,
     progress,
