@@ -14,9 +14,10 @@
  * numbered, and the disagreement is returned so the caller can log it.
  *
  * COST. Only an episode the share rule would already name is read (an episode with two
- * voices never is, one with no standout voice cannot be named whatever the read says),
- * so a batch of 200 episodes makes a handful of calls. Each sends about five minutes of
- * speech (roughly 1,000 words) and gets one number back, on a Sonnet model at low effort.
+ * voices never is, one with no standout voice cannot be named whatever the read says):
+ * about one call per such episode (62 of the 220 episodes on disk on 2026-11-08, all
+ * Huberman). Each sends about five minutes of speech (roughly 1,000 words) and gets one
+ * number back, on a Sonnet model at low effort.
  *
  * SHAPE. Pure functions plus an INJECTED model call (`SpeakerLlm`), like lib/guestNames.ts,
  * so the tests never reach a model. `claudeSpeakerLlm` is the real one, through lib/llm.ts
