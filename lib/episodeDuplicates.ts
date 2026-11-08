@@ -351,14 +351,31 @@ export type LibraryRow = EpisodeRef & {
   /** raw_insights rows already extracted from this source. */
   facts?: number
   published_at?: string | null
+  /** 'text' = a transcript pasted in by hand, no audio behind it (see isPastedText). */
+  media_type?: string | null
+  /** 'deepgram' = transcribed from the audio by Deepgram; 'manual' = pasted. */
+  transcript_origin?: string | null
+}
+
+/**
+ * A pasted-text copy: a transcript someone pasted into the library, with no audio behind
+ * it (`media_type = 'text'`). Paul, 2026-11-08: "For Drive pasted text, we should process
+ * them with Deepgram again", so a copy made from the audio always beats a pasted-text copy
+ * of the same episode, whatever the fact counts (see preference, and
+ * lib/pastedTextReplacement.ts for how the text copy is retired).
+ */
+export function isPastedText(r: { media_type?: string | null }): boolean {
+  return r.media_type === 'text'
 }
 
 const RANK: Record<MatchKind, number> = { 'episode-number': 0, 'ama-number': 1, 'same-title': 2, 'same-guests-and-length': 3 }
 
 /**
  * Which of two copies of an episode to prefer, best first: still live (not
- * skipped) → not an `Essentials:` cut → already extracted (so nothing is
- * extracted twice) → MORE facts (Paul, 2026-11-08: where both copies are
+ * skipped) → not an `Essentials:` cut → NOT pasted text (an audio copy beats a pasted-text
+ * copy of the same episode even while it is still pending with 0 facts: Paul, 2026-11-08;
+ * after the cut, because a cut is itself skipped and must not outrank the full episode)
+ * → already extracted (so nothing is extracted twice) → MORE facts (Paul, 2026-11-08: where both copies are
  * extracted, the copy with more facts is kept) → the episode number leads the
  * title → not marked rebroadcast → oldest → id (so the answer never depends on
  * row order). A rebroadcast that is extracted beats an original that is not:
@@ -371,6 +388,7 @@ function preference(r: LibraryRow): (number | string)[] {
   return [
     r.processing_status === 'skipped' ? 1 : 0,
     p.essentials ? 1 : 0,
+    isPastedText(r) ? 1 : 0,
     extracted ? 0 : 1,
     -facts,
     p.numberLeads ? 0 : 1,

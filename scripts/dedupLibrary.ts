@@ -25,6 +25,11 @@
  * so the episode counts twice until they are retired; the report lists each such
  * row and the command that would retire it. That retirement is a separate step.
  *
+ * PASTED TEXT (Paul, 2026-11-08: "For Drive pasted text, we should process them with
+ * Deepgram again"). A pasted-text copy loses to an audio copy of the same episode whatever
+ * its facts. The cleanup never skips one: the report lists them under their own heading and
+ * scripts/replacePastedText.ts retires them, only once the audio copy has succeeded.
+ *
  * Refuses to --apply while a pipeline job is running or a supervisor process is
  * alive: one database writer at a time (the same guard as retireSourceClaims.ts).
  */
@@ -60,7 +65,7 @@ async function main() {
   if (UNDO) return undo(db)
 
   // ---- read everything (never select '*' on sources: the transcript columns time out) -------
-  const base = 'id, title, external_id, authors, series, episode_number, media_duration_sec, transcript_origin, processing_status, created_at, last_processed_at'
+  const base = 'id, title, external_id, authors, series, episode_number, media_duration_sec, transcript_origin, media_type, processing_status, created_at, last_processed_at'
   let columnsReady = true
   let sources: SourceRow[]
   try {
@@ -82,6 +87,7 @@ async function main() {
   const plan = planCleanup(sources)
   const byId = new Map(sources.map(s => [s.id, s]))
   const changeOf = new Map(plan.changes.map(c => [c.id, c]))
+  const pastedOf = new Map(plan.pastedText.map(p => [p.id, p]))
 
   // ---- report -------------------------------------------------------------------------------
   console.log(`[${now()}] ${APPLY ? 'APPLY' : 'DRY RUN'} — ${sources.length} sources, ${insights.length} facts read`)
@@ -92,13 +98,23 @@ async function main() {
     console.log(`\nGroup ${i + 1} — ${g.series} — ${g.rows.length} copies — matched by ${via}${g.suspicious ? ` — NOT APPLIED: ${g.suspicious}` : ''}`)
     for (const r of g.rows) {
       const c = changeOf.get(r.id)
-      const verdict = g.suspicious ? 'review ' : c ? (c.alreadyApplied ? 'skipped' : 'SKIP   ') : 'KEEP   '
+      const verdict = g.suspicious ? 'review ' : c ? (c.alreadyApplied ? 'skipped' : 'SKIP   ') : pastedOf.has(r.id) ? 'REPLACE' : 'KEEP   '
       console.log(
-        `  ${verdict} ${short(r.id)}  ${(r.processing_status ?? '').padEnd(9)} ${(r.transcript_origin ?? '').padEnd(9)} facts ${String(r.facts ?? 0).padStart(4)}  ${(r.created_at ?? '').slice(0, 10)}  ${clip(r.title, 80)}`
+        `  ${verdict} ${short(r.id)}  ${(r.processing_status ?? '').padEnd(9)} ${(r.media_type ?? '').padEnd(5)} ${(r.transcript_origin ?? '').padEnd(9)} facts ${String(r.facts ?? 0).padStart(4)}  ${(r.created_at ?? '').slice(0, 10)}  ${clip(r.title, 80)}`
       )
       if (c && !g.suspicious) console.log(`             ↳ ${c.skip_reason}`)
+      const pt = pastedOf.get(r.id)
+      if (pt && !g.suspicious) console.log(`             ↳ pasted text; the audio copy ${short(pt.audioId)} replaces it (${pt.state}${pt.why ? `: ${pt.why}` : ''}) — NOT written by this script`)
     }
   })
+
+  console.log(`\n══ PASTED TEXT BEATEN BY AN AUDIO COPY (${plan.pastedText.length}) — never skipped by this script ══`)
+  if (plan.pastedText.length === 0) console.log('  none: no pasted-text row has an audio copy of the same episode in the library yet.')
+  for (const pt of plan.pastedText) {
+    console.log(`  ${pt.state.toUpperCase().padEnd(8)} ${short(pt.id)}  ${(pt.processing_status ?? '').padEnd(9)} facts ${String(pt.facts).padStart(4)}  ${clip(pt.title, 70)}`)
+    console.log(`             audio copy ${short(pt.audioId)}  ${(pt.audioStatus ?? '').padEnd(9)} ${(pt.audioOrigin ?? '').padEnd(9)} facts ${String(pt.audioFacts).padStart(4)}${pt.why ? `  → ${pt.why}` : ''}`)
+  }
+  if (plan.pastedText.length) console.log('  Retire a ready one with scripts/replacePastedText.ts (dry run first). Until then the text copy stays live; its facts are never touched.')
 
   const alone = plan.changes.filter(c => c.group == null)
   console.log(`\n══ SKIPPED ON THEIR OWN TITLE, NO COPY IN THE LIBRARY (${alone.length}) — re-posts, cuts and Q&A items (full episodes only) ══`)
@@ -174,6 +190,7 @@ async function main() {
         rows: g.rows.map(r => ({ id: r.id, title: r.title, created_at: r.created_at, processing_status: r.processing_status, transcript_origin: r.transcript_origin, facts: r.facts ?? 0, keep: r.id === g.keeper.id && !changeOf.has(r.id), skip_reason: changeOf.get(r.id)?.skip_reason ?? null })),
       })),
       changes: plan.changes,
+      pasted_text: plan.pastedText,
       similar: plan.similar.map(s => ({ a: { id: s.a.id, title: s.a.title }, b: { id: s.b.id, title: s.b.title } })),
     }, null, 2))
     console.log(`\nFull plan written to ${JSON_OUT}`)
