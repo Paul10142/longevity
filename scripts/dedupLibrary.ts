@@ -113,6 +113,27 @@ async function main() {
     if (list.length > 5) console.log(`    … and ${list.length - 5} more (all in the --json file)`)
   }
 
+  // One line per RULE, across groups and stand-alone rows, so a person can accept or reject a rule, not a row.
+  const ruleOf = (reason: string): string => {
+    if (/^re-cut \(Essentials\)/.test(reason)) return 'Title starts "Essentials:" (Huberman 30-minute re-cut)'
+    if (/^AMA:/.test(reason)) return 'Huberman title starts "AMA #N:" (not a full episode)'
+    if (/^live Q&A:/.test(reason)) return 'Huberman title has "Q&A" / "LIVE EVENT" (not a full episode)'
+    if (/^(rebroadcast|re-release)/.test(reason)) return 'Title says rebroadcast / re-release'
+    if (/same episode number/.test(reason)) return 'Same episode number as a held episode'
+    if (/same AMA/.test(reason)) return 'Same AMA number as a held episode'
+    if (/same title/.test(reason)) return 'Same title once numbers and markers are ignored'
+    if (/same guest/.test(reason)) return 'Same guests, length within 2%, shared topic'
+    return 'Linked through another copy of the same episode'
+  }
+  const byRule = new Map<string, Change[]>()
+  for (const c of plan.changes) byRule.set(ruleOf(c.skip_reason), [...(byRule.get(ruleOf(c.skip_reason)) ?? []), c])
+  console.log(`\n══ WHAT EACH RULE CATCHES (${plan.changes.length} rows) — accept or reject a rule, not a row ══`)
+  for (const [rule, list] of [...byRule].sort((x, y) => y[1].length - x[1].length)) {
+    const withCopy = list.filter(c => c.duplicate_of).length
+    console.log(`\n  ${rule}: ${list.length}  (${withCopy} point at a kept copy, ${list.length - withCopy} stand alone, ${list.filter(c => c.facts > 0).length} already extracted)`)
+    for (const c of list.slice(0, 3)) console.log(`    ${short(c.id)}  ${clip(c.title, 90)}`)
+  }
+
   console.log(`\n══ LOOK ALIKE BUT NOT DECIDED (${plan.similar.length}) — left alone; a person decides ══`)
   for (const { a, b } of plan.similar) {
     console.log(`  ${short(a.id)}  ${(a.media_duration_sec ?? 0)}s  ${clip(a.title, 70)}\n  ${short(b.id)}  ${(b.media_duration_sec ?? 0)}s  ${clip(b.title, 70)}\n`)
