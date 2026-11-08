@@ -199,7 +199,7 @@ async function extractVariant(variant: string): Promise<void> {
     const todo = ep.chunks.filter(c => !done.has(c.idx))
     console.log(`[${variant}] ${short(ep.id)} ${ep.title.slice(0, 50)}: ${todo.length}/${ep.chunks.length} chunks to do`)
     const started = Date.now()
-    let wallBefore = prev?.wallMs ?? 0
+    const wallBefore = prev?.wallMs ?? 0
     const save = () => writeJson(file, {
       sourceId: ep.id, title: ep.title, variant, model, wallMs: wallBefore + (Date.now() - started),
       chunks: [...done.values()].sort((a, b) => a.idx - b.idx),
