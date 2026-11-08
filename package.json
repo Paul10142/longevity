@@ -10,6 +10,7 @@
     "lint": "eslint .",
     "devtools": "react-devtools",
     "pipeline": "tsx --env-file=.env.local scripts/pipeline.ts",
+    "backfill-youtube": "tsx --env-file=.env.local scripts/backfillYoutubeIds.ts",
     "seed-spine": "tsx --env-file=.env.local scripts/seedSpine.ts",
     "regen": "tsx --env-file=.env.local scripts/regen.ts",
     "eval:dedup": "tsx --env-file=.env.local scripts/evalDedup.ts",
