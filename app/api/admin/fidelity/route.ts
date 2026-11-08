@@ -5,6 +5,8 @@ import pairsJson from "@/eval/extraction-eval-pairs.json"
 import runJson from "@/eval/extraction-run.json"
 import { pendingRechecks } from "@/lib/fidelity"
 import { isHoldoutPairId } from "@/lib/judgeHoldout"
+import { buildExcerpt, excerptLink, type Excerpt, type ExcerptLink } from "@/lib/fidelityExcerpt"
+import type { SourceLinkInput } from "@/lib/sourceLinks"
 
 export const dynamic = "force-dynamic"
 
@@ -32,6 +34,85 @@ const VALID_LABELS = ["FAITHFUL", "ADDED_DETAIL", "DROPPED_QUALIFIER", "UNRESOLV
  *        Re-posting the SAME label is how a re-check is confirmed: it bumps
  *        updated_at past JUDGE_COMPARED_AT (lib/fidelity.ts).
  */
+type InsightRow = { id: string; statement: string; start_ms: number | null; chunk_id: string | null; source_id: string }
+type SourceRow = SourceLinkInput & { id: string; timed_transcript: unknown; transcript: string | null }
+type Extras = { excerpt: Excerpt | null; link: ExcerptLink | null }
+
+/**
+ * Read-only extras for each card: the transcript excerpt as speaker turns and the link
+ * to the source. Any failure just means no extras: the card falls back to plain text.
+ *   - original pairs: pair id `extract:<raw_insight id>`
+ *   - hold-out pairs: pair id `holdout:<claim id>`; the member insight whose statement
+ *     matches (else the claim's earliest member)
+ */
+async function loadExtras(
+  db: NonNullable<typeof supabaseAdmin>,
+  cards: { id: string; source: string; statement: string; quote: string | null; chunk: string }[]
+): Promise<Map<string, Extras>> {
+  const out = new Map<string, Extras>()
+  try {
+    const insightByPair = new Map<string, InsightRow>()
+    const cols = "id, statement, start_ms, chunk_id, source_id"
+
+    const insightIds = cards.filter(c => c.id.startsWith("extract:")).map(c => c.id.slice("extract:".length))
+    if (insightIds.length) {
+      const { data } = await db.from("raw_insights").select(cols).in("id", insightIds)
+      for (const r of (data ?? []) as InsightRow[]) insightByPair.set(`extract:${r.id}`, r)
+    }
+
+    const claimIds = cards.filter(c => isHoldoutPairId(c.id)).map(c => c.id.slice("holdout:".length))
+    if (claimIds.length) {
+      const { data } = await db
+        .from("claim_members")
+        .select(`claim_id, raw_insights(${cols}, created_at)`)
+        .in("claim_id", claimIds)
+      const byClaim = new Map<string, (InsightRow & { created_at: string })[]>()
+      for (const m of (data ?? []) as unknown as { claim_id: string; raw_insights: (InsightRow & { created_at: string }) | null }[]) {
+        if (!m.raw_insights) continue
+        byClaim.set(m.claim_id, [...(byClaim.get(m.claim_id) ?? []), m.raw_insights])
+      }
+      for (const c of cards.filter(c => isHoldoutPairId(c.id))) {
+        const members = (byClaim.get(c.id.slice("holdout:".length)) ?? []).sort((a, b) => a.created_at.localeCompare(b.created_at))
+        const pick = members.find(m => m.statement.trim() === c.statement.trim()) ?? members[0]
+        if (pick) insightByPair.set(c.id, pick)
+      }
+    }
+
+    // Source rows: by the insight's source id; where the insight no longer exists (the
+    // episode was re-extracted), by the episode title the pair was filed under.
+    const sourceCols = "id, title, series, episode_number, youtube_url, url, article_url, external_id, timed_transcript, transcript"
+    const sourceIds = [...new Set([...insightByPair.values()].map(r => r.source_id))]
+    const sources = new Map<string, SourceRow>()
+    const sourceByTitle = new Map<string, SourceRow | null>()
+    const titles = [...new Set(cards.filter(c => !insightByPair.has(c.id)).map(c => c.source.replace(/^New batch: /, "")))]
+    await Promise.all([
+      ...sourceIds.map(async id => {
+        const { data } = await db.from("sources").select(sourceCols).eq("id", id).maybeSingle()
+        if (data) sources.set(id, data as unknown as SourceRow)
+      }),
+      ...titles.map(async title => {
+        const { data } = await db.from("sources").select(sourceCols).eq("title", title).limit(1)
+        sourceByTitle.set(title, ((data ?? [])[0] as unknown as SourceRow | undefined) ?? null)
+      }),
+    ])
+
+    for (const c of cards) {
+      const insight = insightByPair.get(c.id)
+      const source = insight
+        ? sources.get(insight.source_id) ?? null
+        : sourceByTitle.get(c.source.replace(/^New batch: /, "")) ?? null
+      const excerpt = buildExcerpt(c.chunk, source?.timed_transcript, source?.transcript, c.quote)
+      // Time of the quote: the insight's own, else the start of the turn that holds it.
+      const quoteTurn = excerpt?.turns.find(t => t.hit && t.start_ms !== null)
+      const startMs = insight?.start_ms ?? quoteTurn?.start_ms ?? null
+      out.set(c.id, { excerpt, link: excerptLink(source, startMs) })
+    }
+  } catch {
+    // extras are a convenience; the 50 cards must still load
+  }
+  return out
+}
+
 export async function GET(request: NextRequest) {
   if (!supabaseAdmin) return NextResponse.json({ error: "Supabase not configured" }, { status: 500 })
 
@@ -85,6 +166,11 @@ export async function GET(request: NextRequest) {
     new Map([...runById].map(([id, r]) => [id, r.verdict]))
   )
 
+  const extras = await loadExtras(supabaseAdmin, [
+    ...pairs.map(p => ({ id: p.id, source: p.source_title, statement: p.statement, quote: p.direct_quote, chunk: p.chunk_text })),
+    ...holdout.map(h => ({ id: h.pair_id, source: h.source_title, statement: h.statement, quote: h.direct_quote, chunk: h.chunk_text })),
+  ])
+
   const items = pairs.map((p, i) => {
     const judge = runById.get(p.id)
     const human = labelById.get(p.id)
@@ -102,6 +188,8 @@ export async function GET(request: NextRequest) {
       judge_reasoning: judge?.reasoning ?? "",
       label: human?.label ?? null,
       needs_recheck: recheck.has(p.id),
+      excerpt: extras.get(p.id)?.excerpt ?? null,
+      excerpt_link: extras.get(p.id)?.link ?? null,
     }
   })
   const holdoutItems = holdout.map((h, i) => ({
@@ -118,6 +206,8 @@ export async function GET(request: NextRequest) {
     judge_reasoning: h.judge_reasoning,
     label: labelById.get(h.pair_id)?.label ?? null,
     needs_recheck: false,
+    excerpt: extras.get(h.pair_id)?.excerpt ?? null,
+    excerpt_link: extras.get(h.pair_id)?.link ?? null,
   }))
   return NextResponse.json({ items: [...items, ...holdoutItems] })
 }
