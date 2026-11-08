@@ -12,8 +12,22 @@
  * --show attia|fmf|huberman  the show (lib/shows.ts), required to make a plan.
  * --out <file>               where to write the plan (default: print only).
  * --limit <n>                only the first n feed episodes (for a trial).
+ * --keys <k1,k2,…>           only these feed keys (`fmf-0113,fmf-0112`): the batch just ingested.
+ * --new                      only the rows nobody has read yet: in the library, not yet extracted, and
+ *                            still holding exactly the guests the ingest's title rule wrote.
+ * --apply-now                make the plan, print every change, then apply it in the same run through
+ *                            the same stale-plan guard as --apply. The per-batch step: no plan file.
  * --apply <file>             write the plan's `authors` changes. Takes the show from the plan.
- * --dry-run                  with --apply: say what would be written, write nothing.
+ * --dry-run                  with --apply or --apply-now: say what would be written, write nothing.
+ *
+ * EVERY NEW BATCH (Paul, 2026-11-08: "apply this plan to all future podcast episodes"). After
+ * `ingestFeedSources.ts --show <prefix>` and before anything uses `authors` (the attach):
+ *   npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --new --apply-now
+ * reads only the newly ingested rows, writes only their `authors`, and prints what it changed.
+ *
+ * HAND-SET ROWS. `lib/guestOverrides.ts` lists guest lists a person set by hand. The model is not
+ * asked about those episodes, and `--apply` writes them even from a plan that proposed something
+ * else, so neither a re-plan nor an old plan can undo them.
  *
  * WHY NOT THE TITLE RULE. `parseGuests` reads titles with a hand-written rule that
  * loses real guests (`James Clear (#183 rebroadcast)`, `Dr. David Sinclair on …`) and
@@ -50,6 +64,8 @@ import {
   fallbackGuests,
   parsePlan,
   resolveGuests,
+  isUnreadRow,
+  withOverrides,
   type GuestEpisode,
   type GuestPlan,
   type PlanRow,
@@ -99,14 +115,16 @@ async function readFeed(show: Show) {
   return episodes
 }
 
-async function readRows(show: Show): Promise<Map<string, SourceRow>> {
+type LibraryRow = SourceRow & { processing_status: string | null }
+
+async function readRows(show: Show): Promise<Map<string, LibraryRow>> {
   const db = await database()
-  const rows = await selectAllPaged<SourceRow>((from, to) =>
+  const rows = await selectAllPaged<LibraryRow>((from, to) =>
     withNetworkRetry('read sources', () =>
-      db.from('sources').select('id, external_id, authors').like('external_id', `${show.prefix}-%`).order('id', { ascending: true }).range(from, to)
+      db.from('sources').select('id, external_id, authors, processing_status').like('external_id', `${show.prefix}-%`).order('id', { ascending: true }).range(from, to)
     )
   )
-  const byKey = new Map<string, SourceRow>()
+  const byKey = new Map<string, LibraryRow>()
   for (const r of rows) if (r.external_id) byKey.set(r.external_id, r)
   return byKey
 }
@@ -141,8 +159,22 @@ async function makePlan(show: Show) {
   const model = await defaultGuestModel()
   out(`show: ${show.series} | host ${show.host} | model ${model} (bulk tier, ${process.env.LLM_BACKEND === 'claude-code' ? 'subscription' : 'API'} backend)`)
 
-  const feed = (await readFeed(show)).slice(0, limit === Infinity ? undefined : limit)
+  let feed = (await readFeed(show)).slice(0, limit === Infinity ? undefined : limit)
   const rowsByKey = await readRows(show)
+  const wantedKeys = val('--keys')?.split(',').map(k => k.trim()).filter(Boolean)
+  if (wantedKeys) {
+    const unknown = wantedKeys.filter(k => !feed.some(e => e.key === k))
+    if (unknown.length > 0) throw new Error(`--keys not in the feed: ${unknown.join(', ')}`)
+    feed = feed.filter(e => wantedKeys.includes(e.key))
+  }
+  if (has('--new')) {
+    feed = feed.filter(e => {
+      const row = rowsByKey.get(e.key)
+      return !!row && isUnreadRow(show, row, e.title)
+    })
+    out(`--new: ${feed.length} row(s) nobody has read yet (in the library, not extracted, guests still as the title rule wrote them)`)
+    if (feed.length === 0) { out('nothing to read.'); return }
+  }
   const inLibrary = feed.filter(e => rowsByKey.has(e.key)).length
   out(`feed: ${feed.length} episodes | library rows for them: ${inLibrary} | not ingested yet: ${feed.length - inLibrary}`)
 
@@ -156,7 +188,7 @@ async function makePlan(show: Show) {
 
   const plan = buildPlan({ show, episodes: input, decisions: r.decisions, rowsByKey, model, madeAt: new Date().toISOString(), stopped: r.stopped })
   const c = plan.counts
-  out(`\nplan: ${c.episodes} episodes | decided by claude ${c.claude} | by fallback ${c.fallback} | no library row ${c.no_row} | authors would change on ${c.changed} row(s)`)
+  out(`\nplan: ${c.episodes} episodes | decided by claude ${c.claude} | by fallback ${c.fallback} | by hand-set override ${c.override ?? 0} | no library row ${c.no_row} | authors would change on ${c.changed} row(s)`)
   out(`claude batches: ${r.batches.asked}/${r.batches.total} asked, ${r.batches.failed} failed`)
 
   const fb = plan.rows.filter(x => x.decided_by === 'fallback')
@@ -174,15 +206,33 @@ async function makePlan(show: Show) {
   } else {
     out('\n(no --out: plan not saved)')
   }
+  if (has('--apply-now')) {
+    if (r.stopped) {
+      out('not applying: the plan is incomplete (see above). Wait, then run this again.')
+      process.exitCode = 2
+      return
+    }
+    await applyPlanObject(plan)
+    return
+  }
   out('nothing was written to the database.')
   if (r.stopped) process.exitCode = 2
 }
 
 async function applyPlan(file: string) {
-  const plan = parsePlan(JSON.parse(readFileSync(resolve(file), 'utf8')))
-  const show = showByPrefix(plan.show)
-  if (!show) throw new Error(`plan is for an unknown show "${plan.show}" (registered: ${SHOWS.map(s => s.prefix).join(', ')})`)
-  if (plan.host !== show.host) throw new Error(`plan host "${plan.host}" is not the registry's "${show.host}"`)
+  await applyPlanObject(parsePlan(JSON.parse(readFileSync(resolve(file), 'utf8'))))
+}
+
+async function applyPlanObject(made: GuestPlan) {
+  const show = showByPrefix(made.show)
+  if (!show) throw new Error(`plan is for an unknown show "${made.show}" (registered: ${SHOWS.map(s => s.prefix).join(', ')})`)
+  if (made.host !== show.host) throw new Error(`plan host "${made.host}" is not the registry's "${show.host}"`)
+  // Hand-set guest lists win over whatever the plan proposed (an old plan, a model that varied).
+  const { plan, replaced } = withOverrides(made, show)
+  if (replaced.length > 0) {
+    out(`hand-set override list (lib/guestOverrides.ts) replaces the plan on ${replaced.length} row(s):`)
+    for (const r of replaced) out(`  ${r.key}  now ${fmtAuthors(r.current_authors, show)}  ->  ${fmtAuthors(r.proposed_authors, show)}${r.changed ? '' : '  (already so)'}`)
+  }
 
   const wanted = plan.rows.filter(r => r.changed && r.source_id)
   const db = await database()

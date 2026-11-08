@@ -265,7 +265,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"Derek: More Plates, More Dates\": both rules read two junk guests"
+   "note": "\"Derek: More Plates, More Dates\": both rules read two junk guests Paul 2026-11-08: a pseudonymous guest keeps the channel name, written as one name; the speaker label stays the bare first name.",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "attia",
@@ -300,7 +303,10 @@
    "expected": [
     "Derek"
    ],
-   "note": "\"More Plates More Dates Pt.2\" is his business and a part note: ONE guest"
+   "note": "\"More Plates More Dates Pt.2\" is his business and a part note: ONE guest Paul 2026-11-08: a pseudonymous guest keeps the channel name, written as one name; the speaker label stays the bare first name.",
+   "expected_full": [
+    "Derek, More Plates More Dates"
+   ]
   },
   {
    "show": "attia",

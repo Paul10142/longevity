@@ -79,7 +79,8 @@ async function main() {
     const mine = episodes.filter(e => e.show === showPrefix)
     if (mine.length === 0) continue
     const input: GuestEpisode[] = mine.map(e => ({ id: e.key, title: e.title, description: e.notes }))
-    const r = await resolveGuests(show, input, llm)
+    // The model alone is what is measured: a hand-set row (lib/guestOverrides.ts) would pass without being asked.
+    const r = await resolveGuests(show, input, llm, { overrides: new Map() })
     for (const [id, d] of r.decisions) decided.set(id, d)
     if (r.stopped) { stopped = `${r.stopped.kind}: ${r.stopped.message}`; break }
   }

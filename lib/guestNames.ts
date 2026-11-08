@@ -34,6 +34,7 @@
  * Nothing here touches the database or the network; scripts/refreshGuests.ts does.
  */
 import { bareName, credentialRun, foldForMatch, honorificBefore, isCredentialOnly, splitName, stripHonorifics } from './personName'
+import { overridesByKey, type GuestOverride } from './guestOverrides'
 import { parseGuests } from './podcastFeed'
 import { isHostName, type Show } from './shows'
 import { PipelineHaltError, UsageLimitError } from './usageLimit'
@@ -111,7 +112,7 @@ export function guestSystemPrompt(show: Show): string {
     `3. Never list the host, ${show.host}, as a guest of his or her own show. (Another show's host can be a guest.)`,
     `4. Use [] when there is no guest: the host alone (solo episodes), AMAs, listener Q&A, live event Q&A, "Essentials" or recap episodes of the host alone, quarterly or podcast summaries and clip compilations (people named there are discussed, not interviewed), and talks the host gave.`,
     `5. A rebroadcast or tribute of an earlier interview ("In remembrance of Jane Roe", "a rebroadcast of the conversation with Jane Roe") has the person interviewed as its guest, even when the host is the one speaking in the notes.`,
-    `6. Brackets, episode numbers and series notes are notes about the episode, never part of a name: "Jane Roe (#12 rebroadcast)" is the guest Jane Roe; "Jane Roe (Pt. 2)" is Jane Roe. A business, brand or channel next to a person is not a second guest: "Sam, Acme Fitness Pt.2" and "Sam from AF" are the ONE guest Sam.`,
+    `6. Brackets, episode numbers and series notes are notes about the episode, never part of a name: "Jane Roe (#12 rebroadcast)" is the guest Jane Roe; "Jane Roe (Pt. 2)" is Jane Roe. A business, brand or channel next to a person is not a second guest: "Jane Roe, Acme Fitness Pt.2" and "Jane Roe from AF" are the ONE guest Jane Roe. The exception is a guest the text names only by a first name or a handle, together with the channel they publish under (a pseudonym): "Sam: Plates And Dates, Daily" and "Sam, Plates And Dates Daily Pt.2" are ONE guest, written as the first name, a comma, and the channel name as the text writes it without its punctuation or episode note: "Sam, Plates And Dates Daily". An abbreviation of a channel ("Sam from PDD") is not enough: that guest is "Sam".`,
     `7. A series label before a separator ("GUEST SERIES |", "Essentials:", "Journal Club with") is not a name. Read the notes to see who the guest is: when the notes say "my guest is Dr. X" and X is not this show's host, X is the guest, whatever the title says.`,
     `8. People who are only discussed or cited (an author whose book comes up, a scientist whose paper is read) are not guests.`,
     `9. Several guests: list each one, in the order the title names them.`,
@@ -310,6 +311,8 @@ export function literalSpelling(name: string, text: string): string {
  * or lose one that it does.
  */
 export function writtenForm(name: string, ep: GuestEpisode, proposedCredentials: readonly string[] = []): string {
+  // A pseudonym and its channel is already in its one written form; the text spells it with colons and commas.
+  if (pseudonymForm(name) === name) return name
   for (const source of [ep.title, cleanDescription(ep.description)]) {
     const found = nameOccurrences(name, source).map(o => ({ o, run: credentialRun(source.slice(o.end), proposedCredentials) }))
     if (found.length === 0) continue
@@ -373,6 +376,67 @@ export function titleSpelling(name: string, title: string): string {
   return name
 }
 
+// A first name or handle, a separator, then the channel's words: `Derek: More Plates, More Dates`.
+const PSEUDONYM = /^(\p{L}[\p{L}'’-]*)\s*[:,–—‒|-]\s*(.+)$/u
+// An episode note after the channel (`Pt.2`, `Part II`) is not part of its name.
+const TRAILING_EPISODE_NOTE = /\s*\(?\b(?:pt|part)\b\.?\s*[\p{L}\p{N}]+\)?\s*$/iu
+
+/**
+ * A guest the text knows only by a first name or handle plus the channel they publish
+ * under (Paul, 2026-11-08: `Derek: More Plates, More Dates` is ONE guest, written
+ * `Derek, More Plates More Dates`). Returns that one written form, or null when `name`
+ * is not that shape: the channel must be two or more capitalised words, so a credential
+ * (`Sam, M.D.`), an abbreviation (`Derek from MPMD`) or a surname is never taken for one.
+ */
+export function pseudonymForm(name: string): string | null {
+  const m = PSEUDONYM.exec(name.trim())
+  if (!m) return null
+  const channel = m[2].replace(TRAILING_EPISODE_NOTE, '').replace(/[^\p{L}\p{N}'’ ]+/gu, ' ').replace(/\s+/g, ' ').trim()
+  const words = channel.split(' ')
+  if (words.length < 2 || !words.every(w => /^\p{Lu}/u.test(w))) return null
+  if (EPISODE_NOTE.test(channel) || /\d/.test(channel) || CONNECTIVE.test(channel) || isCredentialOnly(m[2])) return null
+  return `${m[1]}, ${channel}`
+}
+
+/**
+ * A guest the model gave by first name only, when the show notes write the whole name:
+ * the title says `Dr. Darya and Kevin Rose`, the notes say `Darya Rose`, and the model
+ * copies the title's one word. The notes' two-word form wins, but only when it is
+ * unambiguous: the first name occurs in the NOTES (never the title, whose Title Case
+ * would read `Matt Talks` as a name) followed by one capitalised word, always the same
+ * word, and the pair reads as a name. A pseudonym (`Derek: More Plates`, `Derek from
+ * MPMD`) has punctuation or a lower-case word after the first name and stays as it was.
+ */
+export function fullerName(name: string, ep: GuestEpisode): string {
+  if (name.trim().split(/\s+/).length !== 1) return name
+  const first = foldForMatch(name)
+  const found = new Set<string>()
+  const notes = cleanDescription(ep.description)
+  for (const m of notes.matchAll(/(?<![\p{L}\p{N}])(\p{Lu}[\p{L}'’-]*)[ \t]+(\p{Lu}[\p{L}'’-]*)(?![\p{L}\p{N}'’-])/gu)) {
+    if (foldForMatch(m[1]) === first) found.add(`${m[1]} ${m[2]}`)
+  }
+  if (found.size !== 1) return name
+  const full = [...found][0]
+  return notANameReason(full) ? name : full
+}
+
+/**
+ * The `Dr.`/`Prof.` the title writes before a guest's first name, for a guest whose
+ * full name the title does not hold (`Dr. Darya and …` in the title, `Darya Rose` in the
+ * notes). Empty when the title writes none or already holds the name.
+ */
+function titleHonorific(name: string, title: string): string {
+  if (appearsIn(name, title)) return ''
+  const first = foldForMatch(name).split(' ')[0]
+  for (const m of title.matchAll(/(?<![\p{L}\p{N}])\p{L}[\p{L}'’-]*(?![\p{L}\p{N}'’-])/gu)) {
+    if (foldForMatch(m[0]) === first) {
+      const h = honorificBefore(title, m.index as number)
+      if (h) return h
+    }
+  }
+  return ''
+}
+
 export type Validation =
   | { ok: true; guests: string[]; droppedHost: string[] }
   | { ok: false; reason: string }
@@ -392,19 +456,31 @@ export function validateGuests(show: Show, ep: GuestEpisode, proposed: readonly 
     if (isHostName(show, raw)) { droppedHost.push(raw); continue }
     // A credential on its own (`M.P.H.`) is not a guest; it belongs to the name before it, which the text supplies.
     if (isCredentialOnly(raw)) continue
-    const parts = splitName(raw)
+    // A pseudonym and its channel is one name written `Derek, More Plates More Dates`, however the model punctuated
+    // it. Read it BEFORE `splitName`, which would take everything after the comma for credentials it does not know.
+    const pseudo = pseudonymForm(raw)
+    const parts = pseudo ? { honorific: '', bare: pseudo, credentials: [] as string[] } : splitName(raw)
     const name = parts.bare
     if (!name) return { ok: false, reason: `empty name "${raw}"` }
     const bad = notANameReason(name)
     if (bad) return { ok: false, reason: `"${raw}" is not a name (${bad})` }
     if (isHostName(show, name)) { droppedHost.push(raw); continue }
-    if (!appearsIn(name, text) && !sharedSurname(name, text)) return { ok: false, reason: `"${name}" is not in the title or description` }
+    // The title's spelling of a short form comes first (`William Harris` -> `Bill Harris`): it comes FROM the
+    // text, so the check that a name appears in the text is made on it, not on what the model wrote.
     const fromTitle = titleSpelling(name, ep.title)
-    const spelled = fromTitle !== name ? fromTitle : literalSpelling(name, text)
+    if (fromTitle === name && !appearsIn(name, text) && !sharedSurname(name, text)) return { ok: false, reason: `"${name}" is not in the title or description` }
+    const literal = fromTitle !== name ? fromTitle : literalSpelling(name, text)
+    const spelled = pseudonymForm(name) === name ? (pseudonymForm(literal) ?? name) : fullerName(literal, ep)
     const key = foldForMatch(spelled)
     if (seen.has(key)) continue
     seen.add(key)
-    guests.push(writtenForm(spelled, ep, parts.credentials))
+    let written = writtenForm(spelled, ep, parts.credentials)
+    // `Dr. Darya` in the title, `Darya Rose` in the notes: the honorific the title gives comes along.
+    if (!/^(?:dr|prof|professor)\.?\s/i.test(written)) {
+      const h = titleHonorific(spelled, ep.title)
+      if (h) written = `${h} ${written}`
+    }
+    guests.push(written)
   }
   if (guests.length > MAX_GUESTS) return { ok: false, reason: `${guests.length} guests is more than ${MAX_GUESTS}` }
   return { ok: true, guests, droppedHost }
@@ -416,7 +492,8 @@ export function validateGuests(show: Show, ep: GuestEpisode, proposed: readonly 
 
 export type Decision = {
   guests: string[]
-  decided_by: 'claude' | 'fallback'
+  /** `override` = a guest list set by hand in lib/guestOverrides.ts; the model was not asked. */
+  decided_by: 'claude' | 'fallback' | 'override'
   reason: string
 }
 
@@ -459,6 +536,14 @@ export function decideEpisode(show: Show, ep: GuestEpisode, proposed: readonly s
 // Running the batches
 // ---------------------------------------------------------------------------
 
+export function overrideDecision(o: GuestOverride): Decision {
+  return {
+    guests: [...o.guests],
+    decided_by: 'override',
+    reason: `guest list set by hand (lib/guestOverrides.ts): ${o.why}`,
+  }
+}
+
 /** One model call: prompt in, parsed JSON (or text) out. The script supplies `claudeJson`. */
 export type GuestLlm = (system: string, user: string) => Promise<unknown>
 
@@ -499,10 +584,18 @@ export async function resolveGuests(
   show: Show,
   episodes: readonly GuestEpisode[],
   llm: GuestLlm,
-  opts: { batchSize?: number; onBatch?: (done: number, total: number) => void } = {}
+  opts: { batchSize?: number; onBatch?: (done: number, total: number) => void; overrides?: ReadonlyMap<string, GuestOverride> } = {}
 ): Promise<ResolveResult> {
   const decisions = new Map<string, Decision>()
-  const batches = chunk(episodes, opts.batchSize ?? BATCH_SIZE)
+  // A guest list set by hand is final: the model is not asked, so its variance cannot undo it.
+  const overrides = opts.overrides ?? overridesByKey()
+  const toAsk: GuestEpisode[] = []
+  for (const ep of episodes) {
+    const o = overrides.get(ep.id)
+    if (o) decisions.set(ep.id, overrideDecision(o))
+    else toAsk.push(ep)
+  }
+  const batches = chunk(toAsk, opts.batchSize ?? BATCH_SIZE)
   const stats = { total: batches.length, asked: 0, failed: 0 }
   let stopped: Stopped | null = null
 
@@ -568,7 +661,8 @@ export type GuestPlan = {
   model: string
   /** Null when every batch was asked; otherwise why the run stopped (such a plan is not applied). */
   stopped: Stopped | null
-  counts: { episodes: number; claude: number; fallback: number; no_row: number; changed: number }
+  /** `override` is absent in plans made before the override list existed. */
+  counts: { episodes: number; claude: number; fallback: number; no_row: number; changed: number; override?: number }
   rows: PlanRow[]
 }
 
@@ -634,11 +728,62 @@ export function buildPlan(args: {
       episodes: rows.length,
       claude: rows.filter(r => r.decided_by === 'claude').length,
       fallback: rows.filter(r => r.decided_by === 'fallback').length,
+      override: rows.filter(r => r.decided_by === 'override').length,
       no_row: rows.filter(r => r.source_id === null).length,
       changed: rows.filter(r => r.changed).length,
     },
     rows,
   }
+}
+
+/**
+ * The plan with every hand-set guest list written over what it proposed. `--apply` runs
+ * this first, so a plan made before an override existed (or by a model that varied) still
+ * cannot undo a row a person set by hand. Rows with no override are untouched; a changed
+ * row's `changed` flag is recomputed against the row's recorded current authors, so the
+ * stale-plan guard in `checkPlan` still compares the live row with what the plan SAW.
+ */
+export function withOverrides(
+  plan: GuestPlan,
+  show: Show,
+  overrides: ReadonlyMap<string, GuestOverride> = overridesByKey()
+): { plan: GuestPlan; replaced: PlanRow[] } {
+  const replaced: PlanRow[] = []
+  const rows = plan.rows.map(r => {
+    const o = overrides.get(r.key)
+    if (!o) return r
+    const proposed = [show.host, ...o.guests]
+    const d = overrideDecision(o)
+    const next: PlanRow = {
+      ...r,
+      proposed_authors: proposed,
+      decided_by: d.decided_by,
+      reason: d.reason,
+      changed: r.source_id !== null && !sameAuthors(r.current_authors, proposed),
+    }
+    if (!sameAuthors(r.proposed_authors, proposed) || r.changed !== next.changed) replaced.push(next)
+    return next
+  })
+  const counts = {
+    ...plan.counts,
+    override: rows.filter(r => r.decided_by === 'override').length,
+    claude: rows.filter(r => r.decided_by === 'claude').length,
+    fallback: rows.filter(r => r.decided_by === 'fallback').length,
+    changed: rows.filter(r => r.changed).length,
+  }
+  return { plan: { ...plan, rows, counts }, replaced }
+}
+
+/**
+ * Has anyone read or corrected this row's guests yet? True for a library row that is not
+ * yet extracted and whose guests are still exactly what the ingest's title rule wrote, so
+ * `--new` asks Claude about the batch just ingested and nothing older. A row a person fixed,
+ * or Claude already changed, differs from the title rule and is left alone.
+ */
+export function isUnreadRow(show: Show, row: SourceRow & { processing_status?: string | null }, title: string): boolean {
+  if (row.processing_status === 'succeeded') return false
+  const guests = (row.authors ?? []).slice(1)
+  return sameGuestSet(guests, fallbackGuests(show, title)) && !!row.authors && row.authors.length >= 1 && isHostName(show, row.authors[0])
 }
 
 /** A plan file read back from disk: shape-checked, so `--apply` never trusts a malformed or hand-edited file blindly. */

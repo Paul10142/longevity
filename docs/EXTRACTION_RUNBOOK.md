@@ -439,7 +439,24 @@ section is what that window (and the runner, afterwards) follows.
       rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
    4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
-   5. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, the
+   5. **Every new batch runs this by itself** (Paul, 2026-11-08: "apply this plan to all future podcast episodes"). After
+      `ingestFeedSources.ts --show <prefix>` writes the new rows and before anything uses `authors` (the attach):
+      `npx tsx --env-file=.env.local scripts/refreshGuests.ts --show <prefix> --new --apply-now`. `--new` picks only the rows nobody has read
+      yet (in the library, not yet extracted, guests still exactly what the title rule wrote); `--keys fmf-0113,fmf-0112` picks the batch by key
+      instead. It asks Claude about those rows only, prints every row it changes (old next to new), and applies through the same stale-plan guard
+      as `--apply`, so a row someone changed in between stops the write (exit 1) and nothing is written. Add `--dry-run` to read first. Exit 2
+      means the run stopped early (usage limit, halted `claude`): nothing is applied; wait and run it again. It writes only `sources.authors`.
+   6. **Hand-set rows survive every re-run** (`lib/guestOverrides.ts`). A guest list a person set by hand (the 8 FoundMyFitness rows and
+      Drive #274/#291 of 2026-11-08) is listed there with who decided and why. The reader does not ask the model about those episodes, and
+      `--apply` writes the listed guests over whatever a plan proposed (it prints the rows it replaced), so neither a re-plan nor an older plan
+      can undo them. Add a row there in the commit that records the decision; `tests/guestNameCases.test.ts` checks the list is well formed. The 17
+      older `fmf-<slug>` rows are not feed keys, so no plan touches them.
+   7. **Short names, surnames and pseudonyms** (2026-11-08). The title's spelling of a short form (`Dr. Bill Harris` for the model's
+      `William Harris`) is applied BEFORE the check that a name appears in the text, so the guest is no longer lost; a first name the model
+      copied from the title (`Dr. Darya`) takes the surname the notes give (`Dr. Darya Rose`) only when the notes give it one way; and a guest
+      the text knows only by a first name and the channel they publish under is ONE element, `Derek, More Plates More Dates` (the channel
+      travels like a credential: the speaker label is the bare `Derek`). An abbreviation (`Derek from MPMD`) is not enough to make one.
+   8. **The Drive's existing rows change in bulk** (about half of them in the 2026-11-08 plan: guests the title rule missed, the
       `(#183 rebroadcast)` notes removed, a credential left standing as a guest of its own folded back onto its name, the host dropped from
       guest lists). Apply the Drive's plan only on Paul's go. For a new show whose rows
       were just created, applying the plan is part of the ingest.
