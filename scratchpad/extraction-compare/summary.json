@@ -1,0 +1,291 @@
+{
+ "All 8 episodes": {
+  "stored": {
+   "n": 1258,
+   "faithful": 835,
+   "flagged": 421,
+   "real": 1258,
+   "kinds": {
+    "DROPPED_QUALIFIER": 161,
+    "ADDED_DETAIL": 260
+   }
+  },
+  "variants": {
+   "haiku": {
+    "variant": "haiku",
+    "model": "claude-haiku-4-5",
+    "episodes": 8,
+    "chunks": 382,
+    "failedChunks": 0,
+    "baselineInsights": 1258,
+    "firstPass": {
+     "n": 1696,
+     "real": 1696,
+     "flagged": 375,
+     "kinds": {
+      "ADDED_DETAIL": 210,
+      "DROPPED_QUALIFIER": 158,
+      "UNRESOLVED_REFERENCE": 7
+     }
+    },
+    "final": {
+     "n": 1649,
+     "real": 1649,
+     "flagged": 370,
+     "kinds": {
+      "DROPPED_QUALIFIER": 148,
+      "ADDED_DETAIL": 214,
+      "UNRESOLVED_REFERENCE": 8
+     }
+    },
+    "gateRejected": 309,
+    "gateRejectedFlagged": 73,
+    "gateRejectedFaithful": 234,
+    "gatePassedFlagged": 302,
+    "repairRan": 200,
+    "repairKept": 262,
+    "rejectsByRule": {
+     "hedge_dropped": 167,
+     "number_not_in_chunk": 52,
+     "quote_not_in_chunk": 117
+    },
+    "insightsKept": 1649,
+    "insightsFaithfulKept": 1276,
+    "extractSerialS": 42858.421,
+    "extractWallS": 3409.0009999999993,
+    "extractCost": 29.9009207,
+    "judgeCost": 32.93260419999999
+   },
+   "sonnet": {
+    "variant": "sonnet",
+    "model": "claude-sonnet-5-5",
+    "episodes": 8,
+    "chunks": 382,
+    "failedChunks": 0,
+    "baselineInsights": 1258,
+    "firstPass": {
+     "n": 1403,
+     "real": 1403,
+     "flagged": 155,
+     "kinds": {
+      "DROPPED_QUALIFIER": 34,
+      "UNRESOLVED_REFERENCE": 20,
+      "ADDED_DETAIL": 101
+     }
+    },
+    "final": {
+     "n": 1398,
+     "real": 1398,
+     "flagged": 157,
+     "kinds": {
+      "DROPPED_QUALIFIER": 33,
+      "UNRESOLVED_REFERENCE": 19,
+      "ADDED_DETAIL": 105
+     }
+    },
+    "gateRejected": 55,
+    "gateRejectedFlagged": 7,
+    "gateRejectedFaithful": 48,
+    "gatePassedFlagged": 148,
+    "repairRan": 47,
+    "repairKept": 50,
+    "rejectsByRule": {
+     "hedge_dropped": 24,
+     "number_not_in_chunk": 30,
+     "quote_not_in_chunk": 7
+    },
+    "insightsKept": 1398,
+    "insightsFaithfulKept": 1241,
+    "extractSerialS": 7665.988,
+    "extractWallS": 581.356,
+    "extractCost": 12.123882200000002,
+    "judgeCost": 24.058207000000003
+   },
+   "opus": {
+    "variant": "opus",
+    "model": "claude-opus-5-5",
+    "episodes": 8,
+    "chunks": 382,
+    "failedChunks": 0,
+    "baselineInsights": 1258,
+    "firstPass": {
+     "n": 1553,
+     "real": 1553,
+     "flagged": 134,
+     "kinds": {
+      "DROPPED_QUALIFIER": 37,
+      "ADDED_DETAIL": 80,
+      "UNRESOLVED_REFERENCE": 17
+     }
+    },
+    "final": {
+     "n": 1550,
+     "real": 1550,
+     "flagged": 138,
+     "kinds": {
+      "DROPPED_QUALIFIER": 38,
+      "ADDED_DETAIL": 83,
+      "UNRESOLVED_REFERENCE": 17
+     }
+    },
+    "gateRejected": 69,
+    "gateRejectedFlagged": 8,
+    "gateRejectedFaithful": 61,
+    "gatePassedFlagged": 126,
+    "repairRan": 61,
+    "repairKept": 66,
+    "rejectsByRule": {
+     "hedge_dropped": 41,
+     "number_not_in_chunk": 34,
+     "quote_not_in_chunk": 1
+    },
+    "insightsKept": 1550,
+    "insightsFaithfulKept": 1412,
+    "extractSerialS": 7934.347,
+    "extractWallS": 624.426,
+    "extractCost": 21.7476615,
+    "judgeCost": 26.5177268
+   }
+  }
+ },
+ "Gold set (40 insights Paul labelled; stored row = Paul's labels, 5 of 40 ADDED_DETAIL)": {
+  "stored": {
+   "n": 40,
+   "faithful": 35,
+   "flagged": 5,
+   "real": 40,
+   "kinds": {
+    "ADDED_DETAIL": 5
+   }
+  },
+  "variants": {
+   "haiku": {
+    "variant": "haiku",
+    "model": "claude-haiku-4-5",
+    "episodes": 1,
+    "chunks": 31,
+    "failedChunks": 0,
+    "baselineInsights": 40,
+    "firstPass": {
+     "n": 157,
+     "real": 157,
+     "flagged": 17,
+     "kinds": {
+      "DROPPED_QUALIFIER": 11,
+      "ADDED_DETAIL": 6
+     }
+    },
+    "final": {
+     "n": 154,
+     "real": 154,
+     "flagged": 18,
+     "kinds": {
+      "DROPPED_QUALIFIER": 11,
+      "ADDED_DETAIL": 7
+     }
+    },
+    "gateRejected": 20,
+    "gateRejectedFlagged": 0,
+    "gateRejectedFaithful": 20,
+    "gatePassedFlagged": 17,
+    "repairRan": 13,
+    "repairKept": 17,
+    "rejectsByRule": {
+     "quote_not_in_chunk": 6,
+     "hedge_dropped": 13,
+     "number_not_in_chunk": 4
+    },
+    "insightsKept": 154,
+    "insightsFaithfulKept": 135,
+    "extractSerialS": 3275.581,
+    "extractWallS": 260.059,
+    "extractCost": 2.3007385999999994,
+    "judgeCost": 2.726881799999999
+   },
+   "sonnet": {
+    "variant": "sonnet",
+    "model": "claude-sonnet-5-5",
+    "episodes": 1,
+    "chunks": 31,
+    "failedChunks": 0,
+    "baselineInsights": 40,
+    "firstPass": {
+     "n": 112,
+     "real": 112,
+     "flagged": 8,
+     "kinds": {
+      "UNRESOLVED_REFERENCE": 3,
+      "DROPPED_QUALIFIER": 5
+     }
+    },
+    "final": {
+     "n": 111,
+     "real": 111,
+     "flagged": 8,
+     "kinds": {
+      "UNRESOLVED_REFERENCE": 3,
+      "DROPPED_QUALIFIER": 5
+     }
+    },
+    "gateRejected": 3,
+    "gateRejectedFlagged": 0,
+    "gateRejectedFaithful": 3,
+    "gatePassedFlagged": 8,
+    "repairRan": 3,
+    "repairKept": 2,
+    "rejectsByRule": {
+     "number_not_in_chunk": 2,
+     "hedge_dropped": 1
+    },
+    "insightsKept": 111,
+    "insightsFaithfulKept": 103,
+    "extractSerialS": 600.628,
+    "extractWallS": 48.044,
+    "extractCost": 1.1925917999999998,
+    "judgeCost": 1.6582398000000005
+   },
+   "opus": {
+    "variant": "opus",
+    "model": "claude-opus-5-5",
+    "episodes": 1,
+    "chunks": 31,
+    "failedChunks": 0,
+    "baselineInsights": 40,
+    "firstPass": {
+     "n": 135,
+     "real": 135,
+     "flagged": 10,
+     "kinds": {
+      "DROPPED_QUALIFIER": 8,
+      "UNRESOLVED_REFERENCE": 2
+     }
+    },
+    "final": {
+     "n": 135,
+     "real": 135,
+     "flagged": 10,
+     "kinds": {
+      "DROPPED_QUALIFIER": 8,
+      "UNRESOLVED_REFERENCE": 2
+     }
+    },
+    "gateRejected": 6,
+    "gateRejectedFlagged": 0,
+    "gateRejectedFaithful": 6,
+    "gatePassedFlagged": 10,
+    "repairRan": 7,
+    "repairKept": 6,
+    "rejectsByRule": {
+     "hedge_dropped": 5,
+     "number_not_in_chunk": 1
+    },
+    "insightsKept": 135,
+    "insightsFaithfulKept": 125,
+    "extractSerialS": 708.252,
+    "extractWallS": 62.409,
+    "extractCost": 1.9520392,
+    "judgeCost": 2.0567793999999995
+   }
+  }
+ }
+}

@@ -24,7 +24,7 @@ export async function POST(
 
     const { data: source, error: sourceError } = await supabaseAdmin
       .from("sources")
-      .select("id, transcript")
+      .select("id, transcript, processing_status")
       .eq("id", id)
       .single()
 
@@ -32,6 +32,14 @@ export async function POST(
       return NextResponse.json(
         { error: `Source not found: ${sourceError?.message}` },
         { status: 404 }
+      )
+    }
+    // A skipped source is a re-post or copy of an episode already in the library (migration 038).
+    // Extracting it would count the same episode twice, so it is refused, not queued.
+    if (source.processing_status === "skipped") {
+      return NextResponse.json(
+        { error: "This source is marked skipped (a re-post or copy of an episode already in the library); it is not re-extracted. See /admin/duplicates." },
+        { status: 409 }
       )
     }
     if (!source.transcript) {

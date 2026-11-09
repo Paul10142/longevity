@@ -74,6 +74,23 @@ export function guestsForLabels(args: {
 }
 
 /**
+ * Every voice except the opening one (the host), in the order each first speaks. This is the order
+ * `nameSpeakers` numbers them `Speaker 2`, `Speaker 3`, … in, and the order the speaker review
+ * page (lib/speakerReview.ts) and the saved `sources.speaker_names` use, so a label means the
+ * same voice everywhere.
+ */
+export function voiceOrder(segments: readonly DgSegment[]): number[] {
+  const first = openingSpeaker(segments)
+  if (first === null) return []
+  return [...new Set(segments.map(s => s.speaker).filter(s => s !== null && s !== first))] as number[]
+}
+
+/** The opening speaker (the host, by the episode's structure), or null when nothing is diarized. */
+export function openingSpeaker(segments: readonly DgSegment[]): number | null {
+  return segments.find(s => s.speaker !== null)?.speaker ?? null
+}
+
+/**
  * Map Deepgram's speaker indices to names, or leave them numbered.
  *
  * Diarization establishes that two people alternate; it never says who they
@@ -95,7 +112,7 @@ export function nameSpeakers(segments: DgSegment[], guests: string[], host: stri
   if (first == null) return names
   names.set(first, host)
 
-  const others = [...new Set(segments.map(s => s.speaker).filter(s => s !== null && s !== first))] as number[]
+  const others = voiceOrder(segments)
   if (guests.length === 1 && others.length === 1) {
     names.set(others[0], guests[0])
   } else {

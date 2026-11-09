@@ -212,7 +212,9 @@ export type PipelineRun = {
 export type SourceType = 'book' | 'podcast' | 'video' | 'article'
 export type MediaType = 'audio' | 'video' | 'text' | 'book'
 export type TranscriptOrigin = 'manual' | 'fireflies' | 'whisper' | 'other'
-export type ProcessingStatus = 'pending' | 'processing' | 'succeeded' | 'failed'
+// 'skipped' (migration 038): a re-post, rebroadcast or cut of an episode we already hold, or a re-cut we never
+// want. No picker selects it; `duplicate_of` / `skip_reason` say what it copies and why.
+export type ProcessingStatus = 'pending' | 'processing' | 'succeeded' | 'failed' | 'skipped'
 
 export type Source = {
   id: string
@@ -234,6 +236,10 @@ export type Source = {
   processing_status: ProcessingStatus
   last_processed_at: string | null
   processing_error: string | null
+  /** The source this row is a re-post of (the copy we keep); set with processing_status 'skipped'. Migration 038. */
+  duplicate_of?: string | null
+  /** Why this row is skipped, in words the admin shows (e.g. 'rebroadcast of #183'). Migration 038. */
+  skip_reason?: string | null
   created_at: string
 }
 

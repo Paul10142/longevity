@@ -38,6 +38,9 @@ function SourceStatus({ status, insights }: { status: string | null; insights: n
       return <span className={`${base} bg-destructive/10 text-destructive`}>Failed</span>
     case "pending":
       return <span className={`${base} bg-muted text-muted-foreground`}>Queued</span>
+    case "skipped":
+      // A re-post or copy of an episode already held (migration 038); see /admin/duplicates.
+      return <span className={`${base} bg-muted text-muted-foreground`}>Skipped · Duplicate</span>
     default:
       return <span className={`${base} bg-muted text-muted-foreground`}>{status ?? "unknown"}</span>
   }
@@ -149,6 +152,9 @@ export default async function AdminSourcesPage() {
           <div className="flex justify-between items-center mb-8">
             <h1 className="text-4xl font-bold">Sources</h1>
             <div className="flex gap-2">
+              <Link href="/admin/duplicates">
+                <Button variant="outline">Skipped Episodes</Button>
+              </Link>
               <Link href="/admin/insights/review">
                 <Button variant="outline">Review Insights</Button>
               </Link>

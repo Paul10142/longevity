@@ -20,9 +20,15 @@
  *   --stats        counts only (verdicts, stakes, member counts, what a re-run would skip). No model calls.
  *   --dry-run      the default. Reads the database, calls the models, prints before/after wording and
  *                  the judge's re-verdict, writes a report under scratchpad/runs/. WRITES NOTHING.
- *   --apply        writes (single-claim repairs only: a claim that would SPLIT is reported and left for the
- *                  design go-ahead): audit row in claim_repairs (migration 037), the claim's canonical_statement
- *                  and embedding, the flag, the claim's status. Takes the exclusive writer lock.
+ *   --apply        writes: audit row in claim_repairs (migration 037), the claim's canonical_statement
+ *                  and embedding, the flag, the claim's status. A claim that SPLITS into several is written by
+ *                  lib/claimSplit.ts through the database function apply_claim_split (migration 041) in ONE
+ *                  transaction; the run refuses to start until 041 is applied. Takes the exclusive writer lock.
+ *                  Splits that fail to write are kept in scratchpad/runs/repair-pending-splits/ and retried first
+ *                  on the next --apply run (no model work is repeated).
+ *   --replay <file>  dry run only, NO model calls: take the saved results of an earlier dry run (its .jsonl
+ *                  progress file) for the claims in it, check them against the database as it is now, and print
+ *                  exactly what --apply would write for each split. Writes nothing.
  *   --limit N      stop after N claims. In a dry run the N are spread across verdict types and across
  *                  one-member / several-member claims, so a small sample shows every path.
  *   --claim <id,id>  only these claims (a prefix of 8+ characters is enough).
@@ -42,7 +48,7 @@
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 import { spawnSync } from 'node:child_process'
-import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { appendFileSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { homedir } from 'node:os'
 import path from 'node:path'
 import { claudeJson, CLAUDE_JUDGMENT_MODEL } from '../lib/llm'
@@ -57,6 +63,10 @@ import {
   type Candidate, type MemberPassage, type RepairResult, type RepairOutcome, type RepairDeps,
 } from '../lib/claimRepair'
 import { flagFacts, flagNote, resolutionFor, originalDetail } from '../lib/repairFlags'
+import {
+  buildSplitPlan, describeSplit, writeSplit, retryPendingSplits, splitWriterInstalled, loadPlans, SplitPlanError,
+  type SplitDeps, type SplitOutcome,
+} from '../lib/claimSplit'
 import { startRunLog } from '../lib/runLog'
 import { PipelineHaltError, UsageLimitError } from '../lib/usageLimit'
 
@@ -64,6 +74,8 @@ const ADMIN_FLAGS_URL = 'https://www.lifestyleacademy.health/admin/flags'
 const MODEL = CLAUDE_JUDGMENT_MODEL
 const TERMINAL_HIDDEN: RepairOutcome[] = ['failed', 'needs_video', 'cannot_repair', 'refused']
 const MAX_CONSECUTIVE_ERRORS = 3
+/** Splits whose write failed are kept here and retried first on the next --apply run. */
+const PENDING_SPLITS_DIR = 'scratchpad/runs/repair-pending-splits'
 
 type Db = Awaited<ReturnType<typeof loadDb>>
 async function loadDb() {
@@ -74,12 +86,14 @@ async function loadDb() {
 
 // ── Arguments ───────────────────────────────────────────────────
 
-type Args = { stats: boolean; apply: boolean; limit: number | undefined; claims: string[]; retry: boolean; batch: number }
+type Args = { stats: boolean; apply: boolean; limit: number | undefined; claims: string[]; retry: boolean; batch: number; replay: string | undefined }
 
 function parseArgs(argv: string[]): Args {
   const has = (f: string) => argv.includes(f)
   const val = (f: string) => { const i = argv.indexOf(f); return i > -1 ? argv[i + 1] : undefined }
   if (has('--apply') && has('--dry-run')) throw new Error('--apply and --dry-run are opposites; pick one')
+  if (has('--apply') && has('--replay')) throw new Error('--replay never writes (it re-prints a saved dry run); drop --apply, or run --apply on its own')
+  if (has('--replay') && !val('--replay')) throw new Error('--replay needs the .jsonl file of an earlier dry run')
   const num = (f: string, d?: number) => {
     const v = val(f); if (v === undefined) return d
     const n = Number(v); if (!Number.isInteger(n) || n < 1) throw new Error(`${f} needs a whole number of 1 or more`)
@@ -88,7 +102,7 @@ function parseArgs(argv: string[]): Args {
   return {
     stats: has('--stats'), apply: has('--apply'), limit: num('--limit'),
     claims: (val('--claim') ?? '').split(',').map(s => s.trim()).filter(Boolean),
-    retry: has('--retry'), batch: num('--batch', 5)!,
+    retry: has('--retry'), batch: num('--batch', 5)!, replay: val('--replay'),
   }
 }
 
@@ -321,6 +335,7 @@ async function stats(db: Db, args: Args): Promise<void> {
   console.log(`  one insight / several insights:       ${work.length - multi.length} / ${multi.length}`)
   console.log(`  insights per claim:                   ${show(count(work, w => (w.memberCount <= 1 ? '1' : w.memberCount === 2 ? '2' : w.memberCount <= 5 ? '3-5' : '6+')))}`)
   console.log(`  half-applied (audit row, flag open):  ${work.filter(w => w.pending).length}`)
+  console.log(`  splits saved, waiting for a write retry: ${loadPlans(PENDING_SPLITS_DIR).plans.length}`)
   console.log(`Review screen: ${ADMIN_FLAGS_URL}`)
 }
 
@@ -340,15 +355,46 @@ async function main() {
   const mode = args.apply ? 'APPLY (writes the database)' : 'DRY RUN (writes nothing)'
   console.log(`repairFlaggedClaims ${mode}  run ${runId}  model ${MODEL}  backend ${process.env.LLM_BACKEND}`)
 
-  const loaded = await loadWork(db, args)
-  if (args.apply && !loaded.tableExists) {
-    throw new Error('the claim_repairs table does not exist: apply supabase/migrations_v2/037_claim_repairs.sql in the Supabase SQL Editor first')
+  const splitDeps: SplitDeps = {
+    embedBatch: async texts => (await import('../lib/embeddings')).generateEmbeddingsBatch(texts),
+    rpc: async (fn, rpcArgs) => {
+      const { data, error } = await db.rpc(fn, rpcArgs)
+      return { data, error: error ? { message: error.message, code: error.code } : null }
+    },
   }
+  // Claims whose split was planned and saved but whose write failed last time: never repaired a second time.
+  const writeFailedBefore = new Set<string>()
   if (args.apply) {
+    const { tableExists } = await loadRepairs(db)
+    if (!tableExists) throw new Error('the claim_repairs table does not exist: apply supabase/migrations_v2/037_claim_repairs.sql in the Supabase SQL Editor first')
+    if (!(await splitWriterInstalled(splitDeps.rpc))) {
+      throw new Error('the database function apply_claim_split does not exist: apply supabase/migrations_v2/041_claim_split_repair.sql in the Supabase SQL Editor first (about a third of the claims split, and they cannot be written without it)')
+    }
     const { acquireWriterLock } = await import('../lib/writerLock')
     acquireWriterLock('repairFlaggedClaims')
+    const pendingReport = await retryPendingSplits(PENDING_SPLITS_DIR, splitDeps)
+    const pendingTotal = pendingReport.applied.length + pendingReport.alreadyApplied.length + pendingReport.stale.length + pendingReport.failed.length
+    if (pendingTotal || pendingReport.unreadable.length) {
+      console.log(`saved splits from an earlier run: ${pendingReport.applied.length} written now, ${pendingReport.alreadyApplied.length} already written, ${pendingReport.stale.length} discarded because the claim changed (repaired again below), ${pendingReport.failed.length} still failing${pendingReport.unreadable.length ? `, ${pendingReport.unreadable.length} unreadable file(s) left in ${PENDING_SPLITS_DIR}` : ''}`)
+      for (const f of pendingReport.failed) console.log(`   still failing ${f.claimId}: ${f.error}`)
+    }
+    for (const f of pendingReport.failed) writeFailedBefore.add(f.claimId)
   }
-  const ordered = orderCandidates(loaded.work)
+
+  // --replay: the saved results of an earlier dry run stand in for the model calls.
+  const replay = new Map<string, { before: string; result: RepairResult }>()
+  if (args.replay) {
+    for (const line of readFileSync(args.replay, 'utf8').split('\n').filter(Boolean)) {
+      const row = JSON.parse(line) as { claimId: string; before: string } & RepairResult
+      const { claimId, before, ...result } = row
+      replay.set(claimId, { before, result: result as RepairResult })
+    }
+    args.claims = [...replay.keys()]
+    console.log(`replaying ${replay.size} saved results from ${args.replay}; no model is called and nothing is written`)
+  }
+
+  const loaded = await loadWork(db, args)
+  const ordered = orderCandidates(loaded.work.filter(w => !writeFailedBefore.has(w.claimId)))
   const pendingFirst = [...ordered.filter(w => w.pending), ...ordered.filter(w => !w.pending)]
   const todo = args.limit
     ? (args.apply ? pendingFirst.slice(0, args.limit) : stratifiedSample(ordered, args.limit))
@@ -367,7 +413,8 @@ async function main() {
   const started = Date.now()
   let consecutiveErrors = 0
   let exitCode = 0
-  let splitSkipped = 0
+  const splits = { written: 0, stale: 0, writeFailed: 0, unplannable: 0, wouldWrite: 0 }
+  let consecutiveWriteErrors = 0
 
   for (let i = 0; i < todo.length; i++) {
     if (i % args.batch === 0) {
@@ -379,26 +426,73 @@ async function main() {
     const t0 = Date.now()
     try {
       let result: RepairResult
+      let extra: string[] = []
+      let written = args.apply // false when nothing reached the database for this claim
       if (w.pending) {
         // The audit row is already written; only the apply steps are outstanding.
         result = { outcome: w.pending.outcome, source: w.pending.source as RepairResult['source'], newStatement: w.pending.new_statement, memberRawInsightId: w.pending.member_raw_insight_id, droppedNumbers: [], note: 'finishing a repair that was already judged', attempts: [], ledger: [], passageCount: 0, claims: [], alsoBacks: [], cutAt: 'sentences', charsBefore: 0, charsAfter: 0, charsRemoved: 0 }
         if (args.apply) await applyRepaired(db, w, w.pending.outcome as 'repaired' | 'canonical_ok', w.pending.new_statement)
       } else {
         const members = await loadMembers(db, w.claimId)
-        result = await repairClaim({ claimId: w.claimId, claim: w.claim, claimContextNote: w.contextNote, flag: flagFacts(w.flag), members }, deps)
+        const saved = replay.get(w.claimId)
+        if (saved && saved.before !== w.claim) {
+          console.log(`── [${i + 1}/${todo.length}] claim ${w.claimId}: its wording in the database is not the one the saved dry run started from; --apply would call it stale and repair it again. Skipped in this replay.`)
+          tally.replay_wording_changed = (tally.replay_wording_changed ?? 0) + 1
+          continue
+        }
+        result = saved ? saved.result : await repairClaim({ claimId: w.claimId, claim: w.claim, claimContextNote: w.contextNote, flag: flagFacts(w.flag), members }, deps)
         if (result.outcome === 'repaired' && result.claims.length > 1) {
-          // Writing a split (new claim rows, moved members, re-tag, re-embed) waits for Paul's go on the design.
-          console.log(`   (split into ${result.claims.length} claims NOT written: applying splits is not enabled yet; this claim stays hidden and is picked up again later)`)
-          splitSkipped++
+          // A split: one validated plan, written by apply_claim_split in a single transaction (lib/claimSplit.ts).
+          written = false
+          try {
+            const plan = buildSplitPlan({
+              runId, claimId: w.claimId, flagId: w.flag.id, originalStatement: w.claim, contextNote: w.contextNote,
+              flag: flagFacts(w.flag), currentMemberIds: members.map(m => m.rawInsightId), result, model: MODEL,
+            })
+            if (!args.apply) {
+              splits.wouldWrite++
+              extra = describeSplit(plan)
+            } else {
+              let outcome: SplitOutcome | null
+              try {
+                outcome = await writeSplit(plan, splitDeps, PENDING_SPLITS_DIR)
+                consecutiveWriteErrors = 0
+              } catch (err) {
+                if (err instanceof UsageLimitError || err instanceof PipelineHaltError) throw err
+                splits.writeFailed++
+                consecutiveWriteErrors++
+                extra = [`   SPLIT NOT WRITTEN, nothing changed in the database: ${err instanceof Error ? err.message : err}`, `   The finished repair is saved in ${PENDING_SPLITS_DIR}/ and is retried first on the next --apply run.`]
+                outcome = null // the write threw: nothing changed in the database
+              }
+              if (outcome?.status === 'applied') {
+                splits.written++; written = true
+                extra = [`   SPLIT WRITTEN in one transaction: ${outcome.claimIds.length} claims (${outcome.claimIds.map(id => id.slice(0, 8)).join(', ')}); the first keeps the original id`]
+              } else if (outcome?.status === 'already_applied') {
+                written = true
+                extra = ['   SPLIT ALREADY WRITTEN earlier; nothing changed now']
+              } else if (outcome?.status === 'stale') {
+                splits.stale++
+                extra = [`   SPLIT NOT WRITTEN: ${outcome.reason}. Nothing changed; the claim is repaired again on the next run.`]
+              }
+            }
+          } catch (err) {
+            if (!(err instanceof SplitPlanError)) throw err
+            // The repair's own answer cannot be written safely (it would lose or double an insight): keep the claim hidden for Paul.
+            splits.unplannable++
+            result = { ...result, outcome: 'failed', claims: [], alsoBacks: [], newStatement: null, note: `the split could not be written safely: ${err.message}; left hidden for review` }
+            extra = [`   SPLIT REFUSED: ${err.message}`]
+            if (args.apply) await applyResult(db, w, result, runId)
+          }
         } else if (result.outcome !== 'error' && args.apply) await applyResult(db, w, result, runId)
       }
       const secs = (Date.now() - t0) / 1000
       tally[result.outcome] = (tally[result.outcome] ?? 0) + 1
-      const text = block(i + 1, todo.length, w, result, secs)
+      const text = [block(i + 1, todo.length, w, result, secs), ...extra].join('\n')
       console.log(text)
       report.push(text)
-      appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: args.apply && result.outcome !== 'error' && !(result.outcome === 'repaired' && result.claims.length > 1), before: w.claim, ...result })}\n`)
+      appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: written && result.outcome !== 'error', before: w.claim, ...result })}\n`)
       consecutiveErrors = result.outcome === 'error' ? consecutiveErrors + 1 : 0
+      if (consecutiveWriteErrors >= MAX_CONSECUTIVE_ERRORS) { console.error(`Stopping: ${consecutiveWriteErrors} split writes failed in a row (the database or the embedding service is probably unwell). Nothing was half-written; the finished repairs are saved in ${PENDING_SPLITS_DIR}/ and retried first on the next --apply run.`); exitCode = 2; break }
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) { console.error(`Stopping: ${consecutiveErrors} judge errors in a row (the CLI is probably unwell). Nothing was recorded for them; re-run to retry.`); exitCode = 2; break }
     } catch (err) {
       if (err instanceof UsageLimitError || err instanceof PipelineHaltError) {
@@ -411,7 +505,10 @@ async function main() {
     if ((i + 1) % args.batch === 0) console.log(`…${i + 1}/${todo.length} done, ${((Date.now() - started) / 60000).toFixed(1)} min, ${JSON.stringify(tally)}`)
   }
 
-  const summary = `${mode}: ${JSON.stringify(tally)}${splitSkipped ? ` (${splitSkipped} splits not written)` : ''} in ${((Date.now() - started) / 60000).toFixed(1)} min. Progress: ${progressFile}`
+  const splitNote = args.apply
+    ? ` (splits: ${splits.written} written, ${splits.stale} stale, ${splits.writeFailed} write failed and saved for retry, ${splits.unplannable} refused)`
+    : splits.wouldWrite ? ` (${splits.wouldWrite} splits would be written by --apply; none were)` : ''
+  const summary = `${mode}: ${JSON.stringify(tally)}${splitNote} in ${((Date.now() - started) / 60000).toFixed(1)} min. Progress: ${progressFile}`
   console.log(`\n${summary}`)
   if (!args.apply) {
     const md = path.join(outDir, `${runId}-dryrun.md`)
