@@ -233,13 +233,13 @@ export async function trackLlmUsage<T>(fn: () => Promise<T>): Promise<{ result: 
  * a subscription-backed call reports what it would have cost. Opt-in: outside a
  * `trackCliCost` scope nothing is recorded. Used by the extraction comparison harness.
  */
-type CliCostTally = { usd: number; calls: number }
+type CliCostTally = { usd: number; calls: number; tokens: { input: number; output: number; cacheRead: number; cacheCreate: number } }
 const cliCostScope = new AsyncLocalStorage<CliCostTally>()
 
-export async function trackCliCost<T>(fn: () => Promise<T>): Promise<{ result: T; costUsd: number; calls: number }> {
-  const tally: CliCostTally = { usd: 0, calls: 0 }
+export async function trackCliCost<T>(fn: () => Promise<T>): Promise<{ result: T; costUsd: number; calls: number; tokens: CliCostTally['tokens'] }> {
+  const tally: CliCostTally = { usd: 0, calls: 0, tokens: { input: 0, output: 0, cacheRead: 0, cacheCreate: 0 } }
   const result = await cliCostScope.run(tally, fn)
-  return { result, costUsd: tally.usd, calls: tally.calls }
+  return { result, costUsd: tally.usd, calls: tally.calls, tokens: tally.tokens }
 }
 
 function noteCliCost(tally: CliCostTally | undefined, rawStdout: string): void {
@@ -250,6 +250,19 @@ function noteCliCost(tally: CliCostTally | undefined, rawStdout: string): void {
   if (!m) return
   tally.usd += Number(m[1]) || 0
   tally.calls++
+  // Tokens from the same result event (the line that carries total_cost_usd). Best-effort: a missing field adds nothing.
+  try {
+    const lineStart = rawStdout.lastIndexOf('\n', at) + 1
+    const lineEnd = rawStdout.indexOf('\n', at)
+    const ev = JSON.parse(rawStdout.slice(lineStart, lineEnd < 0 ? undefined : lineEnd)) as { usage?: Record<string, number> }
+    const u = ev.usage
+    if (u) {
+      tally.tokens.input += u.input_tokens ?? 0
+      tally.tokens.output += u.output_tokens ?? 0
+      tally.tokens.cacheRead += u.cache_read_input_tokens ?? 0
+      tally.tokens.cacheCreate += u.cache_creation_input_tokens ?? 0
+    }
+  } catch { /* cost is already counted */ }
 }
 
 let client: Anthropic | null = null
