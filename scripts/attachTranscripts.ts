@@ -24,7 +24,15 @@
  *     scripted host intro — verified on 404, where speaker 0 delivers it),
  *   - when the source row's `authors` names EXACTLY ONE guest (host =
  *     `authors[0]`, guests = the rest), the other speaker is that guest,
- *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed.
+ *   - otherwise speakers stay `Speaker 2`, `Speaker 3`, … unnamed (a third voice is
+ *     NEVER guessed: on the FoundMyFitness episodes it is the host herself),
+ *   - unless Paul has assigned them: `sources.speaker_names` (migration 039, written
+ *     only by /admin/speakers) maps `Speaker N` → a name from the row's own authors,
+ *     and this script applies it, after checking that each answer's fingerprint still
+ *     matches the voice now carrying that number (lib/speakerReview.ts
+ *     `nameSpeakersAssigned`). A mapping that no longer matches the file is ignored and
+ *     the log says so; a column that does not exist yet (migration not applied) is
+ *     treated as no mapping.
  * `authors` is where Claude's reading of the guests lands (`refreshGuests.ts
  * --apply`), so that step comes BEFORE this one; `manifest.json` is only the
  * fallback for a row whose `authors` is null.
@@ -40,8 +48,10 @@ import path from 'node:path'
 // with scripts/repairDeepgramTiming.ts. One segment PER UTTERANCE: the first
 // attach merged a speaker's consecutive utterances into one segment, which
 // collapsed a whole monologue onto its first timestamp (2026-10-12).
-import { nameSpeakers, buildLabelledSegments, guestsForLabels } from '../lib/deepgramSegments'
+import { buildLabelledSegments, guestsForLabels } from '../lib/deepgramSegments'
 import type { DgSegment } from '../lib/deepgramSegments'
+// Paul's saved speaker assignments (sources.speaker_names) and how they are applied to a file.
+import { nameSpeakersAssigned, readSpeakerNames } from '../lib/speakerReview'
 // The host's name comes from the registry, by the key's prefix (`huberman-…` →
 // Andrew Huberman). It used to be a constant, which would have labelled every
 // show's opening speaker "Peter Attia".
@@ -85,11 +95,22 @@ async function main() {
   }
 
   const keys = files.map(f => f.replace(/\.(nova-3-medical|nova-3)?\.?deepgram\.json$/, ''))
-  type SourceRow = { id: string; external_id: string | null; processing_status: string | null; title: string | null; authors: string[] | null }
-  const { data: rows, error } = await db
-    .from('sources')
-    .select('id, external_id, processing_status, title, authors')
-    .in('external_id', keys)
+  type SourceRow = {
+    id: string
+    external_id: string | null
+    processing_status: string | null
+    title: string | null
+    authors: string[] | null
+    /** Paul's reviewed speaker names (migration 039); absent until that migration is applied. */
+    speaker_names?: unknown
+  }
+  const baseColumns = 'id, external_id, processing_status, title, authors'
+  let { data: rows, error } = await db.from('sources').select(`${baseColumns}, speaker_names`).in('external_id', keys)
+  if (error && /speaker_names/.test(error.message)) {
+    // Migration 039 is not applied yet: no episode has a review, so there is nothing to apply.
+    process.stdout.write('note: sources.speaker_names does not exist yet (migration 039), so no saved speaker assignments are applied\n')
+    ;({ data: rows, error } = await db.from('sources').select(baseColumns).in('external_id', keys))
+  }
   if (error) throw new Error(`source lookup failed: ${error.message}`)
   const byKey = new Map(((rows ?? []) as unknown as SourceRow[]).map(r => [r.external_id as string, r]))
 
@@ -100,6 +121,8 @@ async function main() {
   let unknownShow = 0
   let named = 0
   let guestsFromManifest = 0
+  let assignedApplied = 0
+  let assignedIgnored = 0
 
   for (const [i, file] of files.entries()) {
     if (attached >= limit) break
@@ -128,7 +151,10 @@ async function main() {
 
     const choice = guestsForLabels({ row, manifestGuests: guestsByKey.get(key), host })
     if (choice.from === 'manifest') guestsFromManifest++
-    const names = nameSpeakers(dg.segments, choice.guests, host)
+    const assigned = nameSpeakersAssigned(dg.segments, choice.guests, host, readSpeakerNames(row.speaker_names))
+    const names = assigned.names
+    if (assigned.applied.length > 0) { process.stdout.write(`  ${key}: applied Paul's speaker assignments: ${assigned.applied.join('; ')}\n`); assignedApplied++ }
+    if (assigned.ignored) { process.stdout.write(`  ${key}: saved speaker assignments NOT applied: ${assigned.ignored}\n`); assignedIgnored++ }
     const hasRealName = [...names.values()].some(n => n !== host && !n.startsWith('Speaker '))
 
     const timed = buildLabelledSegments(dg.segments, names)
@@ -170,6 +196,12 @@ async function main() {
       `no matching source ${unmatched}` + (unknownShow ? ` | no registered show ${unknownShow}` : '') + `\n` +
       `${named} of ${attached} have a named guest; the rest are solo or numbered\n`
   )
+  if (assignedApplied + assignedIgnored > 0) {
+    process.stdout.write(
+      `speaker assignments: applied for ${assignedApplied} episode(s)` +
+        (assignedIgnored ? `, NOT applied for ${assignedIgnored} (the file no longer matches what was reviewed; review it again on /admin/speakers)` : '') + '\n'
+    )
+  }
   if (guestsFromManifest > 0) {
     process.stdout.write(
       `${guestsFromManifest} of ${attached} source rows have no \`authors\`, so their manifest guests were used ` +

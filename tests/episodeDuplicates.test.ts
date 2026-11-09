@@ -374,3 +374,53 @@ test('nonEpisodeFormat: the Huberman welcome trailer is skipped, a trailer-like 
   assert.equal(d.skip, true)
   if (d.skip) assert.match(d.reason, /^trailer: full episodes only/)
 })
+
+// ── pasted text loses to audio (Paul, 2026-11-08) ─────────────────────────────
+
+test('ranking: a pending audio copy with 0 facts beats a succeeded pasted-text copy with hundreds', () => {
+  const text = row('#368 The Protein Debata', { media_type: 'text', processing_status: 'succeeded', facts: 156 })
+  const audio = row('#368 ‒ The protein debate | David Allison, Ph.D.', { media_type: 'audio', processing_status: 'pending', facts: 0 })
+  assert.ok(comparePreference(audio, text) < 0)
+  assert.ok(comparePreference(text, audio) > 0)
+})
+
+test('ranking: still-live beats pasted text beats nothing: a skipped audio copy loses to a live text copy', () => {
+  const text = row('#368 The Protein Debata', { media_type: 'text', processing_status: 'succeeded', facts: 156 })
+  const skippedAudio = row('#368 ‒ The protein debate', { media_type: 'audio', processing_status: 'skipped' })
+  assert.ok(comparePreference(text, skippedAudio) < 0)
+})
+
+test('ranking: a pasted-text full episode still beats an Essentials cut (the cut is skipped, not kept)', () => {
+  const text = row('The Protein Debate', { series: HUBERMAN, media_type: 'text', processing_status: 'succeeded', facts: 50 })
+  const cut = row('Essentials: The Protein Debate', { series: HUBERMAN, media_type: 'audio', processing_status: 'pending' })
+  assert.ok(comparePreference(text, cut) < 0)
+})
+
+test('ranking: between two pasted-text copies the usual rules still apply (more facts wins)', () => {
+  const small = row('#368 The Protein Debate', { media_type: 'text', processing_status: 'succeeded', facts: 10 })
+  const big = row('#368 The Protein Debate', { media_type: 'text', processing_status: 'succeeded', facts: 90 })
+  assert.ok(comparePreference(big, small) < 0)
+})
+
+test('ranking: two audio copies are untouched by the new rule (extracted copy with more facts wins)', () => {
+  const a = row('#183 Habits', { media_type: 'audio', processing_status: 'succeeded', facts: 217 })
+  const b = row('#183 Habits', { media_type: 'audio', processing_status: 'succeeded', facts: 100 })
+  assert.ok(comparePreference(a, b) < 0)
+})
+
+test('a new audio episode is skipped as a copy of a pasted-text row in the library, unless that row is named by --replace', () => {
+  const text = row('#368 The Protein Debata', { media_type: 'text', processing_status: 'succeeded', facts: 156, external_id: 'attia-0368' })
+  const feed = { key: 'attia-0368', title: '#368 ‒ The protein debate: optimal intake | David Allison, Ph.D.', series: DRIVE, external_id: 'attia-0368', authors: ['Dr. Peter Attia', 'David Allison, Ph.D.'], media_duration_sec: 6519 }
+  // Blocked by default: this is the safety --replace has to opt out of, one named row at a time.
+  const blocked = planNewEpisodes([feed], [text])[0]
+  assert.equal(blocked.decision.skip, true)
+  // --replace takes that one row out of the library the check sees; the audio row is then a plain new episode.
+  const replaced = planNewEpisodes([feed], [])[0]
+  assert.equal(replaced.decision.skip, false)
+})
+
+test('a new audio episode is still skipped as a copy of ANOTHER live audio copy while a text row is replaced', () => {
+  const otherAudio = row('#368 ‒ The protein debate: optimal intake', { media_type: 'audio', processing_status: 'pending', external_id: 'attia-g0abcde' })
+  const feed = { key: 'attia-0368', title: '#368 ‒ The protein debate: optimal intake | David Allison, Ph.D.', series: DRIVE, external_id: 'attia-0368', authors: ['Dr. Peter Attia'], media_duration_sec: 6519 }
+  assert.equal(planNewEpisodes([feed], [otherAudio])[0].decision.skip, true)
+})

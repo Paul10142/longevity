@@ -11,8 +11,14 @@
  * queue the whole episode for a second extraction, which is the cost this work
  * exists to stop. Where both are extracted, the copy with MORE facts is kept
  * (Paul, 2026-11-08). The order, best first (comparePreference): still live →
- * not an `Essentials:` cut → already extracted → more facts → the episode
- * number leads the title → not marked rebroadcast → oldest → id.
+ * not an `Essentials:` cut → not pasted text → already extracted → more facts →
+ * the episode number leads the title → not marked rebroadcast → oldest → id.
+ *
+ * PASTED TEXT LOSES TO AUDIO (Paul, 2026-11-08: "For Drive pasted text, we should
+ * process them with Deepgram again"). A pasted-text copy beats nothing but another
+ * pasted-text copy, whatever its facts. When one loses to an audio copy it is NOT a
+ * `change` here: it goes in `pastedText`, and scripts/replacePastedText.ts skips it,
+ * only once the audio copy has succeeded (until then the text copy is the live one).
  *
  * Q&A ITEMS. A Huberman `AMA #N:` or live Q&A item is not a full episode (Paul,
  * 2026-11-08): it is skipped on its own title, never grouped, with no original.
@@ -34,6 +40,7 @@
 import {
   comparePreference,
   describeEpisode,
+  isPastedText,
   looksSimilar,
   nonEpisodeFormat,
   nonEpisodeReason,
@@ -42,10 +49,10 @@ import {
   type LibraryRow,
   type MatchKind,
 } from './episodeDuplicates'
+import { replacementState, type ReplacementRow, type ReplacementState } from './pastedTextReplacement'
 import { showForSource } from './shows'
 
 export type CleanupRow = LibraryRow & {
-  transcript_origin?: string | null
   episode_number?: number | null
   skip_reason?: string | null
 }
@@ -75,9 +82,34 @@ export type Change = {
   group: number | null
 }
 
+/**
+ * A pasted-text copy that loses to an audio copy of the same episode (Paul, 2026-11-08:
+ * Deepgram copies beat pasted text). It is NOT in `changes`: the cleanup never skips it.
+ * scripts/replacePastedText.ts does that, and only once the audio copy has succeeded.
+ */
+export type PastedTextItem = {
+  id: string
+  title: string
+  series: string
+  facts: number
+  processing_status: string | null
+  /** The audio copy that replaces it. */
+  audioId: string
+  audioTitle: string
+  audioStatus: string | null
+  audioOrigin: string | null
+  audioFacts: number
+  state: ReplacementState['state']
+  /** Why it is waiting or blocked ('' when ready or applied). */
+  why: string
+  group: number
+}
+
 export type CleanupPlan = {
   groups: DuplicateGroup[]
   changes: Change[]
+  /** Pasted-text copies set aside for the replace step; never part of `changes`. */
+  pastedText: PastedTextItem[]
   /** Titles that look alike but are NOT decided (shown for a person). */
   similar: { a: CleanupRow; b: CleanupRow }[]
 }
@@ -92,6 +124,18 @@ class Union {
   }
   join(a: string, b: string) { this.parent.set(this.find(a), this.find(b)) }
 }
+
+const replacementRow = (r: CleanupRow): ReplacementRow => ({
+  id: r.id,
+  title: r.title,
+  external_id: r.external_id ?? null,
+  media_type: r.media_type,
+  transcript_origin: r.transcript_origin,
+  processing_status: r.processing_status,
+  duplicate_of: r.duplicate_of,
+  skip_reason: r.skip_reason,
+  facts: r.facts,
+})
 
 const seriesOf = (r: CleanupRow) => showForSource({ series: r.series, external_id: r.external_id, authors: r.authors }).series
 
@@ -145,6 +189,7 @@ export function planCleanup(allRows: readonly CleanupRow[]): CleanupPlan {
   const rows = allRows.filter(r => nonEpisodeFormat(r) == null)
   const groups = groupDuplicates(rows)
   const changes: Change[] = []
+  const pastedText: PastedTextItem[] = []
   const inGroup = new Set<string>()
 
   groups.forEach((g, gi) => {
@@ -163,6 +208,27 @@ export function planCleanup(allRows: readonly CleanupRow[]): CleanupPlan {
       if (r.id === g.keeper.id && keeperKeptLive) continue
       const p = parseEpisodeTitle(r.title)
       const target = r.id === g.keeper.id ? null : g.keeper
+      // A pasted-text copy that an audio copy outranks is set aside for the replace step: the
+      // cleanup never skips it (the audio copy may not even be transcribed yet).
+      if (target && keeperKeptLive && isPastedText(r) && !isPastedText(target)) {
+        const st = replacementState(replacementRow(r), replacementRow(target))
+        pastedText.push({
+          id: r.id,
+          title: r.title,
+          series: g.series,
+          facts: r.facts ?? 0,
+          processing_status: r.processing_status ?? null,
+          audioId: target.id,
+          audioTitle: target.title,
+          audioStatus: target.processing_status ?? null,
+          audioOrigin: target.transcript_origin ?? null,
+          audioFacts: target.facts ?? 0,
+          state: st.state,
+          why: st.state === 'waiting' || st.state === 'blocked' ? st.why : '',
+          group: gi + 1,
+        })
+        continue
+      }
       let reason: string
       if (!target) {
         reason = p.essentials
@@ -242,5 +308,5 @@ export function planCleanup(allRows: readonly CleanupRow[]): CleanupPlan {
       }
     }
   }
-  return { groups, changes, similar }
+  return { groups, changes, pastedText, similar }
 }
