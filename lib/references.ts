@@ -16,40 +16,22 @@
 import { supabaseAdmin } from './supabaseServer'
 import { generateEmbedding } from './embeddings'
 import { startOrResumeRun, finishRun, failRun } from './pipelineRuns'
-import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
+import { claudeJson, CLAUDE_BULK_MODEL } from './llm'
 import { selectAllPaged } from './pagination'
+import {
+  createReferenceLookup, normalizeTitle,
+  type ParsedRef, type ResolvedRef, type EpisodeInfo, type MentionResult, type ReferenceLookup,
+} from './referenceLookup'
 
 // Bulk tier: scanning every chunk for citation mentions.
 const REFERENCE_MODEL = CLAUDE_BULK_MODEL
-const CONTACT_MAILTO = process.env.REFERENCE_CONTACT_EMAIL || 'team@admissionsacademy.org'
-const USER_AGENT = `LifestyleAcademy/1.0 (mailto:${CONTACT_MAILTO})`
-const MIN_EXTERNAL_INTERVAL_MS = 350 // gentle spacing for CrossRef/PubMed
 
 function db() {
   if (!supabaseAdmin) throw new Error('Supabase admin client not configured')
   return supabaseAdmin
 }
 
-// ── Rate limiter for external APIs ──────────────────────────
-let lastExternalCall = 0
-async function throttle(): Promise<void> {
-  const wait = MIN_EXTERNAL_INTERVAL_MS - (Date.now() - lastExternalCall)
-  if (wait > 0) await new Promise(r => setTimeout(r, wait))
-  lastExternalCall = Date.now()
-}
-
 // ── Extraction ──────────────────────────────────────────────
-type ParsedRef = {
-  raw_text: string
-  type?: string
-  title?: string
-  authors?: string[]
-  year?: number
-  journal?: string
-  doi?: string
-  context?: string | null  // the finding/claim the work is cited to support (disambiguator)
-}
-
 const EXTRACT_REF_SYSTEM = `
 Extract explicit mentions of EXTERNAL published works cited in this transcript chunk: peer-reviewed studies, clinical trials, meta-analyses, guidelines, or books that the speakers refer to as evidence.
 
@@ -65,9 +47,11 @@ Return STRICT JSON: {"references":[{"raw_text":"...","type":"...","title":"...",
 If none, return {"references":[]}.
 `.trim()
 
-async function extractRefsFromChunk(content: string): Promise<ParsedRef[]> {
+type ExtractedRef = ParsedRef & { raw_text: string }
+
+async function extractRefsFromChunk(content: string): Promise<ExtractedRef[]> {
   try {
-    const parsed = await claudeJson<{ references?: ParsedRef[] }>(
+    const parsed = await claudeJson<{ references?: ExtractedRef[] }>(
       EXTRACT_REF_SYSTEM,
       `Chunk:\n${content}`,
       4000,
@@ -152,169 +136,12 @@ export async function extractReferences(
   }
 }
 
-// ── Resolution (CrossRef → PubMed) ──────────────────────────
-function normalizeTitle(t: string): string {
-  return t.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim()
-}
+// ── Resolution ──────────────────────────────────────────────
+// The lookup itself (PubMed first, retries, search writer, judge, one lookup per work) lives in
+// lib/referenceLookup.ts so it can be tested without a database. This file does the reads and writes.
 function fingerprintOf(title: string, year: number | null, doi: string | null): string {
   if (doi) return `doi:${doi.toLowerCase()}`
   return `t:${normalizeTitle(title)}${year ? `:${year}` : ''}`
-}
-function resolvableTitle(title?: string): boolean {
-  return !!title && normalizeTitle(title).split(' ').filter(w => w.length > 3).length >= 3
-}
-// Attempt resolution when the mention carries enough to identify a specific
-// work: a DOI, a real title, or a journal anchored by a year/author. Precision
-// is enforced downstream by the LLM judge + confidence threshold, so this gate
-// only needs to skip hopelessly vague mentions ("a study showed…").
-function canAttemptResolution(parsed: ParsedRef): boolean {
-  if (parsed.doi || resolvableTitle(parsed.title)) return true
-  if (parsed.journal && (parsed.year || (parsed.authors?.length ?? 0) > 0)) return true
-  return false
-}
-
-type ResolvedRef = {
-  type: string; title: string; authors: string[]; year: number | null
-  journal: string | null; doi: string | null; url: string | null
-  abstract?: string | null
-  resolved_source: 'crossref' | 'pubmed' | 'openalex'
-}
-
-// ── Agentic resolution: gather candidates from several databases, then let an
-//    LLM pick the true match on SUBSTANCE (abstract vs the described finding),
-//    not just title tokens. Raises recall (find the paper from a description)
-//    while keeping precision (never a topically-similar wrong paper).
-
-const AUTO_ACCEPT_CONFIDENCE = 0.7   // below this → not_found
-
-function reconstructAbstract(inv?: Record<string, number[]>): string | null {
-  if (!inv) return null
-  const words: { pos: number; w: string }[] = []
-  for (const [w, positions] of Object.entries(inv)) for (const p of positions) words.push({ pos: p, w })
-  if (words.length === 0) return null
-  return words.sort((a, b) => a.pos - b.pos).map(x => x.w).join(' ').slice(0, 1200)
-}
-
-async function openAlexCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
-  const query = (parsed.title || rawText).slice(0, 300)
-  if (!query.trim()) return []
-  try {
-    await throttle()
-    const res = await fetch(
-      `https://api.openalex.org/works?search=${encodeURIComponent(query)}&per-page=5&mailto=${encodeURIComponent(CONTACT_MAILTO)}`,
-      { headers: { 'User-Agent': USER_AGENT } }
-    )
-    if (!res.ok) return []
-    const j = await res.json()
-    return (j.results ?? []).map((w: {
-      title?: string; publication_year?: number; doi?: string; type?: string
-      authorships?: { author?: { display_name?: string } }[]
-      primary_location?: { source?: { display_name?: string } }
-      abstract_inverted_index?: Record<string, number[]>
-    }): ResolvedRef | null => {
-      if (!w.title) return null
-      const doi = w.doi ? w.doi.replace('https://doi.org/', '') : null
-      return {
-        type: w.type === 'book' ? 'book' : 'journal_article',
-        title: w.title,
-        authors: (w.authorships ?? []).map(a => a.author?.display_name).filter((x): x is string => !!x),
-        year: w.publication_year ?? null,
-        journal: w.primary_location?.source?.display_name ?? null,
-        doi,
-        url: doi ? `https://doi.org/${doi}` : null,
-        abstract: reconstructAbstract(w.abstract_inverted_index),
-        resolved_source: 'openalex',
-      }
-    }).filter((x: ResolvedRef | null): x is ResolvedRef => !!x)
-  } catch {
-    return []
-  }
-}
-
-async function crossrefCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
-  try {
-    if (parsed.doi) {
-      await throttle()
-      const res = await fetch(`https://api.crossref.org/works/${encodeURIComponent(parsed.doi)}`, { headers: { 'User-Agent': USER_AGENT } })
-      if (res.ok) { const j = await res.json(); const c = crossrefItem(j.message); if (c) return [c] }
-    }
-    const query = (parsed.title || rawText).slice(0, 300)
-    if (!query.trim()) return []
-    await throttle()
-    const res = await fetch(
-      `https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(query)}&rows=3`,
-      { headers: { 'User-Agent': USER_AGENT } }
-    )
-    if (!res.ok) return []
-    const j = await res.json()
-    return (j.message?.items ?? []).map(crossrefItem).filter((x: ResolvedRef | null): x is ResolvedRef => !!x)
-  } catch {
-    return []
-  }
-}
-
-function crossrefItem(item: {
-  title?: string[]; author?: { given?: string; family?: string }[]; DOI?: string
-  'container-title'?: string[]; issued?: { 'date-parts'?: number[][] }; type?: string; URL?: string
-}): ResolvedRef | null {
-  const title = item.title?.[0]
-  if (!title) return null
-  const year = item.issued?.['date-parts']?.[0]?.[0] ?? null
-  const authors = (item.author ?? []).map(a => [a.given, a.family].filter(Boolean).join(' ')).filter(Boolean)
-  const typeMap: Record<string, string> = { 'journal-article': 'journal_article', 'book': 'book', 'proceedings-article': 'journal_article' }
-  return {
-    type: typeMap[item.type ?? ''] ?? 'journal_article',
-    title, authors, year,
-    journal: item['container-title']?.[0] ?? null,
-    doi: item.DOI ?? null,
-    url: item.URL ?? (item.DOI ? `https://doi.org/${item.DOI}` : null),
-    resolved_source: 'crossref',
-  }
-}
-
-/** Gather + dedup candidates across databases. */
-async function gatherCandidates(parsed: ParsedRef, rawText: string): Promise<ResolvedRef[]> {
-  const [oa, cr] = await Promise.all([openAlexCandidates(parsed, rawText), crossrefCandidates(parsed, rawText)])
-  const all = [...oa, ...cr]
-  const seen = new Set<string>()
-  const deduped: ResolvedRef[] = []
-  for (const c of all) {
-    const key = c.doi ? `doi:${c.doi.toLowerCase()}` : `t:${normalizeTitle(c.title)}`
-    if (seen.has(key)) continue
-    seen.add(key)
-    deduped.push(c)
-  }
-  return deduped.slice(0, 8)
-}
-
-type Judgement = { index: number | null; confidence: number }
-
-/**
- * LLM judge: given the speaker's mention (+ the finding they described) and a
- * list of candidate works with abstracts, pick the one that is the SAME specific
- * work, or none. Matching on substance is what distinguishes a real citation
- * from a topically-similar paper.
- */
-async function judgeCandidates(rawText: string, context: string | null, candidates: ResolvedRef[]): Promise<Judgement> {
-  if (candidates.length === 0) return { index: null, confidence: 0 }
-  const list = candidates
-    .map((c, i) => `[${i}] "${c.title}" — ${(c.authors ?? []).slice(0, 3).join(', ') || 'unknown authors'}, ${c.journal ?? 'n/a'}, ${c.year ?? 'n/a'}${c.abstract ? `\n    abstract: ${c.abstract.slice(0, 500)}` : ''}`)
-    .join('\n')
-  try {
-    // Judgment tier: deciding whether a candidate paper is *the* work a speaker
-    // meant (rather than a topically-similar one) is exactly the call that
-    // determines whether a citation is real.
-    const j = await claudeJson<{ index?: number | null; confidence?: number }>(
-      'A speaker referred to an external published work. Choose which candidate (if any) is the SAME specific work — match on substance: the described finding, population, topic, and era should fit the candidate\'s abstract/metadata. If the speaker only named a general topic/technique (not a specific identifiable work), or no candidate clearly fits, return index null. Return STRICT JSON {"index": <number or null>, "confidence": <0..1>}.',
-      `Speaker referred to: "${rawText}"${context ? `\nFinding described: ${context}` : ''}\n\nCandidates:\n${list}`,
-      1000,
-      CLAUDE_JUDGMENT_MODEL
-    )
-    const index = typeof j.index === 'number' && j.index >= 0 && j.index < candidates.length ? j.index : null
-    return { index, confidence: typeof j.confidence === 'number' ? j.confidence : 0 }
-  } catch {
-    return { index: null, confidence: 0 }
-  }
 }
 
 /** Find-or-create a canonical reference (dedup by fingerprint/DOI). */
@@ -359,72 +186,91 @@ async function linkReferenceToClaims(chunkId: string | null, referenceId: string
   await db().from('claim_references').upsert(rows, { onConflict: 'claim_id,reference_id' })
 }
 
-export type ResolveCheckpoint = { processed: number; resolved: number; not_found: number }
+export type ResolveCheckpoint = { processed: number; resolved: number; not_found: number; /** citations whose lookup failed this pass; still pending */ deferred?: number }
 
 /** What the resolver saw for one mention — used by the linking test to explain failures. */
 export type ResolveTrace = {
   mention_id: string
   attempted: boolean
   candidates: ResolvedRef[]
-  judge: Judgement | null
+  judge: MentionResult['judge']
   accepted_index: number | null
+  outcome: MentionResult['outcome']
+  reason: MentionResult['reason']
 }
 
-/** Stage: resolve pending reference mentions. Throttled + cached + deduped. */
+// Past this many failed lookups in one pass the databases are down: stop instead of hammering them.
+// The citations stay pending and the next resolve_references job picks them up.
+const MAX_DEFERRED_PER_PASS = 20
+
+type EpisodeRow = { title: string | null; authors: string[] | null; date: string | null }
+
+/** Episode details (title, guests) help the lookup work out who "my lab" or "the Belsky paper" means. */
+async function episodeFor(sourceId: string, memo: Map<string, EpisodeInfo>): Promise<EpisodeInfo> {
+  const hit = memo.get(sourceId)
+  if (hit) return hit
+  const { data } = await db().from('sources').select('title, authors, date').eq('id', sourceId).maybeSingle()
+  const row = data as EpisodeRow | null
+  const info: EpisodeInfo = { title: row?.title ?? null, people: row?.authors ?? [], date: row?.date ?? null }
+  memo.set(sourceId, info)
+  return info
+}
+
+/**
+ * Stage: resolve pending reference mentions. A work cited many times is looked up once. A citation whose
+ * lookup FAILED (database down or refusing, model error) stays pending; only a real "nothing found" or a
+ * judge rejection becomes not_found.
+ */
 export async function resolveReferences(
   onProgress: (cp: ResolveCheckpoint) => Promise<void>,
   timeBudgetMs = 220_000,
-  opts: { sourceIds?: string[]; trace?: (t: ResolveTrace) => void } = {}
+  opts: { sourceIds?: string[]; trace?: (t: ResolveTrace) => void; lookup?: ReferenceLookup } = {}
 ): Promise<{ done: boolean; checkpoint: ResolveCheckpoint }> {
   const started = Date.now()
-  const cache = new Map<string, { id: string | null; conf: number }>() // key → {reference_id|null, confidence}
-  const cp: ResolveCheckpoint = { processed: 0, resolved: 0, not_found: 0 }
+  const lookup = opts.lookup ?? createReferenceLookup()
+  const episodes = new Map<string, EpisodeInfo>()
+  const deferred = new Set<string>()
+  const cp: ResolveCheckpoint = { processed: 0, resolved: 0, not_found: 0, deferred: 0 }
 
   while (Date.now() - started < timeBudgetMs) {
     let q = db()
       .from('reference_mentions')
-      .select('id, chunk_id, raw_text, parsed')
+      .select('id, source_id, chunk_id, raw_text, parsed')
       .eq('resolution_status', 'pending')
     if (opts.sourceIds) q = q.in('source_id', opts.sourceIds) // linking test: only the named sources
+    if (deferred.size > 0) q = q.not('id', 'in', `(${[...deferred].join(',')})`)
     const { data: batch } = await q
       .order('created_at', { ascending: true })
       .limit(15)
-    const mentions = (batch ?? []) as { id: string; chunk_id: string | null; raw_text: string; parsed: ParsedRef }[]
+    const mentions = (batch ?? []) as { id: string; source_id: string; chunk_id: string | null; raw_text: string; parsed: ParsedRef | null }[]
     if (mentions.length === 0) return { done: true, checkpoint: cp }
 
     for (const m of mentions) {
       if (Date.now() - started > timeBudgetMs) return { done: false, checkpoint: cp }
-      const parsed = m.parsed || ({} as ParsedRef)
+      const result = await lookup.resolveMention({
+        raw: m.raw_text,
+        parsed: m.parsed ?? {},
+        episode: await episodeFor(m.source_id, episodes),
+      })
+      opts.trace?.({
+        mention_id: m.id, attempted: result.outcome !== 'skipped', candidates: result.candidates, judge: result.judge,
+        accepted_index: result.accepted ? result.candidates.findIndex(c => c === result.accepted) : null,
+        outcome: result.outcome, reason: result.reason,
+      })
 
-      let referenceId: string | null = null
-      let confidence = 0
-      const attempted = canAttemptResolution(parsed)
-      let tCands: ResolvedRef[] = []
-      let tJudge: Judgement | null = null
-      let tIdx: number | null = null
-      if (attempted) {
-        const cacheKey = fingerprintOf(parsed.title ?? parsed.doi ?? '(none)', parsed.year ?? null, parsed.doi ?? null)
-        if (cache.has(cacheKey)) {
-          const hit = cache.get(cacheKey)!
-          referenceId = hit.id
-          confidence = hit.conf
-        } else {
-          const candidates = await gatherCandidates(parsed, m.raw_text)
-          const j = await judgeCandidates(m.raw_text, parsed.context ?? null, candidates)
-          tCands = candidates; tJudge = j
-          if (j.index !== null && j.confidence >= AUTO_ACCEPT_CONFIDENCE) {
-            referenceId = await upsertReference(candidates[j.index])
-            confidence = j.confidence
-            tIdx = j.index
-          }
-          cache.set(cacheKey, { id: referenceId, conf: confidence })
+      if (result.outcome === 'deferred') {
+        deferred.add(m.id)
+        cp.deferred = deferred.size
+        if (deferred.size >= MAX_DEFERRED_PER_PASS) {
+          await onProgress(cp)
+          return { done: true, checkpoint: cp }
         }
+        continue
       }
-
-      opts.trace?.({ mention_id: m.id, attempted, candidates: tCands, judge: tJudge, accepted_index: tIdx })
-      if (referenceId) {
+      if (result.outcome === 'resolved' && result.accepted) {
+        const referenceId = await upsertReference(result.accepted)
         await db().from('reference_mentions').update({
-          resolution_status: 'resolved', reference_id: referenceId, match_confidence: confidence,
+          resolution_status: 'resolved', reference_id: referenceId, match_confidence: result.confidence,
         }).eq('id', m.id)
         await linkReferenceToClaims(m.chunk_id, referenceId)
         cp.resolved++
