@@ -15,6 +15,9 @@ import { finishRun, failRun } from './pipelineRuns'
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from './llm'
 import { PipelineHaltError, UsageLimitError, rethrowIfUsageLimit } from './usageLimit'
 import { stripNonContent } from './transcriptHygiene'
+import { resolveQuote } from './quoteResolve'
+import { applyGate, describeViolation, type GateViolation } from './extractionGate'
+import { EXTRACTION_SYSTEM_PROMPT_V2, EXTRACTION_REPAIR_PROMPT_V2 } from './extractionPromptV2'
 import { selectAllPaged } from './pagination'
 import { createLimiter, envLimit } from './concurrency'
 import { withNetworkRetry } from './networkRetry'
@@ -37,9 +40,12 @@ import type { EvidenceType, Confidence, Actionability, Audience, InsightType, In
  */
 export const insertLimiter = createLimiter(envLimit('EXTRACT_DB_WRITE_CONCURRENCY', 3))
 
-// Bulk tier: one call per transcript chunk, so this is the pipeline's
-// highest-volume model by a wide margin.
-const EXTRACTION_MODEL = CLAUDE_BULK_MODEL
+// Default extraction model (Paul, 2026-11-08, after the 8-episode comparison): Opus 5.5 with the
+// v2 prompt flagged 8.9% of insights against 33.5% for stored Haiku/v1 extraction, with no loss of
+// content. The v1 prompt keeps its original bulk-tier model so `EXTRACTION_PROMPT_VERSION=v1` alone
+// restores the old behaviour. `EXTRACTION_MODEL` in the environment overrides either (see extractionConfig).
+const DEFAULT_EXTRACTION_MODEL = 'claude-opus-5-5'
+const V1_EXTRACTION_MODEL = CLAUDE_BULK_MODEL
 const CHUNK_SIZE = 2400
 const CHUNK_OVERLAP = 200
 
@@ -61,6 +67,8 @@ type ExtractedInsight = {
   actionability?: Actionability
   primary_audience?: Audience
   insight_type?: InsightType
+  /** v2 prompt only: the statement depends on something shown on screen (video check). */
+  visual_dependent?: boolean
 }
 
 // ── Prompt (ported verbatim from the v1 optimized prompt) ───
@@ -133,6 +141,39 @@ OUTPUT FORMAT (STRICT JSON)
 {"insights":[{"statement":"...","context_note":"...","direct_quote":"exact words from the chunk or null","speaker":"full name or null","evidence_type":"...","qualifiers":{"population":"...","dose":"...","duration":"...","outcome":"...","effect_size":"..."},"confidence":"...","importance":1|2|3,"actionability":"...","primary_audience":"...","insight_type":"..."}]}
 If no high-value insights are present, return {"insights":[]}.
 `.trim()
+
+
+// ── Prompt / gate switch ────────────────────────────────────
+export type PromptVersion = 'v1' | 'v2'
+export type ExtractionConfig = {
+  model: string
+  promptVersion: PromptVersion
+  /** Deterministic post-extraction gate (lib/extractionGate.ts). */
+  gate: boolean
+  /** One repair round for insights the gate rejected (only with the gate on). */
+  repair: boolean
+}
+
+/**
+ * How extraction runs, from the environment, with explicit overrides for harnesses.
+ *
+ *   EXTRACTION_PROMPT_VERSION  v2 (default) | v1 — v1 is the original prompt, unchanged
+ *   EXTRACTION_GATE            on | off — default on with v2, off with v1
+ *   EXTRACTION_REPAIR          on (default) | off — one repair call for gate-rejected insights
+ *   EXTRACTION_MODEL           model id; default claude-opus-5-5 (v1: claude-haiku-4-5, its original model)
+ *
+ * Old behaviour, exactly: EXTRACTION_PROMPT_VERSION=v1 (gate off by default, Haiku 4.5).
+ */
+export function extractionConfig(overrides: Partial<ExtractionConfig> = {}): ExtractionConfig {
+  const promptVersion: PromptVersion =
+    overrides.promptVersion ?? (process.env.EXTRACTION_PROMPT_VERSION === 'v1' ? 'v1' : 'v2')
+  const gateEnv = process.env.EXTRACTION_GATE?.toLowerCase()
+  const gate = overrides.gate ?? (gateEnv === 'on' ? true : gateEnv === 'off' ? false : promptVersion === 'v2')
+  const repair = overrides.repair ?? process.env.EXTRACTION_REPAIR?.toLowerCase() !== 'off'
+  const model = overrides.model ??
+    (process.env.EXTRACTION_MODEL?.trim() || (promptVersion === 'v1' ? V1_EXTRACTION_MODEL : DEFAULT_EXTRACTION_MODEL))
+  return { model, promptVersion, gate, repair: gate && repair }
+}
 
 const LOW_VALUE_PATTERNS: RegExp[] = [
   /this (podcast|episode|discussion|conversation) (will|is going to|features?)/i,
@@ -236,106 +277,8 @@ function coerceInsightType(v: unknown): InsightType {
 }
 
 // ── Chunking (ported from v1 splitIntoChunks) ───────────────
-/**
- * Resolve the model's `direct_quote` against the chunk it came from, and keep
- * ONLY what is genuinely verbatim.
- *
- * The Evidence panel presents `direct_quote` to a clinician as the source's own
- * words, so an unverified quote is the system asserting substance it cannot
- * trace — principle 1. Measured on the 2026-07-24 corpus (`eval:extraction
- * verify`), **27% of stored quotes could not be found in their chunk**, and the
- * old code stored them anyway with null offsets. They were not fabrications:
- * 89% *started* in the chunk and 41% contained ellipses — the model stitching
- * two non-contiguous spans, which the prompt explicitly forbids.
- *
- * So, in order:
- *   1. exact hit — the normal case;
- *   2. an ellipsis-joined quote whose fragments are each verbatim — a real
- *      multi-span quote, kept as the model wrote it, anchored at fragment one;
- *   3. otherwise the longest verbatim PREFIX (down to a floor, so a stray
- *      three-word match never passes as a citation);
- *   4. nothing verifiable → drop the quote. A missing quote degrades the
- *      Evidence panel; a wrong one misleads it.
- *
- * Matching normalises whitespace and smart punctuation, since a curly apostrophe
- * against a straight one is a transcription artefact, not a fidelity failure.
- */
-export function resolveQuote(
-  content: string,
-  raw: string | null | undefined
-): { text: string | null; start: number | null; end: number | null } {
-  const quote = raw?.trim()
-  if (!quote) return { text: null, start: null, end: null }
-
-  const exact = content.indexOf(quote)
-  if (exact >= 0) return { text: quote, start: exact, end: exact + quote.length }
-
-  // Normalised search: fold whitespace runs and unify smart punctuation, then map
-  // the hit back to an offset in the ORIGINAL content (offsets are what the UI
-  // highlights, so they must index the real text).
-  const fold = (s: string) =>
-    s.replace(/[‘’]/g, "'").replace(/[“”]/g, '"')
-     .replace(/[–—]/g, '-').replace(/\s+/g, ' ')
-  const foldedContent = fold(content)
-
-  /** Offset in `content` of the nth char of `foldedContent`, walking both. */
-  const mapBack = (foldedIdx: number): number => {
-    let ci = 0, fi = 0
-    while (fi < foldedIdx && ci < content.length) {
-      const isWs = /\s/.test(content[ci])
-      if (isWs) {
-        while (ci < content.length && /\s/.test(content[ci])) ci++
-        fi++ // the whole run folded to one space
-      } else {
-        ci++; fi++
-      }
-    }
-    return ci
-  }
-
-  const findFolded = (needle: string): { start: number; end: number } | null => {
-    const f = fold(needle).trim()
-    if (!f) return null
-    const at = foldedContent.indexOf(f)
-    if (at < 0) return null
-    return { start: mapBack(at), end: mapBack(at + f.length) }
-  }
-
-  const hit = findFolded(quote)
-  if (hit) return { text: quote, start: hit.start, end: hit.end }
-
-  // Ellipsis-joined multi-span quote: legitimate only if EVERY fragment is
-  // verbatim. One unverifiable fragment invalidates the whole citation.
-  const fragments = quote.split(/\s*(?:\.\.\.|…)\s*/).map(f => f.trim()).filter(f => f.length > 0)
-  if (fragments.length > 1) {
-    const hits = fragments.map(findFolded)
-    if (hits.every(Boolean)) {
-      const first = hits[0] as { start: number; end: number }
-      const last = hits[hits.length - 1] as { start: number; end: number }
-      return { text: quote, start: first.start, end: Math.max(first.end, last.end) }
-    }
-  }
-
-  // Longest verbatim prefix, trimmed at a word boundary. The floor keeps a
-  // fragment too short to be evidence from being presented as a citation.
-  const MIN_QUOTE_CHARS = 40
-  let lo = MIN_QUOTE_CHARS
-  let best: { text: string; start: number; end: number } | null = null
-  for (let hi = quote.length; lo <= hi; ) {
-    const mid = Math.floor((lo + hi + 1) / 2)
-    const candidate = quote.slice(0, mid).replace(/\s+\S*$/, '')
-    const found = candidate.length >= MIN_QUOTE_CHARS ? findFolded(candidate) : null
-    if (found) {
-      best = { text: candidate, start: found.start, end: found.end }
-      lo = mid + 1
-    } else {
-      hi = mid - 1
-    }
-  }
-  if (best) return { text: best.text, start: best.start, end: best.end }
-
-  return { text: null, start: null, end: null }
-}
+// resolveQuote lives in ./quoteResolve (shared with the extraction gate); re-exported for callers and tests.
+export { resolveQuote }
 
 export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSize = CHUNK_OVERLAP): string[] {
   const forceSplit = (input: string): string[] => {
@@ -387,54 +330,46 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 }
 
 // ── LLM extraction for one chunk ────────────────────────────
-export async function extractFromChunk(
-  content: string,
-  label: string,
-  // "Host: <the show's host>. Guest(s): Micky Collins." — gives the speaker-attribution
-  // rule names to attribute to. Optional: eval harnesses call without it, and the
-  // model then attributes only when the dialogue itself names the speaker.
-  participants?: string
-): Promise<ExtractedInsight[]> {
+
+/** One model call with the retry policy extraction has always had (see the comment inside). */
+async function callExtractionModel(
+  system: string,
+  user: string,
+  model: string,
+  label: string
+): Promise<{ insights?: ExtractedInsight[] }> {
   // Retry transient failures: the claude-code CLI intermittently prefixes prose
   // ("Extracted the following…") so `claudeJson` throws a parse error. Swallowing
   // that as 0 insights silently drops a whole chunk's content, so retry a few
   // times with backoff before giving up (same exclude-only-after-retries pattern
   // as the eval harnesses).
-  let parsed: { insights?: ExtractedInsight[] } | null = null
   let lastErr: unknown
   for (let attempt = 0; attempt <= 3; attempt++) {
     if (attempt > 0) await new Promise(r => setTimeout(r, Math.min(1500 * 2 ** (attempt - 1), 12_000)))
     try {
-      parsed = await claudeJson<{ insights?: ExtractedInsight[] }>(
-        EXTRACTION_SYSTEM_PROMPT,
-        `${participants ? `Participants in this recording — ${participants}\n\n` : ''}Text to analyze:\n${content}`,
-        8000,
-        EXTRACTION_MODEL
-      )
-      break
+      return await claudeJson<{ insights?: ExtractedInsight[] }>(system, user, 8000, model)
     } catch (err) {
       // Retrying cannot beat a full usage window; let the worker defer the job.
       rethrowIfUsageLimit(err)
       lastErr = err
     }
   }
-  if (!parsed) {
-    // A failed call is NOT an empty chunk. Returning [] here let the caller
-    // advance its checkpoint and mark the source succeeded having extracted
-    // nothing — on 2026-07-24 that silently burned 26 of 54 chunks of a source,
-    // and the only visible symptom was insights_created stuck at 0. Throw, so
-    // the job fails loudly and the queue retries it with its checkpoint intact.
-    // (Same rule as adjudicate(): a transport failure is a missing measurement,
-    // never a verdict.)
-    throw new Error(
-      `[extract ${label}] extraction failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
-    )
-  }
-  // A well-formed response with no insights is a legitimate outcome — some
-  // chunks really are pure banter. That is the ONE case that returns empty.
-  if (!Array.isArray(parsed.insights)) return []
+  // A failed call is NOT an empty chunk. Returning [] here let the caller
+  // advance its checkpoint and mark the source succeeded having extracted
+  // nothing — on 2026-07-24 that silently burned 26 of 54 chunks of a source,
+  // and the only visible symptom was insights_created stuck at 0. Throw, so
+  // the job fails loudly and the queue retries it with its checkpoint intact.
+  // (Same rule as adjudicate(): a transport failure is a missing measurement,
+  // never a verdict.)
+  throw new Error(
+    `[extract ${label}] extraction failed after retries: ${lastErr instanceof Error ? lastErr.message : String(lastErr)}`
+  )
+}
 
-  return parsed.insights
+/** Coerce the model's raw insight list into stored shape; drops malformed and low-value entries. */
+function normalizeInsights(raw: unknown): ExtractedInsight[] {
+  if (!Array.isArray(raw)) return []
+  return (raw as ExtractedInsight[])
     .filter(i => i && typeof i.statement === 'string' && !isLowValue(i.statement))
     .map(i => ({
       statement: i.statement,
@@ -450,7 +385,111 @@ export async function extractFromChunk(
       primary_audience: coerceAudience(i.primary_audience),
       insight_type: coerceInsightType(i.insight_type),
       qualifiers: i.qualifiers ?? null,
+      visual_dependent: i.visual_dependent === true,
     }))
+}
+
+/** A statement that depends on something shown on screen carries a video-check note (no schema change: it rides in context_note). */
+export const VIDEO_CHECK_NOTE = 'Video check: this statement depends on something shown on screen.'
+function withVideoCheckNote(i: ExtractedInsight): ExtractedInsight {
+  if (!i.visual_dependent) return i
+  const note = i.context_note ? `${VIDEO_CHECK_NOTE} ${i.context_note}` : VIDEO_CHECK_NOTE
+  return { ...i, context_note: note }
+}
+
+export type ChunkExtraction = {
+  /** What the pipeline stores: gate-passing insights (all of them when the gate is off). */
+  kept: ExtractedInsight[]
+  /** Every insight the model returned on its first call, before the gate. */
+  firstPass: ExtractedInsight[]
+  /** Insights the gate rejected on the first pass, with why. */
+  rejected: { insight: ExtractedInsight; violations: GateViolation[] }[]
+  /** Corrected insights returned by the repair round (before they were re-gated). */
+  repairedCandidates: ExtractedInsight[]
+  /** Repair candidates the gate rejected again (dropped). */
+  stillRejected: { insight: ExtractedInsight; violations: GateViolation[] }[]
+  /** Model calls made for this chunk: 1, or 2 when a repair round ran. */
+  calls: number
+}
+
+/**
+ * Extract one chunk with full detail about what the gate did. The pipeline uses
+ * `extractFromChunk` (just the kept insights); the comparison harness
+ * (scripts/evalExtractionPrompt.ts) uses this to measure the gate.
+ */
+export async function extractFromChunkDetailed(
+  content: string,
+  label: string,
+  // "Host: <the show's host>. Guest(s): Micky Collins." — gives the speaker-attribution
+  // rule names to attribute to. Optional: eval harnesses call without it, and the
+  // model then attributes only when the dialogue itself names the speaker.
+  participants?: string,
+  overrides: Partial<ExtractionConfig> = {}
+): Promise<ChunkExtraction> {
+  const cfg = extractionConfig(overrides)
+  const system = cfg.promptVersion === 'v2' ? EXTRACTION_SYSTEM_PROMPT_V2 : EXTRACTION_SYSTEM_PROMPT
+  const user = `${participants ? `Participants in this recording — ${participants}\n\n` : ''}Text to analyze:\n${content}`
+  const parsed = await callExtractionModel(system, user, cfg.model, label)
+  // A well-formed response with no insights is a legitimate outcome — some
+  // chunks really are pure banter. That is the ONE case that returns empty.
+  const firstPass = normalizeInsights(parsed.insights)
+  const empty = { rejected: [], repairedCandidates: [], stillRejected: [], calls: 1 }
+
+  if (!cfg.gate) return { kept: firstPass.map(withVideoCheckNote), firstPass, ...empty }
+
+  const first = applyGate(content, firstPass)
+  let kept = first.kept
+  let repairedCandidates: ExtractedInsight[] = []
+  let stillRejected: ChunkExtraction['stillRejected'] = []
+  let calls = 1
+
+  if (cfg.repair && first.rejected.length > 0) {
+    calls = 2
+    const problems = first.rejected.map((r, n) => ({
+      n: n + 1,
+      insight: r.insight,
+      problems: r.violations.map(describeViolation),
+    }))
+    try {
+      const fixed = await callExtractionModel(
+        EXTRACTION_REPAIR_PROMPT_V2,
+        `${participants ? `Participants in this recording — ${participants}\n\n` : ''}Text:\n${content}\n\nInsights to correct (JSON):\n${JSON.stringify(problems)}`,
+        cfg.model,
+        `${label} repair`
+      )
+      // The model sometimes echoes the {n, insight, problems} wrapper it was given; unwrap it.
+      repairedCandidates = normalizeInsights(
+        (Array.isArray(fixed.insights) ? fixed.insights : []).map(x => {
+          const inner = (x as { insight?: ExtractedInsight } | null)?.insight
+          return inner && typeof inner === 'object' ? inner : x
+        })
+      )
+      const second = applyGate(content, repairedCandidates)
+      kept = [...kept, ...second.kept]
+      stillRejected = second.rejected
+    } catch (err) {
+      // A failed repair loses only the rejected insights, never the chunk.
+      rethrowIfUsageLimit(err)
+    }
+  }
+
+  return {
+    kept: kept.map(withVideoCheckNote),
+    firstPass,
+    rejected: first.rejected,
+    repairedCandidates,
+    stillRejected,
+    calls,
+  }
+}
+
+export async function extractFromChunk(
+  content: string,
+  label: string,
+  participants?: string,
+  overrides: Partial<ExtractionConfig> = {}
+): Promise<ExtractedInsight[]> {
+  return (await extractFromChunkDetailed(content, label, participants, overrides)).kept
 }
 
 export type ExtractCheckpoint = {
@@ -717,6 +756,8 @@ export async function extractSource(
     done_chunks: checkpoint?.done_chunks ?? [],
   }
   const INSERT_SLICE = 25
+  const extractionCfg = extractionConfig()
+  const extractionModel = extractionCfg.model
 
   // Chunks are independent, so they run CONCURRENTLY in batches instead of one
   // at a time. Measured 2026-08-24 on live chunks: serial ~58.5 s/chunk; 8-way
@@ -796,7 +837,7 @@ export async function extractSource(
         const content = chunkTexts[idx]
         const locator = `seg-${String(idx + 1).padStart(3, '0')}`
 
-        const extracted = await extractFromChunk(content, label, participants)
+        const extracted = await extractFromChunk(content, label, participants, extractionCfg)
         if (extracted.length === 0) {
           // A genuinely empty chunk (an ad break, a sign-off) is a real result;
           // nothing to write, but the chunk is done.
@@ -831,7 +872,7 @@ export async function extractSource(
             insight_type: ins.insight_type ?? null,
             qualifiers: ins.qualifiers ?? null,
             embedding: embeddings[i],
-            extraction_model: EXTRACTION_MODEL,
+            extraction_model: extractionModel,
           }
         })
         await insertChunk(idx, rows)

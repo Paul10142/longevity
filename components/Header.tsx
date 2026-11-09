@@ -122,7 +122,14 @@ export function Header() {
     "absolute bottom-0 left-0 w-0 h-0.5 bg-accent group-hover:w-full transition-all duration-300"
 
   return (
-    <header className="sticky top-0 z-50 w-full border-b border-border/40 bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60 shadow-sm">
+    <header
+      className={`sticky top-0 z-50 w-full border-b border-border/40 shadow-sm ${
+        // Work pages scroll long content under the bar: keep it solid so nothing shows through.
+        pathname?.startsWith("/admin")
+          ? "bg-background"
+          : "bg-background/80 backdrop-blur-md supports-[backdrop-filter]:bg-background/60"
+      }`}
+    >
       <div className="container relative flex h-20 items-center justify-between gap-4">
         <button
           type="button"

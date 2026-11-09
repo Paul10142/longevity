@@ -437,6 +437,31 @@ section is what that window (and the runner, afterwards) follows.
       source alone). `authors` that is just the host means the episode has no guest (the other speaker stays `Speaker 2`); the manifest is
       consulted only for a row whose `authors` is empty, and the attach prints how many rows that was. `repairDeepgramTiming.ts` follows the same
       rule, so it reports `TEXT MISMATCH` and leaves alone any source whose `authors` changed after its attach.
+   3a. **A third voice is never guessed: Paul assigns it on `/admin/speakers` (his word, 2026-11-08).** The attach names the guest on its own
+      only in the clear two-voice case (one guest on the row, one voice besides the host). With three or more voices the extra voices stay
+      `Speaker 2`, `Speaker 3`, … This matters on every FoundMyFitness interview: the "third voice" is the host herself (the produced intro is one
+      recording, her interview voice another), and a cold open can put the guest first, so no speaking-share rule can tell host from guest.
+      - **The page** lists every diarized episode that still has an unnamed voice and is not yet extracted. Each episode shows the first things each
+        voice says (with a play-at-timestamp link on YouTube rows; FoundMyFitness audio is only on this Mac, so those link to the episode page and
+        give the timestamp), the full transcript, and one button per name on the row (the host included) plus "Not A Guest (Ad / Clip / Producer)".
+        "Suggest A Guest" makes one small Claude read and only highlights a voice; it never saves.
+      - **What is saved:** `sources.speaker_names` (**migration 039, applied only by the parent session at a run gap**), nothing else; the transcript is
+        not touched. Until 039 is applied the page loads but cannot save, and the attach says so and attaches as before.
+      - **It reaches the transcript at the next re-attach.** `attachTranscripts.ts` applies the saved names after checking that each answer's fingerprint
+        (the first words that voice says) still matches the voice now carrying that label. If ANY answer no longer matches the file, the whole
+        mapping is ignored and the log says why: a name can never land on the wrong voice. A voice answered "Not A Guest" stays `Speaker N`.
+      - **Hold these episodes out of extraction until Paul has reviewed them.** A row that is `pending` with unnamed voices and no saved review will
+        otherwise extract with `Speaker 2` labels and need a retire later. Find them: pending rows whose `transcript` contains `Speaker 2: `
+        and whose `speaker_names` is null (the page's "Needs Review" list is the same set).
+      - **Runner, after Paul has assigned some:** list the pending rows that have a review
+        (`sources?speaker_names=not.is.null&processing_status=eq.pending&select=external_id`), then re-attach each under the same guards as
+        `scratchpad/batch3/reattach.sh` (no extraction process alive, row pending, no `raw_insights`, usage guard), with a NEW key list and marker
+        folder (the existing `reattached/<key>` markers would skip these keys):
+        `npx tsx --env-file=.env.local scripts/attachTranscripts.ts scratchpad/batch3/audio/<key>`. A row whose extraction already ran is not re-attached
+        (the attach skips `succeeded`, `reattach.sh` stops on rows with insights): it needs a retire first. `repairDeepgramTiming.ts` rebuilds labels
+        without the mapping, so it reports `TEXT MISMATCH` for a re-attached episode and leaves it alone (safe).
+      - **Read-only check:** `npx tsx --env-file=.env.local scripts/previewGuestVoices.ts --dir scratchpad/batch3/audio --keys fmf-0012,fmf-0020 [--suggest]`
+        prints each episode's voices, their shares, the label each gets today, an optional suggestion, and what a re-attach would do with a saved review.
    4. Only rows that exist can change, so the order is ingest, then plan, then apply, then attach. A plan made before the ingest shows 0 changed
       rows and lists, for the episodes with no row yet, where Claude differs from the title rule.
    5. **Every new batch runs this by itself** (Paul, 2026-11-08: "apply this plan to all future podcast episodes"). After
@@ -484,3 +509,18 @@ section is what that window (and the runner, afterwards) follows.
   spelling on a guest (`Matt Walker`, not the notes' `Matthew Walker`), because `authors` is how one guest's claims are pooled across episodes.
   Known limit: a guest named only in a long list deep in the notes is missed (the window is 600 characters), and an episode whose notes are
   empty is read from the title alone.
+
+## 15. Extraction prompt v2 and the gate (2026-11-08)
+
+A sample of 8 Attia episodes had 35% of claims flagged by the fidelity judge (mostly invented detail and dropped hedges), so extraction now has a rewritten prompt and a deterministic gate. Both are on by default, with Opus 5.5 as the extraction model; the old behaviour (v1 prompt, Haiku 4.5, no gate) is one variable away.
+
+| Variable | Values | Effect |
+| --- | --- | --- |
+| `EXTRACTION_PROMPT_VERSION` | `v2` (default), `v1` | `v1` is the original prompt, unchanged, with the gate off and its original model (Haiku 4.5). |
+| `EXTRACTION_GATE` | `on`, `off` | Default `on` with v2, `off` with v1. |
+| `EXTRACTION_REPAIR` | `on` (default), `off` | One repair call per chunk for insights the gate rejected. |
+| `EXTRACTION_MODEL` | model id | Default `claude-opus-5-5` (Paul's choice, 2026-11-08: 8.9% of insights flagged vs 33.5% for the old Haiku extraction); `claude-haiku-4-5` under `v1`. Stored on each insight as `extraction_model`. |
+
+The gate (`lib/extractionGate.ts`, no model call) rejects an insight when a number in it is not in its chunk, a hedge or degree word in its quoted span ("probably", "might", "seems", "very", "if", "I think", "about 40") has no equivalent in it, or its `direct_quote` is not word-for-word in the chunk (a quote with an invented tail is cut back to its verbatim start). Rejected insights get one repair round; whatever still fails is dropped. A statement that depends on something shown on screen is kept with a "Video check" line in `context_note`.
+
+Measure a change with `scripts/evalExtractionPrompt.ts` (re-extracts existing chunks into `scratchpad/extraction-compare/` JSON, never writes to the database). Results of the first comparison are in `scratchpad/extraction-compare/REPORT.md`.
