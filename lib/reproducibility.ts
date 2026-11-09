@@ -231,6 +231,8 @@ export type MatchInsight = {
   relStart: number | null
   relEnd: number | null
   chunkLen: number
+  /** insight_type, when the pass records it; 'Anecdote' rows are left out of the rate reported without anecdotes. */
+  kind?: string | null
 }
 
 /** Fold a quote for comparison: lower case, no punctuation, single spaces. */
@@ -420,6 +422,10 @@ export type Direction = {
   tier2: number
   passSpecific: number
   passSpecificRate: number
+  /** The same rate over the insights that are not anecdotes (anecdotes still count in `n` and in the pool the other pass is matched against). */
+  nExAnecdotes: number
+  passSpecificExAnecdotes: number
+  passSpecificRateExAnecdotes: number
   /** Unmatched, and the other pass quotes the same passage (consolidation-side misses). */
   samePassageMiss: number
   samePassageMissRate: number
@@ -444,12 +450,17 @@ export function summariseDirection(P: MatchInsight[], rows: MatchRow[]): Directi
   }
   const bm = share(r => r.matched), bu = share(r => !r.matched)
   const miss = rows.filter(r => !r.matched && r.samePassage).length
+  const exAnec = rows.filter((_, i) => P[i].kind !== 'Anecdote')
+  const exAnecMissed = exAnec.filter(r => !r.matched).length
   return {
     n, matched,
     tier1: rows.filter(r => r.tier === 1).length,
     tier2: rows.filter(r => r.tier === 2).length,
     passSpecific: n - matched,
     passSpecificRate: n ? (n - matched) / n : 0,
+    nExAnecdotes: exAnec.length,
+    passSpecificExAnecdotes: exAnecMissed,
+    passSpecificRateExAnecdotes: exAnec.length ? exAnecMissed / exAnec.length : 0,
     samePassageMiss: miss,
     samePassageMissRate: n ? miss / n : 0,
     unmatchedNoSpan: rows.filter((r, i) => !r.matched && !P[i].span).length,

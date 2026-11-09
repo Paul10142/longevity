@@ -48,9 +48,9 @@ Greetings, introductions and sign-offs; show logistics ("on this show we talk ab
 NUMERIC AND QUALIFIER DETAIL`
 )
 
-// TODO(anecdotes): the "Personal stories" paragraph above is the plan's reading (plan section 4b: capture anecdotes,
-// phrase them less personally, keep them out of the corpus), NOT a decision. Wording waits for the plan session to relay
-// Paul's answer (hub row la-2026-11-08-reproducibility-bar-call); then edit it here and set EXHAUSTIVE_PROMPT_STATUS to 'FINAL'.
+// Anecdotes (Paul, 2026-11-08): the paragraph above matches the v2 prompt's anecdote wording and the plan (section 4b); the
+// rows are held outside the corpus by raw_insights.corpus_excluded (migration 040). EXHAUSTIVE_PROMPT_STATUS stays DRAFT
+// until the plan session finalises the whole prompt.
 
 export const EXTRACTION_SYSTEM_PROMPT_EXHAUSTIVE = p.trim()
 

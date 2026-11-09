@@ -48,6 +48,8 @@ export type RawInsight = {
   qualifiers: InsightQualifiers | null
   embedding: number[] | null
   extraction_model: string
+  /** true = held outside the corpus: consolidation never turns it into a claim (migration 040; set at insert for kind Anecdote). Absent on rows read before 040 is applied. */
+  corpus_excluded?: boolean
   created_at: string
 }
 

@@ -366,6 +366,19 @@ export async function callExtractionModel(
   )
 }
 
+/**
+ * Anecdotes (Paul, 2026-11-08) are extracted and labelled but held outside the corpus: the insert sets
+ * `raw_insights.corpus_excluded` for them (migration 040) and consolidation never makes them claims.
+ */
+export function isCorpusExcluded(insightType: InsightType | null | undefined): boolean {
+  return insightType === 'Anecdote'
+}
+
+/** Insert fragment for the flag. Empty for every other row, so rows that are not excluded are written exactly as before. */
+export function corpusExclusionFields(insightType: InsightType | null | undefined): { corpus_excluded?: true } {
+  return isCorpusExcluded(insightType) ? { corpus_excluded: true } : {}
+}
+
 /** Coerce the model's raw insight list into stored shape; drops malformed and low-value entries. */
 export function normalizeInsights(raw: unknown): ExtractedInsight[] {
   if (!Array.isArray(raw)) return []
@@ -870,6 +883,7 @@ export async function extractSource(
             actionability: ins.actionability ?? null,
             primary_audience: ins.primary_audience ?? null,
             insight_type: ins.insight_type ?? null,
+            ...corpusExclusionFields(ins.insight_type),
             qualifiers: ins.qualifiers ?? null,
             embedding: embeddings[i],
             extraction_model: extractionModel,

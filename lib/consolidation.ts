@@ -774,8 +774,21 @@ export type ConsolidateCheckpoint = {
 }
 
 /**
+ * The raw insights consolidation still has to process: no membership yet, and not held outside the corpus.
+ * `corpus_excluded` rows (anecdotes, migration 040) are never adjudicated, never seeded as a claim and
+ * never attached as a member. Filtered here in code, not in the query, so this read still works on a
+ * database where 040 is not applied yet (the column is then simply absent).
+ */
+export function pendingInsights<T extends { id: string; corpus_excluded?: boolean | null }>(
+  rows: T[],
+  memberSet: ReadonlySet<string>
+): T[] {
+  return rows.filter(r => !memberSet.has(r.id) && !r.corpus_excluded)
+}
+
+/**
  * Consolidate one source's raw insights into claims, resuming from `checkpoint`.
- * Only raw insights without a claim_member are processed, so re-running is safe.
+ * Only raw insights without a claim_member (and not corpus_excluded) are processed, so re-running is safe.
  */
 export async function consolidateSource(
   sourceId: string,
@@ -824,7 +837,7 @@ export async function consolidateSource(
   // using the checkpoint index here would skip the tail on resume (the list is
   // shorter than it was when the checkpoint was written). `processed` is a
   // cumulative counter for progress display only.
-  const pending = allRows.filter(r => !memberSet.has(r.id))
+  const pending = pendingInsights(allRows, memberSet)
 
   let cp: ConsolidateCheckpoint = {
     processed: checkpoint?.processed ?? 0,
