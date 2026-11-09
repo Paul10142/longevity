@@ -3,6 +3,8 @@ import { supabaseAdmin } from "@/lib/supabaseServer"
 import { episodeLinks } from "@/lib/sourceLinks"
 import { CatalogueClient, type CatalogueRow } from "@/components/CatalogueClient"
 import { Card, CardContent } from "@/components/ui/card"
+import { isSkippedStatus, loadSkippedSources } from "@/lib/skippedItems"
+import { SkippedList } from "@/components/SkippedList"
 
 /**
  * Episode catalogue across every show.
@@ -78,6 +80,11 @@ export default async function AdminCataloguePage() {
     })
   )
 
+  // Skipped and non-full episodes are not "missing": they leave the table for one collapsed list.
+  const skippedMap = await loadSkippedSources(supabaseAdmin)
+  const skippedRows = rows.filter(r => isSkippedStatus(r.processing_status))
+  const fullRows = rows.filter(r => !isSkippedStatus(r.processing_status))
+
   return (
     <div className="min-h-screen bg-background">
       <main>
@@ -92,7 +99,18 @@ export default async function AdminCataloguePage() {
             <p className="text-muted-foreground mb-8">
               Every episode across every show, and how far each one has got.
             </p>
-            <CatalogueClient rows={rows} />
+            <CatalogueClient rows={fullRows} />
+            <div className="mt-6">
+              <SkippedList
+                noun="Episodes"
+                items={skippedRows.map(r => ({
+                  id: r.id,
+                  title: r.title ?? "Untitled",
+                  reason: skippedMap.get(r.id)?.reason ?? null,
+                  href: `/sources/${r.id}`,
+                }))}
+              />
+            </div>
           </div>
         </div>
       </main>

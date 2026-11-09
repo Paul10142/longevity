@@ -1,6 +1,7 @@
 "use client"
 
 import { useEffect, useMemo, useRef, useState } from "react"
+import { SkippedList, type SkippedListItem } from "@/components/SkippedList"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Card, CardContent } from "@/components/ui/card"
@@ -194,6 +195,7 @@ function TranscriptExcerpt({ item }: { item: Item }) {
 export function FidelityWorksheetClient() {
   const [items, setItems] = useState<Item[] | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [skippedItems, setSkippedItems] = useState<SkippedListItem[]>([])
   const [showJudge, setShowJudge] = useState(false)
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all")
   const [verdictFilter, setVerdictFilter] = useState<string>("all")
@@ -218,7 +220,10 @@ export function FidelityWorksheetClient() {
   useEffect(() => {
     fetch("/api/admin/fidelity")
       .then(r => (r.ok ? r.json() : Promise.reject(new Error(`HTTP ${r.status}`))))
-      .then(d => setItems(d.items))
+      .then(d => {
+        setItems(d.items)
+        setSkippedItems(d.skippedItems ?? [])
+      })
       .catch(e => setError(String(e)))
   }, [])
 
@@ -487,6 +492,7 @@ export function FidelityWorksheetClient() {
           </CardContent>
         </Card>
       ))}
+      <SkippedList noun="Pairs" items={skippedItems} />
     </div>
   )
 }

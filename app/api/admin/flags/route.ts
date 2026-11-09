@@ -4,6 +4,7 @@ import { selectAllPaged } from "@/lib/pagination"
 import { statusAfterResolution } from "@/lib/claimGate"
 import { planReviewAction } from "@/lib/flagReview"
 import { generateEmbedding, insightEmbeddingText } from "@/lib/embeddings"
+import { describeSkippedSources, loadSkippedSources, skippedOnlyClaims, skippedSourcesOf } from "@/lib/skippedItems"
 
 export const dynamic = "force-dynamic"
 
@@ -79,7 +80,20 @@ export async function GET() {
     )
   }
 
-  return NextResponse.json({ flags: rows, videoCheckAvailable })
+  // Flags on facts that come only from skipped or non-full items leave the review
+  // list for one collapsed list (lib/skippedItems.ts). Fails open: on an error
+  // nothing is hidden.
+  const skipped = await loadSkippedSources(db)
+  const { hidden, sourcesByClaim } = await skippedOnlyClaims(db, rows.map(r => r.claim_id), skipped)
+  const skippedFlags = rows
+    .filter(r => hidden.has(r.claim_id))
+    .map(r => {
+      const d = describeSkippedSources(skippedSourcesOf(sourcesByClaim.get(r.claim_id), skipped))
+      return { id: r.id, title: d.title, reason: d.reason, detail: r.claims?.canonical_statement ?? null }
+    })
+  const visible = rows.filter(r => !hidden.has(r.claim_id))
+
+  return NextResponse.json({ flags: visible, skippedFlags, videoCheckAvailable })
 }
 
 /**

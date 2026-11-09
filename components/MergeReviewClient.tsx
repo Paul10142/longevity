@@ -6,6 +6,7 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Badge } from "@/components/ui/badge"
 import { EpisodeLinks } from "@/components/EpisodeLinks"
 import type { EpisodeLink } from "@/lib/sourceLinks"
+import { SkippedList, type SkippedListItem } from "@/components/SkippedList"
 
 type ClaimSide = {
   id: string
@@ -138,6 +139,7 @@ function ClaimCard({ label, claim }: { label: string; claim: ClaimSide }) {
 
 export function MergeReviewClient() {
   const [reviews, setReviews] = useState<Review[]>([])
+  const [skippedReviews, setSkippedReviews] = useState<SkippedListItem[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
 
@@ -146,6 +148,7 @@ export function MergeReviewClient() {
       const res = await fetch("/api/admin/reviews", { cache: "no-store" })
       const data = await res.json()
       setReviews(data.reviews || [])
+      setSkippedReviews(data.skippedReviews || [])
     } finally {
       setLoading(false)
     }
@@ -172,11 +175,14 @@ export function MergeReviewClient() {
   if (loading) return <p className="text-sm text-muted-foreground">Loading…</p>
   if (reviews.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">
-          No pending merge reviews. Borderline duplicates land here when consolidation is unsure.
-        </CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">
+            No pending merge reviews. Borderline duplicates land here when consolidation is unsure.
+          </CardContent>
+        </Card>
+        <SkippedList noun="Reviews" items={skippedReviews} />
+      </div>
     )
   }
 
@@ -231,6 +237,7 @@ export function MergeReviewClient() {
           </Card>
         )
       })}
+      <SkippedList noun="Reviews" items={skippedReviews} />
     </div>
   )
 }

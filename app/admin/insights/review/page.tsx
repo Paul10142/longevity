@@ -6,6 +6,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Download } from 'lucide-react'
 import { InsightReviewClient } from '@/components/InsightReviewClient'
+import { loadSkippedSources } from '@/lib/skippedItems'
+import { SkippedList } from '@/components/SkippedList'
 
 /**
  * Raw-insight review (v2).
@@ -123,7 +125,9 @@ export default async function InsightsReviewPage({
     series: string | null
     external_id: string | null
   }[]
-  const allSources = allSourceRows.map((s) => s.title).filter(Boolean)
+  // Skipped and non-full sources leave the dropdown and the results for one collapsed list.
+  const skippedMap = await loadSkippedSources(db)
+  const allSources = allSourceRows.filter((s) => !skippedMap.has(s.id)).map((s) => s.title).filter(Boolean)
   const allTopics = (topicsData || []) as { id: string; name: string; slug: string }[]
 
   // Public episode links per source (episode page / YouTube / site search),
@@ -152,7 +156,7 @@ export default async function InsightsReviewPage({
     if (n > 0) accurateInsightCounts[s.id] = n
     if (Number(s.word_count ?? 0) > 0) transcriptAvailable[s.id] = true
   })
-  const totalSourcesWithInsights = Object.keys(accurateInsightCounts).length
+  const totalSourcesWithInsights = Object.keys(accurateInsightCounts).filter((id) => !skippedMap.has(id)).length
 
   // ── Filtered page of raw insights ────────────────────────────
   let insightRows: any[] = []
@@ -283,7 +287,12 @@ export default async function InsightsReviewPage({
 
   // Group for display.
   const insightsBySource: Record<string, any[]> = {}
+  const skippedInsightCounts = new Map<string, number>()
   insightRows.forEach((i: any) => {
+    if (skippedMap.has(i.source_id)) {
+      skippedInsightCounts.set(i.source_id, (skippedInsightCounts.get(i.source_id) ?? 0) + 1)
+      return
+    }
     const list = insightsBySource[i.source_id] || []
     list.push({
       ...i,
@@ -294,7 +303,7 @@ export default async function InsightsReviewPage({
     insightsBySource[i.source_id] = list
   })
 
-  const shown = insightRows.length
+  const shown = insightRows.length - [...skippedInsightCounts.values()].reduce((a, b) => a + b, 0)
 
   return (
     <div className="min-h-screen bg-background">
@@ -398,6 +407,19 @@ export default async function InsightsReviewPage({
           sourceLinks={sourceLinks}
           transcriptAvailable={transcriptAvailable}
         />
+
+        <div className="mb-6">
+          <SkippedList
+            noun="Sources"
+            items={[...skippedInsightCounts].map(([id, n]) => ({
+              id,
+              title: skippedMap.get(id)?.title ?? 'Untitled',
+              reason: skippedMap.get(id)?.reason ?? null,
+              href: `/sources/${id}`,
+              detail: `${n} matching insight${n === 1 ? '' : 's'} hidden on this page`,
+            }))}
+          />
+        </div>
 
         {!hasSearchOrFilters && (
           <Card>
