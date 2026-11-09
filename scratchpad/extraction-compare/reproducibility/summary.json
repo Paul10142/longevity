@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-08T21:55:09.988Z",
+ "generatedAt": "2026-11-09T03:55:23.351Z",
  "baseline": {
   "passSpecificAfterConsolidation": {
    "A": 0.23,
@@ -99,7 +99,606 @@
     "a": null,
     "b": null
    }
+  },
+  {
+   "exp": "E1a",
+   "a": "291281d6:E1a:1",
+   "b": "291281d6:E1a:2",
+   "createdAt": "2026-11-09T03:46:21.590Z",
+   "sameCopy": true,
+   "similarity": "embedding",
+   "passSpecific": {
+    "aToB": 0.17061611374407584,
+    "bToA": 0.1619047619047619,
+    "mean": 0.16626043782441888
+   },
+   "coverage": {
+    "turns": {
+     "rate": 0.025,
+     "bins": 40
+    },
+    "window500": {
+     "rate": 0.31223628691983124,
+     "bins": 237
+    }
+   },
+   "boundary": {
+    "unmatched": 0.3333333333333333,
+    "matched": 0.32763532763532766,
+    "nUnmatched": 54,
+    "nMatched": 351
+   },
+   "dirA": {
+    "n": 211,
+    "matched": 175,
+    "tier1": 154,
+    "tier2": 21,
+    "passSpecific": 36,
+    "passSpecificRate": 0.17061611374407584,
+    "samePassageMiss": 25,
+    "samePassageMissRate": 0.11848341232227488,
+    "unmatchedNoSpan": 6,
+    "boundary": {
+     "matched": 0.3142857142857143,
+     "unmatched": 0.3333333333333333,
+     "nMatched": 175,
+     "nUnmatched": 30
+    },
+    "perChunk": 3.1029411764705883
+   },
+   "dirB": {
+    "n": 210,
+    "matched": 176,
+    "tier1": 155,
+    "tier2": 21,
+    "passSpecific": 34,
+    "passSpecificRate": 0.1619047619047619,
+    "samePassageMiss": 18,
+    "samePassageMissRate": 0.08571428571428572,
+    "unmatchedNoSpan": 10,
+    "boundary": {
+     "matched": 0.3409090909090909,
+     "unmatched": 0.3333333333333333,
+     "nMatched": 176,
+     "nUnmatched": 24
+    },
+    "perChunk": 3.088235294117647
+   },
+   "duplicates": {
+    "a": {
+     "total": 56,
+     "sameChunk": 3,
+     "crossChunk": 53,
+     "identical": 1
+    },
+    "b": {
+     "total": 60,
+     "sameChunk": 3,
+     "crossChunk": 57,
+     "identical": 3
+    }
+   },
+   "passes": {
+    "a": {
+     "model": "claude-haiku-4-5",
+     "prompt": "v1",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": false,
+     "repair": false,
+     "wallMs": 707585,
+     "costUsd": 3.7239045,
+     "tokens": {
+      "input": 690,
+      "output": 670268,
+      "cacheRead": 491965,
+      "cacheCreate": 161339
+     },
+     "startedAt": "2026-11-09T03:22:31.522Z",
+     "endedAt": "2026-11-09T03:34:19.107Z",
+     "hygieneSpans": 2,
+     "usageBefore": {
+      "at": "2026-11-09T03:16:58.561Z",
+      "fiveHour": null,
+      "sevenDay": 0.72
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:27:00.875Z",
+      "fiveHour": null,
+      "sevenDay": 0.73
+     }
+    },
+    "b": {
+     "model": "claude-haiku-4-5",
+     "prompt": "v1",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": false,
+     "repair": false,
+     "wallMs": 705299,
+     "costUsd": 3.3824236,
+     "tokens": {
+      "input": 690,
+      "output": 639152,
+      "cacheRead": 589756,
+      "cacheCreate": 63499
+     },
+     "startedAt": "2026-11-09T03:34:26.014Z",
+     "endedAt": "2026-11-09T03:46:11.313Z",
+     "hygieneSpans": 2,
+     "usageBefore": {
+      "at": "2026-11-09T03:27:00.875Z",
+      "fiveHour": null,
+      "sevenDay": 0.73
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:37:03.047Z",
+      "fiveHour": null,
+      "sevenDay": 0.74
+     }
+    }
+   }
+  },
+  {
+   "exp": "E1b",
+   "a": "291281d6:E1b:1",
+   "b": "291281d6:E1b:2",
+   "createdAt": "2026-11-09T03:52:32.845Z",
+   "sameCopy": true,
+   "similarity": "embedding",
+   "passSpecific": {
+    "aToB": 0.03587443946188341,
+    "bToA": 0.013824884792626729,
+    "mean": 0.02484966212725507
+   },
+   "coverage": {
+    "turns": {
+     "rate": 0.02564102564102564,
+     "bins": 39
+    },
+    "window500": {
+     "rate": 0.11587982832618025,
+     "bins": 233
+    }
+   },
+   "boundary": {
+    "unmatched": 0.09090909090909091,
+    "matched": 0.29836829836829837,
+    "nUnmatched": 11,
+    "nMatched": 429
+   },
+   "dirA": {
+    "n": 223,
+    "matched": 215,
+    "tier1": 192,
+    "tier2": 23,
+    "passSpecific": 8,
+    "passSpecificRate": 0.03587443946188341,
+    "samePassageMiss": 7,
+    "samePassageMissRate": 0.03139013452914798,
+    "unmatchedNoSpan": 0,
+    "boundary": {
+     "matched": 0.29767441860465116,
+     "unmatched": 0.125,
+     "nMatched": 215,
+     "nUnmatched": 8
+    },
+    "perChunk": 3.2794117647058822
+   },
+   "dirB": {
+    "n": 217,
+    "matched": 214,
+    "tier1": 196,
+    "tier2": 18,
+    "passSpecific": 3,
+    "passSpecificRate": 0.013824884792626729,
+    "samePassageMiss": 3,
+    "samePassageMissRate": 0.013824884792626729,
+    "unmatchedNoSpan": 0,
+    "boundary": {
+     "matched": 0.29906542056074764,
+     "unmatched": 0,
+     "nMatched": 214,
+     "nUnmatched": 3
+    },
+    "perChunk": 3.1911764705882355
+   },
+   "duplicates": {
+    "a": {
+     "total": 29,
+     "sameChunk": 0,
+     "crossChunk": 29,
+     "identical": 0
+    },
+    "b": {
+     "total": 29,
+     "sameChunk": 1,
+     "crossChunk": 28,
+     "identical": 1
+    }
+   },
+   "passes": {
+    "a": {
+     "model": "claude-opus-5-5",
+     "prompt": "v2",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": true,
+     "repair": true,
+     "wallMs": 184967,
+     "costUsd": 3.550560400000002,
+     "tokens": {
+      "input": 168,
+      "output": 124558,
+      "cacheRead": 386175,
+      "cacheCreate": 131879
+     },
+     "startedAt": "2026-11-09T03:46:27.444Z",
+     "endedAt": "2026-11-09T03:49:32.411Z",
+     "hygieneSpans": 3,
+     "usageBefore": {
+      "at": "2026-11-09T03:37:03.047Z",
+      "fiveHour": null,
+      "sevenDay": 0.74
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     }
+    },
+    "b": {
+     "model": "claude-opus-5-5",
+     "prompt": "v2",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": true,
+     "repair": true,
+     "wallMs": 167296,
+     "costUsd": 2.5829300000000015,
+     "tokens": {
+      "input": 162,
+      "output": 120445,
+      "cacheRead": 491573,
+      "cacheCreate": 13682
+     },
+     "startedAt": "2026-11-09T03:49:36.489Z",
+     "endedAt": "2026-11-09T03:52:23.785Z",
+     "hygieneSpans": 2,
+     "usageBefore": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     }
+    }
+   }
+  },
+  {
+   "exp": "E1b-cross",
+   "a": "291281d6:E1b:1",
+   "b": "3d6c7c5f:E1b:1",
+   "createdAt": "2026-11-09T03:55:16.799Z",
+   "sameCopy": false,
+   "similarity": "embedding",
+   "passSpecific": {
+    "aToB": 0.03139013452914798,
+    "bToA": 0.013513513513513514,
+    "mean": 0.02245182402133075
+   },
+   "coverage": {
+    "turns": {
+     "rate": 0,
+     "bins": 39
+    },
+    "window500": {
+     "rate": 0.08733624454148471,
+     "bins": 229
+    }
+   },
+   "boundary": {
+    "unmatched": 0.3,
+    "matched": 0.30344827586206896,
+    "nUnmatched": 10,
+    "nMatched": 435
+   },
+   "dirA": {
+    "n": 223,
+    "matched": 216,
+    "tier1": 197,
+    "tier2": 19,
+    "passSpecific": 7,
+    "passSpecificRate": 0.03139013452914798,
+    "samePassageMiss": 6,
+    "samePassageMissRate": 0.026905829596412557,
+    "unmatchedNoSpan": 0,
+    "boundary": {
+     "matched": 0.2962962962962963,
+     "unmatched": 0.14285714285714285,
+     "nMatched": 216,
+     "nUnmatched": 7
+    },
+    "perChunk": 3.2794117647058822
+   },
+   "dirB": {
+    "n": 222,
+    "matched": 219,
+    "tier1": 203,
+    "tier2": 16,
+    "passSpecific": 3,
+    "passSpecificRate": 0.013513513513513514,
+    "samePassageMiss": 3,
+    "samePassageMissRate": 0.013513513513513514,
+    "unmatchedNoSpan": 0,
+    "boundary": {
+     "matched": 0.3105022831050228,
+     "unmatched": 0.6666666666666666,
+     "nMatched": 219,
+     "nUnmatched": 3
+    },
+    "perChunk": 3.264705882352941
+   },
+   "duplicates": {
+    "a": {
+     "total": 29,
+     "sameChunk": 0,
+     "crossChunk": 29,
+     "identical": 0
+    },
+    "b": {
+     "total": 34,
+     "sameChunk": 1,
+     "crossChunk": 33,
+     "identical": 3
+    }
+   },
+   "passes": {
+    "a": {
+     "model": "claude-opus-5-5",
+     "prompt": "v2",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": true,
+     "repair": true,
+     "wallMs": 184967,
+     "costUsd": 3.550560400000002,
+     "tokens": {
+      "input": 168,
+      "output": 124558,
+      "cacheRead": 386175,
+      "cacheCreate": 131879
+     },
+     "startedAt": "2026-11-09T03:46:27.444Z",
+     "endedAt": "2026-11-09T03:49:32.411Z",
+     "hygieneSpans": 3,
+     "usageBefore": {
+      "at": "2026-11-09T03:37:03.047Z",
+      "fiveHour": null,
+      "sevenDay": 0.74
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     }
+    },
+    "b": {
+     "model": "claude-opus-5-5",
+     "prompt": "v2",
+     "chunkMode": "chars",
+     "context": 0,
+     "hygiene": "live",
+     "gate": true,
+     "repair": true,
+     "wallMs": 155988,
+     "costUsd": 3.1934054000000005,
+     "tokens": {
+      "input": 162,
+      "output": 119844,
+      "cacheRead": 385695,
+      "cacheCreate": 118512
+     },
+     "startedAt": "2026-11-09T03:52:38.118Z",
+     "endedAt": "2026-11-09T03:55:14.106Z",
+     "hygieneSpans": 2,
+     "usageBefore": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     },
+     "usageAfter": {
+      "at": "2026-11-09T03:47:05.069Z",
+      "fiveHour": null,
+      "sevenDay": 0.75
+     }
+    }
+   }
   }
  ],
- "passes": []
+ "passes": [
+  {
+   "id8": "291281d6",
+   "tag": "E1a",
+   "pass": 1,
+   "model": "claude-haiku-4-5",
+   "prompt": "v1",
+   "chunkMode": "chars",
+   "context": 0,
+   "hygiene": "live",
+   "gate": false,
+   "repair": false,
+   "wallMs": 707585,
+   "costUsd": 3.7239045,
+   "tokens": {
+    "input": 690,
+    "output": 670268,
+    "cacheRead": 491965,
+    "cacheCreate": 161339
+   },
+   "startedAt": "2026-11-09T03:22:31.522Z",
+   "endedAt": "2026-11-09T03:34:19.107Z",
+   "hygieneSpans": 2,
+   "usageBefore": {
+    "at": "2026-11-09T03:16:58.561Z",
+    "fiveHour": null,
+    "sevenDay": 0.72
+   },
+   "usageAfter": {
+    "at": "2026-11-09T03:27:00.875Z",
+    "fiveHour": null,
+    "sevenDay": 0.73
+   },
+   "complete": true,
+   "nChunks": 68
+  },
+  {
+   "id8": "291281d6",
+   "tag": "E1a",
+   "pass": 2,
+   "model": "claude-haiku-4-5",
+   "prompt": "v1",
+   "chunkMode": "chars",
+   "context": 0,
+   "hygiene": "live",
+   "gate": false,
+   "repair": false,
+   "wallMs": 705299,
+   "costUsd": 3.3824236,
+   "tokens": {
+    "input": 690,
+    "output": 639152,
+    "cacheRead": 589756,
+    "cacheCreate": 63499
+   },
+   "startedAt": "2026-11-09T03:34:26.014Z",
+   "endedAt": "2026-11-09T03:46:11.313Z",
+   "hygieneSpans": 2,
+   "usageBefore": {
+    "at": "2026-11-09T03:27:00.875Z",
+    "fiveHour": null,
+    "sevenDay": 0.73
+   },
+   "usageAfter": {
+    "at": "2026-11-09T03:37:03.047Z",
+    "fiveHour": null,
+    "sevenDay": 0.74
+   },
+   "complete": true,
+   "nChunks": 68
+  },
+  {
+   "id8": "291281d6",
+   "tag": "E1b",
+   "pass": 1,
+   "model": "claude-opus-5-5",
+   "prompt": "v2",
+   "chunkMode": "chars",
+   "context": 0,
+   "hygiene": "live",
+   "gate": true,
+   "repair": true,
+   "wallMs": 184967,
+   "costUsd": 3.550560400000002,
+   "tokens": {
+    "input": 168,
+    "output": 124558,
+    "cacheRead": 386175,
+    "cacheCreate": 131879
+   },
+   "startedAt": "2026-11-09T03:46:27.444Z",
+   "endedAt": "2026-11-09T03:49:32.411Z",
+   "hygieneSpans": 3,
+   "usageBefore": {
+    "at": "2026-11-09T03:37:03.047Z",
+    "fiveHour": null,
+    "sevenDay": 0.74
+   },
+   "usageAfter": {
+    "at": "2026-11-09T03:47:05.069Z",
+    "fiveHour": null,
+    "sevenDay": 0.75
+   },
+   "complete": true,
+   "nChunks": 68
+  },
+  {
+   "id8": "291281d6",
+   "tag": "E1b",
+   "pass": 2,
+   "model": "claude-opus-5-5",
+   "prompt": "v2",
+   "chunkMode": "chars",
+   "context": 0,
+   "hygiene": "live",
+   "gate": true,
+   "repair": true,
+   "wallMs": 167296,
+   "costUsd": 2.5829300000000015,
+   "tokens": {
+    "input": 162,
+    "output": 120445,
+    "cacheRead": 491573,
+    "cacheCreate": 13682
+   },
+   "startedAt": "2026-11-09T03:49:36.489Z",
+   "endedAt": "2026-11-09T03:52:23.785Z",
+   "hygieneSpans": 2,
+   "usageBefore": {
+    "at": "2026-11-09T03:47:05.069Z",
+    "fiveHour": null,
+    "sevenDay": 0.75
+   },
+   "usageAfter": {
+    "at": "2026-11-09T03:47:05.069Z",
+    "fiveHour": null,
+    "sevenDay": 0.75
+   },
+   "complete": true,
+   "nChunks": 68
+  },
+  {
+   "id8": "3d6c7c5f",
+   "tag": "E1b",
+   "pass": 1,
+   "model": "claude-opus-5-5",
+   "prompt": "v2",
+   "chunkMode": "chars",
+   "context": 0,
+   "hygiene": "live",
+   "gate": true,
+   "repair": true,
+   "wallMs": 155988,
+   "costUsd": 3.1934054000000005,
+   "tokens": {
+    "input": 162,
+    "output": 119844,
+    "cacheRead": 385695,
+    "cacheCreate": 118512
+   },
+   "startedAt": "2026-11-09T03:52:38.118Z",
+   "endedAt": "2026-11-09T03:55:14.106Z",
+   "hygieneSpans": 2,
+   "usageBefore": {
+    "at": "2026-11-09T03:47:05.069Z",
+    "fiveHour": null,
+    "sevenDay": 0.75
+   },
+   "usageAfter": {
+    "at": "2026-11-09T03:47:05.069Z",
+    "fiveHour": null,
+    "sevenDay": 0.75
+   },
+   "complete": true,
+   "nChunks": 68
+  }
+ ]
 }
