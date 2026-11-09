@@ -4,6 +4,8 @@ import { Card, CardContent } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabaseAdmin } from "@/lib/supabaseServer"
 import { computeNovelty, type NoveltyRow } from "@/lib/novelty"
+import { loadSkippedSources, splitBySkipped } from "@/lib/skippedItems"
+import { SkippedList } from "@/components/SkippedList"
 
 export const dynamic = "force-dynamic"
 
@@ -84,7 +86,12 @@ export default async function NoveltyPage() {
     error = err instanceof Error ? err.message : "Unknown error"
   }
 
-  const newest = report?.rows[0] ?? null
+  // Skipped and non-full sources leave the table (and the "newest source" headline)
+  // for one collapsed list. The whole-library totals still count every fact.
+  const skippedMap = await loadSkippedSources(supabaseAdmin)
+  const { shown: shownRows, hidden: skippedNoveltyRows } = splitBySkipped(report?.rows ?? [], (r) => r.sourceId, skippedMap)
+
+  const newest = shownRows[0] ?? null
   const corpus = report?.corpus ?? null
 
   return (
@@ -148,7 +155,7 @@ export default async function NoveltyPage() {
               </div>
             )}
 
-            {!error && report && report.rows.length > 0 && (
+            {!error && report && shownRows.length > 0 && (
               <Card>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
@@ -164,7 +171,7 @@ export default async function NoveltyPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {report.rows.map((row) => (
+                        {shownRows.map((row) => (
                           <TableRow key={row.sourceId}>
                             <TableCell className="font-medium max-w-[280px]">
                               <Link href={`/sources/${row.sourceId}`} className="hover:underline">
@@ -236,7 +243,20 @@ export default async function NoveltyPage() {
               </Card>
             )}
 
-            {!error && report && report.rows.length === 0 && (
+            {!error && (
+              <SkippedList
+                noun="Sources"
+                items={skippedNoveltyRows.map((r) => ({
+                  id: r.sourceId,
+                  title: r.title,
+                  reason: skippedMap.get(r.sourceId)?.reason ?? null,
+                  href: `/sources/${r.sourceId}`,
+                  detail: `${r.total} facts extracted before it was skipped`,
+                }))}
+              />
+            )}
+
+            {!error && report && shownRows.length === 0 && (
               <Card>
                 <CardContent className="py-12 text-center">
                   <p className="text-muted-foreground">

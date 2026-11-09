@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge"
 import { Textarea } from "@/components/ui/textarea"
 import { cn } from "@/lib/utils"
 import type { FlagContext, Part, ContextTurn } from "@/lib/flagReview"
+import { SkippedList, type SkippedListItem } from "@/components/SkippedList"
 
 type Flag = {
   id: string
@@ -168,6 +169,7 @@ function WhereToWatch({ ctx }: { ctx: FlagContext }) {
 
 export function FlagReviewClient() {
   const [flags, setFlags] = useState<Flag[]>([])
+  const [skippedFlags, setSkippedFlags] = useState<SkippedListItem[]>([])
   const [videoCheckAvailable, setVideoCheckAvailable] = useState(true)
   const [loading, setLoading] = useState(true)
   const [loadError, setLoadError] = useState<string | null>(null)
@@ -187,6 +189,7 @@ export function FlagReviewClient() {
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || "Could not load flags")
       setFlags(data.flags || [])
+      setSkippedFlags(data.skippedFlags || [])
       setVideoCheckAvailable(data.videoCheckAvailable !== false)
     } catch (err) {
       setLoadError(err instanceof Error ? err.message : "Could not load flags")
@@ -335,9 +338,12 @@ export function FlagReviewClient() {
   }
   if (flags.length === 0) {
     return (
-      <Card>
-        <CardContent className="py-10 text-center text-muted-foreground">No flagged facts to review 🎉</CardContent>
-      </Card>
+      <div className="space-y-4">
+        <Card>
+          <CardContent className="py-10 text-center text-muted-foreground">No flagged facts to review 🎉</CardContent>
+        </Card>
+        <SkippedList noun="Flags" items={skippedFlags} />
+      </div>
     )
   }
 
@@ -536,6 +542,8 @@ export function FlagReviewClient() {
           )}
         </div>
       )}
+
+      <SkippedList noun="Flags" items={skippedFlags} />
     </div>
   )
 }
