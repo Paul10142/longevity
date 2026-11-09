@@ -80,4 +80,5 @@ scratchpad/extraction-compare/reproducibility/passes/
 scratchpad/extraction-compare/reproducibility/matches/
 scratchpad/extraction-compare/reproducibility/chunks/
 scratchpad/extraction-compare/reproducibility/hygiene/
+scratchpad/extraction-compare/reproducibility/fidelity/
 scratchpad/extraction-compare/reproducibility/*.log

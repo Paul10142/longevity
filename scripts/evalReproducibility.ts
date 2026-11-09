@@ -8,7 +8,7 @@
  * twin) several times with a chosen configuration, matches the passes against each other, and reports
  * the pass-specific rate, passage-coverage disagreement, boundary share and the rest of plan 3.1.
  *
- * It NEVER writes to the database: `fetch` is the only DB access and it only reads. Everything else is
+ * It NEVER writes to the database: `fetch` is the only DB access and it only reads (`fidelity` touches no DB at all). Everything else is
  * JSON/Markdown under scratchpad/extraction-compare/reproducibility/ (gitignored except REPORT.md and summary.json).
  *
  * Commands
@@ -21,7 +21,12 @@
  *   match <ref> <ref> [--exp <label>] [--lexical]
  *                       <ref> = <id8>:<tag>:<n> or stored:<id8>. Tiers 1–2 → matches/<a>__<b>.json and the headline numbers.
  *                       --lexical = offline statement similarity (no embeddings call). Tier 3 (--judge) is E6's `replay` (later).
- *   report              REPORT.md + summary.json from every pass and match on disk.
+ *   fidelity <ref…> [--conc N] [--dry] [--limit N]
+ *                       Judge every insight of each pass with the production extraction-fidelity judge
+ *                       (lib/extractionFidelity.ts, the one behind \`flagClaims.ts fidelity\` and PR #59's report)
+ *                       against the chunk text it was extracted from → fidelity/<id8>.<tag>.pass<n>.json
+ *                       (stored:<id8> judges the stored insights → fidelity/stored.<id8>.json). Resumable. --dry writes nothing.
+ *   report              REPORT.md + summary.json (matches, passes, fidelity flag rate) from every file on disk.
  *   baseline            Print the plan's section 1 numbers (the "before" column).
  *
  * Needs LLM_BACKEND=claude-code (set here, and refused otherwise). Runs ~/.claude/usage-guard/check.sh before
@@ -36,7 +41,12 @@ import { execSync } from 'node:child_process'
 import { createHash } from 'node:crypto'
 import { homedir } from 'node:os'
 import { join } from 'node:path'
-import { CLAUDE_BULK_MODEL, llmBackend, trackCliCost } from '../lib/llm'
+import { CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL, llmBackend, trackCliCost } from '../lib/llm'
+import { judgeFidelity, isRealFidelity, FIDELITY_JUDGE_SYSTEM } from '../lib/extractionFidelity'
+import {
+  FIDELITY_BASELINE, tallyFidelity, poolTallies, compareToBaseline, quoteFitsChunk, quoteFitShare, chunkTextOf, speakerAttributionFlags,
+  type JudgedRow, type FidelityTally, type BaselineComparison,
+} from '../lib/reproFidelity'
 import {
   extractFromChunkDetailed, callExtractionModel, normalizeInsights, withVideoCheckNote, extractionConfig, resolveQuote,
 } from '../lib/extraction'
@@ -46,7 +56,7 @@ import {
   EXTRACTION_SYSTEM_PROMPT_EXHAUSTIVE, EXHAUSTIVE_PROMPT_STATUS, CONTEXT_ADDENDUM, CONTEXT_HEADERS,
 } from '../lib/extractionPromptExhaustive'
 import { stripNonContent } from '../lib/transcriptHygiene'
-import { rethrowIfUsageLimit } from '../lib/usageLimit'
+import { rethrowIfUsageLimit, UsageLimitError, PipelineHaltError } from '../lib/usageLimit'
 import { createLimiter } from '../lib/concurrency'
 import { showForSource, isHostName } from '../lib/shows'
 import { bareNames } from '../lib/personName'
@@ -579,6 +589,75 @@ async function matchCommand(): Promise<void> {
 
 // ── report ──────────────────────────────────────────────────
 
+// ── fidelity flag rate (report section) ─────────────────────
+
+type FidelityEntry = { file: string; header: FidelityHeader; tally: FidelityTally; speakerFlags: number; setup: 'new' | 'old' | 'other'; reference: { label: string; rate: number } | null; vs: BaselineComparison | null }
+
+/** Which PR #59 figure a judged pass is compared with. Only the new setup (Opus 5.5, v2 prompt, gate on) is held to Paul's +2 points. */
+function fidelitySetup(h: FidelityHeader): FidelityEntry['setup'] {
+  const c = h.passConfig
+  if (!c) return 'old' // stored insights: Haiku 4.5, v1 prompt (the library's current extraction)
+  if (c.model.includes('opus') && c.gate) return 'new'
+  if (c.model.includes('haiku') && !c.gate) return 'old'
+  return 'other'
+}
+
+function loadFidelity(): FidelityEntry[] {
+  const dir = join(OUT, 'fidelity')
+  if (!existsSync(dir)) return []
+  return readdirSync(dir).filter(f => f.endsWith('.json')).map(f => {
+    const ff = readJson<FidelityFile>(join(dir, f))
+    const tally = tallyFidelity(ff.rows, ff.header.nInsights)
+    const setup = fidelitySetup(ff.header)
+    const reference = setup === 'new' ? { label: 'PR #59, Opus 5.5 new setup', rate: FIDELITY_BASELINE.opus55NewSetup.rate }
+      : setup === 'old' ? { label: 'PR #59, Haiku 4.5 stored', rate: FIDELITY_BASELINE.haiku45OldSetup.rate } : null
+    return { file: f, header: ff.header, tally, speakerFlags: speakerAttributionFlags(ff.rows), setup, reference, vs: reference ? compareToBaseline(tally, reference.rate) : null }
+  }).sort((x, y) => (x.header.tag ?? '~').localeCompare(y.header.tag ?? '~') || x.header.id8.localeCompare(y.header.id8) || (x.header.pass ?? 0) - (y.header.pass ?? 0))
+}
+
+const pts = (n: number | null) => (n === null ? 'n/a' : `${n >= 0 ? '+' : ''}${n.toFixed(1)}`)
+const ci = (t: FidelityTally) => (t.ci ? `${pct(t.rate)} (${pct(t.ci[0])} to ${pct(t.ci[1])})` : 'n/a')
+const barText = (e: { setup: string; vs: BaselineComparison | null }) =>
+  e.setup !== 'new' ? 'not held to the bar (old setup)' : e.vs?.meetsBar === null || !e.vs ? 'n/a' : e.vs.meetsBar ? 'meets (+2 or less)' : 'misses (more than +2)'
+
+function fidelityLines(entries: FidelityEntry[]): { lines: string[]; pooled: { tag: string; passes: number; tally: FidelityTally; speakerFlags: number; vs: BaselineComparison }[] } {
+  const L: string[] = []
+  const pooled: { tag: string; passes: number; tally: FidelityTally; speakerFlags: number; vs: BaselineComparison }[] = []
+  if (entries.length === 0) return { lines: [], pooled }
+  const judge = entries[0].header
+  L.push('## Fidelity Flag Rate', '')
+  L.push(`Paul's third condition: the fidelity flag rate on the new setup is at most 2 points above PR #59's Opus 5.5 figure (${pct(FIDELITY_BASELINE.opus55NewSetup.rate)}, so at most ${pct(FIDELITY_BASELINE.opus55NewSetup.rate + FIDELITY_BASELINE.barPoints / 100)}), so a more complete extraction cannot pass by inventing.`)
+  L.push(`Judge: the production extraction-fidelity judge (lib/extractionFidelity.ts, \`judgeFidelity\`, the function behind \`extraction_fidelity\` flagging and PR #59's report), model ${judge.judgeModel}, prompt fingerprint ${judge.judgePromptSha}. Each insight is judged against the exact chunk text it was extracted from (rebuilt from the pass file and checked against the pass's recorded chunk plan). Flag rate = (ADDED_DETAIL + DROPPED_QUALIFIER + UNRESOLVED_REFERENCE) / insights with a real verdict, the definition PR #59 used. UNSURE counts as judged and not flagged. No database access.`, '')
+  L.push('| Judged pass | Setup | Insights | Judged | Flagged | Flag rate (95% interval) | Added detail / Dropped qualifier / Unresolved reference | Unsure | Reference | Difference (points) | Bar (+2 points) | Quote found in chunk |')
+  L.push('| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |')
+  for (const e of entries) {
+    const h = e.header, c = h.passConfig, t = e.tally
+    const setup = c ? `${c.model.replace(/^claude-/, '')}, prompt ${c.prompt}, gate ${c.gate ? 'on' : 'off'}${c.repair ? ' + repair' : ''}` : 'stored: haiku-4-5, prompt v1'
+    L.push(`| ${h.ref}${h.complete ? '' : ' (INCOMPLETE)'} | ${setup} | ${t.insights} | ${t.judged}${t.errors ? ` (+${t.errors} errored)` : ''} | ${t.flagged} | ${ci(t)} | ${t.addedDetail} / ${t.droppedQualifier} / ${t.unresolvedReference} | ${t.unsure} | ${e.reference ? `${pct(e.reference.rate)} (${e.reference.label})` : 'none'} | ${pts(e.vs?.points ?? null)} | ${barText(e)} | ${pct(h.quoteFitShare)} |`)
+  }
+  const tags = [...new Set(entries.filter(e => e.setup === 'new' && e.header.kind === 'pass').map(e => e.header.tag!))]
+  for (const tag of tags) {
+    const group = entries.filter(e => e.setup === 'new' && e.header.tag === tag && e.header.complete)
+    if (group.length < 2) continue
+    const t = poolTallies(group.map(e => e.tally))
+    const vs = compareToBaseline(t, FIDELITY_BASELINE.opus55NewSetup.rate)
+    pooled.push({ tag, passes: group.length, tally: t, speakerFlags: group.reduce((n, e) => n + e.speakerFlags, 0), vs })
+    L.push(`| **${tag}, ${group.length} passes pooled** | new setup | ${t.insights} | ${t.judged} | ${t.flagged} | **${ci(t)}** | ${t.addedDetail} / ${t.droppedQualifier} / ${t.unresolvedReference} | ${t.unsure} | ${pct(FIDELITY_BASELINE.opus55NewSetup.rate)} (PR #59, Opus 5.5 new setup) | **${pts(vs.points)}** | **${vs.meetsBar ? 'meets (+2 or less)' : 'misses (more than +2)'}** | |`)
+  }
+  L.push('')
+  for (const p of pooled) {
+    const iv = p.vs.intervalUnderLimit ? 'the whole 95% interval is under the limit' : p.vs.intervalOverLimit ? 'the whole 95% interval is over the limit' : `the 95% interval (${pct(p.tally.ci![0])} to ${pct(p.tally.ci![1])}) straddles the ${pct(p.vs.limit)} limit`
+    L.push(`- **${p.tag} verdict (${p.passes} passes, ${p.tally.judged} insights): ${pct(p.tally.rate)} against ${pct(p.vs.baselineRate)}, ${pts(p.vs.points)} points, ${p.vs.meetsBar ? 'meets' : 'misses'} the +${FIDELITY_BASELINE.barPoints}-point bar;** ${iv}.`)
+  }
+  for (const p of pooled) {
+    const sf = p.speakerFlags, rest = p.tally.flagged - sf
+    L.push(`- **What the flags are (heuristic text match on the judge's own reasoning).** Of the ${p.tag} pooled flags, ${sf} of ${p.tally.flagged} say the chunk never names the speaker; without them the rate is ${pct(p.tally.judged ? rest / p.tally.judged : null)}. The extractor is told the participants (Host / Guest names) but the judge is shown the chunk only, so a correct "James Clear said …" counts as ADDED_DETAIL. PR #59's figure was measured the same way, so the +2-point comparison is like-for-like; but a prompt that names speakers more or less often moves the flag rate without any change in invention. Judged old-setup passes: ${entries.filter(e => e.setup === 'old').map(e => `${e.header.ref} ${e.speakerFlags} of ${e.tally.flagged}`).join('; ') || 'none'}.`)
+  }
+  L.push(`- The reference is a pooled figure over 8 other episodes (Opus 5.5 ranged ${pct(FIDELITY_BASELINE.opus55NewSetup.perEpisodeMin)} to ${pct(FIDELITY_BASELINE.opus55NewSetup.perEpisodeMax)} per episode in PR #59), so one episode's rate is a noisy test of "+2 points": a single episode of about 220 insights has a 95% interval of roughly 3 to 5 points either side.`)
+  L.push('- "Quote found in chunk" checks that the quote each insight cites occurs in the chunk text the judge saw; anything under about 95% would mean the rebuilt chunks do not match extraction.', '')
+  return { lines: L, pooled }
+}
+
 function reportCommand(): void {
   const dir = join(OUT, 'matches')
   const matches: { file: string; summary: MatchSummary }[] = existsSync(dir)
@@ -598,7 +677,7 @@ function reportCommand(): void {
   const L: string[] = []
   L.push('# Extraction Reproducibility: Experiment Report', '')
   L.push(`Generated ${new Date().toISOString()} by scripts/evalReproducibility.ts. Plan: docs/plans/extraction-reproducibility.md.`)
-  L.push('Bar (Paul, 2026-11-08): pass-specific facts < 5%, coverage disagreement < 5%, fidelity flags at most +2 points (fidelity is not measured here).', '')
+  L.push('Bar (Paul, 2026-11-08): pass-specific facts < 5%, coverage disagreement < 5%, fidelity flags at most +2 points (the fidelity flag rate is in its own section below).', '')
   L.push('## Before (plan section 1) and After (this harness)', '')
   L.push('| Run | Pass-specific A→B | B→A | Coverage disagreement (500-char / turns) | Boundary share unmatched vs matched | Insights per chunk (A / B) | Identical quotes within one pass (A / B) | Verdict |')
   L.push('| --- | --- | --- | --- | --- | --- | --- | --- |')
@@ -606,6 +685,7 @@ function reportCommand(): void {
   for (const { summary: s } of matches) {
     L.push(`| ${s.exp}: ${s.a} vs ${s.b} | ${pct(s.passSpecific.aToB)} | ${pct(s.passSpecific.bToA)} | ${pct(s.coverage.window500.rate)} / ${pct(s.coverage.turns.rate)} | ${pct(s.boundary.unmatched)} vs ${pct(s.boundary.matched)} | ${s.dirA.perChunk.toFixed(2)} / ${s.dirB.perChunk.toFixed(2)} | ${s.duplicates.a.identical} / ${s.duplicates.b.identical} identical (${s.duplicates.a.total} / ${s.duplicates.b.total} overlapping) | ${verdict(s)} |`)
   }
+  L.push('', 'Which coverage definition is the bar? The plan (docs/plans/extraction-reproducibility.md, section 3.1) defines it on speaker turns: "Split the transcript into speaker turns (or 500-character windows when there are no labels)", and the resume criteria (section 0) say "fewer than 5% of speaker turns are covered by one pass but not the other". The 500-character figure is the stricter reading and this report keeps it as its verdict; the turn figure is the plan\'s literal definition. Which one governs is Paul\'s call.')
   L.push('', 'Coverage disagreement counts a 500-character window as covered when any resolved quote of the pass touches it. "Turns" bins run from one speaker label to the next; only the host is labelled in these transcripts, so turn bins are coarse (median about 3.5k characters) and the 500-character figure is the stricter one.', '')
   L.push('## Passes', '')
   L.push('| Pass | Model | Prompt | Chunking | Context | Hygiene | Gate / repair | Wall clock | Tokens | List-price cost | Plan usage (7-day) before → after |')
@@ -615,6 +695,9 @@ function reportCommand(): void {
     L.push(`| ${h.id8}:${h.tag}:${h.pass}${h.complete ? '' : ' (INCOMPLETE)'} | ${h.model} | ${h.prompt} | ${h.chunkMode} | ${h.context} | ${h.hygiene} (${h.hygieneRemoved.length} spans) | ${h.gate ? 'on' : 'off'} / ${h.repair ? 'on' : 'off'} | ${mins(h.wallMs)} | ${tok(h.tokens)} | ${usd(h.costUsd)} | ${u0 === null || u0 === undefined ? 'n/a' : pct(u0, 0)} → ${u1 === null || u1 === undefined ? 'n/a' : pct(u1, 0)} |`)
   }
   L.push('', 'List-price cost is the CLI\'s own `total_cost_usd` (what the call would cost at API prices, CLI overhead included); on the subscription it is not billed in dollars. The plan-usage column is the share of the 7-day window at the start and end of the pass (best effort, a rounded reading).', '')
+  const fid = loadFidelity()
+  const fl = fidelityLines(fid)
+  L.push(...fl.lines)
   L.push('## Matches in detail', '')
   for (const { summary: s } of matches) {
     L.push(`### ${s.exp}: ${s.a} vs ${s.b}`, '')
@@ -624,7 +707,13 @@ function reportCommand(): void {
     L.push(`- Unmatched with no quote located: A ${s.dirA.unmatchedNoSpan}, B ${s.dirB.unmatchedNoSpan}.`, '')
   }
   writeFileSync(join(OUT, 'REPORT.md'), L.join('\n'))
-  writeJson(join(OUT, 'summary.json'), { generatedAt: new Date().toISOString(), baseline: BASELINE, matches: matches.map(m => m.summary), passes: passes.map(h => ({ id8: h.id8, tag: h.tag, pass: h.pass, ...brief(h), complete: h.complete, nChunks: h.nChunks })) })
+  writeJson(join(OUT, 'summary.json'), { generatedAt: new Date().toISOString(), baseline: BASELINE, matches: matches.map(m => m.summary), passes: passes.map(h => ({ id8: h.id8, tag: h.tag, pass: h.pass, ...brief(h), complete: h.complete, nChunks: h.nChunks })),
+    fidelity: {
+      baseline: FIDELITY_BASELINE,
+      judge: fid[0] ? { model: fid[0].header.judgeModel, promptSha: fid[0].header.judgePromptSha } : null,
+      passes: fid.map(e => ({ ref: e.header.ref, setup: e.setup, complete: e.header.complete, tally: e.tally, speakerAttributionFlags: e.speakerFlags, reference: e.reference, vsReference: e.vs, quoteFitShare: e.header.quoteFitShare, wallMs: e.header.wallMs, costUsd: e.header.costUsd })),
+      pooled: fl.pooled,
+    } })
   console.log(`wrote ${join(OUT, 'REPORT.md')} and summary.json (${matches.length} matches, ${passes.length} passes)`)
 }
 
@@ -637,16 +726,159 @@ function baselineCommand(): void {
   console.log('  stored raw insights A vs B (cross-check, before consolidation): run  match stored:291281d6 stored:3d6c7c5f --exp baseline')
 }
 
+// ── fidelity (judge only; no extraction, no database) ───────
+
+type FidelityHeader = {
+  ref: string; id8: string; kind: 'pass' | 'stored'; tag: string | null; pass: number | null; title: string
+  /** The extraction setup the judged pass came from (null for stored insights, which Haiku 4.5 + prompt v1 produced). */
+  passConfig: { model: string; prompt: string; chunkMode: string; context: number; hygiene: string; gate: boolean; repair: boolean } | null
+  judgeModel: string; judgePromptSha: string
+  nInsights: number; startedAt: string; endedAt: string | null; wallMs: number; costUsd: number; tokens: Tokens; calls: number
+  complete: boolean; quoteFitShare: number | null
+}
+type FidelityFile = { header: FidelityHeader; rows: JudgedRow[] }
+
+const fidelityPath = (ref: string) => {
+  const parts = ref.split(':')
+  const name = parts[0] === 'stored' ? `stored.${parts[1]}` : `${parts[0]}.${parts[1]}.pass${parts[2]}`
+  return join(sub('fidelity'), `${name}.json`)
+}
+
+type FidelityJob = { id: string; chunk: number; statement: string; contextNote: string | null; directQuote: string | null; chunkText: string }
+
+/** The insights of a pass (or the stored library) paired with the exact chunk text each was extracted from. */
+function fidelityJobs(ref: string): { jobs: FidelityJob[]; title: string; id8: string; kind: 'pass' | 'stored'; tag: string | null; pass: number | null; passConfig: FidelityHeader['passConfig'] } {
+  if (ref.startsWith('stored:')) {
+    const id8 = ref.slice(7)
+    const inp = loadInput(id8)
+    const chunkOf = new Map(inp.chunks.map((c, idx) => [c.id, { idx, content: c.content }]))
+    const jobs: FidelityJob[] = []
+    for (const r of inp.raw_insights) {
+      const c = chunkOf.get(r.chunk_id)
+      if (!c) continue
+      jobs.push({ id: r.id, chunk: c.idx, statement: r.statement, contextNote: r.context_note, directQuote: r.direct_quote, chunkText: c.content })
+    }
+    return { jobs, title: inp.title, id8, kind: 'stored', tag: null, pass: null, passConfig: null }
+  }
+  const [id8, tag, n] = ref.split(':')
+  if (!id8 || !tag || !n) throw new Error(`bad pass ref ${ref}; use <id8>:<tag>:<n> or stored:<id8>`)
+  const pf = readJson<PassFile>(passPath(id8, tag, Number(n)))
+  const h = pf.header
+  if (!h.complete) throw new Error(`pass ${ref} is incomplete (${h.failedChunks} chunks missing)`)
+  const inp = loadInput(id8)
+  // Rebuild the chunk text exactly as extraction saw it: the transcript with this pass's hygiene removals applied, sliced by its plan.
+  const { doc, plan } = buildPlan(inp, h.chunkMode, h.context, h.hygieneRemoved)
+  if (doc.text.length !== h.docLen || plan.length !== h.nChunks) throw new Error(`${ref}: rebuilt document (${doc.text.length} chars, ${plan.length} chunks) differs from the pass (${h.docLen}, ${h.nChunks})`)
+  plan.forEach((c, i) => {
+    if (c.start !== h.plan[i].start || c.end !== h.plan[i].end) throw new Error(`${ref}: rebuilt chunk ${i} spans ${c.start}-${c.end}, the pass recorded ${h.plan[i].start}-${h.plan[i].end}`)
+  })
+  const jobs: FidelityJob[] = []
+  for (const c of pf.chunks) {
+    const text = chunkTextOf(doc, plan[c.idx])
+    for (const i of c.insights) jobs.push({ id: i.id, chunk: c.idx, statement: i.statement, contextNote: i.context_note, directQuote: i.direct_quote, chunkText: text })
+  }
+  return {
+    jobs, title: inp.title, id8, kind: 'pass', tag, pass: Number(n),
+    passConfig: { model: h.model, prompt: h.prompt, chunkMode: h.chunkMode, context: h.context, hygiene: h.hygiene, gate: h.gate, repair: h.repair },
+  }
+}
+
+async function fidelityCommand(): Promise<void> {
+  const refs = argv.slice(1).filter((a, i, all) => !a.startsWith('--') && !['--conc', '--limit'].includes(all[i - 1]))
+  if (refs.length === 0) throw new Error('usage: fidelity <ref…> [--conc N] [--dry] [--limit N]   (ref = <id8>:<tag>:<n> or stored:<id8>)')
+  if (llmBackend() !== 'claude-code') throw new Error(`LLM_BACKEND must be claude-code (subscription), got ${llmBackend()}`)
+  const conc = Number(flag('conc') ?? 8)
+  if (!(conc >= 1) || conc >= 16) throw new Error('--conc must be between 1 and 15 (default 8; never 16)')
+  const dry = has('dry')
+  const limit = flag('limit') ? Number(flag('limit')) : undefined
+  const sha = createHash('sha1').update(FIDELITY_JUDGE_SYSTEM).digest('hex').slice(0, 10)
+
+  for (const ref of refs) {
+    const src = fidelityJobs(ref)
+    const jobsAll = limit ? src.jobs.slice(0, limit) : src.jobs
+    const file = fidelityPath(ref)
+    const prev: FidelityFile | null = existsSync(file) ? readJson<FidelityFile>(file) : null
+    if (prev && prev.header.nInsights !== src.jobs.length) throw new Error(`${file} judged ${prev.header.nInsights} insights but ${ref} now has ${src.jobs.length}; delete it to restart`)
+    if (prev && prev.header.judgePromptSha !== sha) throw new Error(`${file} was judged with a different judge prompt (${prev.header.judgePromptSha} vs ${sha}); delete it to restart`)
+    if (!usageOk()) { console.error('usage guard: stopping before the pass'); process.exit(2) }
+
+    const done = new Map<string, JudgedRow>((prev?.rows ?? []).filter(r => isRealFidelity(r)).map(r => [r.id, r]))
+    const todo = jobsAll.filter(j => !done.has(j.id))
+    const byChunk = new Map<number, FidelityJob[]>()
+    for (const j of todo) byChunk.set(j.chunk, [...(byChunk.get(j.chunk) ?? []), j])
+    const wallBefore = prev?.header.wallMs ?? 0
+    const t0 = Date.now()
+    const startedAt = prev?.header.startedAt ?? new Date().toISOString()
+    const header: FidelityHeader = {
+      ref, id8: src.id8, kind: src.kind, tag: src.tag, pass: src.pass, title: src.title, passConfig: src.passConfig,
+      judgeModel: CLAUDE_JUDGMENT_MODEL, judgePromptSha: sha, nInsights: src.jobs.length, startedAt, endedAt: null,
+      wallMs: 0, costUsd: prev?.header.costUsd ?? 0, tokens: prev?.header.tokens ?? zeroTokens(), calls: prev?.header.calls ?? 0, complete: false, quoteFitShare: null,
+    }
+    const failed = new Map<string, JudgedRow>()
+    const save = () => {
+      const rows = [...done.values(), ...failed.values()].sort((a, b) => a.chunk - b.chunk || a.id.localeCompare(b.id, 'en', { numeric: true }))
+      header.wallMs = wallBefore + (Date.now() - t0)
+      header.quoteFitShare = quoteFitShare(rows)
+      header.complete = jobsAll.length === src.jobs.length && src.jobs.every(j => done.has(j.id))
+      header.endedAt = header.complete ? new Date().toISOString() : null
+      if (!dry) writeJson(file, { header, rows } satisfies FidelityFile)
+    }
+    console.log(`[fidelity ${ref}] ${src.jobs.length} insights, ${done.size} already judged, ${todo.length} to judge${limit ? ` (--limit ${limit})` : ''}, judge ${CLAUDE_JUDGMENT_MODEL} (prompt ${sha}), conc ${conc}${dry ? ', DRY (nothing written)' : ''}`)
+
+    const limiter = createLimiter(conc)
+    let stop = false
+    let finishedChunks = 0
+    let consecutiveErrors = 0
+    await Promise.all([...byChunk.values()].map(jobs => limiter.run(async () => {
+      if (stop) return
+      if (!usageOk()) { stop = true; console.error('usage guard: stopping; rerun the same command to resume'); return }
+      for (const j of jobs) {
+        if (stop) return
+        const t1 = Date.now()
+        try {
+          const { result: v, costUsd, calls, tokens } = await trackCliCost(() => judgeFidelity(j.statement, j.chunkText, { contextNote: j.contextNote, directQuote: j.directQuote }))
+          header.costUsd += costUsd; header.calls += calls; header.tokens = addTokens(header.tokens, tokens)
+          const row: JudgedRow = {
+            id: j.id, chunk: j.chunk, verdict: v.verdict, offending: v.offending, reasoning: v.reasoning, ms: Date.now() - t1, costUsd,
+            quoteInChunk: quoteFitsChunk(j.chunkText, j.directQuote),
+          }
+          if (isRealFidelity(row)) { done.set(j.id, row); failed.delete(j.id); consecutiveErrors = 0 } else {
+            failed.set(j.id, row)
+            if (++consecutiveErrors >= 8) { stop = true; console.error('eight judge calls errored in a row: stopping (circuit breaker); rerun to resume') }
+          }
+          if (dry) console.log(`  ${j.id}  ${v.verdict}  «${v.offending.slice(0, 50)}»  ${v.reasoning.slice(0, 80)}`)
+        } catch (err) {
+          if (err instanceof UsageLimitError || err instanceof PipelineHaltError) { stop = true; console.error(`stopping: ${err.message}; rerun the same command to resume`); return }
+          throw err
+        }
+      }
+      finishedChunks++
+      if (finishedChunks % 10 === 0 || finishedChunks === byChunk.size) {
+        const flagged = [...done.values()].filter(r => ['ADDED_DETAIL', 'DROPPED_QUALIFIER', 'UNRESOLVED_REFERENCE'].includes(r.verdict)).length
+        console.log(`  ${finishedChunks}/${byChunk.size} chunks, ${done.size} judged, ${flagged} flagged, ${Math.round((Date.now() - t0) / 1000)} s`)
+      }
+      save()
+    })))
+    save()
+    const rows = [...done.values(), ...failed.values()]
+    const t = tallyFidelity(rows, src.jobs.length)
+    console.log(`[fidelity ${ref}] ${header.complete ? 'COMPLETE' : 'INCOMPLETE (rerun to resume)'}: ${t.judged}/${t.insights} judged, ${t.flagged} flagged = ${pct(t.rate)} (AD ${t.addedDetail} / DQ ${t.droppedQualifier} / UR ${t.unresolvedReference}, unsure ${t.unsure}, errors ${t.errors}), quote fits chunk ${pct(header.quoteFitShare)}, ${Math.round(header.wallMs / 1000)} s, $${header.costUsd.toFixed(2)} list-price`)
+    if (stop) process.exit(2)
+    if (!header.complete && !limit) process.exit(3)
+  }
+}
+
 async function main(): Promise<void> {
   switch (argv[0]) {
     case 'fetch': return fetchInputs(argv.slice(1).filter(a => !a.startsWith('--')).length ? argv.slice(1).filter(a => !a.startsWith('--')) : Object.keys(TWINS))
     case 'chunk': return chunkCommand()
     case 'extract': return extractCommand()
     case 'match': return matchCommand()
+    case 'fidelity': return fidelityCommand()
     case 'report': return reportCommand()
     case 'baseline': return baselineCommand()
     default:
-      console.error('usage: evalReproducibility.ts fetch|chunk|extract|match|report|baseline …')
+      console.error('usage: evalReproducibility.ts fetch|chunk|extract|match|fidelity|report|baseline …')
       process.exit(1)
   }
 }

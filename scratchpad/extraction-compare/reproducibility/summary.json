@@ -1,5 +1,5 @@
 {
- "generatedAt": "2026-11-09T03:55:23.351Z",
+ "generatedAt": "2026-11-09T11:43:51.011Z",
  "baseline": {
   "passSpecificAfterConsolidation": {
    "A": 0.23,
@@ -700,5 +700,254 @@
    "complete": true,
    "nChunks": 68
   }
- ]
+ ],
+ "fidelity": {
+  "baseline": {
+   "opus55NewSetup": {
+    "flagged": 138,
+    "judged": 1550,
+    "rate": 0.089,
+    "episodes": 8,
+    "perEpisodeMin": 0.036,
+    "perEpisodeMax": 0.154
+   },
+   "haiku45OldSetup": {
+    "flagged": 421,
+    "judged": 1258,
+    "rate": 0.335,
+    "episodes": 8,
+    "perEpisodeMin": 0.286,
+    "perEpisodeMax": 0.417
+   },
+   "barPoints": 2
+  },
+  "judge": {
+   "model": "claude-opus-5-5",
+   "promptSha": "74bffb7891"
+  },
+  "passes": [
+   {
+    "ref": "stored:291281d6",
+    "setup": "old",
+    "complete": true,
+    "tally": {
+     "insights": 217,
+     "judged": 217,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 152,
+     "unsure": 0,
+     "addedDetail": 46,
+     "droppedQualifier": 19,
+     "unresolvedReference": 0,
+     "flagged": 65,
+     "rate": 0.2995391705069124,
+     "ci": [
+      0.24251213669745966,
+      0.3635403461680874
+     ]
+    },
+    "speakerAttributionFlags": 3,
+    "reference": {
+     "label": "PR #59, Haiku 4.5 stored",
+     "rate": 0.335
+    },
+    "vsReference": {
+     "baselineRate": 0.335,
+     "limit": 0.35500000000000004,
+     "points": -3.5,
+     "meetsBar": true,
+     "intervalUnderLimit": false,
+     "intervalOverLimit": false
+    },
+    "quoteFitShare": 1,
+    "wallMs": 162779,
+    "costUsd": 3.728554799999997
+   },
+   {
+    "ref": "291281d6:E1a:1",
+    "setup": "old",
+    "complete": true,
+    "tally": {
+     "insights": 211,
+     "judged": 211,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 162,
+     "unsure": 0,
+     "addedDetail": 34,
+     "droppedQualifier": 15,
+     "unresolvedReference": 0,
+     "flagged": 49,
+     "rate": 0.23222748815165878,
+     "ci": [
+      0.18034911941435464,
+      0.29368198070778184
+     ]
+    },
+    "speakerAttributionFlags": 2,
+    "reference": {
+     "label": "PR #59, Haiku 4.5 stored",
+     "rate": 0.335
+    },
+    "vsReference": {
+     "baselineRate": 0.335,
+     "limit": 0.35500000000000004,
+     "points": -10.3,
+     "meetsBar": true,
+     "intervalUnderLimit": true,
+     "intervalOverLimit": false
+    },
+    "quoteFitShare": 1,
+    "wallMs": 150810,
+    "costUsd": 3.5670293999999982
+   },
+   {
+    "ref": "291281d6:E1b:1",
+    "setup": "new",
+    "complete": true,
+    "tally": {
+     "insights": 223,
+     "judged": 223,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 213,
+     "unsure": 1,
+     "addedDetail": 8,
+     "droppedQualifier": 1,
+     "unresolvedReference": 0,
+     "flagged": 9,
+     "rate": 0.04035874439461883,
+     "ci": [
+      0.021375518770548028,
+      0.07491017133214918
+     ]
+    },
+    "speakerAttributionFlags": 6,
+    "reference": {
+     "label": "PR #59, Opus 5.5 new setup",
+     "rate": 0.089
+    },
+    "vsReference": {
+     "baselineRate": 0.089,
+     "limit": 0.109,
+     "points": -4.9,
+     "meetsBar": true,
+     "intervalUnderLimit": true,
+     "intervalOverLimit": false
+    },
+    "quoteFitShare": 1,
+    "wallMs": 142204,
+    "costUsd": 3.4286719999999993
+   },
+   {
+    "ref": "291281d6:E1b:2",
+    "setup": "new",
+    "complete": true,
+    "tally": {
+     "insights": 217,
+     "judged": 217,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 200,
+     "unsure": 2,
+     "addedDetail": 11,
+     "droppedQualifier": 2,
+     "unresolvedReference": 2,
+     "flagged": 15,
+     "rate": 0.06912442396313365,
+     "ci": [
+      0.04233408027159613,
+      0.11090516450837287
+     ]
+    },
+    "speakerAttributionFlags": 11,
+    "reference": {
+     "label": "PR #59, Opus 5.5 new setup",
+     "rate": 0.089
+    },
+    "vsReference": {
+     "baselineRate": 0.089,
+     "limit": 0.109,
+     "points": -2,
+     "meetsBar": true,
+     "intervalUnderLimit": false,
+     "intervalOverLimit": false
+    },
+    "quoteFitShare": 1,
+    "wallMs": 141996,
+    "costUsd": 3.3629298000000016
+   },
+   {
+    "ref": "3d6c7c5f:E1b:1",
+    "setup": "new",
+    "complete": true,
+    "tally": {
+     "insights": 222,
+     "judged": 222,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 211,
+     "unsure": 0,
+     "addedDetail": 9,
+     "droppedQualifier": 1,
+     "unresolvedReference": 1,
+     "flagged": 11,
+     "rate": 0.04954954954954955,
+     "ci": [
+      0.027889560856559012,
+      0.08653399972749636
+     ]
+    },
+    "speakerAttributionFlags": 10,
+    "reference": {
+     "label": "PR #59, Opus 5.5 new setup",
+     "rate": 0.089
+    },
+    "vsReference": {
+     "baselineRate": 0.089,
+     "limit": 0.109,
+     "points": -3.9,
+     "meetsBar": true,
+     "intervalUnderLimit": true,
+     "intervalOverLimit": false
+    },
+    "quoteFitShare": 1,
+    "wallMs": 147335,
+    "costUsd": 3.380398799999999
+   }
+  ],
+  "pooled": [
+   {
+    "tag": "E1b",
+    "passes": 3,
+    "tally": {
+     "insights": 662,
+     "judged": 662,
+     "errors": 0,
+     "missing": 0,
+     "faithful": 624,
+     "unsure": 3,
+     "addedDetail": 28,
+     "droppedQualifier": 4,
+     "unresolvedReference": 3,
+     "flagged": 35,
+     "rate": 0.052870090634441085,
+     "ci": [
+      0.038257853804582326,
+      0.07264179560152267
+     ]
+    },
+    "speakerFlags": 27,
+    "vs": {
+     "baselineRate": 0.089,
+     "limit": 0.109,
+     "points": -3.6,
+     "meetsBar": true,
+     "intervalUnderLimit": true,
+     "intervalOverLimit": false
+    }
+   }
+  ]
+ }
 }

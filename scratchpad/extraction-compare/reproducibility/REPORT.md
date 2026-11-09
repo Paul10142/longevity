@@ -1,7 +1,7 @@
 # Extraction Reproducibility: Experiment Report
 
-Generated 2026-11-09T03:55:23.351Z by scripts/evalReproducibility.ts. Plan: docs/plans/extraction-reproducibility.md.
-Bar (Paul, 2026-11-08): pass-specific facts < 5%, coverage disagreement < 5%, fidelity flags at most +2 points (fidelity is not measured here).
+Generated 2026-11-09T11:43:51.009Z by scripts/evalReproducibility.ts. Plan: docs/plans/extraction-reproducibility.md.
+Bar (Paul, 2026-11-08): pass-specific facts < 5%, coverage disagreement < 5%, fidelity flags at most +2 points (the fidelity flag rate is in its own section below).
 
 ## Before (plan section 1) and After (this harness)
 
@@ -12,6 +12,8 @@ Bar (Paul, 2026-11-08): pass-specific facts < 5%, coverage disagreement < 5%, fi
 | E1a: 291281d6:E1a:1 vs 291281d6:E1a:2 | 17.1% | 16.2% | 31.2% / 2.5% | 33.3% vs 32.8% | 3.10 / 3.09 | 1 / 3 identical (56 / 60 overlapping) | misses the bar |
 | E1b: 291281d6:E1b:1 vs 291281d6:E1b:2 | 3.6% | 1.4% | 11.6% / 2.6% | 9.1% vs 29.8% | 3.28 / 3.19 | 0 / 1 identical (29 / 29 overlapping) | misses the bar |
 | E1b-cross: 291281d6:E1b:1 vs 3d6c7c5f:E1b:1 | 3.1% | 1.4% | 8.7% / 0.0% | 30.0% vs 30.3% | 3.28 / 3.26 | 0 / 3 identical (29 / 34 overlapping) | misses the bar |
+
+Which coverage definition is the bar? The plan (docs/plans/extraction-reproducibility.md, section 3.1) defines it on speaker turns: "Split the transcript into speaker turns (or 500-character windows when there are no labels)", and the resume criteria (section 0) say "fewer than 5% of speaker turns are covered by one pass but not the other". The 500-character figure is the stricter reading and this report keeps it as its verdict; the turn figure is the plan's literal definition. Which one governs is Paul's call.
 
 Coverage disagreement counts a 500-character window as covered when any resolved quote of the pass touches it. "Turns" bins run from one speaker label to the next; only the host is labelled in these transcripts, so turn bins are coarse (median about 3.5k characters) and the 500-character figure is the stricter one.
 
@@ -26,6 +28,25 @@ Coverage disagreement counts a 500-character window as covered when any resolved
 | 3d6c7c5f:E1b:1 | claude-opus-5-5 | v2 | chars | 0 | live (2 spans) | on / on | 2.6 min | 0k in / 120k out / 386k cached | $3.19 | 75% → 75% |
 
 List-price cost is the CLI's own `total_cost_usd` (what the call would cost at API prices, CLI overhead included); on the subscription it is not billed in dollars. The plan-usage column is the share of the 7-day window at the start and end of the pass (best effort, a rounded reading).
+
+## Fidelity Flag Rate
+
+Paul's third condition: the fidelity flag rate on the new setup is at most 2 points above PR #59's Opus 5.5 figure (8.9%, so at most 10.9%), so a more complete extraction cannot pass by inventing.
+Judge: the production extraction-fidelity judge (lib/extractionFidelity.ts, `judgeFidelity`, the function behind `extraction_fidelity` flagging and PR #59's report), model claude-opus-5-5, prompt fingerprint 74bffb7891. Each insight is judged against the exact chunk text it was extracted from (rebuilt from the pass file and checked against the pass's recorded chunk plan). Flag rate = (ADDED_DETAIL + DROPPED_QUALIFIER + UNRESOLVED_REFERENCE) / insights with a real verdict, the definition PR #59 used. UNSURE counts as judged and not flagged. No database access.
+
+| Judged pass | Setup | Insights | Judged | Flagged | Flag rate (95% interval) | Added detail / Dropped qualifier / Unresolved reference | Unsure | Reference | Difference (points) | Bar (+2 points) | Quote found in chunk |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| stored:291281d6 | stored: haiku-4-5, prompt v1 | 217 | 217 | 65 | 30.0% (24.3% to 36.4%) | 46 / 19 / 0 | 0 | 33.5% (PR #59, Haiku 4.5 stored) | -3.5 | not held to the bar (old setup) | 100.0% |
+| 291281d6:E1a:1 | haiku-4-5, prompt v1, gate off | 211 | 211 | 49 | 23.2% (18.0% to 29.4%) | 34 / 15 / 0 | 0 | 33.5% (PR #59, Haiku 4.5 stored) | -10.3 | not held to the bar (old setup) | 100.0% |
+| 291281d6:E1b:1 | opus-5-5, prompt v2, gate on + repair | 223 | 223 | 9 | 4.0% (2.1% to 7.5%) | 8 / 1 / 0 | 1 | 8.9% (PR #59, Opus 5.5 new setup) | -4.9 | meets (+2 or less) | 100.0% |
+| 291281d6:E1b:2 | opus-5-5, prompt v2, gate on + repair | 217 | 217 | 15 | 6.9% (4.2% to 11.1%) | 11 / 2 / 2 | 2 | 8.9% (PR #59, Opus 5.5 new setup) | -2.0 | meets (+2 or less) | 100.0% |
+| 3d6c7c5f:E1b:1 | opus-5-5, prompt v2, gate on + repair | 222 | 222 | 11 | 5.0% (2.8% to 8.7%) | 9 / 1 / 1 | 0 | 8.9% (PR #59, Opus 5.5 new setup) | -3.9 | meets (+2 or less) | 100.0% |
+| **E1b, 3 passes pooled** | new setup | 662 | 662 | 35 | **5.3% (3.8% to 7.3%)** | 28 / 4 / 3 | 3 | 8.9% (PR #59, Opus 5.5 new setup) | **-3.6** | **meets (+2 or less)** | |
+
+- **E1b verdict (3 passes, 662 insights): 5.3% against 8.9%, -3.6 points, meets the +2-point bar;** the whole 95% interval is under the limit.
+- **What the flags are (heuristic text match on the judge's own reasoning).** Of the E1b pooled flags, 27 of 35 say the chunk never names the speaker; without them the rate is 1.2%. The extractor is told the participants (Host / Guest names) but the judge is shown the chunk only, so a correct "James Clear said …" counts as ADDED_DETAIL. PR #59's figure was measured the same way, so the +2-point comparison is like-for-like; but a prompt that names speakers more or less often moves the flag rate without any change in invention. Judged old-setup passes: stored:291281d6 3 of 65; 291281d6:E1a:1 2 of 49.
+- The reference is a pooled figure over 8 other episodes (Opus 5.5 ranged 3.6% to 15.4% per episode in PR #59), so one episode's rate is a noisy test of "+2 points": a single episode of about 220 insights has a 95% interval of roughly 3 to 5 points either side.
+- "Quote found in chunk" checks that the quote each insight cites occurs in the chunk text the judge saw; anything under about 95% would mean the rebuilt chunks do not match extraction.
 
 ## Matches in detail
 
