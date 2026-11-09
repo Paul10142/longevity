@@ -91,11 +91,14 @@ export async function extractReferences(
   sourceId: string,
   checkpoint: Partial<ExtractRefCheckpoint> | undefined,
   onProgress: (cp: ExtractRefCheckpoint) => Promise<void>,
-  timeBudgetMs = 220_000
+  timeBudgetMs = 220_000,
+  opts: { trackRun?: boolean } = {}
 ): Promise<{ done: boolean; checkpoint: ExtractRefCheckpoint }> {
   const started = Date.now()
 
-  const runId = await startOrResumeRun('extract', sourceId, checkpoint?.run_id, { stage: 'references' })
+  // trackRun=false (the linking test) writes only reference tables: no pipeline_runs row.
+  const trackRun = opts.trackRun !== false
+  const runId = trackRun ? await startOrResumeRun('extract', sourceId, checkpoint?.run_id, { stage: 'references' }) : null
 
   try {
   // Paged — a long transcript can exceed the 1000-row server cap on its own,
@@ -141,10 +144,10 @@ export async function extractReferences(
     await onProgress(cp)
   }
 
-  await finishRun(runId, { stage: 'references', mentions: cp.mentions_created })
+  if (runId) await finishRun(runId, { stage: 'references', mentions: cp.mentions_created })
   return { done: true, checkpoint: cp }
   } catch (err) {
-    await failRun(runId, err)
+    if (runId) await failRun(runId, err)
     throw err
   }
 }
@@ -358,20 +361,32 @@ async function linkReferenceToClaims(chunkId: string | null, referenceId: string
 
 export type ResolveCheckpoint = { processed: number; resolved: number; not_found: number }
 
+/** What the resolver saw for one mention — used by the linking test to explain failures. */
+export type ResolveTrace = {
+  mention_id: string
+  attempted: boolean
+  candidates: ResolvedRef[]
+  judge: Judgement | null
+  accepted_index: number | null
+}
+
 /** Stage: resolve pending reference mentions. Throttled + cached + deduped. */
 export async function resolveReferences(
   onProgress: (cp: ResolveCheckpoint) => Promise<void>,
-  timeBudgetMs = 220_000
+  timeBudgetMs = 220_000,
+  opts: { sourceIds?: string[]; trace?: (t: ResolveTrace) => void } = {}
 ): Promise<{ done: boolean; checkpoint: ResolveCheckpoint }> {
   const started = Date.now()
   const cache = new Map<string, { id: string | null; conf: number }>() // key → {reference_id|null, confidence}
   const cp: ResolveCheckpoint = { processed: 0, resolved: 0, not_found: 0 }
 
   while (Date.now() - started < timeBudgetMs) {
-    const { data: batch } = await db()
+    let q = db()
       .from('reference_mentions')
       .select('id, chunk_id, raw_text, parsed')
       .eq('resolution_status', 'pending')
+    if (opts.sourceIds) q = q.in('source_id', opts.sourceIds) // linking test: only the named sources
+    const { data: batch } = await q
       .order('created_at', { ascending: true })
       .limit(15)
     const mentions = (batch ?? []) as { id: string; chunk_id: string | null; raw_text: string; parsed: ParsedRef }[]
@@ -383,7 +398,11 @@ export async function resolveReferences(
 
       let referenceId: string | null = null
       let confidence = 0
-      if (canAttemptResolution(parsed)) {
+      const attempted = canAttemptResolution(parsed)
+      let tCands: ResolvedRef[] = []
+      let tJudge: Judgement | null = null
+      let tIdx: number | null = null
+      if (attempted) {
         const cacheKey = fingerprintOf(parsed.title ?? parsed.doi ?? '(none)', parsed.year ?? null, parsed.doi ?? null)
         if (cache.has(cacheKey)) {
           const hit = cache.get(cacheKey)!
@@ -392,14 +411,17 @@ export async function resolveReferences(
         } else {
           const candidates = await gatherCandidates(parsed, m.raw_text)
           const j = await judgeCandidates(m.raw_text, parsed.context ?? null, candidates)
+          tCands = candidates; tJudge = j
           if (j.index !== null && j.confidence >= AUTO_ACCEPT_CONFIDENCE) {
             referenceId = await upsertReference(candidates[j.index])
             confidence = j.confidence
+            tIdx = j.index
           }
           cache.set(cacheKey, { id: referenceId, conf: confidence })
         }
       }
 
+      opts.trace?.({ mention_id: m.id, attempted, candidates: tCands, judge: tJudge, accepted_index: tIdx })
       if (referenceId) {
         await db().from('reference_mentions').update({
           resolution_status: 'resolved', reference_id: referenceId, match_confidence: confidence,
