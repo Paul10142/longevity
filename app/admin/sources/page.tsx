@@ -3,6 +3,8 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { supabaseAdmin } from "@/lib/supabaseServer"
+import { isSkippedStatus, loadSkippedSources } from "@/lib/skippedItems"
+import { SkippedList } from "@/components/SkippedList"
 import { JobQueuePanel } from "@/components/JobQueuePanel"
 import { EpisodeLinks } from "@/components/EpisodeLinks"
 import { TranscriptDialog } from "@/components/TranscriptDialog"
@@ -98,6 +100,11 @@ export default async function AdminSourcesPage() {
     console.error('Exception fetching sources:', err)
     error = err as any
   }
+
+  // Skipped and non-full items leave the main table and go to one collapsed list.
+  const skippedMap = await loadSkippedSources(supabaseAdmin)
+  const skippedRows: any[] = sources ? sources.filter((s: any) => isSkippedStatus(s.processing_status)) : []
+  if (sources) sources = sources.filter((s: any) => !isSkippedStatus(s.processing_status))
 
   if (error) {
     return (
@@ -255,6 +262,18 @@ export default async function AdminSourcesPage() {
               </CardContent>
             </Card>
           )}
+
+          <div className="mt-6">
+            <SkippedList
+              noun="Sources"
+              items={skippedRows.map((s: any) => ({
+                id: s.id,
+                title: s.title ?? "Untitled",
+                reason: skippedMap.get(s.id)?.reason ?? null,
+                href: `/sources/${s.id}`,
+              }))}
+            />
+          </div>
         </div>
       </div>
       </main>

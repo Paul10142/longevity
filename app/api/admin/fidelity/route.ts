@@ -7,6 +7,7 @@ import { pendingRechecks } from "@/lib/fidelity"
 import { isHoldoutPairId } from "@/lib/judgeHoldout"
 import { buildExcerpt, excerptLink, sameEpisodeTitle, type Excerpt, type ExcerptLink } from "@/lib/fidelityExcerpt"
 import type { SourceLinkInput } from "@/lib/sourceLinks"
+import { loadSkippedSources, skipReasonText } from "@/lib/skippedItems"
 
 export const dynamic = "force-dynamic"
 
@@ -36,7 +37,7 @@ const VALID_LABELS = ["FAITHFUL", "ADDED_DETAIL", "DROPPED_QUALIFIER", "UNRESOLV
  */
 type InsightRow = { id: string; statement: string; start_ms: number | null; chunk_id: string | null; source_id: string }
 type SourceRow = SourceLinkInput & { id: string; timed_transcript: unknown; transcript: string | null }
-type Extras = { excerpt: Excerpt | null; link: ExcerptLink | null }
+type Extras = { excerpt: Excerpt | null; link: ExcerptLink | null; sourceId: string | null }
 
 /**
  * Read-only extras for each card: the transcript excerpt as speaker turns and the link
@@ -113,7 +114,7 @@ async function loadExtras(
       // insight's own stored time, else where the passage the judge read starts.
       const startMs =
         excerpt?.startFrom === "quote" ? excerpt.startMs : insight?.start_ms ?? excerpt?.startMs ?? null
-      out.set(c.id, { excerpt, link: excerptLink(source, startMs) })
+      out.set(c.id, { excerpt, link: excerptLink(source, startMs), sourceId: source?.id ?? null })
     }
   } catch {
     // extras are a convenience; the 50 cards must still load
@@ -217,7 +218,21 @@ export async function GET(request: NextRequest) {
     excerpt: extras.get(h.pair_id)?.excerpt ?? null,
     excerpt_link: extras.get(h.pair_id)?.link ?? null,
   }))
-  return NextResponse.json({ items: [...items, ...holdoutItems] })
+  // Pairs from skipped or non-full episodes leave the worksheet for one collapsed
+  // list (lib/skippedItems.ts). A pair whose episode could not be found stays shown.
+  const skipped = await loadSkippedSources(supabaseAdmin)
+  const all = [...items, ...holdoutItems]
+  const skippedOf = (id: string) => {
+    const sid = extras.get(id)?.sourceId
+    return sid ? skipped.get(sid) ?? null : null
+  }
+  const skippedItems = all
+    .filter(i => skippedOf(i.id))
+    .map(i => {
+      const s = skippedOf(i.id)!
+      return { id: i.id, title: s.title, reason: skipReasonText(s.reason), detail: i.statement }
+    })
+  return NextResponse.json({ items: all.filter(i => !skippedOf(i.id)), skippedItems })
 }
 
 export async function POST(request: NextRequest) {

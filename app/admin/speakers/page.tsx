@@ -3,6 +3,9 @@ import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table"
 import { listReviewRows } from "@/lib/speakerReviewData"
+import { supabaseAdmin } from "@/lib/supabaseServer"
+import { isSkippedStatus, loadSkippedSources } from "@/lib/skippedItems"
+import { SkippedList } from "@/components/SkippedList"
 
 export const dynamic = "force-dynamic"
 
@@ -26,7 +29,11 @@ function ExtractionStatus({ status }: { status: string | null }) {
 export default async function SpeakersPage({ searchParams }: { searchParams: Promise<{ all?: string }> }) {
   const { all } = await searchParams
   const includeExtracted = all === "1"
-  const { rows, columnMissing, error } = await listReviewRows(includeExtracted)
+  const { rows: allRows, columnMissing, error } = await listReviewRows(includeExtracted)
+  // Skipped and non-full episodes need no speaker names: they go to one collapsed list.
+  const skippedMap = supabaseAdmin ? await loadSkippedSources(supabaseAdmin) : new Map()
+  const rows = allRows.filter(r => !isSkippedStatus(r.processing_status))
+  const skippedRows = allRows.filter(r => isSkippedStatus(r.processing_status))
   const needs = rows.filter(r => Object.keys(r.saved).length === 0)
   const assigned = rows.filter(r => Object.keys(r.saved).length > 0)
 
@@ -81,6 +88,16 @@ export default async function SpeakersPage({ searchParams }: { searchParams: Pro
                 </CardContent>
               </Card>
             )}
+
+            <SkippedList
+              noun="Episodes"
+              items={skippedRows.map(r => ({
+                id: r.id,
+                title: r.title ?? "(untitled)",
+                reason: skippedMap.get(r.id)?.reason ?? null,
+                href: `/admin/speakers/${r.id}`,
+              }))}
+            />
 
             <p className="text-sm text-muted-foreground">
               {includeExtracted ? (
