@@ -73,3 +73,12 @@ scratchpad/extraction-compare/sonnet/
 scratchpad/extraction-compare/opus/
 scratchpad/extraction-compare/baseline/
 scratchpad/extraction-compare/*.log
+
+# Reproducibility experiments: transcripts, passes, matches, chunk plans and hygiene caches stay local; REPORT.md and summary.json are committed
+scratchpad/extraction-compare/reproducibility/inputs/
+scratchpad/extraction-compare/reproducibility/passes/
+scratchpad/extraction-compare/reproducibility/matches/
+scratchpad/extraction-compare/reproducibility/chunks/
+scratchpad/extraction-compare/reproducibility/hygiene/
+scratchpad/extraction-compare/reproducibility/fidelity/
+scratchpad/extraction-compare/reproducibility/*.log
