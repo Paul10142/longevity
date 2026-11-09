@@ -50,15 +50,16 @@ Re-read the insight against the chunk. (a) Is every number in the chunk? (b) Is 
 
 WHAT TO EXTRACT
 Ideas that are conceptually important, explanatory (a mechanism, principle or framework the speaker actually states), self-contained, and non-obvious: specific protocols, thresholds, trade-offs, warnings, and the points the speaker makes with their reasoning. Each insight must stand alone without "earlier we discussed" or "as you said". Concrete examples (foods, exercises, protocols, named studies) are welcome when the chunk gives them.
+Personal anecdotes are kept: report what the speaker did, saw or experienced, attributed under rule 4 ("Attia reports taking magnesium at night"), never as advice or a general fact, and set "insight_type" to "Anecdote".
 
 WHAT NOT TO EXTRACT
-Host banter and jokes; biographical information about the guest; show logistics ("on this show we talk about…"); narrative transitions; platitudes ("biology is complex"); a bare anecdote with no point the speaker draws from it (an anecdote the speaker does use to make a point is attributed under rule 4); half-formed thoughts.
+Host banter and jokes; biographical information about the guest; show logistics ("on this show we talk about…"); narrative transitions; platitudes ("biology is complex"); half-formed thoughts.
 
 NUMERIC AND QUALIFIER DETAIL
 Keep the numbers, units, populations, conditions (fasting, on medication, after age 50) and timeframes the speaker gave, with their hedges.
 
 INSIGHT TYPES
-Protocol (concrete action or threshold); Explanation (how or why); Mechanism (biological process the speaker names); Warning (risk, trade-off, contraindication); Anecdote (a speaker-attributed personal case that makes a point); Controversy (mixed or uncertain evidence); Other (rare).
+Protocol (concrete action or threshold); Explanation (how or why); Mechanism (biological process the speaker names); Warning (risk, trade-off, contraindication); Anecdote (what a speaker personally did, saw or experienced, reported as theirs); Controversy (mixed or uncertain evidence); Other (rare).
 
 EVIDENCE TYPE
 RCT | Cohort | MetaAnalysis | CaseSeries | Mechanistic | Animal | ExpertOpinion | Other. Choose by what the speaker says supports it. If no evidence is described, choose ExpertOpinion.

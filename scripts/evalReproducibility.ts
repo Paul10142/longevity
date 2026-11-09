@@ -458,7 +458,7 @@ function loadPass(ref: string): Loaded {
       return {
         id: r.id, chunk: ci?.idx ?? -1, statement: r.statement, quote: r.direct_quote,
         span: hasSpan ? [ci!.offset + r.quote_char_start!, ci!.offset + r.quote_char_end!] : null,
-        relStart: hasSpan ? r.quote_char_start : null, relEnd: hasSpan ? r.quote_char_end : null, chunkLen: ci?.len ?? 0,
+        relStart: hasSpan ? r.quote_char_start : null, relEnd: hasSpan ? r.quote_char_end : null, chunkLen: ci?.len ?? 0, kind: r.insight_type,
       }
     })
     return { label: ref, id8, raw: inp.transcript, insights, extra, nChunks: inp.chunks.length, header: null, units: unitsOf(inp), hygieneRemoved: 0 }
@@ -474,7 +474,7 @@ function loadPass(ref: string): Loaded {
     const len = pf.header.plan[c.idx].end - pf.header.plan[c.idx].start
     for (const i of c.insights) {
       extra.set(i.id, { context_note: i.context_note })
-      insights.push({ id: i.id, chunk: c.idx, statement: i.statement, quote: i.direct_quote, span: i.span, relStart: i.relStart, relEnd: i.relEnd, chunkLen: len })
+      insights.push({ id: i.id, chunk: c.idx, statement: i.statement, quote: i.direct_quote, span: i.span, relStart: i.relStart, relEnd: i.relEnd, chunkLen: len, kind: i.insight_type })
     }
   }
   return { label: ref, id8, raw: inp.transcript, insights, extra, nChunks: pf.header.nChunks, header: pf.header, units: unitsOf(inp), hygieneRemoved: pf.header.hygieneRemoved.length }
@@ -503,6 +503,8 @@ const safe = (s: string) => s.replace(/[^A-Za-z0-9._-]+/g, '_')
 type MatchSummary = {
   exp: string; a: string; b: string; createdAt: string; sameCopy: boolean; similarity: 'embedding' | 'lexical'
   passSpecific: { aToB: number; bToA: number; mean: number }
+  /** The same rate over non-anecdote insights (plan 4b: anecdotes count in the bar, and the rate without them is reported too). */
+  passSpecificExAnecdotes: { aToB: number; bToA: number; mean: number }
   coverage: { turns: { rate: number; bins: number }; window500: { rate: number; bins: number } }
   boundary: { unmatched: number | null; matched: number | null; nUnmatched: number; nMatched: number }
   dirA: Direction & { perChunk: number }; dirB: Direction & { perChunk: number }
@@ -559,6 +561,7 @@ async function matchCommand(): Promise<void> {
   const summary: MatchSummary = {
     exp, a: refA, b: refB, createdAt: new Date().toISOString(), sameCopy, similarity: lexical ? 'lexical' : 'embedding',
     passSpecific: { aToB: dirA.passSpecificRate, bToA: dirB.passSpecificRate, mean: (dirA.passSpecificRate + dirB.passSpecificRate) / 2 },
+    passSpecificExAnecdotes: { aToB: dirA.passSpecificRateExAnecdotes, bToA: dirB.passSpecificRateExAnecdotes, mean: (dirA.passSpecificRateExAnecdotes + dirB.passSpecificRateExAnecdotes) / 2 },
     coverage: { turns: { rate: covTurns.rate, bins: covTurns.union }, window500: { rate: covWins.rate, bins: covWins.union } },
     boundary: {
       unmatched: wavg(dirA.boundary.unmatched, dirA.boundary.nUnmatched, dirB.boundary.unmatched, dirB.boundary.nUnmatched),
@@ -581,6 +584,7 @@ async function matchCommand(): Promise<void> {
   console.log(`\n${exp}: ${refA}  vs  ${refB}  (${lexical ? 'lexical' : 'embedding'} tier 2)`)
   console.log(`  insights: A ${A.insights.length} (${(A.insights.length / A.nChunks).toFixed(2)}/chunk over ${A.nChunks} chunks), B ${B.insights.length} (${(B.insights.length / B.nChunks).toFixed(2)}/chunk over ${B.nChunks})`)
   console.log(`  pass-specific: A→B ${pct(dirA.passSpecificRate)}  B→A ${pct(dirB.passSpecificRate)}  mean ${pct(summary.passSpecific.mean)}   (bar < 5%; plan baseline post-consolidation 23% / 16%)`)
+  console.log(`  pass-specific without anecdotes: A→B ${pct(dirA.passSpecificRateExAnecdotes)} (n ${dirA.nExAnecdotes})  B→A ${pct(dirB.passSpecificRateExAnecdotes)} (n ${dirB.nExAnecdotes})  mean ${pct(summary.passSpecificExAnecdotes.mean)}   (anecdotes count toward the bar above; this is for reference)`)
   console.log(`  matched by quote ${dirA.tier1 + dirB.tier1}, by meaning ${dirA.tier2 + dirB.tier2}; same-passage misses A ${dirA.samePassageMiss} B ${dirB.samePassageMiss}; unmatched with no quote span A ${dirA.unmatchedNoSpan} B ${dirB.unmatchedNoSpan}`)
   console.log(`  coverage disagreement: turns ${pct(covTurns.rate)} of ${covTurns.union} bins; 500-char windows ${pct(covWins.rate)} of ${covWins.union} bins   (bar < 5%)`)
   console.log(`  boundary share (first/last ${300} chars of chunk): unmatched ${pct(summary.boundary.unmatched)} (n ${nU}) vs matched ${pct(summary.boundary.matched)} (n ${nM})   (plan baseline 36.6% vs 29.0%)`)

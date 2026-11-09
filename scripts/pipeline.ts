@@ -85,7 +85,7 @@ async function main() {
     const since = new Date(Date.now() - WINDOW_MIN * 60_000).toISOString()
 
     type Src = { id: string; title: string; processing_status: string | null }
-    type Insight = { id: string; source_id: string; created_at: string }
+    type Insight = { id: string; source_id: string; created_at: string; corpus_excluded: boolean }
     type Member = { raw_insight_id: string; created_at: string }
     type QJob = { type: string; status: string; payload: Record<string, unknown>; progress: Record<string, unknown> }
 
@@ -98,7 +98,7 @@ async function main() {
         (f, t) => db.from('chunks').select('source_id').order('id', { ascending: true }).range(f, t)
       ),
       selectAllPaged<Insight>(
-        (f, t) => db.from('raw_insights').select('id, source_id, created_at').order('created_at', { ascending: true }).range(f, t)
+        (f, t) => db.from('raw_insights').select('id, source_id, created_at, corpus_excluded').order('created_at', { ascending: true }).range(f, t)
       ),
       selectAllPaged<Member>(
         (f, t) => db.from('claim_members').select('raw_insight_id, created_at').order('created_at', { ascending: true }).range(f, t)
@@ -131,13 +131,17 @@ async function main() {
     }
 
     const perSource = sources.map(s => {
-      const mine = insights.filter(i => i.source_id === s.id)
+      const all = insights.filter(i => i.source_id === s.id)
+      // Anecdotes (corpus_excluded) are held out of the corpus: consolidation never owes them a claim.
+      const mine = all.filter(i => !i.corpus_excluded)
+      const heldOut = all.length - mine.length
       const total = chunkTotal.get(s.id) ?? 0
       const consolidated = mine.filter(i => memberSet.has(i.id)).length
       return {
         title: s.title.length > 34 ? `${s.title.slice(0, 33)}…` : s.title,
         chunks: extracting.has(s.id) ? `${chunkDone.get(s.id) ?? 0}/${total}` : `${total}/${total}`,
         extracted: mine.length,
+        heldOut,
         consolidated,
         done: !extracting.has(s.id) && mine.length > 0 && consolidated === mine.length,
       }
@@ -148,7 +152,7 @@ async function main() {
     for (const r of perSource) {
       console.log(
         `  ${r.title.padEnd(35)}${r.chunks.padEnd(10)}${String(r.extracted).padEnd(10)}` +
-        `${r.consolidated}/${r.extracted}${r.done ? '  ✓' : ''}`
+        `${r.consolidated}/${r.extracted}${r.done ? '  ✓' : ''}${r.heldOut ? ` (+${r.heldOut} anecdotes held out)` : ''}`
       )
     }
 
@@ -176,7 +180,7 @@ async function main() {
       doneChunks += chunkTotal.get(s.id) ?? 0
     }
     const yieldPerChunk = doneChunks > 0 ? doneInsights / doneChunks : 4
-    const pendingNow = insights.filter(i => !memberSet.has(i.id)).length
+    const pendingNow = insights.filter(i => !i.corpus_excluded && !memberSet.has(i.id)).length
     const toAdjudicate = pendingNow + Math.round(chunksLeft * yieldPerChunk)
 
     // Fallbacks so the ETA survives a phase that has not started yet: extraction
@@ -212,8 +216,8 @@ async function main() {
       // The headline "% new" is the novel bucket; the dedup story is redundant +
       // refinement. Read-only, no LLM.
       const [insRows, memRows, linkRows, srcRes] = await Promise.all([
-        selectAllPaged<{ id: string; source_id: string }>(
-          (f, t) => db.from('raw_insights').select('id, source_id').order('created_at', { ascending: true }).range(f, t)
+        selectAllPaged<{ id: string; source_id: string; corpus_excluded: boolean }>(
+          (f, t) => db.from('raw_insights').select('id, source_id, corpus_excluded').order('created_at', { ascending: true }).range(f, t)
         ),
         selectAllPaged<{ raw_insight_id: string; claim_id: string; matched_by: string }>(
           (f, t) => db.from('claim_members').select('raw_insight_id, claim_id, matched_by').order('created_at', { ascending: true }).range(f, t)
@@ -232,6 +236,7 @@ async function main() {
       type Bucket = { redundant: number; refinement: number; novel: number; unconsolidated: number }
       const bySource = new Map<string, Bucket>()
       for (const ins of insRows) {
+        if (ins.corpus_excluded) continue // held-out anecdote: not part of the corpus, so no novelty signal
         const b = bySource.get(ins.source_id) ?? { redundant: 0, refinement: 0, novel: 0, unconsolidated: 0 }
         const m = memByInsight.get(ins.id)
         if (!m) b.unconsolidated++

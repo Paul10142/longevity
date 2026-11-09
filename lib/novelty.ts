@@ -64,10 +64,10 @@ export async function computeNovelty(db: Db): Promise<NoveltyReport> {
   // Every read whose size grows with the corpus is paged (raw_insights,
   // claim_members, claim_links). `sources` is small and bounded.
   const [insRows, memRows, linkRows, srcRes] = await Promise.all([
-    selectAllPaged<{ id: string; source_id: string }>((f, t) =>
+    selectAllPaged<{ id: string; source_id: string; corpus_excluded: boolean }>((f, t) =>
       db
         .from("raw_insights")
-        .select("id, source_id")
+        .select("id, source_id, corpus_excluded")
         .order("created_at", { ascending: true })
         .range(f, t)
     ),
@@ -101,6 +101,7 @@ export async function computeNovelty(db: Db): Promise<NoveltyReport> {
 
   const bySource = new Map<string, Bucket>()
   for (const ins of insRows) {
+    if (ins.corpus_excluded) continue // held-out anecdote: not part of the corpus, so no novelty signal
     const b =
       bySource.get(ins.source_id) ?? { redundant: 0, refinement: 0, novel: 0, unconsolidated: 0 }
     const m = memByInsight.get(ins.id)
