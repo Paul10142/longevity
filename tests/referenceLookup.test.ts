@@ -240,15 +240,14 @@ test('fix 2: a scientific book is still searched (the Taubes book was a correct 
   assert.equal(r.accepted?.resolved_source, 'crossref')
 })
 
-test('fix 2: a mention with nothing to go on at all is skipped without a model call', async () => {
-  const { world, stubs, resolve } = setup()
-  const r = await resolve('it', {})
-  // the helper adds a long context, so build the bare mention by hand
-  assert.ok(['skipped', 'resolved', 'not_found', 'deferred'].includes(r.outcome))
-  const bare = await createReferenceLookup({ fetch: fakeFetch(world), planSearch: async () => { stubs.planCalls.push('x'); return {} }, judge: async () => ({ index: null, confidence: 0 }) })
-    .resolveMention({ raw: 'a study', parsed: {}, episode: EPISODE })
-  assert.equal(bare.outcome, 'skipped')
-  assert.equal(bare.reason, 'too_vague')
+test('fix 2: a mention with nothing to go on at all is skipped without a model call or a search', async () => {
+  const { world, stubs } = setup()
+  const lookup = createReferenceLookup({ fetch: fakeFetch(world), planSearch: async () => { stubs.planCalls.push('x'); return {} }, judge: async () => ({ index: null, confidence: 0 }) })
+  const r = await lookup.resolveMention({ raw: 'a study', parsed: {}, episode: EPISODE })
+  assert.equal(r.outcome, 'skipped')
+  assert.equal(r.reason, 'too_vague')
+  assert.equal(stubs.planCalls.length, 0)
+  assert.equal(world.calls.length, 0)
 })
 
 // ── Fix 3: a model writes the search from the whole context ──
@@ -336,7 +335,7 @@ test('fix 4: the 2026-11-08 bug: a JAMA 2013 paper and a NEJM 2013 paper, both u
     world: { pubmed: q => (/jama/i.test(q) ? [PAPERS[3]] : [PAPERS[2]]) },
     stubs: {
       plans: raw => (/JAMA/.test(raw) ? { pubmed: 'JAMA 2013 statins women', plain: 'JAMA 2013 statins women' } : { pubmed: 'NEJM 2013 predimed', plain: 'NEJM 2013 predimed' }),
-      judge: candidates => ({ index: 0, confidence: 0.9 }) as Judgement,
+      judge: () => ({ index: 0, confidence: 0.9 }) as Judgement,
     },
   })
   const nejm = await resolve('the first paper was in the New England Journal of Medicine, 2013', { year: 2013, journal: 'New England Journal of Medicine' })

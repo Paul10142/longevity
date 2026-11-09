@@ -1,16 +1,18 @@
 /**
  * Reference layer (v3): capture third-party works a source cites, then resolve
- * them against CrossRef / PubMed so only VERIFIED references are ever surfaced.
+ * them against PubMed / Crossref (OpenAlex as backup) so only VERIFIED references
+ * are ever surfaced.
  *
  * Two stages, both jobs:
  *   extract_references  — per chunk, LLM pulls external-work mentions →
  *                         reference_mentions (immutable, raw).
- *   resolve_references  — throttled + cached lookups → deduped references_,
- *                         links claims via chunk co-location. Unresolvable
- *                         mentions are marked not_found and never shown as cites.
+ *   resolve_references  — lookups (lib/referenceLookup.ts) → deduped references_,
+ *                         links claims via chunk co-location. A mention nothing
+ *                         matches is marked not_found and never shown as a cite;
+ *                         one whose lookup FAILED stays pending and is retried.
  *
- * Scale notes: resolution is rate-limited and cached (a trial cited 500× resolves
- * once); dedup uses a fingerprint + the match_references ANN, never all-pairs.
+ * Scale notes: lookups are paced and cached (a trial cited 500× resolves once);
+ * dedup uses a fingerprint + the match_references ANN, never all-pairs.
  */
 
 import { supabaseAdmin } from './supabaseServer'

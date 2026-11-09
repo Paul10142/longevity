@@ -477,12 +477,22 @@ two trust primitives and hardens the system against volume.
 - **Verbatim quotes**: `raw_insights.direct_quote` (+ char offsets into the chunk)
   captured at extraction — the exact source words behind each claim.
 - **Verified references**: sources' third-party citations are extracted
-  (`reference_mentions`, immutable/raw) then resolved against CrossRef/PubMed into
-  canonical, deduped `references_`. Resolution is conservative by design: a
-  minimum-specificity gate + strict title/year match + an **LLM verification gate**
-  ("is this candidate actually the work the speaker meant?"). Vague or
-  unverifiable mentions are marked `not_found` and **never surfaced** — a wrong
-  citation is worse than none. `claim_references` links verified works to claims.
+  (`reference_mentions`, immutable/raw) then resolved into canonical, deduped
+  `references_`. Resolution (`lib/referenceLookup.ts`, 2026-11-09) is conservative
+  by design: **no minimum-specificity gate** (the old "needs a title" rule skipped
+  75% of citations; only non-science items are skipped, and the skip is a recorded
+  reason) but an **LLM verification gate** ("is this candidate actually the work the
+  speaker meant?", abstract vs the finding described, confidence ≥ 0.7). A small
+  model first writes the search from the whole context (guest, episode, year,
+  finding); **PubMed is searched first** (free, no key), Crossref beside it, OpenAlex
+  only as backup; busy databases are retried with backoff. A lookup that FAILED
+  (database down or refusing, model error) leaves the mention `pending` — only a
+  real "nothing found" or a judge rejection becomes `not_found`, and `not_found`
+  is **never surfaced** — a wrong citation is worse than none. One work is looked
+  up once (answers are shared only on a specific identity: DOI, real title, trial
+  name, or lead author + year; a bare year or journal never shares).
+  `claim_references` links verified works to claims (currently by chunk
+  co-location; linking by wording is the next planned fix).
 
 **Article views** are distinct surfaces: the **patient** article is plain and
 reference-free; the **clinician** article carries inline `[R#]` citations and a
