@@ -159,3 +159,73 @@ test('a Huberman Q&A item that is already extracted is left alone; the Drive AMA
   const plan = planCleanup([done, driveAma])
   assert.equal(plan.changes.length, 0)
 })
+
+// ── pasted text loses to audio (Paul, 2026-11-08) ─────────────────────────────
+
+const text368 = (extra: Partial<CleanupRow> = {}) =>
+  row('#368 The Protein Debata', { media_type: 'text', transcript_origin: 'manual', processing_status: 'succeeded', facts: 156, external_id: 'text-attia-0368', ...extra })
+const audio368 = (extra: Partial<CleanupRow> = {}) =>
+  row('#368 ‒ The protein debate: optimal intake | David Allison, Ph.D.', { media_type: 'audio', transcript_origin: 'deepgram', processing_status: 'pending', facts: 0, external_id: 'attia-0368', ...extra })
+
+test('TRAP: a pending audio copy is kept and the succeeded text copy is NOT skipped; it is set aside as waiting', () => {
+  const text = text368()
+  const audio = audio368()
+  const plan = planCleanup([text, audio])
+  assert.equal(plan.groups[0].keeper.id, audio.id)
+  assert.deepEqual(plan.changes, []) // the text copy is never skipped by the cleanup
+  assert.equal(plan.pastedText.length, 1)
+  assert.equal(plan.pastedText[0].id, text.id)
+  assert.equal(plan.pastedText[0].audioId, audio.id)
+  assert.equal(plan.pastedText[0].state, 'waiting')
+  assert.match(plan.pastedText[0].why, /not yet succeeded/)
+  assert.equal(plan.pastedText[0].facts, 156)
+})
+
+test('an audio copy that succeeded makes the text copy ready, still not a cleanup change', () => {
+  const text = text368()
+  const audio = audio368({ processing_status: 'succeeded', facts: 140 })
+  const plan = planCleanup([text, audio])
+  assert.equal(plan.groups[0].keeper.id, audio.id) // even with fewer facts than the text copy
+  assert.deepEqual(plan.changes, [])
+  assert.equal(plan.pastedText[0].state, 'ready')
+})
+
+test('a text copy that already carries the replacement reads as applied', () => {
+  const audio = audio368({ processing_status: 'succeeded', facts: 140 })
+  const text = text368({ processing_status: 'skipped', duplicate_of: audio.id, skip_reason: 'pasted text replaced by Deepgram transcript (Paul, 2026-11-08)' })
+  const plan = planCleanup([text, audio])
+  assert.deepEqual(plan.changes, [])
+  assert.equal(plan.pastedText[0].state, 'applied')
+})
+
+test('a pasted-text row with no audio copy is untouched and not listed', () => {
+  const plan = planCleanup([text368()])
+  assert.deepEqual(plan.changes, [])
+  assert.deepEqual(plan.pastedText, [])
+  assert.equal(plan.groups.length, 0)
+})
+
+test('two pasted-text copies of one episode follow the usual rule: the extra copy is skipped, not set aside', () => {
+  const big = text368({ facts: 156 })
+  const small = text368({ facts: 20, external_id: null })
+  const plan = planCleanup([small, big])
+  assert.equal(plan.pastedText.length, 0)
+  assert.deepEqual(plan.changes.map(c => c.id), [small.id])
+  assert.equal(plan.changes[0].duplicate_of, big.id)
+})
+
+test('the full-episode text copy stays live next to an Essentials cut, which is the one skipped', () => {
+  const text = row('The Protein Debate', { series: HUBERMAN, media_type: 'text', processing_status: 'succeeded', facts: 50 })
+  const cut = row('Essentials: The Protein Debate', { series: HUBERMAN, media_type: 'audio', processing_status: 'pending' })
+  const plan = planCleanup([text, cut])
+  assert.deepEqual(plan.changes.map(c => c.id), [cut.id])
+  assert.equal(plan.pastedText.length, 0)
+})
+
+test('a caption-import copy that is not Deepgram is reported as blocked, never skipped', () => {
+  const text = text368()
+  const captions = audio368({ transcript_origin: 'manual', processing_status: 'succeeded', facts: 90 })
+  const plan = planCleanup([text, captions])
+  assert.deepEqual(plan.changes, [])
+  assert.equal(plan.pastedText[0].state, 'blocked')
+})
