@@ -1,8 +1,6 @@
 -- 040_anecdote_corpus_exclusion.sql
 --
--- STATUS: NOT APPLIED. Apply via the Supabase SQL Editor (LifestyleAcademy project) BEFORE the
--- code that sets the flag is deployed. Brief lock only: a NOT NULL column with a constant
--- default is a metadata change in Postgres 11+, and the partial index starts empty.
+-- STATUS: APPLIED 2026-11-09 (Supabase connector, before the merge of PR #70).
 --
 -- Anecdote handling (Paul, 2026-11-08): extraction keeps each personal anecdote ("I take
 -- magnesium at night"), labels it insight_type = 'Anecdote' and phrases it as a report of what
