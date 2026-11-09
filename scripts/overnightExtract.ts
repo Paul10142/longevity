@@ -78,7 +78,7 @@ async function main() {
 
   async function freshPending(extracted: Set<string>): Promise<string[]> {
     const rows = await selectAllPaged<{ id: string }>(
-      (from, to) => db.from('sources').select('id').eq('processing_status', 'pending').order('date', { ascending: false }).range(from, to)
+      (from, to) => db.from('sources').select('id').eq('processing_status', 'pending').order('date', { ascending: false }).range(from, to) // 'pending' only: skipped re-posts (migration 038) are never picked
     )
     return rows.map(r => r.id).filter(id => !extracted.has(id))
   }

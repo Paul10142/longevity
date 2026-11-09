@@ -81,6 +81,7 @@ import {
   totalHours,
   type Episode,
 } from '../lib/podcastFeed'
+import { describeSkipped, lookupSkippedKeys } from '../lib/skippedSources'
 import { DEFAULT_SHOW, SHOWS, showByPrefix } from '../lib/shows'
 
 const args = process.argv.slice(2)
@@ -206,6 +207,28 @@ async function main() {
     process.stdout.write(`  --keys ${keysFile}: ${selected.length} episode(s) selected, in file order\n`)
   } else {
     selected = episodes.slice(skip, limit === Infinity ? undefined : skip + limit)
+  }
+
+  // SKIPPED EPISODES ARE NEVER DOWNLOADED. A row marked `skipped` (migration 038) is a
+  // rebroadcast, a re-release, an "Essentials" cut or a copy of an episode the library
+  // already holds: downloading it only to have it transcribed would be paid twice for one
+  // recording. Left out here, before the budget fit, so it also takes no credit from the
+  // episodes that do count. The transcriber repeats this check and is the one that fails
+  // closed; here a lookup problem only warns (a download costs bandwidth, not money).
+  // --no-duplicate-check turns it off.
+  if (!has('--no-duplicate-check')) {
+    try {
+      const { supabaseAdmin: sdb } = await import('../lib/supabaseServer')
+      if (!sdb) throw new Error('Supabase is not configured')
+      const skippedRows = await lookupSkippedKeys(sdb, selected.map(e => e.key))
+      if (skippedRows.size > 0) {
+        selected = selected.filter(e => !skippedRows.has(e.key))
+        process.stdout.write(`  ${skippedRows.size} selected episode(s) are marked skipped (re-posts or copies) — not downloaded:\n`)
+        for (const line of describeSkipped(skippedRows)) process.stdout.write(line + '\n')
+      }
+    } catch (err) {
+      process.stdout.write(`  WARNING: could not check for skipped episodes (${redact(err instanceof Error ? err.message : String(err))}) — nothing was left out\n`)
+    }
   }
 
   const existing = new Set(await readdir(outDir))
