@@ -332,7 +332,7 @@ export function splitIntoChunks(text: string, chunkSize = CHUNK_SIZE, overlapSiz
 // ── LLM extraction for one chunk ────────────────────────────
 
 /** One model call with the retry policy extraction has always had (see the comment inside). */
-async function callExtractionModel(
+export async function callExtractionModel(
   system: string,
   user: string,
   model: string,
@@ -367,7 +367,7 @@ async function callExtractionModel(
 }
 
 /** Coerce the model's raw insight list into stored shape; drops malformed and low-value entries. */
-function normalizeInsights(raw: unknown): ExtractedInsight[] {
+export function normalizeInsights(raw: unknown): ExtractedInsight[] {
   if (!Array.isArray(raw)) return []
   return (raw as ExtractedInsight[])
     .filter(i => i && typeof i.statement === 'string' && !isLowValue(i.statement))
@@ -391,7 +391,7 @@ function normalizeInsights(raw: unknown): ExtractedInsight[] {
 
 /** A statement that depends on something shown on screen carries a video-check note (no schema change: it rides in context_note). */
 export const VIDEO_CHECK_NOTE = 'Video check: this statement depends on something shown on screen.'
-function withVideoCheckNote(i: ExtractedInsight): ExtractedInsight {
+export function withVideoCheckNote(i: ExtractedInsight): ExtractedInsight {
   if (!i.visual_dependent) return i
   const note = i.context_note ? `${VIDEO_CHECK_NOTE} ${i.context_note}` : VIDEO_CHECK_NOTE
   return { ...i, context_note: note }
