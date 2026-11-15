@@ -7,9 +7,10 @@
  *   extract_references  — per chunk, LLM pulls external-work mentions →
  *                         reference_mentions (immutable, raw).
  *   resolve_references  — lookups (lib/referenceLookup.ts) → deduped references_,
- *                         links claims via chunk co-location. A mention nothing
+ *                         linked to the claims from the same chunk whose wording is
+ *                         about the study (lib/claimLinking.ts). A mention nothing
  *                         matches is marked not_found and never shown as a cite;
- *                         one whose lookup FAILED stays pending and is retried.
+ *                         one whose lookup or claim-picking FAILED stays pending and is retried.
  *
  * Scale notes: lookups are paced and cached (a trial cited 500× resolves once);
  * dedup uses a fingerprint + the match_references ANN, never all-pairs.
@@ -24,6 +25,7 @@ import {
   createReferenceLookup, normalizeTitle,
   type ParsedRef, type ResolvedRef, type EpisodeInfo, type MentionResult, type ReferenceLookup,
 } from './referenceLookup'
+import { selectInsightsAboutStudy, type InsightCandidate, type ClaimLinkResult } from './claimLinking'
 
 // Bulk tier: scanning every chunk for citation mentions.
 const REFERENCE_MODEL = CLAUDE_BULK_MODEL
@@ -175,16 +177,30 @@ async function upsertReference(r: ResolvedRef): Promise<string> {
   return created!.id as string
 }
 
-/** Link a resolved reference to the claims that live in the same chunk. */
-async function linkReferenceToClaims(chunkId: string | null, referenceId: string): Promise<void> {
-  if (!chunkId) return
-  const { data: raws } = await db().from('raw_insights').select('id').eq('chunk_id', chunkId)
-  const rawIds = (raws ?? []).map((r: { id: string }) => r.id)
-  if (rawIds.length === 0) return
-  const { data: members } = await db().from('claim_members').select('claim_id').in('raw_insight_id', rawIds)
-  const claimIds = Array.from(new Set((members ?? []).map((m: { claim_id: string }) => m.claim_id)))
-  if (claimIds.length === 0) return
-  const rows = claimIds.map(claim_id => ({ claim_id, reference_id: referenceId }))
+/** An extracted statement from a chunk that has become (part of) a claim, with the claims it belongs to. */
+type ChunkInsight = InsightCandidate & { claimIds: string[] }
+
+/** The statements of one chunk that belong to a claim. These are the only claims a citation in the chunk can reach. */
+async function claimedInsightsOfChunk(chunkId: string | null): Promise<ChunkInsight[]> {
+  if (!chunkId) return []
+  const { data: raws } = await db().from('raw_insights').select('id, statement, direct_quote').eq('chunk_id', chunkId)
+  const rows = (raws ?? []) as { id: string; statement: string; direct_quote: string | null }[]
+  if (rows.length === 0) return []
+  const { data: members } = await db().from('claim_members').select('raw_insight_id, claim_id').in('raw_insight_id', rows.map(r => r.id))
+  const claimsOf = new Map<string, string[]>()
+  for (const m of (members ?? []) as { raw_insight_id: string; claim_id: string }[]) {
+    claimsOf.set(m.raw_insight_id, [...(claimsOf.get(m.raw_insight_id) ?? []), m.claim_id])
+  }
+  return rows
+    .filter(r => claimsOf.has(r.id))
+    .map(r => ({ id: r.id, statement: r.statement, quote: r.direct_quote, claimIds: claimsOf.get(r.id)! }))
+}
+
+/** Link a resolved reference to exactly these claims. */
+async function linkReferenceToClaims(claimIds: string[], referenceId: string): Promise<void> {
+  const unique = Array.from(new Set(claimIds))
+  if (unique.length === 0) return
+  const rows = unique.map(claim_id => ({ claim_id, reference_id: referenceId }))
   await db().from('claim_references').upsert(rows, { onConflict: 'claim_id,reference_id' })
 }
 
@@ -199,6 +215,8 @@ export type ResolveTrace = {
   accepted_index: number | null
   outcome: MentionResult['outcome']
   reason: MentionResult['reason']
+  /** Which claims the study was attached to (resolved mentions only). */
+  claim_link: { outcome: ClaimLinkResult['outcome']; considered: number; linked_claims: number } | null
 }
 
 // Past this many failed lookups in one pass the databases are down: stop instead of hammering them.
@@ -249,18 +267,29 @@ export async function resolveReferences(
 
     for (const m of mentions) {
       if (Date.now() - started > timeBudgetMs) return { done: false, checkpoint: cp }
-      const result = await lookup.resolveMention({
-        raw: m.raw_text,
-        parsed: m.parsed ?? {},
-        episode: await episodeFor(m.source_id, episodes),
-      })
+      const episode = await episodeFor(m.source_id, episodes)
+      const result = await lookup.resolveMention({ raw: m.raw_text, parsed: m.parsed ?? {}, episode })
+
+      // A found study is attached only to the claims whose wording is about it (lib/claimLinking.ts).
+      let claimLink: ResolveTrace['claim_link'] = null
+      let claimIds: string[] = []
+      let linkFailed = false
+      if (result.outcome === 'resolved' && result.accepted) {
+        const insights = await claimedInsightsOfChunk(m.chunk_id)
+        const picked = await selectInsightsAboutStudy({ raw: m.raw_text, parsed: m.parsed ?? {}, episode, study: result.accepted, insights })
+        linkFailed = picked.outcome === 'failed'
+        const chosen = new Set(picked.selectedIds)
+        claimIds = insights.filter(i => chosen.has(i.id)).flatMap(i => i.claimIds)
+        claimLink = { outcome: picked.outcome, considered: picked.considered, linked_claims: new Set(claimIds).size }
+      }
       opts.trace?.({
         mention_id: m.id, attempted: result.outcome !== 'skipped', candidates: result.candidates, judge: result.judge,
         accepted_index: result.accepted ? result.candidates.findIndex(c => c === result.accepted) : null,
-        outcome: result.outcome, reason: result.reason,
+        outcome: result.outcome, reason: result.reason, claim_link: claimLink,
       })
 
-      if (result.outcome === 'deferred') {
+      // A failed lookup, or a failed attempt to pick the claims, leaves the citation pending to be retried.
+      if (result.outcome === 'deferred' || linkFailed) {
         deferred.add(m.id)
         cp.deferred = deferred.size
         if (deferred.size >= MAX_DEFERRED_PER_PASS) {
@@ -274,7 +303,7 @@ export async function resolveReferences(
         await db().from('reference_mentions').update({
           resolution_status: 'resolved', reference_id: referenceId, match_confidence: result.confidence,
         }).eq('id', m.id)
-        await linkReferenceToClaims(m.chunk_id, referenceId)
+        await linkReferenceToClaims(claimIds, referenceId)
         cp.resolved++
       } else {
         await db().from('reference_mentions').update({ resolution_status: 'not_found' }).eq('id', m.id)
