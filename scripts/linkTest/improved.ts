@@ -8,7 +8,7 @@
 import { readFileSync, writeFileSync } from 'node:fs'
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL } from '../../lib/llm'
 
-const UA = 'LifestyleAcademy/1.0 (mailto:team@admissionsacademy.org)'
+const UA = 'LifestyleAcademy/1.0'
 let last = 0
 async function throttle() { const w = 400 - (Date.now() - last); if (w > 0) await new Promise(r => setTimeout(r, w)); last = Date.now() }
 type Cand = { title: string; authors: string[]; journal: string | null; year: number | null; doi: string | null; pmid?: string; abstract?: string; src: string }
