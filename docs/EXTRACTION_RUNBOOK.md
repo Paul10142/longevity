@@ -450,9 +450,11 @@ section is what that window (and the runner, afterwards) follows.
       - **It reaches the transcript at the next re-attach.** `attachTranscripts.ts` applies the saved names after checking that each answer's fingerprint
         (the first words that voice says) still matches the voice now carrying that label. If ANY answer no longer matches the file, the whole
         mapping is ignored and the log says why: a name can never land on the wrong voice. A voice answered "Not A Guest" stays `Speaker N`.
-      - **Hold these episodes out of extraction until Paul has reviewed them.** A row that is `pending` with unnamed voices and no saved review will
-        otherwise extract with `Speaker 2` labels and need a retire later. Find them: pending rows whose `transcript` contains `Speaker 2: `
-        and whose `speaker_names` is null (the page's "Needs Review" list is the same set).
+      - **These episodes are held out of extraction in code.** `extractDeepgram.ts` never picks a pending row whose transcript still has an unnamed
+        `Speaker N:` voice that Paul has not dealt with: no saved review, or a saved review whose names are not yet in the transcript (they arrive at
+        the next re-attach). A row whose remaining voices were all answered "Not A Guest" is not held. Each round the log says
+        `held N episode(s) awaiting speaker review`; held rows are not counted in "source(s) left", so a run with only held rows ends with
+        `no remaining work — done.` Emergency off switch: `EXTRACT_HOLD_UNREVIEWED_VOICES=0` (default on). (`overnightExtract.ts` has no hold.)
       - **Runner, after Paul has assigned some:** list the pending rows that have a review
         (`sources?speaker_names=not.is.null&processing_status=eq.pending&select=external_id`), then re-attach each under the same guards as
         `scratchpad/batch3/reattach.sh` (no extraction process alive, row pending, no `raw_insights`, usage guard), with a NEW key list and marker

@@ -111,6 +111,7 @@ async function main() {
   const { formatCliStats, cliCircuit } = await import('../lib/llm')
   const { usageGate, planPause, quarantineReason, PipelineHaltError } = await import('../lib/usageLimit')
   const { reportHalt } = await import('../lib/haltNotice')
+  const { holdUnreviewedVoicesEnabled, isHeldForSpeakerReview, UNNAMED_VOICE_SQL_REGEX } = await import('../lib/speakerHold')
   const { classifyOpenJobs, describeWork, runIsFinished, runnableJobTypes } = await import('../lib/runnableWork')
   type UsageLimitErr = import('../lib/usageLimit').UsageLimitError
   if (!supabaseAdmin) throw new Error('Supabase not configured')
@@ -136,7 +137,43 @@ async function main() {
     return new Set(rows.map(r => r.source_id))
   }
 
-  async function pendingGoodTranscripts(extracted: Set<string>): Promise<string[]> {
+  /**
+   * Pending episodes still waiting for Paul's speaker review (lib/speakerHold.ts). Two cheap passes, no full
+   * transcript load for the bulk: (1) pending diarized rows whose transcript has `Speaker N: ` and which have
+   * no saved review are held outright (the server-side regex is the one /admin/speakers uses); (2) the few
+   * rows WITH a saved review are read in full, because answers of "Not A Guest" release them and a saved
+   * name that is not yet re-attached does not.
+   */
+  async function heldForSpeakerReview(): Promise<Set<string>> {
+    const held = new Set<string>()
+    if (!holdUnreviewedVoicesEnabled()) return held
+    const unreviewed = await selectAllPaged<{ id: string }>((from, to) =>
+      db
+        .from('sources')
+        .select('id')
+        .in('transcript_origin', ['deepgram', 'published'])
+        .eq('processing_status', 'pending')
+        .is('speaker_names', null)
+        .filter('transcript', 'match', UNNAMED_VOICE_SQL_REGEX)
+        .order('id')
+        .range(from, to)
+    )
+    for (const r of unreviewed) held.add(r.id)
+    const reviewed = await selectAllPaged<{ id: string; transcript: string | null; speaker_names: unknown }>((from, to) =>
+      db
+        .from('sources')
+        .select('id, transcript, speaker_names')
+        .in('transcript_origin', ['deepgram', 'published'])
+        .eq('processing_status', 'pending')
+        .not('speaker_names', 'is', null)
+        .order('id')
+        .range(from, to)
+    )
+    for (const r of reviewed) if (isHeldForSpeakerReview(r.transcript, r.speaker_names)) held.add(r.id)
+    return held
+  }
+
+  async function pendingGoodTranscripts(extracted: Set<string>): Promise<{ ids: string[]; held: number }> {
     const rows = await selectAllPaged<{ id: string }>((from, to) =>
       db
         .from('sources')
@@ -152,7 +189,12 @@ async function main() {
         .order('date', { ascending: false }) // newest first, as asked
         .range(from, to)
     )
-    return rows.map(r => r.id).filter(id => !extracted.has(id))
+    const pending = rows.map(r => r.id).filter(id => !extracted.has(id))
+    // Held rows are dropped here, so every caller (fresh batch, worker refill, "source(s) left",
+    // the finished check) sees only what may run; a held row is never counted as work.
+    const heldIds = await heldForSpeakerReview()
+    const ids = pending.filter(id => !heldIds.has(id))
+    return { ids, held: pending.length - ids.length }
   }
 
   const healCounts = new Map<string, number>()
@@ -305,7 +347,9 @@ async function main() {
 
       // The consolidate lane starts no extractions and has no use for the source list.
       const extracted = laneEnqueuesExtractions(lane) ? await extractedIds() : new Set<string>()
-      const remaining = laneEnqueuesExtractions(lane) ? await pendingGoodTranscripts(extracted) : []
+      const picked = laneEnqueuesExtractions(lane) ? await pendingGoodTranscripts(extracted) : { ids: [] as string[], held: 0 }
+      const remaining = picked.ids
+      if (picked.held > 0) console.log(`[${now()}] held ${picked.held} episode(s) awaiting speaker review`)
 
       // Back-pressure: if the last round healed failures and completed nothing,
       // the CLI is probably in a usage-limit window. Drain what exists rather
