@@ -31,9 +31,18 @@ test('only the Anecdote kind sets the corpus-exclusion flag', () => {
     assert.equal(isCorpusExcluded(k), false, String(k))
   }
   assert.deepEqual(corpusExclusionFields('Anecdote'), { corpus_excluded: true })
-  // Every other row is written exactly as before (no new column in the insert).
-  assert.deepEqual(corpusExclusionFields('Protocol'), {})
-  assert.deepEqual(corpusExclusionFields(null), {})
+  // Every row carries the flag explicitly, so a bulk insert never sends null for a NOT NULL column.
+  assert.deepEqual(corpusExclusionFields('Protocol'), { corpus_excluded: false })
+  assert.deepEqual(corpusExclusionFields(null), { corpus_excluded: false })
+})
+
+test('a mixed batch of rows has identical key sets and no null flag', () => {
+  const kinds = ['Anecdote', 'Protocol', null, 'Mechanism', 'Anecdote', undefined] as const
+  const rows = kinds.map((k, i) => ({ id: i, statement: 's', ...corpusExclusionFields(k) }))
+  const keys = new Set(rows.map(r => Object.keys(r).sort().join(',')))
+  assert.equal(keys.size, 1)
+  for (const r of rows) assert.equal(typeof r.corpus_excluded, 'boolean')
+  assert.deepEqual(rows.map(r => r.corpus_excluded), [true, false, false, false, true, false])
 })
 
 test('the gate keeps a faithful anecdote and still rejects an unresolvable quote', () => {

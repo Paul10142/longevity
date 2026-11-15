@@ -374,9 +374,13 @@ export function isCorpusExcluded(insightType: InsightType | null | undefined): b
   return insightType === 'Anecdote'
 }
 
-/** Insert fragment for the flag. Empty for every other row, so rows that are not excluded are written exactly as before. */
-export function corpusExclusionFields(insightType: InsightType | null | undefined): { corpus_excluded?: true } {
-  return isCorpusExcluded(insightType) ? { corpus_excluded: true } : {}
+/**
+ * Insert fragment for the flag. EVERY row carries it explicitly (true for anecdotes, false otherwise): a bulk
+ * insert whose rows have different key sets sends null for the missing key, and `corpus_excluded` is NOT NULL
+ * (migration 040), so a chunk mixing anecdotes with other facts failed on 2026-11-15.
+ */
+export function corpusExclusionFields(insightType: InsightType | null | undefined): { corpus_excluded: boolean } {
+  return { corpus_excluded: isCorpusExcluded(insightType) }
 }
 
 /** Coerce the model's raw insight list into stored shape; drops malformed and low-value entries. */
