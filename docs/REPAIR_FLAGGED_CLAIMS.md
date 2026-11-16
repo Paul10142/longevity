@@ -87,6 +87,33 @@ claim takes a few minutes. Measured on the 20-claim dry run of 2026-11-08: 34.4 
 * Progress: `scratchpad/runs/repair-<stamp>.jsonl` (one JSON line per claim) plus the tee'd
   `repairFlaggedClaims-<stamp>.log`. A dry run also writes `repair-<stamp>-dryrun.md`.
 
+## When the database blips (`lib/repairResilience.ts`)
+
+On 2026-11-16 the full run died after two claims on one `TimeoutError` (the 30 second fetch timeout in
+`lib/supabaseServer.ts`), ending a 28-hour job. Now:
+
+* **Every database call in the script retries a transient failure** (timeout, `fetch failed`, a 5xx answer) with a
+  growing wait (2 s, 4 s, 8 s, ...) for up to 2 minutes (`REPAIR_DB_RETRY_MS` in the environment overrides it, in
+  milliseconds). A real database error (constraint, missing column) is not retried. Each retry prints a `[net]` line.
+* **A claim that still fails after that is skipped, not fatal.** It prints `NOT FINISHED, skipped for now`, is
+  counted in the tally as `not_finished`, gets a line in the progress file, and the run goes on to the next claim.
+  Nothing is hidden: the claim has no finished audit row, so the next `--apply` picks it up again. **Three claims in
+  a row** that cannot be finished stop the run with exit code 2 and a plain message (the database or network is
+  down); a finished claim resets the count. A usage limit or a halted CLI still stops the run (exit 2) at once.
+* **An insert is never blindly repeated.** `claim_repairs` has a unique key only for `repaired` and `canonical_ok`;
+  the `failed` / `needs_video` / `cannot_repair` / `refused` rows have none, so after a lost answer the audit insert
+  first looks for its own row (same claim, run and outcome) and only inserts if it is missing.
+* **Why repeating the split is safe.** `apply_claim_split` locks the claim, flag and member rows before it reads
+  anything, and answers `already_applied` when a `repaired` / `canonical_ok` audit row exists. The new claim ids are
+  fixed in the plan (also the plan saved to `scratchpad/runs/repair-pending-splits/`), so a repeat after a lost
+  answer finds the finished split and writes nothing; a repeat that arrives while the first call is still running
+  waits for its lock and then gets the same answer (`tests/claimSplitSql.test.ts` runs exactly that against real
+  Postgres: one `applied`, one `already_applied`, one audit row, two claims).
+* **A flag note that never landed is added on the next run.** A claim left hidden (`failed`, `needs_video`,
+  `cannot_repair`) is skipped on resume because its audit row exists. If the call that writes the explanation onto
+  the flag was the one that failed, `--apply` now adds the note first (`repair note added to X of Y flag(s)`);
+  `--stats` and a dry run show how many are waiting.
+
 ## Commands
 
 ```bash

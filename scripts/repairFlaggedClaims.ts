@@ -39,8 +39,10 @@
  * One claim at a time. Resumable and idempotent: a finished claim is never picked again, and a
  * claim whose audit row was written but whose claim row was not is finished on the next run.
  * `raw_insights` are never touched. Before every batch it runs `sh ~/.claude/usage-guard/check.sh`
- * and stops when that exits 1. Exit codes: 0 finished, 2 stopped early (usage limit, halted CLI,
- * repeated judge errors), 3 usage guard said stop.
+ * and stops when that exits 1. Every database call retries a transient failure (timeout, fetch failed, 5xx) for up to
+ * two minutes (lib/repairResilience.ts); a claim that still fails is logged as NOT FINISHED and the run goes on to the next
+ * one (it is tried again on the next run). Exit codes: 0 finished, 2 stopped early (usage limit, halted CLI,
+ * repeated judge errors, or 3 claims in a row not finished), 3 usage guard said stop.
  *
  * The wording rules are in lib/repairRules.ts, deliberately apart from lib/extraction.ts.
  */
@@ -62,7 +64,8 @@ import {
   repairClaim, orderCandidates, stratifiedSample, stakesTier, sameText,
   type Candidate, type MemberPassage, type RepairResult, type RepairOutcome, type RepairDeps,
 } from '../lib/claimRepair'
-import { flagFacts, flagNote, resolutionFor, originalDetail } from '../lib/repairFlags'
+import { flagFacts, flagNote, resolutionFor, originalDetail, noteMissing } from '../lib/repairFlags'
+import { dbRetry, insertIdempotent, classifyClaimError, FailureStreak } from '../lib/repairResilience'
 import {
   buildSplitPlan, describeSplit, writeSplit, retryPendingSplits, splitWriterInstalled, loadPlans, SplitPlanError,
   type SplitDeps, type SplitOutcome,
@@ -112,7 +115,7 @@ type FlagRow = {
   id: string; claim_id: string; detail: string | null; evidence: Record<string, unknown> | null; created_at: string
   claims: { id: string; canonical_statement: string; context_note: string | null; status: string; member_count: number; created_at: string } | null
 }
-type RepairRow = { claim_id: string; outcome: RepairOutcome; new_statement: string | null; source: string | null; member_raw_insight_id: string | null }
+type RepairRow = { claim_id: string; outcome: RepairOutcome; new_statement: string | null; source: string | null; member_raw_insight_id: string | null; run_id: string | null; note: string | null }
 
 type Work = Candidate & {
   flag: FlagRow
@@ -121,13 +124,16 @@ type Work = Candidate & {
   pending: RepairRow | null
 }
 
+/** A claim whose repair ended hidden (failed, needs video, ...) but whose flag never got that run's note. */
+type Reannotate = { w: Work; outcome: RepairOutcome; note: string; runId: string }
+
 async function loadRepairs(db: Db): Promise<{ rows: RepairRow[]; tableExists: boolean }> {
   const { selectAllPaged } = await import('../lib/pagination')
   try {
     const rows = await selectAllPaged<RepairRow & { created_at: string }>(
-      (from, to) => db.from('claim_repairs')
-        .select('claim_id, outcome, new_statement, source, member_raw_insight_id, created_at')
-        .order('created_at', { ascending: true }).order('claim_id', { ascending: true }).range(from, to)
+      (from, to) => dbRetry('read claim_repairs', () => db.from('claim_repairs')
+        .select('claim_id, outcome, new_statement, source, member_raw_insight_id, run_id, note, created_at')
+        .order('created_at', { ascending: true }).order('claim_id', { ascending: true }).range(from, to))
     )
     return { rows, tableExists: true }
   } catch (err) {
@@ -136,13 +142,13 @@ async function loadRepairs(db: Db): Promise<{ rows: RepairRow[]; tableExists: bo
   }
 }
 
-async function loadWork(db: Db, args: Args): Promise<{ work: Work[]; totalOpen: number; notQuarantined: number; skipped: Record<string, number>; tableExists: boolean }> {
+async function loadWork(db: Db, args: Args): Promise<{ work: Work[]; reannotate: Reannotate[]; totalOpen: number; notQuarantined: number; skipped: Record<string, number>; tableExists: boolean }> {
   const { selectAllPaged } = await import('../lib/pagination')
   const flags = await selectAllPaged<FlagRow>(
-    (from, to) => db.from('claim_flags')
+    (from, to) => dbRetry('read open flags', () => db.from('claim_flags')
       .select('id, claim_id, detail, evidence, created_at, claims(id, canonical_statement, context_note, status, member_count, created_at)')
       .eq('rule', 'extraction_fidelity').is('resolved_at', null)
-      .order('claim_id', { ascending: true }).range(from, to)
+      .order('claim_id', { ascending: true }).range(from, to))
   )
   const { rows: repairs, tableExists } = await loadRepairs(db)
   const lastByClaim = new Map<string, RepairRow>()
@@ -151,6 +157,7 @@ async function loadWork(db: Db, args: Args): Promise<{ work: Work[]; totalOpen: 
   const skipped: Record<string, number> = {}
   let notQuarantined = 0
   const work: Work[] = []
+  const reannotate: Reannotate[] = []
   for (const f of flags) {
     const c = f.claims
     if (!c) continue
@@ -158,17 +165,22 @@ async function loadWork(db: Db, args: Args): Promise<{ work: Work[]; totalOpen: 
     if (args.claims.length && !args.claims.some(p => c.id.startsWith(p))) continue
     const last = lastByClaim.get(c.id)
     const pending = last && (last.outcome === 'repaired' || last.outcome === 'canonical_ok') ? last : null
-    if (!pending && last && TERMINAL_HIDDEN.includes(last.outcome) && !args.retry) {
-      skipped[last.outcome] = (skipped[last.outcome] ?? 0) + 1
-      continue
-    }
     const facts = flagFacts(f)
-    work.push({
+    const item: Work = {
       claimId: c.id, claim: c.canonical_statement, verdict: facts.verdict, offending: facts.offending,
       memberCount: c.member_count, createdAt: c.created_at, flag: f, contextNote: c.context_note, pending,
-    })
+    }
+    if (!pending && last && TERMINAL_HIDDEN.includes(last.outcome) && !args.retry) {
+      skipped[last.outcome] = (skipped[last.outcome] ?? 0) + 1
+      // Finished, but did its note reach the flag? (The write can be lost with the answer; see lib/repairResilience.ts.)
+      if (last.run_id && noteMissing({ outcome: last.outcome, run_id: last.run_id }, f)) {
+        reannotate.push({ w: item, outcome: last.outcome, note: last.note ?? '', runId: last.run_id })
+      }
+      continue
+    }
+    work.push(item)
   }
-  return { work, totalOpen: flags.length, notQuarantined, skipped, tableExists }
+  return { work, reannotate, totalOpen: flags.length, notQuarantined, skipped, tableExists }
 }
 
 type MemberRow = {
@@ -180,9 +192,9 @@ type MemberRow = {
 async function loadMembers(db: Db, claimId: string): Promise<MemberPassage[]> {
   const { selectAllPaged } = await import('../lib/pagination')
   const rows = await selectAllPaged<MemberRow>(
-    (from, to) => db.from('claim_members')
+    (from, to) => dbRetry(`read members of ${claimId}`, () => db.from('claim_members')
       .select('raw_insight_id, matched_by, raw_insights(statement, context_note, direct_quote, chunks(content))')
-      .eq('claim_id', claimId).order('raw_insight_id', { ascending: true }).range(from, to)
+      .eq('claim_id', claimId).order('raw_insight_id', { ascending: true }).range(from, to))
   )
   return rows.filter(r => r.raw_insights).map(r => ({
     rawInsightId: r.raw_insight_id, matchedBy: r.matched_by, statement: r.raw_insights!.statement,
@@ -195,12 +207,16 @@ async function loadMembers(db: Db, claimId: string): Promise<MemberPassage[]> {
 
 async function insertAudit(db: Db, w: Work, r: RepairResult, runId: string): Promise<void> {
   const facts = flagFacts(w.flag)
-  const { error } = await db.from('claim_repairs').insert({
+  // A repeat after a lost answer must not write a second row: claim_repairs is unique only for repaired / canonical_ok.
+  const { error } = await insertIdempotent(`audit row for ${w.claimId}`, () => db.from('claim_repairs').insert({
     claim_id: w.claimId, flag_id: w.flag.id, run_id: runId, outcome: r.outcome, source: r.source,
     original_statement: w.claim, verdict_before: facts.verdict, offending_before: facts.offending, reasoning_before: facts.reasoning,
     new_statement: r.newStatement, member_raw_insight_id: r.memberRawInsightId,
     // The audit jsonb: every judged step, then the per-sentence ledger (kept / edited / removed, with reasons).
     attempts: [...r.attempts, { kind: 'ledger', passages: r.passageCount, units: r.ledger }], note: r.note, model: MODEL,
+  }), async () => {
+    const { data, error: lookErr } = await db.from('claim_repairs').select('id').eq('claim_id', w.claimId).eq('run_id', runId).eq('outcome', r.outcome).limit(1)
+    return { found: !lookErr && (data?.length ?? 0) > 0, error: lookErr }
   })
   if (error) throw new Error(`audit row for ${w.claimId}: ${error.message}`)
 }
@@ -210,43 +226,44 @@ async function applyRepaired(db: Db, w: Work, outcome: 'repaired' | 'canonical_o
   const claimId = w.claimId
   if (outcome === 'repaired') {
     if (!newStatement) throw new Error(`repaired claim ${claimId} has no new statement`)
-    const { data: cur, error: cErr } = await db.from('claims').select('canonical_statement, context_note').eq('id', claimId).single()
+    const { data: cur, error: cErr } = await dbRetry('reload claim', () => db.from('claims').select('canonical_statement, context_note').eq('id', claimId).single())
     if (cErr || !cur) throw new Error(`reload ${claimId}: ${cErr?.message}`)
     const current = (cur as { canonical_statement: string }).canonical_statement
     if (!sameText(current, newStatement)) {
       // Only overwrite the wording we read and repaired; anything else was edited meanwhile.
       if (!sameText(current, w.claim)) throw new Error(`claim ${claimId} changed while it was being repaired; left as it is`)
-      const { error } = await db.from('claims').update({ canonical_statement: newStatement }).eq('id', claimId).eq('canonical_statement', current)
+      const { error } = await dbRetry('update claim wording', () => db.from('claims').update({ canonical_statement: newStatement }).eq('id', claimId).eq('canonical_statement', current))
       if (error) throw new Error(`update ${claimId}: ${error.message}`)
     }
     // The vector must follow the text it indexes (as enrichClaimCanonical does).
     const { generateEmbedding, insightEmbeddingText } = await import('../lib/embeddings')
     const vector = await generateEmbedding(insightEmbeddingText({ statement: newStatement, context_note: (cur as { context_note: string | null }).context_note }))
-    const { error: eErr } = await db.from('claim_embeddings').upsert({ claim_id: claimId, embedding: vector, updated_at: new Date().toISOString() }, { onConflict: 'claim_id' })
+    const { error: eErr } = await dbRetry('upsert embedding', () => db.from('claim_embeddings').upsert({ claim_id: claimId, embedding: vector, updated_at: new Date().toISOString() }, { onConflict: 'claim_id' }))
     if (eErr) throw new Error(`embedding ${claimId}: ${eErr.message}`)
   }
   // The flag resolves, then the gate puts the claim back (lib/claimGate.ts decides the status).
   const resolution = resolutionFor(outcome)!
-  const { error: fErr } = await db.from('claim_flags').update({ resolved_at: new Date().toISOString(), resolution }).eq('id', w.flag.id).is('resolved_at', null)
+  const { error: fErr } = await dbRetry('resolve flag', () => db.from('claim_flags').update({ resolved_at: new Date().toISOString(), resolution }).eq('id', w.flag.id).is('resolved_at', null))
   if (fErr) throw new Error(`resolve flag ${w.flag.id}: ${fErr.message}`)
-  const { data: row } = await db.from('claims').select('status').eq('id', claimId).maybeSingle()
+  const { data: row, error: rErr } = await dbRetry('read claim status', () => db.from('claims').select('status').eq('id', claimId).maybeSingle())
+  if (rErr) throw new Error(`read status ${claimId}: ${rErr.message}`)
   const next = row ? statusAfterResolution((row as { status: string }).status, 'extraction_fidelity', resolution) : null
   if (next) {
-    const { error } = await db.from('claims').update({ status: next }).eq('id', claimId).eq('status', 'flagged')
+    const { error } = await dbRetry('restore claim status', () => db.from('claims').update({ status: next }).eq('id', claimId).eq('status', 'flagged'))
     if (error) throw new Error(`restore ${claimId}: ${error.message}`)
   }
 }
 
 /** The claim stays hidden; its flag says why, in words Paul sees at /admin/flags. */
-async function annotateFlag(db: Db, w: Work, r: RepairResult, runId: string): Promise<void> {
+async function annotateFlag(db: Db, w: Work, r: Pick<RepairResult, 'outcome' | 'note'>, runId: string): Promise<void> {
   const n = flagNote(r.outcome, r.note, w.flag)
   if (!n) return
   const evidence = { ...(w.flag.evidence ?? {}), repair: { outcome: r.outcome, note: r.note, run_id: runId, at: new Date().toISOString(), original_detail: originalDetail(w.flag) } }
-  const { error } = await db.from('claim_flags').update({ detail: n.detail, evidence }).eq('id', w.flag.id).is('resolved_at', null)
+  const { error } = await dbRetry('annotate flag', () => db.from('claim_flags').update({ detail: n.detail, evidence }).eq('id', w.flag.id).is('resolved_at', null))
   if (error) throw new Error(`annotate flag ${w.flag.id}: ${error.message}`)
   if (r.outcome === 'needs_video') {
     // Migration 036 (the review screen's "Needs Video Check" list). Absent until it is applied; not an error.
-    const { error: vErr } = await db.from('claim_flags').update({ needs_video_check_at: new Date().toISOString() }).eq('id', w.flag.id).is('resolved_at', null)
+    const { error: vErr } = await dbRetry('mark video check', () => db.from('claim_flags').update({ needs_video_check_at: new Date().toISOString() }).eq('id', w.flag.id).is('resolved_at', null))
     if (vErr && !/needs_video_check_at/.test(vErr.message)) throw new Error(`video note ${w.flag.id}: ${vErr.message}`)
   }
 }
@@ -259,7 +276,7 @@ async function applyResult(db: Db, w: Work, r: RepairResult, runId: string): Pro
     } catch (err) {
       // A half-applied repair that cannot finish must not leave an audit row claiming it did.
       if (/changed while it was being repaired/.test(err instanceof Error ? err.message : '')) {
-        await db.from('claim_repairs').delete().eq('claim_id', w.claimId).eq('run_id', runId).in('outcome', ['repaired', 'canonical_ok'])
+        await dbRetry('remove audit row', () => db.from('claim_repairs').delete().eq('claim_id', w.claimId).eq('run_id', runId).in('outcome', ['repaired', 'canonical_ok']))
       }
       throw err
     }
@@ -322,7 +339,7 @@ function block(i: number, total: number, w: Work, r: RepairResult, secs: number)
 // ── Stats ───────────────────────────────────────────────────────
 
 async function stats(db: Db, args: Args): Promise<void> {
-  const { work, totalOpen, notQuarantined, skipped, tableExists } = await loadWork(db, args)
+  const { work, reannotate, totalOpen, notQuarantined, skipped, tableExists } = await loadWork(db, args)
   const count = <T,>(xs: T[], k: (x: T) => string) => { const m: Record<string, number> = {}; for (const x of xs) m[k(x)] = (m[k(x)] ?? 0) + 1; return m }
   const show = (o: Record<string, number>) => Object.entries(o).sort((a, b) => b[1] - a[1]).map(([k, v]) => `${k} ${v}`).join(', ') || 'none'
   const multi = work.filter(w => w.memberCount > 1)
@@ -336,6 +353,7 @@ async function stats(db: Db, args: Args): Promise<void> {
   console.log(`  insights per claim:                   ${show(count(work, w => (w.memberCount <= 1 ? '1' : w.memberCount === 2 ? '2' : w.memberCount <= 5 ? '3-5' : '6+')))}`)
   console.log(`  half-applied (audit row, flag open):  ${work.filter(w => w.pending).length}`)
   console.log(`  splits saved, waiting for a write retry: ${loadPlans(PENDING_SPLITS_DIR).plans.length}`)
+  console.log(`  finished but note missing on the flag: ${reannotate.length}  (--apply adds the note again)`)
   console.log(`Review screen: ${ADMIN_FLAGS_URL}`)
 }
 
@@ -358,7 +376,9 @@ async function main() {
   const splitDeps: SplitDeps = {
     embedBatch: async texts => (await import('../lib/embeddings')).generateEmbeddingsBatch(texts),
     rpc: async (fn, rpcArgs) => {
-      const { data, error } = await db.rpc(fn, rpcArgs)
+      // Safe to repeat: apply_claim_split locks the claim first and answers 'already_applied' once a repaired row exists,
+      // and the saved plan keeps its new-claim ids, so a retry after a lost answer can never write the split twice.
+      const { data, error } = await dbRetry(`rpc ${fn}`, () => db.rpc(fn, rpcArgs))
       return { data, error: error ? { message: error.message, code: error.code } : null }
     },
   }
@@ -401,6 +421,19 @@ async function main() {
     : pendingFirst
   console.log(`${loaded.totalOpen} open flags; ${loaded.work.length} to repair${args.limit ? `, doing ${todo.length}` : ''}; ${loaded.notQuarantined} not quarantined and skipped; skipped as already finished: ${JSON.stringify(loaded.skipped)}`)
 
+  // A claim whose repair ended hidden but whose flag never got its note (the write was lost) would be skipped as
+  // finished forever: put the note on now. No model call, safe to repeat; a failure here only logs.
+  if (loaded.reannotate.length) {
+    if (!args.apply) console.log(`${loaded.reannotate.length} finished claim(s) have no repair note on their flag; --apply would add it.`)
+    else {
+      let added = 0
+      for (const x of loaded.reannotate) {
+        try { await annotateFlag(db, x.w, { outcome: x.outcome, note: x.note }, x.runId); added++ } catch (err) { console.error(`could not add the missing note to flag ${x.w.flag.id}: ${err instanceof Error ? err.message : err} (tried again on the next run)`) }
+      }
+      console.log(`repair note added to ${added} of ${loaded.reannotate.length} flag(s) that were missing it`)
+    }
+  }
+
   const deps: RepairDeps = {
     judge: (statement, chunk, opts) => judgeFidelity(statement, chunk, opts),
     rewrite: async req => parseUnitRewrite(await claudeJson(UNIT_REPAIR_SYSTEM, buildUnitUser(req), 3000, MODEL, 'high')),
@@ -415,6 +448,7 @@ async function main() {
   let exitCode = 0
   const splits = { written: 0, stale: 0, writeFailed: 0, unplannable: 0, wouldWrite: 0 }
   let consecutiveWriteErrors = 0
+  const claimFailures = new FailureStreak()
 
   for (let i = 0; i < todo.length; i++) {
     if (i % args.batch === 0) {
@@ -492,15 +526,30 @@ async function main() {
       report.push(text)
       appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: written && result.outcome !== 'error', before: w.claim, ...result })}\n`)
       consecutiveErrors = result.outcome === 'error' ? consecutiveErrors + 1 : 0
+      claimFailures.success()
       if (consecutiveWriteErrors >= MAX_CONSECUTIVE_ERRORS) { console.error(`Stopping: ${consecutiveWriteErrors} split writes failed in a row (the database or the embedding service is probably unwell). Nothing was half-written; the finished repairs are saved in ${PENDING_SPLITS_DIR}/ and retried first on the next --apply run.`); exitCode = 2; break }
       if (consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) { console.error(`Stopping: ${consecutiveErrors} judge errors in a row (the CLI is probably unwell). Nothing was recorded for them; re-run to retry.`); exitCode = 2; break }
     } catch (err) {
-      if (err instanceof UsageLimitError || err instanceof PipelineHaltError) {
-        console.error(`Stopping at claim ${i + 1}/${todo.length}: ${err.message}. Re-run the same command; finished claims are skipped.`)
+      if (classifyClaimError(err) === 'halt') {
+        console.error(`Stopping at claim ${i + 1}/${todo.length}: ${err instanceof Error ? err.message : err}. Re-run the same command; finished claims are skipped.`)
         exitCode = 2
         break
       }
-      throw err
+      // One claim's error (a database call that kept failing after its retries, or the claim changed meanwhile) must not end
+      // a run of a thousand claims. Whatever reached the database is finished by the next run (see docs/REPAIR_FLAGGED_CLAIMS.md);
+      // only several claims in a row stop it.
+      const message = err instanceof Error ? err.message : String(err)
+      tally.not_finished = (tally.not_finished ?? 0) + 1
+      const text = `── [${i + 1}/${todo.length}] claim ${w.claimId}: NOT FINISHED, skipped for now and tried again on the next run\n   ${clip(message, 500)}`
+      console.error(text)
+      report.push(text)
+      appendFileSync(progressFile, `${JSON.stringify({ at: new Date().toISOString(), claimId: w.claimId, applied: false, outcome: 'not_finished', error: message })}\n`)
+      if (claimFailures.failure() === 'stop') {
+        console.error(`Stopping: ${claimFailures.count} claims in a row could not be finished (the database or the network is probably down). Nothing half-written is left that the next run cannot finish; re-run the same command once it is back (finished claims are skipped).`)
+        exitCode = 2
+        break
+      }
+      continue
     }
     if ((i + 1) % args.batch === 0) console.log(`…${i + 1}/${todo.length} done, ${((Date.now() - started) / 60000).toFixed(1)} min, ${JSON.stringify(tally)}`)
   }

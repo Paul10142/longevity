@@ -45,6 +45,17 @@ export function flagNote(outcome: RepairOutcome, note: string, flag: FlagLike): 
   return { label, detail: `${label}: ${note}${was ? ` (flagged as ${was})` : ''}` }
 }
 
+/**
+ * A finished claim whose "left hidden" note never reached its flag: the audit row says the repair ended
+ * failed / needs_video / cannot_repair / refused, but the open flag does not carry that run's note (the write
+ * was lost). Such a claim is skipped as finished, so without this check its flag would never explain itself.
+ */
+export function noteMissing(audit: { outcome: RepairOutcome; run_id: string | null }, flag: FlagLike): boolean {
+  if (!NOTE_LABEL[audit.outcome]) return false
+  const repair = flag.evidence?.repair as { run_id?: unknown } | undefined
+  return !repair || repair.run_id !== audit.run_id
+}
+
 /** What the resolved flag records for each outcome that puts the claim back. */
 export function resolutionFor(outcome: RepairOutcome): 'reworded' | 'false_positive' | null {
   if (outcome === 'repaired') return 'reworded'

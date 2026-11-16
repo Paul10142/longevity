@@ -79,3 +79,19 @@ test('a thrown network error that outlasts the budget is rethrown', async () => 
     /fetch failed/
   )
 })
+
+test('a caller can widen what counts as transient (the repair script adds 500-style answers)', async () => {
+  const c = fakeClock()
+  let calls = 0
+  const res = await withNetworkRetry('t', async () => {
+    calls++
+    return calls < 2 ? { error: { message: '500 Internal Server Error' } } : { error: null }
+  }, { ...c, onRetry: () => {}, isTransient: m => /\b500\b/.test(m) })
+  assert.equal(res.error, null)
+  assert.equal(calls, 2)
+  // and the default still treats a bare 500 as a real error
+  let n = 0
+  const plain = await withNetworkRetry('t', async () => { n++; return { error: { message: '500 Internal Server Error' } } }, { ...c, onRetry: () => {} })
+  assert.equal(plain.error?.message, '500 Internal Server Error')
+  assert.equal(n, 1)
+})
