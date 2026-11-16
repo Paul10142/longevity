@@ -33,8 +33,15 @@
 import { claudeJson, CLAUDE_BULK_MODEL, CLAUDE_JUDGMENT_MODEL, ModelRefusalError } from './llm'
 import { PipelineHaltError, UsageLimitError } from './usageLimit'
 
-const CONTACT_MAILTO = process.env.REFERENCE_CONTACT_EMAIL || 'team@admissionsacademy.org'
-const USER_AGENT = `LifestyleAcademy/1.0 (mailto:${CONTACT_MAILTO})`
+// A contact address is sent to PubMed, Crossref and OpenAlex (their "polite pool" convention) ONLY when
+// REFERENCE_CONTACT_EMAIL is set on purpose. There is no default: nobody's address goes to an outside
+// service unless its owner put it there. Without it the requests carry only the client name.
+const CONTACT_MAILTO = process.env.REFERENCE_CONTACT_EMAIL?.trim() || null
+const USER_AGENT = CONTACT_MAILTO ? `LifestyleAcademy/1.0 (mailto:${CONTACT_MAILTO})` : 'LifestyleAcademy/1.0'
+/** `&name=<address>` when a contact address is configured, otherwise nothing. */
+function contactParam(name: 'email' | 'mailto'): string {
+  return CONTACT_MAILTO ? `&${name}=${encodeURIComponent(CONTACT_MAILTO)}` : ''
+}
 
 /** The judge must be at least this sure, otherwise the citation stays unlinked. */
 export const AUTO_ACCEPT_CONFIDENCE = 0.7
@@ -290,7 +297,7 @@ async function searchPubMed(query: string, hosts: Hosts, deps: LookupDeps): Prom
   const fail = (error: string): DbResult => ({ report: { name: 'pubmed', ok: false, count: 0, error }, items: [] })
   if (!q) return { report: { name: 'pubmed', ok: true, count: 0 }, items: [] }
   const key = process.env.NCBI_API_KEY ? `&api_key=${encodeURIComponent(process.env.NCBI_API_KEY)}` : ''
-  const common = `tool=lifestyleacademy&email=${encodeURIComponent(CONTACT_MAILTO)}${key}`
+  const common = `tool=lifestyleacademy${contactParam('email')}${key}`
   const s = await getWithRetry(
     `https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&retmax=8&sort=relevance&${common}&term=${encodeURIComponent(q)}`,
     hosts.pubmed, deps)
@@ -345,7 +352,7 @@ async function searchCrossref(query: string, doi: string | null, hosts: Hosts, d
   }
   const q = query.trim().slice(0, 300)
   if (!q) return { report: { name: 'crossref', ok: true, count: 0 }, items: [] }
-  const r = await getWithRetry(`https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(q)}&rows=4&mailto=${encodeURIComponent(CONTACT_MAILTO)}`, hosts.crossref, deps)
+  const r = await getWithRetry(`https://api.crossref.org/works?query.bibliographic=${encodeURIComponent(q)}&rows=4${contactParam('mailto')}`, hosts.crossref, deps)
   if (!r.ok) return fail(r.error)
   try {
     const items = ((JSON.parse(r.body).message?.items ?? []) as Parameters<typeof crossrefItem>[0][]).map(crossrefItem).filter((x): x is ResolvedRef => !!x)
@@ -368,7 +375,7 @@ async function searchOpenAlex(query: string, hosts: Hosts, deps: LookupDeps): Pr
   const q = query.trim().slice(0, 300)
   if (!q) return { report: { name: 'openalex', ok: true, count: 0 }, items: [] }
   const key = process.env.OPENALEX_API_KEY ? `&api_key=${encodeURIComponent(process.env.OPENALEX_API_KEY)}` : ''
-  const r = await getWithRetry(`https://api.openalex.org/works?search=${encodeURIComponent(q)}&per-page=5&mailto=${encodeURIComponent(CONTACT_MAILTO)}${key}`, hosts.openalex, deps)
+  const r = await getWithRetry(`https://api.openalex.org/works?search=${encodeURIComponent(q)}&per-page=5${contactParam('mailto')}${key}`, hosts.openalex, deps)
   if (!r.ok) return fail(r.error)
   try {
     const results = (JSON.parse(r.body).results ?? []) as {

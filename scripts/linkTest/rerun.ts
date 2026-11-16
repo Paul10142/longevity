@@ -19,6 +19,7 @@ import { createClient } from '@supabase/supabase-js'
 process.env.LLM_BACKEND = process.env.LLM_BACKEND || 'claude-code'
 
 import { createReferenceLookup, type EpisodeInfo, type ParsedRef } from '../../lib/referenceLookup'
+import { selectInsightsAboutStudy, type InsightCandidate } from '../../lib/claimLinking'
 import { trackCliCost } from '../../lib/llm'
 
 const [dumpFile, outFile, conc] = process.argv.slice(2)
@@ -30,7 +31,13 @@ function guard() {
   try { execSync('sh ~/.claude/usage-guard/check.sh', { stdio: 'pipe' }) } catch { console.log('USAGE GUARD: stop'); process.exit(1) }
 }
 
-type Dump = { sources: { id: string; title: string; authors: string[] | null }[]; mentions: { id: string; src: string; locator: string; raw: string; parsed: ParsedRef | null }[] }
+type Insight = InsightCandidate & { claimIds: string[] }
+type Dump = {
+  sources: { id: string; title: string; authors: string[] | null }[]
+  // `insights` (the statements of the citation's chunk that belong to a claim) is present in dumps made by dumpNew.ts;
+  // when it is, the claim-wording step (fix 6, lib/claimLinking.ts) runs on every resolved citation too.
+  mentions: { id: string; src: string; locator: string; raw: string; parsed: ParsedRef | null; insights?: Insight[]; oldLinkedClaimIds?: string[] }[]
+}
 
 async function main() {
   const dump: Dump = JSON.parse(readFileSync(dumpFile, 'utf8'))
@@ -54,6 +61,19 @@ async function main() {
       const t0 = Date.now()
       const { result, costUsd, calls } = await trackCliCost(() => lookup.resolveMention({ raw: m.raw, parsed: m.parsed ?? {}, episode: episodes.get(m.src)! }))
       const a = result.accepted
+      // Fix 6: which of the chunk's claims is this study about? Same call as production (lib/references.ts), recorded not written.
+      let claimLink: Record<string, unknown> | null = null
+      if (a && result.outcome === 'resolved' && m.insights) {
+        const t1 = Date.now()
+        const { result: picked, costUsd: linkCost } = await trackCliCost(() => selectInsightsAboutStudy({ raw: m.raw, parsed: m.parsed ?? {}, episode: episodes.get(m.src)!, study: a, insights: m.insights! }))
+        const chosen = new Set(picked.selectedIds)
+        claimLink = {
+          outcome: picked.outcome, considered: picked.considered, selectedIds: picked.selectedIds,
+          oldClaims: new Set(m.insights.flatMap(x => x.claimIds)).size,
+          newClaims: new Set(m.insights.filter(x => chosen.has(x.id)).flatMap(x => x.claimIds)).size,
+          costUsd: linkCost, ms: Date.now() - t1,
+        }
+      }
       done.push({
         i, src: m.src, raw: m.raw, context: m.parsed?.context ?? null,
         outcome: result.outcome, reason: result.reason, cacheHit: result.cacheHit, key: result.key,
@@ -61,7 +81,7 @@ async function main() {
         accepted: a ? { title: a.title, authors: a.authors.slice(0, 3), year: a.year, journal: a.journal, doi: a.doi, source: a.resolved_source } : null,
         nCandidates: result.candidates.length,
         top: result.candidates.slice(0, 4).map(c => `${c.title} | ${c.authors.slice(0, 2).join(', ')} | ${c.journal} | ${c.year} | ${c.doi} | ${c.resolved_source}`),
-        databases: result.databases, costUsd, modelCalls: calls, ms: Date.now() - t0,
+        databases: result.databases, costUsd, modelCalls: calls, ms: Date.now() - t0, claimLink,
       })
       writeFileSync(outFile, JSON.stringify(done, null, 1))
       console.log(`${String(i).padStart(3)} ${result.outcome.padEnd(9)} ${result.reason.padEnd(15)} ${m.raw.slice(0, 55)}${a ? ' => ' + a.title.slice(0, 60) : ''}`)
@@ -70,6 +90,7 @@ async function main() {
   await Promise.all(Array.from({ length: CONCURRENCY }, worker))
   const by: Record<string, number> = {}
   for (const r of done) by[r.outcome as string] = (by[r.outcome as string] ?? 0) + 1
-  console.log('finished', JSON.stringify(by), 'cost', done.reduce((s, r) => s + (r.costUsd as number), 0).toFixed(2))
+  const linkCost = done.reduce((s, r) => s + ((r.claimLink as { costUsd?: number } | null)?.costUsd ?? 0), 0)
+  console.log('finished', JSON.stringify(by), 'lookup cost', done.reduce((s, r) => s + (r.costUsd as number), 0).toFixed(2), 'claim-wording cost', linkCost.toFixed(2))
 }
 main().catch(e => { console.error(e); process.exit(1) })

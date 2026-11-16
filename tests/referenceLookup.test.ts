@@ -124,6 +124,31 @@ function setup(over: { world?: Partial<World>; stubs?: Partial<Stubs> } = {}) {
 
 const searches = (w: World, host: string) => w.calls.filter(c => c.host === host && (host !== 'pubmed' || c.url.includes('esearch'))).length
 
+// ── Privacy: no contact address leaves the machine unless someone set one on purpose ──
+
+test('privacy: requests to PubMed, Crossref and OpenAlex carry no email address when REFERENCE_CONTACT_EMAIL is unset', { skip: !!process.env.REFERENCE_CONTACT_EMAIL }, async () => {
+  const world = newWorld({ openalex: [PAPERS[1]] }) // PubMed and Crossref come back empty, so all three hosts are asked
+  const seen: { url: string; headers: string }[] = []
+  const inner = fakeFetch(world)
+  let t = 1_000
+  const lookup = createReferenceLookup({
+    fetch: (async (input: RequestInfo | URL, init?: RequestInit) => {
+      seen.push({ url: String(input), headers: JSON.stringify(init?.headers ?? {}) })
+      return inner(input, init)
+    }) as typeof fetch,
+    now: () => t, sleep: async ms => { t += ms },
+    planSearch: async () => ({}), judge: async () => ({ index: 0, confidence: 0.95 }),
+  })
+  const r = await lookup.resolveMention({ raw: 'the Belsky paper', parsed: { authors: ['Belsky'], context: 'pace of aging' }, episode: EPISODE })
+  assert.equal(r.outcome, 'resolved')
+  assert.ok(new Set(world.calls.map(c => c.host)).size === 3, `hosts asked: ${[...new Set(world.calls.map(c => c.host))]}`)
+  for (const s of seen) {
+    assert.doesNotMatch(s.url, /[?&](email|mailto)=/i, s.url)
+    assert.doesNotMatch(s.url + s.headers, /@/, 'no address in the URL or the headers')
+    assert.match(s.headers, /LifestyleAcademy/)
+  }
+})
+
 // ── Fix 1: PubMed first, retries, and failure is not "no results" ──
 
 test('fix 1: PubMed is searched and its paper (with abstract) is accepted; OpenAlex is never needed', async () => {
