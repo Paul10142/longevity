@@ -25,7 +25,7 @@ import {
   createReferenceLookup, normalizeTitle,
   type ParsedRef, type ResolvedRef, type EpisodeInfo, type MentionResult, type ReferenceLookup,
 } from './referenceLookup'
-import { selectInsightsAboutStudy, type InsightCandidate, type ClaimLinkResult } from './claimLinking'
+import { selectInsightsAboutStudy, chunksHoldingQuote, type InsightCandidate, type ClaimLinkResult } from './claimLinking'
 
 // Bulk tier: scanning every chunk for citation mentions.
 const REFERENCE_MODEL = CLAUDE_BULK_MODEL
@@ -180,10 +180,29 @@ async function upsertReference(r: ResolvedRef): Promise<string> {
 /** An extracted statement from a chunk that has become (part of) a claim, with the claims it belongs to. */
 type ChunkInsight = InsightCandidate & { claimIds: string[] }
 
-/** The statements of one chunk that belong to a claim. These are the only claims a citation in the chunk can reach. */
-async function claimedInsightsOfChunk(chunkId: string | null): Promise<ChunkInsight[]> {
-  if (!chunkId) return []
-  const { data: raws } = await db().from('raw_insights').select('id, statement, direct_quote').eq('chunk_id', chunkId)
+/** The chunks of the episode being worked on, kept between citations (they come ordered by time, so one episode's run together). */
+type EpisodeChunks = { sourceId: string | null; chunks: { id: string; content: string }[] }
+
+/**
+ * The chunk(s) a citation was said in: its saved link, or, when the episode's chunks were rebuilt and the link was
+ * cleared (most older citations), found again by the words the speaker said (lib/claimLinking.ts chunksHoldingQuote).
+ * Writes nothing: the saved link on the citation is left as it is.
+ */
+async function chunksOfMention(m: { source_id: string; chunk_id: string | null; raw_text: string }, memo: EpisodeChunks): Promise<string[]> {
+  if (m.chunk_id) return [m.chunk_id]
+  if (memo.sourceId !== m.source_id) {
+    memo.chunks = await selectAllPaged<{ id: string; content: string }>(
+      (from, to) => db().from('chunks').select('id, content').eq('source_id', m.source_id).range(from, to)
+    )
+    memo.sourceId = m.source_id
+  }
+  return chunksHoldingQuote(memo.chunks, m.raw_text)
+}
+
+/** The statements of these chunks that belong to a claim. These are the only claims a citation said there can reach. */
+async function claimedInsightsOfChunks(chunkIds: string[]): Promise<ChunkInsight[]> {
+  if (chunkIds.length === 0) return []
+  const { data: raws } = await db().from('raw_insights').select('id, statement, direct_quote').in('chunk_id', chunkIds)
   const rows = (raws ?? []) as { id: string; statement: string; direct_quote: string | null }[]
   if (rows.length === 0) return []
   const { data: members } = await db().from('claim_members').select('raw_insight_id, claim_id').in('raw_insight_id', rows.map(r => r.id))
@@ -251,6 +270,7 @@ export async function resolveReferences(
   const episodes = new Map<string, EpisodeInfo>()
   const deferred = new Set<string>()
   const cp: ResolveCheckpoint = { processed: 0, resolved: 0, not_found: 0, deferred: 0 }
+  const episodeChunks: EpisodeChunks = { sourceId: null, chunks: [] }
 
   while (Date.now() - started < timeBudgetMs) {
     let q = db()
@@ -275,7 +295,7 @@ export async function resolveReferences(
       let claimIds: string[] = []
       let linkFailed = false
       if (result.outcome === 'resolved' && result.accepted) {
-        const insights = await claimedInsightsOfChunk(m.chunk_id)
+        const insights = await claimedInsightsOfChunks(await chunksOfMention(m, episodeChunks))
         const picked = await selectInsightsAboutStudy({ raw: m.raw_text, parsed: m.parsed ?? {}, episode, study: result.accepted, insights })
         linkFailed = picked.outcome === 'failed'
         const chosen = new Set(picked.selectedIds)

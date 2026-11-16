@@ -8,7 +8,7 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
 import {
-  selectInsightsAboutStudy, buildClaimLinkPrompt, CLAIM_LINK_BATCH,
+  selectInsightsAboutStudy, buildClaimLinkPrompt, CLAIM_LINK_BATCH, chunksHoldingQuote, QUOTE_MIN_CHARS, MAX_QUOTE_CHUNKS,
   type ClaimLinkInput, type InsightCandidate,
 } from '../lib/claimLinking'
 import { ModelRefusalError } from '../lib/llm'
@@ -113,4 +113,33 @@ test('a study with no abstract and a mention with no described finding still bui
   assert.match(p, /Finding the speaker attributed to the study: n\/a/)
   assert.doesNotMatch(p, /abstract:/)
   assert.match(p, /authors n\/a, journal n\/a, year n\/a/)
+})
+
+// ── Finding a citation's chunk(s) again by the words the speaker said ───────────────────────────
+
+const CHUNKS = [
+  { id: 'c1', content: 'We talked about sleep.  The Epworth sleep survey is a good one. Then lunch.' },
+  { id: 'c2', content: 'Later: the Epworth sleep survey again, and the Minnesota Coronary Experiment, which had nearly 9,000 subjects, was recovered by Ramsden.' },
+  { id: 'c3', content: 'Unrelated talk about potatoes.' },
+]
+
+test('a distinctive quote finds the chunk it sits in (case, spacing and punctuation ignored)', () => {
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, 'the Minnesota   coronary experiment, which had nearly 9,000 subjects'), ['c2'])
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, 'THE MINNESOTA CORONARY EXPERIMENT, which had nearly 9,000 subjects!'), ['c2'])
+})
+
+test('a quote said in two or three places returns each of them, in more than that none', () => {
+  const same = (n: number) => Array.from({ length: n }, (_, i) => ({ id: `x${i}`, content: `part ${i}: the same long sentence appears here, ok` }))
+  assert.deepEqual(chunksHoldingQuote(same(2), 'the same long sentence appears here'), ['x0', 'x1'])
+  assert.equal(MAX_QUOTE_CHUNKS, 3)
+  assert.deepEqual(chunksHoldingQuote(same(3), 'the same long sentence appears here'), ['x0', 'x1', 'x2'])
+  assert.deepEqual(chunksHoldingQuote(same(4), 'the same long sentence appears here'), [])
+})
+
+test('a quote found nowhere, or too short to be distinctive, finds nothing', () => {
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, 'a sentence the speaker never said in this episode'), [])
+  assert.ok('the Epworth sleep survey'.length < QUOTE_MIN_CHARS)
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, 'the Epworth sleep survey'), [])
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, ''), [])
+  assert.deepEqual(chunksHoldingQuote(CHUNKS, null), [])
 })

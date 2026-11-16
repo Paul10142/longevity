@@ -54,6 +54,33 @@ export type ClaimLinkDeps = {
   judge: (input: ClaimLinkInput) => Promise<number[]>
 }
 
+/**
+ * Which chunk(s) of the episode did the speaker say this in? A saved citation points at its chunk, but that link
+ * is cleared when the episode's chunks are rebuilt (in the 2026-11-16 ten-episode check 121 of 156 citations had
+ * lost it), and with no chunk there are no statements and so no claims to attach the study to.
+ *
+ * The citation still holds the words the speaker said. They are looked up verbatim (case, spacing and
+ * punctuation ignored) in the episode's current chunks. A quote too short to be distinctive finds nothing, and
+ * so does one found in more than MAX_QUOTE_CHUNKS places (a stock phrase): neither says where it was said.
+ * A quote in two or three places returns all of them: the claim-wording judge then decides from the words of
+ * each statement, so a statement said elsewhere is attached only if it reports what the cited study found.
+ */
+export const QUOTE_MIN_CHARS = 25
+export const MAX_QUOTE_CHUNKS = 3
+const QUOTE_PREFIX_CHARS = 60
+
+function squash(s: string): string {
+  return s.toLowerCase().replace(/[^\p{L}\p{N}]+/gu, ' ').trim()
+}
+
+export function chunksHoldingQuote(chunks: { id: string; content: string }[], quote: string | null | undefined): string[] {
+  const q = squash(quote ?? '')
+  if (q.length < QUOTE_MIN_CHARS) return []
+  const needle = q.slice(0, QUOTE_PREFIX_CHARS)
+  const hits = chunks.filter(c => squash(c.content).includes(needle)).map(c => c.id)
+  return hits.length <= MAX_QUOTE_CHUNKS ? hits : []
+}
+
 /** Statements per model call: a long chunk is judged in several calls. */
 export const CLAIM_LINK_BATCH = 40
 

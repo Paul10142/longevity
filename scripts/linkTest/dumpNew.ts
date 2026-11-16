@@ -4,6 +4,7 @@
 // Writes nothing to the database.
 import { readFileSync, writeFileSync } from 'node:fs'
 import { createClient } from '@supabase/supabase-js'
+import { chunksHoldingQuote } from '../../lib/claimLinking'
 
 const [idsFile, outFile] = process.argv.slice(2)
 if (!idsFile || !outFile) { console.error('usage: dumpNew.ts <ids.txt> <out.json>'); process.exit(2) }
@@ -63,10 +64,16 @@ async function main() {
       for (const r of (data ?? []) as { claim_id: string }[]) linked.add(r.claim_id)
     }
     out.sources.push({ id: s.id, title: s.title, authors: s.authors, date: s.date, mentions: mentions.length, resolved: mentions.filter(m => m.resolution_status === 'resolved').length, claims: claimIds.length, claims_linked: linked.size })
+    // A citation whose chunk link was cleared (the chunks were rebuilt) is found again by the words the speaker said, as in production.
+    const chunks = (await pagedIds('chunks', 'source_id', s.id, 'id, content')) as { id: string; content: string }[]
     for (const m of mentions) {
       let ref: unknown = null
+      const chunkId = m.chunk_id
+      let how: 'saved' | 'quote' | null = m.chunk_id ? 'saved' : null
+      const found = chunkId ? [chunkId] : chunksHoldingQuote(chunks, m.raw_text)
+      if (!chunkId && found.length) how = 'quote'
       let oldLinkedClaimIds: string[] = []
-      const insights = m.chunk_id ? await insightsOf(m.chunk_id) : []
+      const insights = (await Promise.all(found.map(insightsOf))).flat().filter((x, k, all) => all.findIndex(y => y.id === x.id) === k)
       if (m.reference_id) {
         const { data } = await db.from('references_').select('title, authors, year, journal, doi, resolved_source').eq('id', m.reference_id).single()
         ref = data
@@ -78,7 +85,7 @@ async function main() {
       }
       out.mentions.push({
         id: m.id, src: s.id.slice(0, 8), locator: m.locator, raw: m.raw_text, parsed: m.parsed, status: m.resolution_status, conf: m.match_confidence,
-        ref, chunkId: m.chunk_id, insights, oldLinkedClaimIds,
+        ref, chunkId: m.chunk_id, chunkFoundBy: how, insights, oldLinkedClaimIds,
       })
     }
     console.log(`${s.id.slice(0, 8)} mentions=${mentions.length} resolved=${mentions.filter(m => m.resolution_status === 'resolved').length} claims=${claimIds.length} linked=${linked.size} ${s.title.slice(0, 50)}`)
