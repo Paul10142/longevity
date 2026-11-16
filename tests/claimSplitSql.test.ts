@@ -16,7 +16,7 @@ import assert from 'node:assert/strict'
 import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
-import { spawnSync } from 'node:child_process'
+import { spawn, spawnSync } from 'node:child_process'
 
 const ROOT = path.resolve(import.meta.dirname, '..')
 
@@ -282,6 +282,36 @@ test('re-running an already repaired claim writes nothing (also with a different
   assert.equal(apply(other).answer?.status, 'already_applied')
   assert.deepEqual(snapshot(), after)
   assert.equal(after.repairs.length, 1)
+})
+
+/** The same call as apply(), as its own process, so two of them can be in flight at the same moment. */
+function applyInBackground(pieces: Piece[], tag: string): Promise<{ status: string }> {
+  const f = path.join(work, `call-${tag}.sql`)
+  writeFileSync(f, `select public.apply_claim_split('${ORIGINAL}'::uuid, '${FLAG}'::uuid, 'repair-test', $q$${OLD_WORDING}$q$, $plan$${planJson(pieces)}$plan$::jsonb);\n`)
+  return new Promise((resolve, reject) => {
+    const child = spawn(bin('psql'), ['-h', sock, '-U', 'postgres', '-d', 'postgres', '-X', '-q', '-At', '-v', 'ON_ERROR_STOP=1', '-f', f], { env: PGENV })
+    let out = ''
+    let err = ''
+    child.stdout.on('data', d => { out += d })
+    child.stderr.on('data', d => { err += d })
+    child.on('close', code => (code === 0 ? resolve(JSON.parse(out.trim())) : reject(new Error(err))))
+  })
+}
+
+test('a repeat sent while the first call is still running (the script retried after a lost answer) writes the split once', { skip }, async () => {
+  reset()
+  // A third session holds the claim's row lock, so both calls reach the function at the same moment and queue behind it.
+  const holder = spawn(bin('psql'), ['-h', sock, '-U', 'postgres', '-d', 'postgres', '-X', '-q', '-At', '-c', `begin; select 1 from public.claims where id = '${ORIGINAL}' for update; select pg_sleep(1.5); commit;`], { env: PGENV })
+  const held = new Promise(resolve => holder.on('close', resolve))
+  await new Promise(resolve => setTimeout(resolve, 500))
+  const [first, second] = await Promise.all([applyInBackground(TWO, 'first'), applyInBackground(TWO, 'second')])
+  await held
+  assert.deepEqual([first.status, second.status].sort(), ['already_applied', 'applied'])
+  const after = snapshot()
+  assert.equal(after.repairs.length, 1, 'one audit row')
+  assert.equal(after.claims.length, 2, 'two claims, not four')
+  assert.equal(after.members.length, 8, 'every insight on exactly one claim')
+  assert.equal(after.flags.filter(f => f.resolved).length, 1)
 })
 
 test('a claim whose wording, status, flag or members changed since it was read is stale and untouched', { skip }, () => {

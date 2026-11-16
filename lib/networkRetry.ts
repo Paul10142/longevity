@@ -32,6 +32,8 @@ export type RetryOpts = {
   sleep?: (ms: number) => Promise<void>
   now?: () => number
   onRetry?: (attempt: number, waitMs: number, message: string) => void
+  /** What counts as a transient error (default isTransientNetworkError). The repair script adds 5xx answers. */
+  isTransient?: (message: string) => boolean
 }
 
 const DEFAULT_MAX_WAIT_MS = 4 * 60_000
@@ -57,6 +59,7 @@ export async function withNetworkRetry<T extends { error: { message: string } | 
   const cap = opts.capMs ?? 30_000
   const sleep = opts.sleep ?? ((ms: number) => new Promise<void>(r => setTimeout(r, ms)))
   const now = opts.now ?? Date.now
+  const transient = opts.isTransient ?? isTransientNetworkError
   const begun = now()
   let wait = base
   for (let attempt = 1; ; attempt++) {
@@ -66,11 +69,11 @@ export async function withNetworkRetry<T extends { error: { message: string } | 
     } catch (e) {
       // A thrown network error (not a supabase result) is treated the same way.
       const message = e instanceof Error ? e.message : String(e)
-      if (!isTransientNetworkError(message)) throw e
+      if (!transient(message)) throw e
       res = { error: { message } } as T
       if (now() - begun + wait > maxWait) throw e
     }
-    if (!res.error || !isTransientNetworkError(res.error.message)) return res
+    if (!res.error || !transient(res.error.message)) return res
     if (now() - begun + wait > maxWait) return res
     const msg = res.error.message
     if (opts.onRetry) opts.onRetry(attempt, wait, msg)
