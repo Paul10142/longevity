@@ -38,5 +38,13 @@ export default tseslint.config(
       "@typescript-eslint/no-explicit-any": "off",
       "@typescript-eslint/no-unused-expressions": "off",
     },
+  },
+  {
+    // The UVM dining-menu page is plain Node (.mjs), outside the TypeScript app.
+    files: ["dining-menu/**/*.mjs"],
+    languageOptions: {
+      ecmaVersion: 2022,
+      globals: { ...globals.node },
+    },
   }
 );
