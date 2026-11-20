@@ -1,0 +1,401 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dinner Menus Compare</title>
+<style>
+  :root {
+    --bg: #f5f6f8; --card: #ffffff; --text: #1d2330; --muted: #6b7280;
+    --line: #e2e5ea; --accent: #00274c; --accent-soft: #e6ecf5;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #101418; --card: #1a2028; --text: #e7eaf0; --muted: #98a1b0;
+      --line: #2b333e; --accent: #8fb4e8; --accent-soft: #223247;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #101418; --card: #1a2028; --text: #e7eaf0; --muted: #98a1b0;
+    --line: #2b333e; --accent: #8fb4e8; --accent-soft: #223247;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--bg); color: var(--text);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    line-height: 1.45;
+  }
+  main { max-width: 1200px; margin: 0 auto; padding: 16px; }
+
+  .daybar {
+    display: flex; flex-wrap: wrap; gap: 8px; align-items: center;
+    justify-content: space-between; margin-bottom: 12px;
+  }
+  .daybar .date { font-size: 1.15rem; font-weight: 600; }
+  button {
+    font: inherit; color: var(--accent); background: var(--card);
+    border: 1px solid var(--line); border-radius: 8px;
+    padding: 8px 12px; min-height: 44px; min-width: 44px; cursor: pointer;
+  }
+  button:hover { background: var(--accent-soft); }
+  button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+  .nav { display: flex; gap: 8px; }
+
+  .calendar {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; margin-bottom: 16px; display: none;
+  }
+  .calendar.open { display: block; }
+  .cal-head {
+    display: flex; justify-content: space-between; align-items: center; margin-bottom: 8px;
+  }
+  .cal-grid {
+    display: grid; grid-template-columns: repeat(7, 1fr); gap: 4px; text-align: center;
+  }
+  .cal-grid .dow { color: var(--muted); font-size: .8rem; padding: 4px 0; }
+  .cal-grid button {
+    padding: 0; min-height: 40px; width: 100%; min-width: 0; font-size: .95rem;
+  }
+  .cal-grid button.other { opacity: .35; }
+  .cal-grid button.today { font-weight: 700; border-color: var(--accent); }
+  .cal-grid button[aria-pressed="true"] { background: var(--accent); color: #fff; }
+
+  .status { color: var(--muted); font-size: .9rem; margin: 0 0 12px; }
+  .error {
+    background: #fdecea; color: #7a1f1a; border-radius: 8px; padding: 10px 12px; margin-bottom: 12px;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) .error { background: #3a1d1b; color: #f5c6c2; }
+  }
+
+  /* Three equal columns, one per hall. Stations are full-width labels, so the same
+     station sits in the same row across the page. */
+  .menu-grid {
+    display: grid; grid-template-columns: repeat(3, 1fr);
+    column-gap: 10px; row-gap: 12px; align-items: stretch;
+  }
+  /* Hall names stay pinned at the top while you scroll. */
+  .colheads {
+    position: sticky; top: 0; z-index: 5; background: var(--bg);
+    padding: 8px 0 10px; border-bottom: 1px solid var(--line); margin-bottom: 8px;
+  }
+  .colhead {
+    color: var(--accent); text-decoration: none; min-width: 0;
+  }
+  .colhead:hover .hall-name { text-decoration: underline; }
+  .hall-name { font-size: 1.4rem; font-weight: 700; line-height: 1.15; }
+  .hall-hours { font-size: .85rem; color: var(--muted); font-weight: 400; }
+
+  .station-band {
+    grid-column: 1 / -1; margin-top: 8px; font-size: .8rem; font-weight: 700;
+    text-transform: uppercase; letter-spacing: .04em; color: var(--muted);
+  }
+  .cell {
+    background: var(--card); border: 1px solid var(--line); border-radius: 12px;
+    padding: 12px; min-width: 0; font-size: .95rem;
+  }
+  .cell ul { margin: 0; padding-left: 18px; }
+  .cell li { margin: 2px 0; overflow-wrap: anywhere; }
+  .none { color: var(--muted); font-style: italic; margin: 0; }
+  .nosvc { color: var(--muted); }
+
+
+  @media (max-width: 480px) {
+    .cell { padding: 8px; font-size: .8rem; }
+    .cell ul { padding-left: 14px; }
+    .hall-name { font-size: 1.05rem; }
+    .hall-hours { font-size: .75rem; }
+  }
+</style>
+</head>
+<body>
+<main>
+  <div class="daybar">
+    <div class="nav">
+      <button id="prev" aria-label="Previous day">&larr; Prev</button>
+      <button id="today">Today</button>
+      <button id="next" aria-label="Next day">Next &rarr;</button>
+    </div>
+    <div class="date" id="dateLabel"></div>
+    <button id="calToggle" aria-expanded="false" aria-controls="calendar">Calendar</button>
+  </div>
+
+  <div class="calendar" id="calendar">
+    <div class="cal-head">
+      <button id="calPrev" aria-label="Previous month">&larr;</button>
+      <strong id="calTitle"></strong>
+      <button id="calNext" aria-label="Next month">&rarr;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+  </div>
+
+  <p class="status" id="status">Checking the dining site...</p>
+  <div id="errors"></div>
+  <div id="halls"></div>
+</main>
+
+<script>
+(() => {
+  const DAYS = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+  const MONTHS = ['January', 'February', 'March', 'April', 'May', 'June', 'July',
+    'August', 'September', 'October', 'November', 'December'];
+
+  const fmt = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const parse = s => { const [y, m, d] = s.split('-').map(Number); return new Date(y, m - 1, d); };
+  const addDays = (d, n) => { const x = new Date(d); x.setDate(x.getDate() + n); return x; };
+
+  let selected = fmt(new Date());
+  let shown = parse(selected);            // month shown in the calendar
+  let loadId = 0;
+
+  const el = id => document.getElementById(id);
+
+  // Stations pinned to the top, in this order.
+  const TOP = [/^signature maize$/i, /^halal$/i, /^24 carrots$/i];
+  // Stations pinned to the bottom group, in this order.
+  const BOTTOM = [/^soup$/i, /^mbakery$/i];
+  const WILD_FIRE = 'Wild Fire Maize / King\'s Hawaiian Grill';
+  const HIDDEN = [/^sabroso$/i, /^two oceans$/i, /^pizziti$/i, /^deli$/i];
+
+  // Renames and merges station names so the same station lines up across halls.
+  function canonical(name) {
+    if (HIDDEN.some(re => re.test(name))) return null;
+    if (/^(wild ?fire maize|kings hawaiian grill)$/i.test(name)) return WILD_FIRE;
+    return name;
+  }
+
+  function rankOf(name) {
+    const t = TOP.findIndex(re => re.test(name));
+    if (t !== -1) return t;
+    const b = BOTTOM.findIndex(re => re.test(name));
+    if (b !== -1) return 100 + b;
+    return 10;
+  }
+
+  // One row per station across all halls. Top stations first, then the rest
+  // (most halls first, then A to Z), then the bottom group in its fixed order.
+  function buildRows(halls) {
+    const rows = new Map();
+    halls.forEach(hall => {
+      (hall.stations || []).forEach(st => {
+        const name = canonical(st.station);
+        if (!name) return;
+        if (!rows.has(name)) rows.set(name, { name, byHall: {} });
+        const row = rows.get(name);
+        row.byHall[hall.id] = [...(row.byHall[hall.id] || []), ...st.items];
+      });
+    });
+    return [...rows.values()].sort((a, b) => {
+      const ra = rankOf(a.name), rb = rankOf(b.name);
+      if (ra !== rb) return ra - rb;
+      const ca = Object.keys(a.byHall).length, cb = Object.keys(b.byHall).length;
+      return cb - ca || a.name.localeCompare(b.name);
+    });
+  }
+
+  function setDate(s) {
+    selected = s;
+    shown = parse(s);
+    el('dateLabel').textContent = parse(s).toLocaleDateString('en-US', {
+      weekday: 'long', month: 'long', day: 'numeric', year: 'numeric',
+    });
+    renderCalendar();
+    loadMenus();
+  }
+
+  function renderCalendar() {
+    el('calTitle').textContent = `${MONTHS[shown.getMonth()]} ${shown.getFullYear()}`;
+    const grid = el('calGrid');
+    grid.replaceChildren();
+    DAYS.forEach(d => {
+      const h = document.createElement('div');
+      h.className = 'dow'; h.textContent = d; grid.appendChild(h);
+    });
+    const first = new Date(shown.getFullYear(), shown.getMonth(), 1);
+    const start = addDays(first, -first.getDay());
+    const todayStr = fmt(new Date());
+    for (let i = 0; i < 42; i++) {
+      const day = addDays(start, i);
+      const s = fmt(day);
+      const b = document.createElement('button');
+      b.textContent = day.getDate();
+      b.setAttribute('aria-label', s);
+      if (day.getMonth() !== shown.getMonth()) b.classList.add('other');
+      if (s === todayStr) b.classList.add('today');
+      b.setAttribute('aria-pressed', String(s === selected));
+      b.addEventListener('click', () => {
+        setDate(s);
+        el('calendar').classList.remove('open');
+        el('calToggle').setAttribute('aria-expanded', 'false');
+      });
+      grid.appendChild(b);
+    }
+  }
+
+  function makeCell(text, cls) {
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const p = document.createElement('p');
+    p.className = cls || 'none'; p.textContent = text;
+    cell.appendChild(p);
+    return cell;
+  }
+
+  function bandEl(text) {
+    const band = document.createElement('div');
+    band.className = 'station-band';
+    band.textContent = text;
+    return band;
+  }
+
+  // The card for one station at one hall. Returns an empty spacer when the hall
+  // doesn't offer the station, so the other halls' cards stay in their columns.
+  function cellFor(row, hall) {
+    if (hall.error) return makeCell('Could not load this hall.');
+    if (!hall.stations || hall.stations.length === 0) return makeCell('No dinner menu posted for this day.');
+    if (!row.byHall[hall.id]) return document.createElement('div');
+    const cell = document.createElement('div');
+    cell.className = 'cell';
+    const ul = document.createElement('ul');
+    row.byHall[hall.id].forEach(item => {
+      const li = document.createElement('li');
+      li.textContent = item;
+      if (/no service/i.test(item)) li.className = 'nosvc';
+      ul.appendChild(li);
+    });
+    cell.appendChild(ul);
+    return cell;
+  }
+
+  // Pairs single-hall stations from different halls (Kosher at South Quad with
+  // World Palate Maize at Mosher Jordan) so they share one row.
+  function pairRows(rows) {
+    const groups = [];
+    const used = new Set();
+    rows.forEach((row, i) => {
+      if (used.has(i)) return;
+      used.add(i);
+      const group = [row];
+      const halls = Object.keys(row.byHall);
+      if (halls.length === 1) {
+        const j = rows.findIndex((other, k) => k > i && !used.has(k) &&
+          Object.keys(other.byHall).length === 1 && !other.byHall[halls[0]]);
+        if (j !== -1) { used.add(j); group.push(rows[j]); }
+      }
+      groups.push(group);
+    });
+    return groups;
+  }
+
+  // Draws one row of the grid. A station offered at every hall gets a full-width label
+  // and one card per hall. A station at only one hall, or two stations from different
+  // halls side by side, put each label directly above its card in that hall's column.
+  function appendGroup(grid, group, halls, showBand) {
+    if (group.length === 1 && Object.keys(group[0].byHall).length > 1) {
+      const row = group[0];
+      if (showBand) grid.appendChild(bandEl(row.name));
+      halls.forEach(hall => grid.appendChild(cellFor(row, hall)));
+      return;
+    }
+    halls.forEach(hall => {
+      const col = document.createElement('div');
+      const row = group.find(r => r.byHall[hall.id]);
+      if (row) {
+        if (showBand) col.appendChild(bandEl(row.name));
+        col.appendChild(cellFor(row, hall));
+      }
+      grid.appendChild(col);
+    });
+  }
+
+  function renderHalls(data) {
+    const wrap = el('halls');
+    wrap.replaceChildren();
+    el('errors').replaceChildren();
+
+    // Pinned hall names, each linking to that hall's page on the UVM site.
+    const heads = document.createElement('div');
+    heads.className = 'menu-grid colheads';
+    data.halls.forEach(hall => {
+      const a = document.createElement('a');
+      a.className = 'colhead';
+      a.href = `https://dining.umich.edu/menus-locations/dining-halls/${hall.id}/?menuDate=${selected}`;
+      a.target = '_blank';
+      a.rel = 'noopener';
+      const name = document.createElement('span');
+      name.className = 'hall-name'; name.textContent = hall.name;
+      const hours = document.createElement('span');
+      hours.className = 'hall-hours'; hours.textContent = '(4:30-9 pm)';
+      a.append(name, ' ', hours);
+      heads.appendChild(a);
+
+      if (hall.error) {
+        const e = document.createElement('div'); e.className = 'error';
+        e.textContent = `${hall.name}: ${hall.error}`;
+        el('errors').appendChild(e);
+      }
+    });
+    wrap.appendChild(heads);
+
+    const rows = buildRows(data.halls);
+    const top = rows.filter(r => rankOf(r.name) < 100);
+    const bottom = rows.filter(r => rankOf(r.name) >= 100);
+
+    const middle = document.createElement('div');
+    middle.className = 'menu-grid';
+    pairRows(top).forEach(group => appendGroup(middle, group, data.halls, true));
+    wrap.appendChild(middle);
+
+    if (bottom.length) {
+      const grid = document.createElement('div');
+      grid.className = 'menu-grid bottom-grid';
+      const band = document.createElement('div');
+      band.className = 'station-band';
+      band.textContent = 'Soup/Bakery';
+      grid.appendChild(band);
+      bottom.forEach(row => appendGroup(grid, [row], data.halls, false));
+      wrap.appendChild(grid);
+    }
+
+    if (rows.length === 0) {
+      const none = document.createElement('p');
+      none.className = 'none';
+      none.textContent = 'No dinner menu posted for this day.';
+      wrap.appendChild(none);
+    }
+  }
+
+  async function loadMenus() {
+    const id = ++loadId;
+    el('status').textContent = 'Checking the dining site...';
+    try {
+      const res = await fetch(`/api/menu?date=${selected}`, { cache: 'no-store' });
+      const data = await res.json();
+      if (id !== loadId) return;
+      if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
+      renderHalls(data);
+      const t = new Date(data.halls[0].checkedAt).toLocaleTimeString('en-US', { hour: 'numeric', minute: '2-digit' });
+      el('status').textContent = `Checked live at ${t}.`;
+    } catch (err) {
+      if (id !== loadId) return;
+      el('status').textContent = `Could not reach the menu server: ${err.message}`;
+      el('halls').replaceChildren();
+    }
+  }
+
+  el('prev').addEventListener('click', () => setDate(fmt(addDays(parse(selected), -1))));
+  el('next').addEventListener('click', () => setDate(fmt(addDays(parse(selected), 1))));
+  el('today').addEventListener('click', () => setDate(fmt(new Date())));
+  el('calPrev').addEventListener('click', () => { shown = new Date(shown.getFullYear(), shown.getMonth() - 1, 1); renderCalendar(); });
+  el('calNext').addEventListener('click', () => { shown = new Date(shown.getFullYear(), shown.getMonth() + 1, 1); renderCalendar(); });
+  el('calToggle').addEventListener('click', () => {
+    const open = el('calendar').classList.toggle('open');
+    el('calToggle').setAttribute('aria-expanded', String(open));
+    el('calToggle').setAttribute('aria-pressed', String(open));
+  });
+
+  setDate(selected);
+})();
+</script>
+</body>
+</html>
